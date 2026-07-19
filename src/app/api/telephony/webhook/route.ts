@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { analyzeCallRecording } from '@/lib/ai/gemini';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -36,5 +37,39 @@ export async function POST(req: NextRequest) {
   const notes = [`${direction} call`, duration ? `${duration}s` : null, `status ${status}`, recordingUrl ? `Recording: ${recordingUrl}` : null].filter(Boolean).join(' · ');
 
   await prisma.leadActivity.create({ data: { leadId: lead.id, type: 'CALL', subject: direction.includes('out') ? 'Outbound call' : 'Inbound call', notes, outcome: status } });
-  return NextResponse.json({ ok: true, matched: true, leadId: lead.id });
+
+  // AI call analysis — transcribe the recording and extract budget / typology / timeline / sentiment.
+  let analysed = false;
+  if (recordingUrl) {
+    try {
+      const audioRes = await fetch(recordingUrl);
+      if (audioRes.ok) {
+        const buf = Buffer.from(await audioRes.arrayBuffer());
+        const mime = audioRes.headers.get('content-type')?.split(';')[0] || 'audio/mpeg';
+        const a = await analyzeCallRecording(buf, mime);
+        if (a) {
+          const detail = [
+            a.summary,
+            a.budget ? `Budget: ${a.budget}` : null,
+            a.typology ? `Typology: ${a.typology}` : null,
+            a.timeline ? `Timeline: ${a.timeline}` : null,
+            `Sentiment: ${a.sentiment}`,
+            `Next: ${a.nextAction}`,
+            '',
+            '--- Transcript ---',
+            a.transcript,
+          ].filter((x) => x !== null).join('\n');
+          await prisma.leadActivity.create({ data: { leadId: lead.id, type: 'NOTE', subject: `AI call analysis (${a.sentiment})`, notes: detail.slice(0, 6000), outcome: a.sentiment } });
+          const patch: Record<string, unknown> = {};
+          if (a.typology || a.timeline) {
+            const existing = (await prisma.lead.findUnique({ where: { id: lead.id }, select: { requirement: true } }))?.requirement;
+            if (!existing) patch.requirement = [a.typology, a.timeline].filter(Boolean).join(' · ').slice(0, 300);
+          }
+          if (Object.keys(patch).length) await prisma.lead.update({ where: { id: lead.id }, data: patch });
+          analysed = true;
+        }
+      }
+    } catch { /* analysis is best-effort */ }
+  }
+  return NextResponse.json({ ok: true, matched: true, leadId: lead.id, analysed });
 }

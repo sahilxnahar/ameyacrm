@@ -118,3 +118,42 @@ export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScor
     return { score, reason: String(j.reason ?? '').slice(0, 300), nextAction: String(j.nextAction ?? '').slice(0, 300) };
   } catch { return null; }
 }
+
+export interface CallAnalysis { transcript: string; summary: string; budget: string | null; typology: string | null; timeline: string | null; sentiment: string; nextAction: string }
+const CALL_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    transcript: { type: 'STRING' }, summary: { type: 'STRING' },
+    budget: { type: 'STRING', nullable: true }, typology: { type: 'STRING', nullable: true },
+    timeline: { type: 'STRING', nullable: true }, sentiment: { type: 'STRING' }, nextAction: { type: 'STRING' },
+  },
+} as const;
+
+/** Transcribe + analyse a sales call recording (English/Hindi/Kannada mix). Never throws — null on any problem. */
+export async function analyzeCallRecording(audio: Buffer, mimeType: string): Promise<CallAnalysis | null> {
+  if (!env.GEMINI_API_KEY) return null;
+  if (audio.length > 18 * 1024 * 1024) return null;
+  const prompt =
+    'You are a senior real-estate sales manager in Bengaluru. The attached audio is a sales call that may mix English, Hindi and Kannada. ' +
+    'Return: a concise "transcript" (speaker-labelled where possible), a 2-3 sentence "summary", the buyer "budget" if mentioned, ' +
+    'the "typology" (e.g. 2BHK/3BHK) if mentioned, the possession "timeline" if mentioned, the caller "sentiment" ' +
+    '(positive / neutral / negative), and the single best "nextAction" for the rep. Use null where not mentioned.';
+  const body = {
+    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: audio.toString('base64') } }, { text: prompt }] }],
+    generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: CALL_SCHEMA },
+  };
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
+    if (!raw) return null;
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const str = (v: unknown, max = 400) => (v == null ? null : String(v).slice(0, max));
+    return {
+      transcript: String(j.transcript ?? '').slice(0, 6000), summary: String(j.summary ?? '').slice(0, 800),
+      budget: str(j.budget, 80), typology: str(j.typology, 40), timeline: str(j.timeline, 80),
+      sentiment: String(j.sentiment ?? 'neutral').slice(0, 20), nextAction: String(j.nextAction ?? '').slice(0, 300),
+    };
+  } catch { return null; }
+}

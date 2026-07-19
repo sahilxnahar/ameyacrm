@@ -10,6 +10,8 @@ import { LeadActivityLogger } from '@/components/sales/lead-activity-logger';
 import { LeadBookingPanel } from '@/components/sales/lead-booking-panel';
 import { WhatsAppButton } from '@/components/sales/whatsapp-button';
 import { CallButton } from '@/components/sales/call-button';
+import { EmailLeadButton } from '@/components/sales/email-lead-button';
+import { LeadCustomFields } from '@/components/sales/lead-custom-fields';
 import { AiScoreButton } from '@/components/sales/ai-score-button';
 import { isGeminiEnabled } from '@/lib/ai/gemini';
 import { formatCurrency, formatDateTime, titleCase } from '@/lib/utils/format';
@@ -34,6 +36,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const units = lead.projectId
     ? await prisma.unit.findMany({ where: { projectId: lead.projectId, status: { in: ['AVAILABLE', 'HELD'] } }, select: { id: true, code: true }, orderBy: { code: 'asc' } })
     : [];
+  const cfDefs = await prisma.customFieldDef.findMany({ where: { entity: 'lead', isActive: true }, orderBy: { order: 'asc' } });
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -86,7 +89,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {lead.email ?? '—'}</p>
           <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {lead.phone ?? '—'}</p>
-          <div className="flex gap-2"><CallButton phone={lead.phone} /><WhatsAppButton phone={lead.phone} name={lead.name} /></div>
+          <div className="flex flex-wrap gap-2"><CallButton phone={lead.phone} /><WhatsAppButton phone={lead.phone} name={lead.name} /><EmailLeadButton leadId={lead.id} email={lead.email} name={lead.name} /></div>
           <p className="text-muted-foreground">Source: {titleCase(lead.source)}</p>
           <p className="text-muted-foreground">Owner: {lead.owner?.name ?? '—'}</p>
           <p className="text-muted-foreground">Project: {lead.project?.name ?? '—'}</p>
@@ -96,6 +99,19 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           {isGeminiEnabled() && <AiScoreButton leadId={lead.id} />}
         </CardContent>
       </Card>
+
+      {cfDefs.length > 0 && (
+        <Card className="lg:col-start-3">
+          <CardHeader><CardTitle className="text-lg">Additional details</CardTitle></CardHeader>
+          <CardContent>
+            <LeadCustomFields
+              leadId={lead.id}
+              fields={cfDefs.map((f) => ({ id: f.id, key: f.key, label: f.label, type: f.type, options: f.options, required: f.required }))}
+              values={(lead.customFields as Record<string, unknown>) ?? {}}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

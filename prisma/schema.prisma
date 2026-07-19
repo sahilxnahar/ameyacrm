@@ -844,6 +844,7 @@ model Lead {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
+  customFields Json? // admin-defined custom field values
 
   project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
   owner      User?          @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
@@ -1811,4 +1812,37 @@ model SocialConnection {
   note        String?
   connectedAt DateTime?
   updatedAt   DateTime      @updatedAt
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Configurability + Platform Ops
+// ════════════════════════════════════════════════════════════════════════════
+model CustomFieldDef {
+  id        String   @id @default(cuid())
+  entity    String   @default("lead") // lead | unit | booking ...
+  key       String
+  label     String
+  type      String   @default("text") // text | number | date | select | checkbox
+  options   String[]
+  required  Boolean  @default(false)
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([entity, key])
+  @@index([entity])
+}
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  name        String
+  prefix      String // first 8 chars, shown in UI
+  tokenHash   String    @unique
+  scopes      String[]
+  createdById String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([revokedAt])
 }
