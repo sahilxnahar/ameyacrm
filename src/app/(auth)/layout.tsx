@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="relative hidden overflow-hidden lg:block" style={{ backgroundColor: '#0E1A36' }}>
         <div className="brass-gradient absolute inset-0 opacity-[0.06]" />
         <div className="relative flex h-full flex-col items-center justify-center px-12 text-center">
-          <Image src={brand.assets.markGoldLight} alt="Ameya Heights" width={420} height={420} priority className="h-auto w-2/5 max-w-[380px]" />
+          <Image src={brand.assets.markGoldLight} alt="Ameya Heights" width={420} height={420} priority className="h-auto w-1/2 max-w-[480px]" />
           <p className="mt-8 text-xs font-semibold uppercase tracking-[0.32em] text-brass-light">CRM Platform</p>
           <h1 className="mt-3 font-display text-6xl font-semibold xl:text-7xl" style={{ color: '#C2A05B' }}>
             {brand.company.displayName}
