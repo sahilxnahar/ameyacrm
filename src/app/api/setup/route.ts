@@ -19,7 +19,13 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret') ?? req.headers.get('x-setup-secret');
-  const userCount = await prisma.user.count();
+  // The tables may not exist yet on a brand-new database — treat that as "not initialized".
+  let userCount = 0;
+  try {
+    userCount = await prisma.user.count();
+  } catch {
+    userCount = 0;
+  }
   if (userCount > 0 && (!env.SETUP_SECRET || secret !== env.SETUP_SECRET)) {
     return NextResponse.json({ error: 'Already initialized. Provide ?secret=SETUP_SECRET to re-run.' }, { status: 403 });
   }
