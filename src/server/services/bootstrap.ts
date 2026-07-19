@@ -1,6 +1,6 @@
 import 'server-only';
 import bcrypt from 'bcryptjs';
-import type { RoleName } from '@prisma/client';
+import { PrismaClient, type RoleName } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { PERMISSIONS, ALL_PERMISSION_KEYS, moduleOf } from '@/lib/rbac/permissions';
 import { ROLE_DEFAULTS, expandRolePermissions } from '@/lib/rbac/roles';
@@ -30,28 +30,36 @@ export interface BootstrapResult {
  * Idempotent: runs only when the "User" table is missing; tolerates re-runs.
  */
 export async function ensureSchema(): Promise<boolean> {
-  const rows = await prisma.$queryRawUnsafe<Array<{ t: string | null }>>(
-    `SELECT to_regclass('public."User"')::text AS t`,
-  );
-  if (rows?.[0]?.t) return false; // schema already present
+  // Use the UNPOOLED/direct connection for DDL — pooled (pgbouncer) connections
+  // can mishandle bulk CREATE TABLE. Falls back to DATABASE_URL if unpooled isn't set.
+  const directUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  const client = new PrismaClient({ datasourceUrl: directUrl });
+  try {
+    const rows = await client.$queryRawUnsafe<Array<{ t: string | null }>>(
+      `SELECT to_regclass('public."User"')::text AS t`,
+    );
+    if (rows?.[0]?.t) return false; // schema already present
 
-  const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
-  const statements = sql.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean);
-  for (const raw of statements) {
-    const stmt = raw
-      .split('\n')
-      .filter((l) => !l.trim().startsWith('--'))
-      .join('\n')
-      .replace(/;\s*$/, '')
-      .trim();
-    if (!stmt) continue;
-    try {
-      await prisma.$executeRawUnsafe(stmt);
-    } catch {
-      /* tolerate "already exists" on partial re-runs */
+    const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
+    const statements = sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean);
+    for (const raw of statements) {
+      const stmt = raw
+        .split('\n')
+        .filter((l) => !l.trim().startsWith('--'))
+        .join('\n')
+        .replace(/;\s*$/, '')
+        .trim();
+      if (!stmt) continue;
+      try {
+        await client.$executeRawUnsafe(stmt);
+      } catch {
+        /* tolerate "already exists" on partial re-runs */
+      }
     }
+    return true;
+  } finally {
+    await client.$disconnect();
   }
-  return true;
 }
 
 export async function bootstrap(): Promise<BootstrapResult> {
