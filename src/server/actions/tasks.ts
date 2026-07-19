@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma';
 import { nextReference } from '@/lib/utils/reference';
 import { notify, notifyMany } from '@/lib/notifications/notify';
 import { writeAudit } from '@/lib/audit/log';
+import { runAutomations } from '@/lib/automation/engine';
 import { ensure, getActionContext, toActionError } from './_helpers';
 
 const createSchema = z.object({
@@ -50,6 +51,7 @@ export async function createTask(input: unknown): Promise<TaskActionResult> {
       type: 'TASK_ASSIGNED', title: `New task: ${data.title}`,
       body: `${ctx.user.name} assigned you ${reference}`, link: `/tasks/${task.id}`,
     });
+    await runAutomations('TASK_CREATED', { entityType: 'Task', entityId: task.id, data: { title: task.title, priority: task.priority, status: task.status }, actorId: ctx.user.id });
     revalidatePath('/tasks');
     return { ok: true, id: task.id };
   } catch (err) {
@@ -71,6 +73,7 @@ export async function moveTask(taskId: string, status: TaskStatus, position: num
     await notifyMany(watchers.filter((id) => id !== ctx.user.id), {
       type: 'TASK_UPDATED', title: `${task.reference} moved to ${status}`, link: `/tasks/${taskId}`,
     });
+    await runAutomations('TASK_STATUS_CHANGED', { entityType: 'Task', entityId: taskId, data: { title: task.title, status, priority: task.priority }, actorId: ctx.user.id });
     revalidatePath('/tasks');
     return { ok: true, id: taskId };
   } catch (err) {

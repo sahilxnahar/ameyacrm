@@ -100,6 +100,9 @@ CREATE TYPE "IssueSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 -- CreateEnum
 CREATE TYPE "IssueStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
 
+-- CreateEnum
+CREATE TYPE "AutomationTrigger" AS ENUM ('LEAD_CREATED', 'LEAD_STAGE_CHANGED', 'TASK_CREATED', 'TASK_STATUS_CHANGED', 'SCHEDULE');
+
 -- CreateTable
 CREATE TABLE "Project" (
     "id" TEXT NOT NULL,
@@ -1097,6 +1100,37 @@ CREATE TABLE "IssueLog" (
     CONSTRAINT "IssueLog_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "AutomationRule" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "trigger" "AutomationTrigger" NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "conditions" JSONB,
+    "actions" JSONB NOT NULL,
+    "runCount" INTEGER NOT NULL DEFAULT 0,
+    "lastRunAt" TIMESTAMP(3),
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AutomationRule_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AutomationRun" (
+    "id" TEXT NOT NULL,
+    "ruleId" TEXT NOT NULL,
+    "entityType" TEXT,
+    "entityId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'SUCCESS',
+    "detail" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AutomationRun_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Project_code_key" ON "Project"("code");
 
@@ -1451,6 +1485,12 @@ CREATE INDEX "IssueLog_status_idx" ON "IssueLog"("status");
 -- CreateIndex
 CREATE INDEX "IssueLog_severity_idx" ON "IssueLog"("severity");
 
+-- CreateIndex
+CREATE INDEX "AutomationRule_trigger_isActive_idx" ON "AutomationRule"("trigger", "isActive");
+
+-- CreateIndex
+CREATE INDEX "AutomationRun_ruleId_idx" ON "AutomationRun"("ruleId");
+
 -- AddForeignKey
 ALTER TABLE "Department" ADD CONSTRAINT "Department_headId_fkey" FOREIGN KEY ("headId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -1792,4 +1832,7 @@ ALTER TABLE "IssueLog" ADD CONSTRAINT "IssueLog_raisedById_fkey" FOREIGN KEY ("r
 
 -- AddForeignKey
 ALTER TABLE "IssueLog" ADD CONSTRAINT "IssueLog_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AutomationRun" ADD CONSTRAINT "AutomationRun_ruleId_fkey" FOREIGN KEY ("ruleId") REFERENCES "AutomationRule"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

@@ -1615,3 +1615,46 @@ model IssueLog {
   @@index([status])
   @@index([severity])
 }
+
+// ─── Automation engine (v2.9) ───────────────────────────────────────────────
+
+enum AutomationTrigger {
+  LEAD_CREATED
+  LEAD_STAGE_CHANGED
+  TASK_CREATED
+  TASK_STATUS_CHANGED
+  SCHEDULE
+}
+
+model AutomationRule {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  trigger     AutomationTrigger
+  isActive    Boolean           @default(true)
+  conditions  Json? // [{ field, op, value }]
+  actions     Json // [{ type, params }]
+  runCount    Int               @default(0)
+  lastRunAt   DateTime?
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  runs AutomationRun[]
+
+  @@index([trigger, isActive])
+}
+
+model AutomationRun {
+  id         String   @id @default(cuid())
+  ruleId     String
+  entityType String?
+  entityId   String?
+  status     String   @default("SUCCESS") // SUCCESS | SKIPPED | FAILED
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}

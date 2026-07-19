@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma';
 import { nextReference } from '@/lib/utils/reference';
 import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
+import { runAutomations } from '@/lib/automation/engine';
 import { ensure, getActionContext, toActionError } from './_helpers';
 
 const leadSchema = z.object({
@@ -43,6 +44,7 @@ export async function createLead(input: unknown): Promise<SalesResult> {
     if (d.ownerId && d.ownerId !== ctx.user.id) {
       await notify({ userId: d.ownerId, type: 'SYSTEM', title: `New lead assigned: ${d.name}`, link: `/sales/${lead.id}` });
     }
+    await runAutomations('LEAD_CREATED', { entityType: 'Lead', entityId: lead.id, data: { name: lead.name, email: lead.email, phone: lead.phone, source: lead.source, status: lead.status, score: lead.score, isNri: lead.isNri, country: lead.country }, actorId: ctx.user.id });
     revalidatePath('/sales');
     return { ok: true, id: lead.id };
   } catch (err) {
@@ -56,6 +58,7 @@ export async function moveLeadStage(leadId: string, status: LeadStatus): Promise
     const lead = await prisma.lead.update({ where: { id: leadId }, data: { status } });
     await prisma.leadActivity.create({ data: { leadId, userId: ctx.user.id, type: 'NOTE', subject: `Stage → ${status}` } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Lead', entityId: leadId, summary: `${lead.reference} → ${status}` });
+    await runAutomations('LEAD_STAGE_CHANGED', { entityType: 'Lead', entityId: leadId, data: { name: lead.name, email: lead.email, source: lead.source, status, score: lead.score, isNri: lead.isNri, country: lead.country }, actorId: ctx.user.id });
     revalidatePath('/sales');
     return { ok: true, id: leadId };
   } catch (err) {
