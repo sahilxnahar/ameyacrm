@@ -53,10 +53,16 @@ export async function readSession() {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: sha256(token) },
-    include: { user: true },
-  });
+  let session;
+  try {
+    session = await prisma.session.findUnique({
+      where: { tokenHash: sha256(token) },
+      include: { user: true },
+    });
+  } catch {
+    // DB not reachable / tables not created yet — treat as signed-out instead of crashing.
+    return null;
+  }
   if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
 
   // Idle timeout

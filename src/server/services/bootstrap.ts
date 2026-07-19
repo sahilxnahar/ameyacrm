@@ -98,7 +98,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
 
   // Super Admin
   const username = process.env.SETUP_USERNAME || 'superadmin';
-  const email = (process.env.SETUP_EMAIL || 'admin@naharheights.com').toLowerCase();
+  const email = (process.env.SETUP_EMAIL || 'admin@ameyaheights.com').toLowerCase();
   const password = process.env.SETUP_PASSWORD || 'Ameya@Heights2026';
   await prisma.user.create({
     data: {
