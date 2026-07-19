@@ -4,6 +4,7 @@ import { env } from '@/config/env';
 import { bootstrap } from '@/server/services/bootstrap';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // schema creation + seed can take a few seconds
 
 /** GET → initialization status. */
 export async function GET() {

@@ -43,10 +43,10 @@ Optional but recommended:
   https://vapidkeys.com), `VAPID_SUBJECT` = `mailto:you@yourdomain.com`.
 
 ### 6. Deploy
-- Click **Deploy**. The build runs `prisma migrate deploy` automatically, so your database
-  schema is created on first deploy.
+- Click **Deploy**. The build no longer touches the database, so it can't fail on DB
+  connectivity — your schema is created in the next step, on first `/api/setup` call.
 
-### 7. Initialize data (one click, no terminal)
+### 7. Create tables + seed data (one click, no terminal)
 - After the deploy succeeds, initialize the database by sending a POST to `/api/setup`.
   Easiest ways:
   - Open your site’s `/api/setup` in a browser to confirm status (GET shows
@@ -54,6 +54,8 @@ Optional but recommended:
     - A browser extension / REST client (Hoppscotch, Postman): `POST https://<your-app>/api/setup`
     - Or paste this in the browser console on your site:
       `fetch('/api/setup', { method: 'POST' }).then(r => r.json()).then(console.log)`
+- `/api/setup` **creates the database schema (all tables) if missing, then seeds** RBAC,
+  departments, the project, and the Super Admin — no `prisma migrate` needed.
 - The response returns the **Super Admin credentials** (default `superadmin` /
   `Ameya@Heights2026`, or your `SETUP_*` overrides). Sign in and **change the password
   immediately** (you’ll be prompted).

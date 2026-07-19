@@ -52,11 +52,29 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().default('mailto:admin@naharheights.com'),
 });
 
+export type Env = z.infer<typeof schema>;
+
 const parsed = schema.safeParse(process.env);
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
 if (!parsed.success) {
-  console.error('❌ Invalid environment variables:\n', parsed.error.flatten().fieldErrors);
-  throw new Error('Invalid environment configuration. See errors above.');
+  console.error('❌ Invalid/missing environment variables:\n', parsed.error.flatten().fieldErrors);
+  // Do NOT fail the production build on env — only enforce at runtime. This lets a
+  // serverless host (Vercel) build the app without secrets present in the build step;
+  // real requests still require valid config or fail with a clear message.
+  if (!isBuildPhase) {
+    throw new Error('Invalid environment configuration. Set the required variables (see DEPLOY.md / .env.example).');
+  }
 }
 
-export const env = parsed.data;
-export type Env = z.infer<typeof schema>;
+export const env: Env = parsed.success
+  ? parsed.data
+  : (schema.parse({
+      ...process.env,
+      SESSION_SECRET:
+        process.env.SESSION_SECRET || 'build-time-placeholder-change-me-session-secret-0000000000',
+      ENCRYPTION_KEY:
+        process.env.ENCRYPTION_KEY || 'build-time-placeholder-change-me-encryption-key-000000000',
+      DATABASE_URL:
+        process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/placeholder',
+    }) as Env);

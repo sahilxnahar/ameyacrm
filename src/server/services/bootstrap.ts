@@ -4,6 +4,7 @@ import type { RoleName } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { PERMISSIONS, ALL_PERMISSION_KEYS, moduleOf } from '@/lib/rbac/permissions';
 import { ROLE_DEFAULTS, expandRolePermissions } from '@/lib/rbac/roles';
+import { INIT_SCHEMA_SQL_B64 } from './init-schema-sql';
 
 const DEPARTMENTS = [
   'Architecture', 'Billing', 'Management', 'Marketing', 'Sales', 'NRI', 'Lease',
@@ -23,7 +24,38 @@ export interface BootstrapResult {
  * material-request email template, a root folder, baseline settings, and the
  * initial Super Admin. Safe to call repeatedly — only creates the admin once.
  */
+/**
+ * Create the database schema at runtime if it doesn't exist yet — so the app can
+ * be deployed to a serverless host with no build-time DB access and no terminal.
+ * Idempotent: runs only when the "User" table is missing; tolerates re-runs.
+ */
+export async function ensureSchema(): Promise<boolean> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ t: string | null }>>(
+    `SELECT to_regclass('public."User"')::text AS t`,
+  );
+  if (rows?.[0]?.t) return false; // schema already present
+
+  const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
+  const statements = sql.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean);
+  for (const raw of statements) {
+    const stmt = raw
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n')
+      .replace(/;\s*$/, '')
+      .trim();
+    if (!stmt) continue;
+    try {
+      await prisma.$executeRawUnsafe(stmt);
+    } catch {
+      /* tolerate "already exists" on partial re-runs */
+    }
+  }
+  return true;
+}
+
 export async function bootstrap(): Promise<BootstrapResult> {
+  await ensureSchema();
   const existing = await prisma.user.count();
   if (existing > 0) return { created: false, userCount: existing };
 
