@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Ameya Heights design tokens.
+ * Palette (from Brand Kit): Charcoal #100F0D · Ink #16140F · Brass #A07D34
+ * (deep #8C6E2C / light #C2A05B) · Sand #ECE7DF · Gold #9A7720 / #C9A95D.
+ * All values expressed as HSL triplets so Tailwind can apply opacity.
+ */
+@layer base {
+  :root {
+    --background: 40 30% 98%;
+    --foreground: 40 12% 8%;
+    --card: 40 30% 99%;
+    --card-foreground: 40 12% 8%;
+    --popover: 40 30% 99%;
+    --popover-foreground: 40 12% 8%;
+
+    --primary: 40 51% 42%; /* Brass #A07D34 */
+    --primary-foreground: 40 30% 97%;
+    --secondary: 37 26% 90%; /* Sand #ECE7DF */
+    --secondary-foreground: 40 12% 12%;
+    --muted: 37 22% 92%;
+    --muted-foreground: 40 8% 40%;
+    --accent: 40 46% 56%; /* Brass light #C2A05B */
+    --accent-foreground: 40 12% 10%;
+    --destructive: 353 80% 34%; /* Ruby #9B111E */
+    --destructive-foreground: 40 30% 97%;
+
+    --border: 40 16% 85%;
+    --input: 40 16% 85%;
+    --ring: 40 51% 42%;
+
+    /* Brand tokens */
+    --brass: 40 51% 42%;
+    --brass-deep: 40 52% 36%;
+    --brass-light: 40 46% 56%;
+    --sand: 37 26% 90%;
+    --charcoal: 40 10% 6%;
+    --success: 123 46% 34%;
+    --warning: 40 46% 56%;
+    --info: 220 46% 20%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 40 10% 6%; /* Charcoal #100F0D */
+    --foreground: 37 26% 90%; /* Sand */
+    --card: 40 9% 9%;
+    --card-foreground: 37 26% 90%;
+    --popover: 40 9% 9%;
+    --popover-foreground: 37 26% 90%;
+
+    --primary: 40 46% 56%; /* Brass light pops on charcoal */
+    --primary-foreground: 40 10% 6%;
+    --secondary: 40 8% 15%;
+    --secondary-foreground: 37 26% 90%;
+    --muted: 40 8% 14%;
+    --muted-foreground: 37 12% 64%;
+    --accent: 40 51% 42%;
+    --accent-foreground: 37 26% 92%;
+    --destructive: 353 64% 44%;
+    --destructive-foreground: 37 26% 92%;
+
+    --border: 40 8% 18%;
+    --input: 40 8% 18%;
+    --ring: 40 46% 56%;
+
+    --brass: 40 51% 46%;
+    --brass-deep: 40 52% 38%;
+    --brass-light: 40 46% 60%;
+    --sand: 37 26% 90%;
+    --charcoal: 40 10% 6%;
+    --success: 123 40% 45%;
+    --warning: 40 46% 60%;
+    --info: 220 40% 60%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+  h1, h2, h3, .font-display { @apply font-display; }
+  /* Custom scrollbar — premium, minimal */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-muted-foreground/25; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/40; }
+}
+
+@layer components {
+  .brass-gradient {
+    background-image: linear-gradient(135deg, hsl(var(--brass-light)) 0%, hsl(var(--brass)) 45%, hsl(var(--brass-deep)) 100%);
+  }
+  .card-elevated { @apply rounded-lg border bg-card shadow-sm; }
+  .focus-ring { @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring; }
+}

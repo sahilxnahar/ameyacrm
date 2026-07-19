@@ -1,0 +1,91 @@
+/**
+ * RBAC permission catalog — single source of truth.
+ * Keys follow `<module>.<action>` (or `<module>.<sub>.<action>`).
+ * The seed inserts every key below into the Permission table so admins can
+ * re-map them to roles/users at runtime (true configurable RBAC).
+ */
+export const PERMISSIONS = {
+  // Cross-cutting
+  'dashboard.view': 'View personal dashboard',
+
+  // Tasks
+  'task.view': 'View tasks',
+  'task.create': 'Create tasks',
+  'task.update': 'Edit tasks',
+  'task.delete': 'Delete tasks',
+  'task.assign': 'Assign tasks to users',
+  'task.comment': 'Comment on tasks',
+
+  // Sales / Leads / Bookings
+  'lead.view': 'View leads',
+  'lead.create': 'Create leads',
+  'lead.update': 'Edit leads',
+  'lead.delete': 'Delete leads',
+  'lead.assign': 'Assign lead owner',
+  'booking.view': 'View bookings',
+  'booking.manage': 'Create / edit bookings & payments',
+
+  // Documents
+  'document.view': 'View documents & folders',
+  'document.create': 'Upload documents / create folders',
+  'document.update': 'Edit documents / new versions',
+  'document.delete': 'Delete documents / folders',
+  'document.manage': 'Manage folder permissions',
+  'document.download': 'Download documents',
+
+  // Billing
+  'billing.view': 'View billing records',
+  'billing.invoice.manage': 'Create / edit invoices',
+  'billing.po.manage': 'Create / edit purchase orders',
+  'billing.bill.manage': 'Create / edit vendor bills',
+  'billing.approve': 'Approve billing documents',
+
+  // Material requests & email
+  'material.view': 'View material requests',
+  'material.create': 'Raise material requests',
+  'material.approve': 'Approve material requests',
+  'email.send': 'Send internal / structured emails',
+  'email.template.manage': 'Manage email templates',
+
+  // Calendar
+  'calendar.view': 'View calendar',
+  'calendar.manage': 'Create / edit events',
+
+  // Reports
+  'report.view': 'View reports',
+  'report.export': 'Export reports (Excel/CSV/PDF)',
+
+  // Administration
+  'admin.user.view': 'View users',
+  'admin.user.manage': 'Create / edit / disable users',
+  'admin.department.manage': 'Create / edit departments',
+  'admin.role.manage': 'Configure roles & permissions',
+  'admin.project.manage': 'Create / edit projects',
+  'admin.setting.manage': 'Manage system settings & branding',
+  'admin.notification.manage': 'Manage notification config',
+
+  // Audit
+  'audit.view': 'View audit trail',
+  'audit.export': 'Export audit logs',
+  // Marketing
+  'marketing.view': 'View marketing campaigns & assets',
+  'marketing.manage': 'Create / edit campaigns, assets, social posts',
+  'marketing.approve': 'Approve marketing assets & campaigns',
+
+  // Lease
+  'lease.view': 'View tenants & leases',
+  'lease.manage': 'Create / edit leases, rent schedule, maintenance',
+
+  // Architecture
+  'architecture.view': 'View drawings, RFIs & issues',
+  'architecture.manage': 'Manage drawings, RFIs, consultants & issues',
+
+} as const;
+
+export type PermissionKey = keyof typeof PERMISSIONS;
+
+export const ALL_PERMISSION_KEYS = Object.keys(PERMISSIONS) as PermissionKey[];
+
+export function moduleOf(key: string): string {
+  return key.split('.')[0] ?? 'general';
+}
