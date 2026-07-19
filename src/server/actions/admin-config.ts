@@ -95,3 +95,16 @@ export async function updateSecurityPolicy(input: unknown): Promise<ConfigResult
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
+
+const collectionsSchema = z.object({ interestPct: z.coerce.number().min(0).max(60), defaultGstPct: z.coerce.number().min(0).max(28) });
+export async function updateCollectionsSettings(input: unknown): Promise<ConfigResult> {
+  try {
+    const ctx = await ensure('admin.setting.manage');
+    const d = collectionsSchema.parse(input);
+    await prisma.setting.upsert({ where: { key: 'collections.interestPct' }, update: { value: d.interestPct }, create: { key: 'collections.interestPct', value: d.interestPct } });
+    await prisma.setting.upsert({ where: { key: 'billing.defaultGstPct' }, update: { value: d.defaultGstPct }, create: { key: 'billing.defaultGstPct', value: d.defaultGstPct } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Collections: late-payment interest ${d.interestPct}% p.a., default GST ${d.defaultGstPct}%` });
+    revalidatePath('/admin/collections');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
-import { Users2, Globe2, TrendingUp, CalendarCheck } from 'lucide-react';
+import Link from 'next/link';
+import { Users2, Globe2, TrendingUp, CalendarCheck, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
@@ -33,7 +35,9 @@ export default async function SalesPage() {
 
   return (
     <div>
-      <PageHeader title="Sales & Leads" description="Track every inquiry from first touch to booking." />
+      <PageHeader title="Sales & Leads" description="Track every inquiry from first touch to booking.">
+        <Button asChild variant="outline" size="sm"><Link href="/sales/import"><Upload className="h-4 w-4" /> Import CSV</Link></Button>
+      </PageHeader>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total leads" value={total} icon={Users2} />
         <StatCard label="NRI leads" value={nri} icon={Globe2} tone="warning" />
