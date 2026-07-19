@@ -13,7 +13,7 @@ scanning / downloads, and auto-updates because it loads the deployed PWA.
 ```bash
 npm i -g @bubblewrap/cli          # Google's TWA generator
 cd android
-bubblewrap init --manifest https://crm.naharheights.com/manifest.webmanifest
+bubblewrap init --manifest https://crm.ameyaheights.com/manifest.webmanifest
 # (or:) bubblewrap init --config ./twa-manifest.json
 bubblewrap build                  # -> app-release-signed.apk  and  app-release-bundle.aab
 ```
@@ -25,7 +25,7 @@ Keep the keystore safe — you need it for every future update.
 
 1. `bubblewrap fingerprint` prints your signing key SHA-256.
 2. Put it into `assetlinks.sample.json`, rename, and serve it at:
-   `https://crm.naharheights.com/.well-known/assetlinks.json`
+   `https://crm.ameyaheights.com/.well-known/assetlinks.json`
    (Next serves anything in `public/.well-known/`.)
 
 ### Distribute

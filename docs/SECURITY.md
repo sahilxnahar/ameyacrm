@@ -69,5 +69,5 @@ npx web-push generate-vapid-keys   # push keys
 
 ## Responsible disclosure
 
-Report vulnerabilities to security@naharheights.com. Do not open public issues for security
+Report vulnerabilities to security@ameyaheights.com. Do not open public issues for security
 matters.

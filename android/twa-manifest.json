@@ -1,6 +1,6 @@
 {
   "packageId": "com.ameyaheights.crm",
-  "host": "crm.naharheights.com",
+  "host": "crm.ameyaheights.com",
   "name": "Ameya Heights CRM",
   "launcherName": "Ameya CRM",
   "display": "standalone",
@@ -12,21 +12,21 @@
   "backgroundColor": "#100F0D",
   "enableNotifications": true,
   "startUrl": "/dashboard",
-  "iconUrl": "https://crm.naharheights.com/icons/icon-512.png",
-  "maskableIconUrl": "https://crm.naharheights.com/icons/maskable-512.png",
+  "iconUrl": "https://crm.ameyaheights.com/icons/icon-512.png",
+  "maskableIconUrl": "https://crm.ameyaheights.com/icons/maskable-512.png",
   "splashScreenFadeOutDuration": 300,
   "shortcuts": [
-    { "name": "New Task", "shortName": "Task", "url": "/tasks?new=1", "chosenIconUrl": "https://crm.naharheights.com/icons/icon-192.png" },
-    { "name": "Leads", "shortName": "Leads", "url": "/sales", "chosenIconUrl": "https://crm.naharheights.com/icons/icon-192.png" }
+    { "name": "New Task", "shortName": "Task", "url": "/tasks?new=1", "chosenIconUrl": "https://crm.ameyaheights.com/icons/icon-192.png" },
+    { "name": "Leads", "shortName": "Leads", "url": "/sales", "chosenIconUrl": "https://crm.ameyaheights.com/icons/icon-192.png" }
   ],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://crm.naharheights.com/manifest.webmanifest",
+  "webManifestUrl": "https://crm.ameyaheights.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://crm.naharheights.com/",
+  "fullScopeUrl": "https://crm.ameyaheights.com/",
   "minSdkVersion": 23,
   "appVersionName": "1.0.0",
   "appVersionCode": 1

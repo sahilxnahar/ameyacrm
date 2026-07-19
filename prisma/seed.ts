@@ -95,14 +95,14 @@ async function main() {
   // 5) Users
   type NewUser = { name: string; username: string; email: string; role: RoleName; dept: string; designation: string };
   const users: NewUser[] = [
-    { name: 'Sahil Nahar', username: 'superadmin', email: 'admin@naharheights.com', role: 'SUPER_ADMIN', dept: 'Management', designation: 'Founder' },
-    { name: 'IT Administrator', username: 'itadmin', email: 'it@naharheights.com', role: 'ADMIN', dept: 'Administration', designation: 'System Administrator' },
-    { name: 'Priya Sales Head', username: 'priya.sales', email: 'priya@naharheights.com', role: 'DEPARTMENT_HEAD', dept: 'Sales', designation: 'Head of Sales' },
-    { name: 'Rahul Manager', username: 'rahul.mgr', email: 'rahul@naharheights.com', role: 'MANAGER', dept: 'Sales', designation: 'Sales Manager' },
-    { name: 'Anita Architect', username: 'anita.arch', email: 'anita@naharheights.com', role: 'DEPARTMENT_HEAD', dept: 'Architecture', designation: 'Principal Architect' },
-    { name: 'Vikram Site', username: 'vikram.site', email: 'vikram@naharheights.com', role: 'EXECUTIVE', dept: 'Site Operations', designation: 'Site Engineer' },
-    { name: 'Meena Accounts', username: 'meena.acc', email: 'meena@naharheights.com', role: 'MANAGER', dept: 'Billing', designation: 'Billing Manager' },
-    { name: 'Sara NRI Desk', username: 'sara.nri', email: 'sara@naharheights.com', role: 'EXECUTIVE', dept: 'NRI', designation: 'NRI Relationship Manager' },
+    { name: 'Sahil Nahar', username: 'superadmin', email: 'admin@ameyaheights.com', role: 'SUPER_ADMIN', dept: 'Management', designation: 'Founder' },
+    { name: 'IT Administrator', username: 'itadmin', email: 'it@ameyaheights.com', role: 'ADMIN', dept: 'Administration', designation: 'System Administrator' },
+    { name: 'Priya Sales Head', username: 'priya.sales', email: 'priya@ameyaheights.com', role: 'DEPARTMENT_HEAD', dept: 'Sales', designation: 'Head of Sales' },
+    { name: 'Rahul Manager', username: 'rahul.mgr', email: 'rahul@ameyaheights.com', role: 'MANAGER', dept: 'Sales', designation: 'Sales Manager' },
+    { name: 'Anita Architect', username: 'anita.arch', email: 'anita@ameyaheights.com', role: 'DEPARTMENT_HEAD', dept: 'Architecture', designation: 'Principal Architect' },
+    { name: 'Vikram Site', username: 'vikram.site', email: 'vikram@ameyaheights.com', role: 'EXECUTIVE', dept: 'Site Operations', designation: 'Site Engineer' },
+    { name: 'Meena Accounts', username: 'meena.acc', email: 'meena@ameyaheights.com', role: 'MANAGER', dept: 'Billing', designation: 'Billing Manager' },
+    { name: 'Sara NRI Desk', username: 'sara.nri', email: 'sara@ameyaheights.com', role: 'EXECUTIVE', dept: 'NRI', designation: 'NRI Relationship Manager' },
   ];
   const userByUsername = new Map<string, string>();
   for (const u of users) {
