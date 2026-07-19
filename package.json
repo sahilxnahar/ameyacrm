@@ -2,7 +2,7 @@
   "name": "ameya-heights-crm",
   "version": "1.0.0",
   "private": true,
-  "description": "Ameya Heights \u2014 Internal CRM / Construction & Real-Estate ERP-lite",
+  "description": "Ameya Heights — Internal CRM / Construction & Real-Estate ERP-lite",
   "author": "Ameya Heights LLP",
   "license": "UNLICENSED",
   "engines": {
@@ -58,7 +58,7 @@
     "framer-motion": "11.18.2",
     "jose": "5.9.6",
     "lucide-react": "0.474.0",
-    "next": "15.1.6",
+    "next": "15.1.11",
     "next-themes": "0.4.4",
     "nodemailer": "6.10.0",
     "otplib": "12.0.1",
