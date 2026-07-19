@@ -6,7 +6,7 @@ import { SESSION_COOKIE } from '@/lib/auth/constants';
  * validation (DB lookup, expiry, idle timeout, RBAC) runs in `requireAuth()` on
  * the server. Public paths and assets are skipped by the matcher below.
  */
-const PUBLIC_PATHS = ['/login', '/two-factor', '/forbidden', '/setup'];
+const PUBLIC_PATHS = ['/login', '/two-factor', '/forbidden', '/setup', '/portal'];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

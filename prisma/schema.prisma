@@ -1715,3 +1715,65 @@ model BrokeragePayout {
   @@index([channelPartnerId])
   @@index([status])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Customer / Buyer Portal  — Phase 5
+// ════════════════════════════════════════════════════════════════════════════
+enum SnagStatus { OPEN IN_PROGRESS RESOLVED }
+
+model Customer {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?
+  phone         String?
+  portalToken   String   @unique
+  bookingId     String?
+  projectId     String?
+  isActive      Boolean  @default(true)
+  onboardedById String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([portalToken])
+}
+
+model ConstructionUpdate {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  body        String?
+  milestone   String?
+  imageUrl    String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model SnagTicket {
+  id           String     @id @default(cuid())
+  customerId   String
+  title        String
+  description  String?
+  category     String?
+  priority     Priority   @default(MEDIUM)
+  status       SnagStatus @default(OPEN)
+  assignedToId String?
+  resolvedAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model CustomerDocument {
+  id         String   @id @default(cuid())
+  customerId String
+  title      String
+  category   String?
+  url        String
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+}
