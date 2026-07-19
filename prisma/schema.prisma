@@ -1781,3 +1781,34 @@ model CustomerDocument {
 
   @@index([customerId])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Social / Marketing Integrations Hub
+// ════════════════════════════════════════════════════════════════════════════
+enum SocialChannel { WHATSAPP LINKEDIN INSTAGRAM FACEBOOK TWITTER YOUTUBE GOOGLE WEBSITE OTHER }
+
+model SocialActivity {
+  id        String        @id @default(cuid())
+  channel   SocialChannel
+  kind      String        // lead | inquiry | subscriber | comment | mention | dm | follower | review
+  name      String?
+  handle    String?
+  message   String?
+  url       String?
+  leadId    String?
+  isRead    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([channel])
+  @@index([createdAt])
+}
+
+model SocialConnection {
+  id          String        @id @default(cuid())
+  channel     SocialChannel @unique
+  isConnected Boolean       @default(false)
+  label       String?
+  note        String?
+  connectedAt DateTime?
+  updatedAt   DateTime      @updatedAt
+}

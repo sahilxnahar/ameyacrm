@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Loader2, Image as ImageIcon } from 'lucide-react';
-import { createCampaign, createSocialPost } from '@/server/actions/marketing';
+import { Plus, Loader2, Image as ImageIcon, MessageCircle, Linkedin, Instagram, Facebook, Twitter, Youtube, Link2, Trash2, ExternalLink, CheckCheck } from 'lucide-react';
+import { createCampaign, createSocialPost, toggleSocialConnection, markActivityRead, deleteSocialActivity } from '@/server/actions/marketing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,13 +20,28 @@ const CHANNELS = ['META', 'GOOGLE', 'LINKEDIN', 'YOUTUBE', 'WHATSAPP', 'EMAIL', 
 interface Opt { id: string; name: string }
 interface Campaign { id: string; name: string; channel: string; status: string; budget: number | null; spend: number; leads: number; owner: string | null; project: string | null }
 interface Post { id: string; title: string; channel: string; status: string; scheduledAt: string | null; author: string | null }
+interface SocialAct { id: string; channel: string; kind: string; name: string | null; handle: string | null; message: string | null; url: string | null; leadId: string | null; isRead: boolean; createdAt: string }
+interface Conn { channel: string; isConnected: boolean }
+const SOCIAL = [
+  { key: 'WHATSAPP', label: 'WhatsApp', Icon: MessageCircle, color: 'text-emerald-600' },
+  { key: 'LINKEDIN', label: 'LinkedIn', Icon: Linkedin, color: 'text-blue-700' },
+  { key: 'INSTAGRAM', label: 'Instagram', Icon: Instagram, color: 'text-pink-600' },
+  { key: 'FACEBOOK', label: 'Facebook', Icon: Facebook, color: 'text-blue-600' },
+  { key: 'TWITTER', label: 'Twitter / X', Icon: Twitter, color: 'text-sky-500' },
+  { key: 'YOUTUBE', label: 'YouTube', Icon: Youtube, color: 'text-red-600' },
+] as const;
 function cVariant(s: string) { return s === 'ACTIVE' ? 'success' : s === 'PAUSED' ? 'warning' : s === 'CANCELLED' ? 'destructive' : s === 'DRAFT' ? 'secondary' : 'default'; }
 
-export function MarketingView({ campaigns, posts, projects }: { campaigns: Campaign[]; posts: Post[]; projects: Opt[] }) {
+export function MarketingView({ campaigns, posts, projects, socialActivities, connections, canManage }: { campaigns: Campaign[]; posts: Post[]; projects: Opt[]; socialActivities: SocialAct[]; connections: Conn[]; canManage: boolean }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [campOpen, setCampOpen] = React.useState(false);
   const [postOpen, setPostOpen] = React.useState(false);
+  const isConn = (ch: string) => connections.find((c) => c.channel === ch)?.isConnected ?? false;
+  const toggleConn = (ch: string, cur: boolean) => start(async () => { const r = await toggleSocialConnection(ch, !cur); if ('error' in r) return toast.error(r.error); toast.success(!cur ? 'Marked connected' : 'Disconnected'); router.refresh(); });
+  const copyHook = (ch: string) => { const base = typeof window !== 'undefined' ? window.location.origin : ''; navigator.clipboard?.writeText(`${base}/api/ingest/social?key=YOUR_INGEST_SECRET&channel=${ch.toLowerCase()}`); toast.success('Webhook URL copied — swap in your INGEST_SECRET'); };
+  const readAct = (id: string) => start(async () => { await markActivityRead(id, true); router.refresh(); });
+  const delAct = (id: string) => start(async () => { const r = await deleteSocialActivity(id); if ('error' in r) return toast.error(r.error); toast.success('Removed'); router.refresh(); });
 
   const submitCamp = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
@@ -52,8 +67,53 @@ export function MarketingView({ campaigns, posts, projects }: { campaigns: Campa
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="social">Social Calendar</TabsTrigger>
           <TabsTrigger value="assets">Asset Library</TabsTrigger>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="inbox">Social Inbox{socialActivities.filter((a) => !a.isRead).length ? ` (${socialActivities.filter((a) => !a.isRead).length})` : ''}</TabsTrigger>
         </TabsList>
       </div>
+
+      <TabsContent value="channels">
+        <p className="mb-3 text-sm text-muted-foreground">Point a free Zapier/Make automation (or the platform&apos;s native webhook) at the URL below. New leads, inquiries, DMs, comments, subscribers and followers then flow into your Social Inbox — and lead/inquiry events auto-create a CRM lead.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {SOCIAL.map(({ key, label, Icon, color }) => {
+            const on = isConn(key);
+            return (
+              <Card key={key} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2"><Icon className={`h-6 w-6 ${color}`} /><span className="font-medium">{label}</span></div>
+                  <Badge variant={on ? 'success' : 'secondary'}>{on ? 'Connected' : 'Not connected'}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => copyHook(key)}><Link2 className="h-4 w-4" /> Copy webhook</Button>
+                  {canManage && <Button size="sm" variant={on ? 'ghost' : 'default'} disabled={pending} onClick={() => toggleConn(key, on)}>{on ? 'Disconnect' : 'Mark connected'}</Button>}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="inbox">
+        <Card className="divide-y">
+          {socialActivities.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No social activity yet. Connect a channel to start capturing leads and inquiries.</p>}
+          {socialActivities.map((a) => (
+            <div key={a.id} className={`flex items-start gap-3 p-3 ${a.isRead ? '' : 'bg-primary/5'}`}>
+              <Badge variant="secondary" className="mt-0.5 shrink-0">{titleCase(a.channel)}</Badge>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm"><span className="font-medium">{a.name ?? a.handle ?? 'Unknown'}</span> <span className="text-xs text-muted-foreground">· {a.kind}</span></p>
+                {a.message && <p className="text-sm text-foreground/80">{a.message}</p>}
+                <p className="text-xs text-muted-foreground">{formatDate(a.createdAt, 'dd MMM, HH:mm')}{a.handle ? ` · ${a.handle}` : ''}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {a.leadId && <Button asChild size="sm" variant="ghost" className="h-7 text-xs"><a href={`/sales/${a.leadId}`}>Lead</a></Button>}
+                {a.url && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={a.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
+                {!a.isRead && <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => readAct(a.id)} title="Mark read"><CheckCheck className="h-4 w-4" /></Button>}
+                {canManage && <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => delAct(a.id)}><Trash2 className="h-4 w-4" /></Button>}
+              </div>
+            </div>
+          ))}
+        </Card>
+      </TabsContent>
 
       <TabsContent value="campaigns">
         <div className="mb-3 flex justify-end"><Button size="sm" onClick={() => setCampOpen(true)}><Plus className="h-4 w-4" /> New campaign</Button></div>

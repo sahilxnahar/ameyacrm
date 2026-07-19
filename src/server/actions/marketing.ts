@@ -67,3 +67,40 @@ export async function createSocialPost(input: unknown): Promise<MktResult> {
     return { ok: true, id: post.id };
   } catch (err) { return toActionError(err); }
 }
+
+const SOCIAL_CHANNELS = ['WHATSAPP', 'LINKEDIN', 'INSTAGRAM', 'FACEBOOK', 'TWITTER', 'YOUTUBE', 'GOOGLE', 'WEBSITE', 'OTHER'] as const;
+type SC = (typeof SOCIAL_CHANNELS)[number];
+
+export async function toggleSocialConnection(channel: string, isConnected: boolean): Promise<MktResult> {
+  try {
+    const ctx = await ensure('marketing.manage');
+    if (!SOCIAL_CHANNELS.includes(channel as SC)) return { error: 'Unknown channel.' };
+    const row = await prisma.socialConnection.upsert({
+      where: { channel: channel as SC },
+      update: { isConnected, connectedAt: isConnected ? new Date() : null },
+      create: { channel: channel as SC, isConnected, connectedAt: isConnected ? new Date() : null },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'SocialConnection', entityId: row.id, summary: `${channel} ${isConnected ? 'connected' : 'disconnected'}` });
+    revalidatePath('/marketing');
+    return { ok: true, id: row.id };
+  } catch (err) { return toActionError(err); }
+}
+
+const saSchema = z.object({ channel: z.enum(SOCIAL_CHANNELS), kind: z.string().min(1).max(40), name: z.string().max(160).optional(), handle: z.string().max(120).optional(), message: z.string().max(1000).optional(), url: z.string().max(500).optional() });
+export async function addSocialActivity(input: unknown): Promise<MktResult> {
+  try {
+    const ctx = await ensure('marketing.manage');
+    const d = saSchema.parse(input);
+    const a = await prisma.socialActivity.create({ data: { channel: d.channel, kind: d.kind, name: d.name || null, handle: d.handle || null, message: d.message || null, url: d.url || null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'SocialActivity', entityId: a.id, summary: `Logged ${d.channel} ${d.kind}` });
+    revalidatePath('/marketing');
+    return { ok: true, id: a.id };
+  } catch (err) { return toActionError(err); }
+}
+
+export async function markActivityRead(id: string, isRead: boolean): Promise<MktResult> {
+  try { await ensure('marketing.view'); await prisma.socialActivity.update({ where: { id }, data: { isRead } }); revalidatePath('/marketing'); return { ok: true, id }; } catch (err) { return toActionError(err); }
+}
+export async function deleteSocialActivity(id: string): Promise<MktResult> {
+  try { const ctx = await ensure('marketing.manage'); await prisma.socialActivity.delete({ where: { id } }); await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'SocialActivity', entityId: id }); revalidatePath('/marketing'); return { ok: true, id }; } catch (err) { return toActionError(err); }
+}

@@ -6,17 +6,20 @@ import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { MarketingView } from '@/components/marketing/marketing-view';
 import { formatCurrency } from '@/lib/utils/format';
+import { can } from '@/lib/rbac/can';
 
 export const metadata: Metadata = { title: 'Marketing' };
 
 export default async function MarketingPage() {
-  await requirePermission('marketing.view');
-  const [campaigns, posts, projects, active, agg] = await Promise.all([
+  const ctx = await requirePermission('marketing.view');
+  const [campaigns, posts, projects, active, agg, socialActivities, connections] = await Promise.all([
     prisma.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { owner: { select: { name: true } }, project: { select: { name: true } } } }),
     prisma.socialPost.findMany({ orderBy: [{ scheduledAt: 'asc' }, { createdAt: 'desc' }], take: 100, include: { createdBy: { select: { name: true } } } }),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
     prisma.campaign.count({ where: { status: 'ACTIVE' } }),
     prisma.campaign.aggregate({ _sum: { budget: true, spend: true, leadsCount: true } }),
+    prisma.socialActivity.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
+    prisma.socialConnection.findMany(),
   ]);
   return (
     <div>
@@ -31,6 +34,9 @@ export default async function MarketingPage() {
         projects={projects}
         campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, channel: c.channel, status: c.status, budget: c.budget ? Number(c.budget) : null, spend: Number(c.spend), leads: c.leadsCount, owner: c.owner?.name ?? null, project: c.project?.name ?? null }))}
         posts={posts.map((p) => ({ id: p.id, title: p.title, channel: p.channel, status: p.status, scheduledAt: p.scheduledAt?.toISOString() ?? null, author: p.createdBy?.name ?? null }))}
+        canManage={can(ctx.permissions, 'marketing.manage')}
+        socialActivities={socialActivities.map((a) => ({ id: a.id, channel: a.channel, kind: a.kind, name: a.name, handle: a.handle, message: a.message, url: a.url, leadId: a.leadId, isRead: a.isRead, createdAt: a.createdAt.toISOString() }))}
+        connections={connections.map((c) => ({ channel: c.channel, isConnected: c.isConnected }))}
       />
     </div>
   );
