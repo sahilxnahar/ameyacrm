@@ -42,7 +42,7 @@ const schema = z.object({
 
   // Email (pluggable): smtp | ses | resend | console
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend', 'console']).default('console'),
-  EMAIL_FROM: z.string().default('Ameya Heights CRM <no-reply@naharheights.com>'),
+  EMAIL_FROM: z.string().default('Ameya Heights CRM <no-reply@ameyaheights.com>'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
@@ -54,7 +54,7 @@ const schema = z.object({
   // Web Push (VAPID). Generate with: npx web-push generate-vapid-keys
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
-  VAPID_SUBJECT: z.string().default('mailto:admin@naharheights.com'),
+  VAPID_SUBJECT: z.string().default('mailto:admin@ameyaheights.com'),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -14,7 +14,7 @@ export const brand = {
     legalName: 'Ameya Heights LLP',
     displayName: 'Ameya Heights',
     founder: 'Sangvi Sahil Nahar',
-    website: 'https://www.naharheights.com',
+    website: 'https://www.ameyaheights.com',
     tagline: 'Building Spaces. Shaping Legacies.',
     // RERA registration is IN PROGRESS per brand kit — keep this flag until registered.
     reraRegistered: false,

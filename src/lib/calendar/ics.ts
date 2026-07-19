@@ -8,7 +8,7 @@ function fmt(d: Date): string {
 export function buildIcs(events: IcsEvent[], calName = 'Ameya Heights CRM'): string {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ameya Heights//CRM//EN', 'CALSCALE:GREGORIAN', `X-WR-CALNAME:${calName}`];
   for (const e of events) {
-    lines.push('BEGIN:VEVENT', `UID:${e.id}@naharheights.com`, `DTSTAMP:${fmt(new Date())}`, `DTSTART:${fmt(e.start)}`);
+    lines.push('BEGIN:VEVENT', `UID:${e.id}@ameyaheights.com`, `DTSTAMP:${fmt(new Date())}`, `DTSTART:${fmt(e.start)}`);
     if (e.end) lines.push(`DTEND:${fmt(e.end)}`);
     lines.push(`SUMMARY:${(e.title || '').replace(/\n/g, ' ')}`);
     if (e.description) lines.push(`DESCRIPTION:${e.description.replace(/\n/g, '\\n')}`);
