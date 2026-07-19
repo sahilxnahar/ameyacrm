@@ -96,3 +96,25 @@ export async function extractInvoiceData(buffer: Buffer, mimeType: string, filen
     return null;
   }
 }
+
+export interface LeadScore { score: number; reason: string; nextAction: string }
+const LEAD_SCORE_SCHEMA = { type: 'OBJECT', properties: { score: { type: 'INTEGER' }, reason: { type: 'STRING' }, nextAction: { type: 'STRING' } } } as const;
+
+/** Score a lead 0-100 with a reason + next-best-action. Never throws — null on any problem. */
+export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScore | null> {
+  if (!env.GEMINI_API_KEY) return null;
+  const prompt =
+    `You are a senior real-estate sales manager at a premium Bengaluru developer. Read the lead below and return: ` +
+    `an integer "score" 0-100 for likelihood to book, a one-sentence "reason", and the single best "nextAction" for the rep. Be decisive.\n\nLEAD:\n` + leadSummary;
+  const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: LEAD_SCORE_SCHEMA } };
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { score?: unknown; reason?: unknown; nextAction?: unknown };
+    const score = Math.max(0, Math.min(100, Math.round(Number(j.score) || 0)));
+    return { score, reason: String(j.reason ?? '').slice(0, 300), nextAction: String(j.nextAction ?? '').slice(0, 300) };
+  } catch { return null; }
+}

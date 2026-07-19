@@ -7,6 +7,7 @@ import { nextReference } from '@/lib/utils/reference';
 import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
 import { runAutomations } from '@/lib/automation/engine';
+import { isGeminiEnabled, scoreLeadWithGemini } from '@/lib/ai/gemini';
 import { ensure, getActionContext, toActionError } from './_helpers';
 
 const leadSchema = z.object({
@@ -170,5 +171,28 @@ export async function cancelBooking(input: unknown): Promise<SalesResult> {
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Booking', entityId: d.bookingId, summary: `Cancelled ${booking.reference} (forfeit Rs.${d.forfeitAmount.toFixed(0)}, refund Rs.${refund.toFixed(0)})` });
     revalidatePath('/sales'); revalidatePath('/inventory');
     return { ok: true, id: d.bookingId };
+  } catch (err) { return toActionError(err); }
+}
+
+/** AI-score a lead with Gemini: sets lead.score and logs the reason + next-best-action. */
+export async function scoreLead(leadId: string): Promise<SalesResult> {
+  try {
+    const ctx = await ensure('lead.update');
+    if (!isGeminiEnabled()) return { error: 'Gemini API key is not configured (set GEMINI_API_KEY).' };
+    const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { project: { select: { name: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 8, select: { type: true, subject: true, notes: true } } } });
+    if (!lead) return { error: 'Lead not found.' };
+    const summary = [
+      `Name: ${lead.name}`, `Source: ${lead.source}`, `Status: ${lead.status}`,
+      `Budget: ${lead.budgetMin ? Number(lead.budgetMin) : '?'} - ${lead.budgetMax ? Number(lead.budgetMax) : '?'}`,
+      `Project interest: ${lead.project?.name ?? '-'}`, `NRI: ${lead.isNri ? 'yes (' + (lead.country ?? '') + ')' : 'no'}`,
+      `Requirement: ${lead.requirement ?? '-'}`,
+      'Recent activity:', ...lead.activities.map((a) => `- ${a.type}: ${a.subject ?? ''} ${a.notes ?? ''}`.trim()),
+    ].join('\n');
+    const res = await scoreLeadWithGemini(summary);
+    if (!res) return { error: 'Could not score this lead right now.' };
+    await prisma.lead.update({ where: { id: leadId }, data: { score: res.score } });
+    await prisma.leadActivity.create({ data: { leadId, userId: ctx.user.id, type: 'NOTE', subject: `AI lead score: ${res.score}/100`, notes: `${res.reason} — Next best action: ${res.nextAction}` } });
+    revalidatePath(`/sales/${leadId}`); revalidatePath('/sales');
+    return { ok: true, id: leadId };
   } catch (err) { return toActionError(err); }
 }

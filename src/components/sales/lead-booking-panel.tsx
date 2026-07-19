@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, CheckCircle2, IndianRupee } from 'lucide-react';
 import { createBooking, markMilestonePaid, cancelBooking } from '@/server/actions/sales';
+import { generateBookingLetter } from '@/server/actions/letters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
     });
   };
   const pay = (id: string) => start(async () => { const r = await markMilestonePaid(id); if ('error' in r) return toast.error(r.error); toast.success('Marked paid'); router.refresh(); });
+  const letter = (id: string, kind: 'DEMAND' | 'ALLOTMENT') => start(async () => { const r = await generateBookingLetter(id, kind); if ('error' in r) return toast.error(r.error); const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click(); toast.success('Letter downloaded'); });
 
   return (
     <div className="space-y-3">
@@ -63,6 +65,10 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
                   : <Button size="sm" variant="ghost" className="h-6" disabled={pending} onClick={() => pay(m.id)}><IndianRupee className="h-3 w-3" /> Mark paid</Button>}
               </div>
             ))}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => letter(b.id, 'DEMAND')}>Demand letter</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => letter(b.id, 'ALLOTMENT')}>Allotment letter</Button>
           </div>
         </div>
       ))}

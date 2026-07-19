@@ -14,7 +14,12 @@ export default async function ReportsPage() {
   return (
     <div>
       <PageHeader title="Reports & Analytics" description="Workload, performance and pipeline at a glance.">
-        <Button asChild variant="outline" size="sm"><a href="/api/reports/tasks.csv"><FileSpreadsheet className="h-4 w-4" /> Export tasks (CSV)</a></Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm"><a href="/api/reports/tasks.csv"><FileSpreadsheet className="h-4 w-4" /> Tasks</a></Button>
+          <Button asChild variant="outline" size="sm"><a href="/api/reports/leads.csv"><FileSpreadsheet className="h-4 w-4" /> Leads</a></Button>
+          <Button asChild variant="outline" size="sm"><a href="/api/reports/bookings.csv"><FileSpreadsheet className="h-4 w-4" /> Bookings</a></Button>
+          <Button asChild variant="outline" size="sm"><a href="/api/reports/collections.csv"><FileSpreadsheet className="h-4 w-4" /> Collections</a></Button>
+        </div>
       </PageHeader>
       <ReportsCharts data={data} />
     </div>

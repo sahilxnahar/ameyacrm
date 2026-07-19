@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
@@ -28,6 +28,7 @@ export default async function AdminPage() {
           { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours' },
           { href: '/admin/automations', icon: Zap, title: 'Automations', desc: 'Rules, assignment, follow-ups' },
           { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA & login rules' },
+          { href: '/admin/security-center', icon: ShieldAlert, title: 'Security Center', desc: 'Logins, sessions, backup' },
         ].map((c) => (
           <Link key={c.href} href={c.href}>
             <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">

@@ -10,6 +10,8 @@ import { LeadActivityLogger } from '@/components/sales/lead-activity-logger';
 import { LeadBookingPanel } from '@/components/sales/lead-booking-panel';
 import { WhatsAppButton } from '@/components/sales/whatsapp-button';
 import { CallButton } from '@/components/sales/call-button';
+import { AiScoreButton } from '@/components/sales/ai-score-button';
+import { isGeminiEnabled } from '@/lib/ai/gemini';
 import { formatCurrency, formatDateTime, titleCase } from '@/lib/utils/format';
 
 export const metadata: Metadata = { title: 'Lead' };
@@ -90,6 +92,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <p className="text-muted-foreground">Project: {lead.project?.name ?? '—'}</p>
           <p className="text-muted-foreground">Budget: {formatCurrency(lead.budgetMin ? Number(lead.budgetMin) : null)} – {formatCurrency(lead.budgetMax ? Number(lead.budgetMax) : null)}</p>
           {lead.isNri && lead.timezone && <p className="text-muted-foreground">Time zone: {lead.timezone}</p>}
+          <p className="text-muted-foreground">Lead score: <span className="font-medium text-foreground">{lead.score}/100</span></p>
+          {isGeminiEnabled() && <AiScoreButton leadId={lead.id} />}
         </CardContent>
       </Card>
     </div>
