@@ -9,11 +9,11 @@ import bcrypt from 'bcryptjs';
 const COST = 12;
 
 export const passwordPolicy = {
-  minLength: 12,
-  requireUpper: true,
-  requireLower: true,
-  requireNumber: true,
-  requireSymbol: true,
+  minLength: 8,
+  requireUpper: false,
+  requireLower: false,
+  requireNumber: false,
+  requireSymbol: false,
 };
 
 export function validatePasswordStrength(pw: string): string[] {

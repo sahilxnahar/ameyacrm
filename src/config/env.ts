@@ -34,6 +34,10 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: z.string().default('true').transform((v) => v === 'true' || v === '1'),
   BLOB_READ_WRITE_TOKEN: z.string().optional(), // Vercel Blob
   SETUP_SECRET: z.string().optional(), // guards /api/setup after first run
+  GEMINI_API_KEY: z.string().optional(), // Google Gemini — AI document summaries
+  CRON_SECRET: z.string().optional(), // guards Vercel Cron endpoints
+  INGEST_SECRET: z.string().optional(), // guards the public lead-ingestion webhook
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Email (pluggable): smtp | ses | resend | console
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend', 'console']).default('console'),

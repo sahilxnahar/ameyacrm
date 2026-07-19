@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { BillingView } from '@/components/billing/billing-view';
 import { formatCurrency } from '@/lib/utils/format';
+import { isGeminiEnabled } from '@/lib/ai/gemini';
 
 export const metadata: Metadata = { title: 'Billing' };
 
@@ -41,6 +42,7 @@ export default async function BillingPage() {
         vendors={vendors.map((v) => ({ id: v.id, name: v.name, gstin: v.gstin, email: v.email, phone: v.phone }))}
         approvers={approvers}
         canApprove={can(ctx.permissions, 'billing.approve')}
+        geminiEnabled={isGeminiEnabled()}
         invoices={invoices.map((i) => ({ id: i.id, number: i.number, client: i.clientName, status: i.status, total: Number(i.total), project: i.project?.name ?? null, dueDate: i.dueDate?.toISOString() ?? null }))}
         pos={pos.map((p) => ({ id: p.id, number: p.number, vendor: p.vendor?.name ?? '—', status: p.status, total: Number(p.total), needsMyApproval: myPO.has(p.id) }))}
         bills={bills.map((b) => ({ id: b.id, number: b.number, vendor: b.vendor?.name ?? '—', status: b.status, amount: Number(b.amount) }))}

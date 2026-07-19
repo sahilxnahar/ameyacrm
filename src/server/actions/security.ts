@@ -63,7 +63,7 @@ export async function disableTwoFactor(password: string): Promise<SecurityResult
   }
 }
 
-const pwSchema = z.object({ current: z.string().min(1), next: z.string().min(12) });
+const pwSchema = z.object({ current: z.string().min(1), next: z.string().min(8) });
 export async function changePassword(input: unknown): Promise<SecurityResult> {
   try {
     const ctx = await getActionContext();

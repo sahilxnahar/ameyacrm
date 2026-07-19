@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, Loader2, Check, X } from 'lucide-react';
 import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder } from '@/server/actions/billing';
 import { Button } from '@/components/ui/button';
+import { AiBillImport } from './ai-bill-import';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +22,11 @@ function statusVariant(s: string) { return s === 'PAID' || s === 'APPROVED' ? 's
 
 type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | null;
 
-export function BillingView({ invoices, pos, bills, vendors, projects, approvers, canApprove }: {
+export function BillingView({ invoices, pos, bills, vendors, projects, approvers, canApprove, geminiEnabled }: {
   invoices: { id: string; number: string; client: string; status: string; total: number; project: string | null; dueDate: string | null }[];
   pos: { id: string; number: string; vendor: string; status: string; total: number; needsMyApproval: boolean }[];
   bills: { id: string; number: string; vendor: string; status: string; amount: number }[];
-  vendors: Vendor[]; projects: Opt[]; approvers: Opt[]; canApprove: boolean;
+  vendors: Vendor[]; projects: Opt[]; approvers: Opt[]; canApprove: boolean; geminiEnabled: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState<DialogKind>(null);
@@ -54,6 +55,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="bills">Vendor Bills</TabsTrigger><TabsTrigger value="vendors">Vendors</TabsTrigger></TabsList>
         <div className="flex gap-2">
+          <AiBillImport geminiEnabled={geminiEnabled} projects={projects} />
           <Button size="sm" variant="outline" onClick={() => setOpen('vendor')}><Plus className="h-4 w-4" /> Vendor</Button>
           <Button size="sm" variant="outline" onClick={() => setOpen('bill')}><Plus className="h-4 w-4" /> Bill</Button>
           <Button size="sm" variant="outline" onClick={() => setOpen('po')}><Plus className="h-4 w-4" /> PO</Button>

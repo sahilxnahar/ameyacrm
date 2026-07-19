@@ -839,6 +839,8 @@ model Lead {
   timezone     String?
   nextFollowUp DateTime?
   lostReason   String?
+  channelPartnerId String? // broker who owns this lead
+  cpLockedUntil    DateTime? // commission-protection lock window
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
@@ -880,6 +882,12 @@ model Unit {
   carpetAreaSqft Decimal?   @db.Decimal(10, 2)
   price          Decimal?   @db.Decimal(14, 2)
   status         UnitStatus @default(AVAILABLE)
+  facing         String? // N / E / S / W etc.
+  holdUntil      DateTime? // auto-release deadline while HELD
+  heldForLeadId  String? // lead the unit is blocked for
+  heldById       String? // rep who placed the hold
+  tokenAmount    Decimal?   @db.Decimal(14, 2)
+  holdNote       String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -1657,4 +1665,53 @@ model AutomationRun {
   rule AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@index([ruleId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Channel Partner (Broker) Management  — Phase 4
+// ════════════════════════════════════════════════════════════════════════════
+enum ChannelPartnerStatus { PENDING APPROVED SUSPENDED }
+enum KycStatus { PENDING VERIFIED REJECTED }
+enum BrokerageStatus { PENDING INVOICED PAID }
+
+model ChannelPartner {
+  id            String               @id @default(cuid())
+  code          String               @unique
+  firmName      String
+  contactName   String
+  phone         String
+  email         String?
+  reraNumber    String?
+  panNumber     String?
+  gstin         String?
+  commissionPct Decimal              @default(2) @db.Decimal(5, 2)
+  kycStatus     KycStatus            @default(PENDING)
+  status        ChannelPartnerStatus @default(PENDING)
+  bankDetails   String?
+  notes         String?
+  onboardedById String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([status])
+}
+
+model BrokeragePayout {
+  id               String          @id @default(cuid())
+  channelPartnerId String
+  bookingId        String?
+  leadId           String?
+  grossValue       Decimal         @default(0) @db.Decimal(14, 2)
+  ratePercent      Decimal         @default(0) @db.Decimal(5, 2)
+  amount           Decimal         @default(0) @db.Decimal(14, 2)
+  stage            String?
+  status           BrokerageStatus @default(PENDING)
+  dueDate          DateTime?
+  paidAt           DateTime?
+  createdById      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([channelPartnerId])
+  @@index([status])
 }

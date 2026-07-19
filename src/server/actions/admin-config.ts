@@ -81,3 +81,17 @@ export async function updateBranding(input: unknown): Promise<ConfigResult> {
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
+
+/** Organisation security policy (mandatory 2FA). Stored in Setting, read by getSecurityPolicy(). */
+const securityPolicySchema = z.object({ require2FA: z.boolean(), require2FAForAdmins: z.boolean() });
+export async function updateSecurityPolicy(input: unknown): Promise<ConfigResult> {
+  try {
+    const ctx = await ensure('admin.setting.manage');
+    const d = securityPolicySchema.parse(input);
+    await prisma.setting.upsert({ where: { key: 'security.require2FA' }, update: { value: d.require2FA }, create: { key: 'security.require2FA', value: d.require2FA } });
+    await prisma.setting.upsert({ where: { key: 'security.require2FAForAdmins' }, update: { value: d.require2FAForAdmins }, create: { key: 'security.require2FAForAdmins', value: d.require2FAForAdmins } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Security policy — 2FA all=${d.require2FA}, admins=${d.require2FAForAdmins}` });
+    revalidatePath('/admin/security');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}

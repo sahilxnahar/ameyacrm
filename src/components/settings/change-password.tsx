@@ -24,7 +24,7 @@ export function ChangePassword() {
   };
   return (
     <Card>
-      <CardHeader><CardTitle className="text-lg"><KeyRound className="mr-2 inline h-4 w-4" />Password</CardTitle><CardDescription>Minimum 12 characters with upper, lower, number & symbol.</CardDescription></CardHeader>
+      <CardHeader><CardTitle className="text-lg"><KeyRound className="mr-2 inline h-4 w-4" />Password</CardTitle><CardDescription>Minimum 8 characters.</CardDescription></CardHeader>
       <CardContent>
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2"><Label htmlFor="current">Current</Label><Input id="current" name="current" type="password" required /></div>

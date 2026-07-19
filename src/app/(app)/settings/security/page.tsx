@@ -10,8 +10,9 @@ import { formatDateTime } from '@/lib/utils/format';
 
 export const metadata: Metadata = { title: 'Security' };
 
-export default async function SecurityPage() {
+export default async function SecurityPage({ searchParams }: { searchParams: Promise<{ enroll?: string; force?: string }> }) {
   const { user } = await requireAuth();
+  const sp = await searchParams;
   const [sessions, logins] = await Promise.all([
     prisma.session.findMany({ where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { lastActiveAt: 'desc' }, take: 10 }),
     prisma.loginHistory.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 10 }),
@@ -19,6 +20,14 @@ export default async function SecurityPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <PageHeader title="Security & 2FA" description="Protect your account." />
+      {sp.enroll && !user.twoFactorEnabled && (
+        <div className="rounded-md border border-warning/50 bg-warning/10 p-4 text-sm text-brass-deep">
+          <strong>Two-factor authentication is required.</strong> Your administrator has made 2FA mandatory. Set it up below to continue using the CRM.
+        </div>
+      )}
+      {sp.force && (
+        <div className="rounded-md border border-warning/50 bg-warning/10 p-4 text-sm text-brass-deep">Please set a new password to continue.</div>
+      )}
       <ChangePassword />
       <TwoFactorSetup enabled={user.twoFactorEnabled} />
 

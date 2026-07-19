@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CheckSquare, Inbox, Users2, FolderOpen, Receipt, Mail, Calendar,
-  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, type LucideIcon,
+  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, type LucideIcon,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -29,6 +29,9 @@ export const NAVIGATION: NavGroup[] = [
     label: 'Business',
     items: [
       { label: 'Sales & Leads', href: '/sales', icon: Users2, permission: 'lead.view' },
+      { label: 'Inventory', href: '/inventory', icon: Building2, permission: 'booking.view' },
+      { label: 'Site Visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
+      { label: 'Channel Partners', href: '/partners', icon: Handshake, permission: 'booking.view' },
       { label: 'NRI Desk', href: '/nri', icon: Globe2, permission: 'lead.view' },
       { label: 'Documents', href: '/documents', icon: FolderOpen, permission: 'document.view' },
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view' },

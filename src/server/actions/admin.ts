@@ -11,14 +11,14 @@ export type AdminResult = { ok: true; id: string } | { error: string };
 
 const userSchema = z.object({
   name: z.string().min(2).max(160),
-  username: z.string().min(3).max(40).regex(/^[a-zA-Z0-9_.]+$/, 'Letters, numbers, dot, underscore only'),
+  username: z.string().min(3).max(60).regex(/^[a-zA-Z0-9_.@+-]+$/, 'Use letters, numbers or . _ @ + - (an email address works too)'),
   email: z.string().email(),
   phone: z.string().max(30).optional(),
   employeeId: z.string().max(40).optional(),
   designation: z.string().max(120).optional(),
   role: z.enum(['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER', 'EXECUTIVE', 'EMPLOYEE', 'READ_ONLY', 'GUEST']),
   departmentId: z.string().optional().nullable(),
-  password: z.string().min(12),
+  password: z.string().min(8),
 });
 
 export async function createUser(input: unknown): Promise<AdminResult> {

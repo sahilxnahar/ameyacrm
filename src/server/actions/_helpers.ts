@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import 'server-only';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
@@ -27,6 +28,13 @@ export async function ensure(permission: PermissionKey): Promise<AuthContext> {
 export function toActionError(err: unknown): { error: string } {
   if (err instanceof ForbiddenError) return { error: 'You do not have permission to do that.' };
   if (err instanceof AuthError) return { error: 'Your session expired. Please sign in again.' };
+  if (err instanceof ZodError) {
+    const msg = err.issues.map((i) => {
+      const f = i.path.join('.'); const label = f ? f.charAt(0).toUpperCase() + f.slice(1) : 'Field';
+      return `${label}: ${i.message}`;
+    }).join('  •  ');
+    return { error: msg || 'Please check the form and try again.' };
+  }
   if (err instanceof Error) return { error: err.message };
   return { error: 'Something went wrong. Please try again.' };
 }

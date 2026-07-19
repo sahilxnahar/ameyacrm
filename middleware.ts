@@ -19,7 +19,10 @@ export function middleware(req: NextRequest) {
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  // Forward the pathname so server layouts can run path-aware guards (e.g. mandatory 2FA).
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

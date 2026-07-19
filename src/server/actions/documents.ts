@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
-import { putObject, makeObjectKey } from '@/lib/storage/storage';
+import { putObject, makeObjectKey, getObjectStream } from '@/lib/storage/storage';
+import { summarizeFile, isGeminiEnabled } from '@/lib/ai/gemini';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
@@ -61,6 +62,10 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
         versions: { create: { version: 1, fileId: fileObj.id, createdById: ctx.user.id } },
       },
     });
+    try {
+      const summary = await summarizeFile(buffer, file.type || 'application/octet-stream', file.name);
+      if (summary) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { ocrText: summary } });
+    } catch { /* ignore */ }
     await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Document', entityId: doc.id, summary: `Uploaded ${file.name}` });
     revalidatePath('/documents');
     return { ok: true, id: doc.id };
@@ -113,6 +118,23 @@ export async function updateDocumentExpiry(documentId: string, expiresAt: string
     const ctx = await ensure('document.update');
     await prisma.document.update({ where: { id: documentId }, data: { expiresAt: expiresAt ? new Date(expiresAt) : null } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: expiresAt ? `Expiry set ${expiresAt}` : 'Expiry cleared' });
+    revalidatePath('/documents');
+    return { ok: true, id: documentId };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Re-run (or run) the AI summary for a document on demand. */
+export async function summarizeDocument(documentId: string): Promise<DocResult> {
+  try {
+    await ensure('document.update');
+    if (!isGeminiEnabled()) return { error: 'Gemini API key is not configured (set GEMINI_API_KEY).' };
+    const doc = await prisma.document.findUnique({ where: { id: documentId }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { file: true } } } });
+    const file = doc?.versions[0]?.file;
+    if (!file) return { error: 'File not found.' };
+    const { body } = await getObjectStream(file.key);
+    const summary = await summarizeFile(body, file.mimeType, file.originalName);
+    if (!summary) return { error: 'Could not summarize this file type (PDF, image and text are supported).' };
+    await prisma.fileObject.update({ where: { id: file.id }, data: { ocrText: summary } });
     revalidatePath('/documents');
     return { ok: true, id: documentId };
   } catch (err) { return toActionError(err); }

@@ -111,7 +111,7 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
               <div className="space-y-2"><Label htmlFor="role">Role</Label><select id="role" name="role" className={selectCls} defaultValue="EMPLOYEE">{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r as keyof typeof ROLE_LABELS]}</option>)}</select></div>
               <div className="space-y-2"><Label htmlFor="departmentId">Department</Label><select id="departmentId" name="departmentId" className={selectCls} defaultValue=""><option value="">—</option>{deptOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             </div>
-            <div className="space-y-2"><Label htmlFor="password">Temporary password</Label><Input id="password" name="password" type="text" required placeholder="Min 12 chars, mixed case, number, symbol" /></div>
+            <div className="space-y-2"><Label htmlFor="password">Temporary password</Label><Input id="password" name="password" type="text" required placeholder="Min 8 characters" /></div>
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setUserOpen(false)}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Create user</Button></div>
           </form>
         </DialogContent>
