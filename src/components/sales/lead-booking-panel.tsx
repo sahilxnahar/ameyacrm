@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, CheckCircle2, IndianRupee } from 'lucide-react';
-import { createBooking, markMilestonePaid } from '@/server/actions/sales';
+import { createBooking, markMilestonePaid, cancelBooking } from '@/server/actions/sales';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
   const [pending, start] = React.useTransition();
   const [open, setOpen] = React.useState(false);
   const [rows, setRows] = React.useState([{ label: 'Booking amount', amount: '', dueDate: '' }]);
+  const [cancelId, setCancelId] = React.useState<string | null>(null);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,6 +50,7 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
             <div className="flex gap-2">
               <Badge variant="secondary">{titleCase(b.status)}</Badge>
               <Badge variant={b.paymentStatus === 'PAID' ? 'success' : b.paymentStatus === 'PARTIAL' ? 'warning' : 'secondary'}>{titleCase(b.paymentStatus)}</Badge>
+              {b.status !== 'CANCELLED' && <Button size="sm" variant="ghost" className="h-6 text-xs text-destructive" onClick={() => setCancelId(b.id)}>Cancel</Button>}
             </div>
           </div>
           {b.agreementValue != null && <p className="mt-1 text-sm">Agreement value: {formatCurrency(b.agreementValue)}</p>}
@@ -64,6 +66,18 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
           </div>
         </div>
       ))}
+
+      <Dialog open={!!cancelId} onOpenChange={(o) => !o && setCancelId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Cancel booking</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const id = cancelId!; start(async () => { const r = await cancelBooking({ bookingId: id, forfeitAmount: fd.get('forfeitAmount') || 0, reason: fd.get('reason') || undefined }); if ('error' in r) return toast.error(r.error); toast.success('Booking cancelled, unit released'); setCancelId(null); router.refresh(); }); }} className="space-y-3">
+            <p className="text-sm text-muted-foreground">The unit returns to available inventory. Refund is auto-computed as amount paid minus forfeiture.</p>
+            <div className="space-y-1"><Label htmlFor="forfeitAmount">Forfeiture amount (₹)</Label><Input id="forfeitAmount" name="forfeitAmount" type="number" min="0" defaultValue="0" /></div>
+            <div className="space-y-1"><Label htmlFor="reason">Reason</Label><Input id="reason" name="reason" placeholder="Buyer withdrew, financing fell through…" /></div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setCancelId(null)}>Keep booking</Button><Button type="submit" variant="destructive" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Cancel booking</Button></div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">

@@ -151,3 +151,24 @@ export async function scheduleFollowUp(leadId: string, at: string): Promise<Sale
     return { ok: true, id: leadId };
   } catch (err) { return toActionError(err); }
 }
+
+const cancelSchema = z.object({ bookingId: z.string().min(1), forfeitAmount: z.coerce.number().nonnegative().default(0), reason: z.string().max(300).optional() });
+/** Cancel a booking: compute forfeiture/refund, release the unit back to available inventory. */
+export async function cancelBooking(input: unknown): Promise<SalesResult> {
+  try {
+    const ctx = await ensure('booking.manage');
+    const d = cancelSchema.parse(input);
+    const booking = await prisma.booking.findUnique({ where: { id: d.bookingId } });
+    if (!booking) return { error: 'Booking not found.' };
+    if (booking.status === 'CANCELLED') return { error: 'This booking is already cancelled.' };
+    const paidAgg = await prisma.paymentMilestone.aggregate({ where: { bookingId: d.bookingId, status: 'PAID' }, _sum: { amount: true } });
+    const paid = Number(paidAgg._sum.amount ?? 0);
+    const refund = Math.max(0, paid - d.forfeitAmount);
+    await prisma.booking.update({ where: { id: d.bookingId }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: d.reason || null, forfeitAmount: d.forfeitAmount, refundAmount: refund } });
+    if (booking.unitId) await prisma.unit.update({ where: { id: booking.unitId }, data: { status: 'AVAILABLE', holdUntil: null, heldForLeadId: null, heldById: null, tokenAmount: null, holdNote: null } });
+    if (booking.leadId) await prisma.leadActivity.create({ data: { leadId: booking.leadId, userId: ctx.user.id, type: 'NOTE', subject: `Booking ${booking.reference} cancelled`, notes: `Forfeit Rs.${d.forfeitAmount.toFixed(0)} · refund Rs.${refund.toFixed(0)}${d.reason ? ` — ${d.reason}` : ''}` } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Booking', entityId: d.bookingId, summary: `Cancelled ${booking.reference} (forfeit Rs.${d.forfeitAmount.toFixed(0)}, refund Rs.${refund.toFixed(0)})` });
+    revalidatePath('/sales'); revalidatePath('/inventory');
+    return { ok: true, id: d.bookingId };
+  } catch (err) { return toActionError(err); }
+}

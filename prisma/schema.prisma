@@ -910,6 +910,10 @@ model Booking {
   status         BookingStatus @default(TENTATIVE)
   paymentStatus  PaymentStatus @default(PENDING)
   agreementValue Decimal?      @db.Decimal(14, 2)
+  cancelledAt    DateTime?
+  cancelReason   String?
+  forfeitAmount  Decimal?      @db.Decimal(14, 2)
+  refundAmount   Decimal?      @db.Decimal(14, 2)
   bookedAt       DateTime      @default(now())
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

@@ -37,6 +37,7 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().optional(), // Google Gemini — AI document summaries
   CRON_SECRET: z.string().optional(), // guards Vercel Cron endpoints
   INGEST_SECRET: z.string().optional(), // guards the public lead-ingestion webhook
+  TELEPHONY_SECRET: z.string().optional(), // guards the telephony (call-recording) webhook
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Email (pluggable): smtp | ses | resend | console

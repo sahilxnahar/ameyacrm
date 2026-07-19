@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { LeadActivityLogger } from '@/components/sales/lead-activity-logger';
 import { LeadBookingPanel } from '@/components/sales/lead-booking-panel';
 import { WhatsAppButton } from '@/components/sales/whatsapp-button';
+import { CallButton } from '@/components/sales/call-button';
 import { formatCurrency, formatDateTime, titleCase } from '@/lib/utils/format';
 
 export const metadata: Metadata = { title: 'Lead' };
@@ -83,7 +84,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {lead.email ?? '—'}</p>
           <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {lead.phone ?? '—'}</p>
-          <WhatsAppButton phone={lead.phone} name={lead.name} />
+          <div className="flex gap-2"><CallButton phone={lead.phone} /><WhatsAppButton phone={lead.phone} name={lead.name} /></div>
           <p className="text-muted-foreground">Source: {titleCase(lead.source)}</p>
           <p className="text-muted-foreground">Owner: {lead.owner?.name ?? '—'}</p>
           <p className="text-muted-foreground">Project: {lead.project?.name ?? '—'}</p>

@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CheckSquare, Inbox, Users2, FolderOpen, Receipt, Mail, Calendar,
-  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, type LucideIcon,
+  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, LineChart, type LucideIcon,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -41,6 +41,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view' },
       { label: 'Architecture', href: '/architecture', icon: PencilRuler, permission: 'architecture.view' },
       { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'report.view' },
+      { label: 'Analytics', href: '/analytics', icon: LineChart, permission: 'report.view' },
     ],
   },
   {

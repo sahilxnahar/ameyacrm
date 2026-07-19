@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Users2, Globe2, TrendingUp, CalendarCheck } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
+import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
@@ -9,18 +10,19 @@ import { SalesPipeline } from '@/components/sales/sales-pipeline';
 export const metadata: Metadata = { title: 'Sales & Leads' };
 
 export default async function SalesPage() {
-  await requirePermission('lead.view');
+  const ctx = await requirePermission('lead.view');
+  const scope = can(ctx.permissions, 'lead.assign') ? {} : { ownerId: ctx.user.id };
   const [leads, users, projects, total, nri, booked, siteVisits] = await Promise.all([
     prisma.lead.findMany({
-      where: { deletedAt: null }, orderBy: { updatedAt: 'desc' }, take: 300,
+      where: { deletedAt: null, ...scope }, orderBy: { updatedAt: 'desc' }, take: 300,
       include: { owner: { select: { name: true } }, project: { select: { name: true } } },
     }),
     prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
-    prisma.lead.count({ where: { deletedAt: null } }),
-    prisma.lead.count({ where: { deletedAt: null, isNri: true } }),
-    prisma.lead.count({ where: { deletedAt: null, status: { in: ['BOOKED', 'WON'] } } }),
-    prisma.lead.count({ where: { deletedAt: null, status: 'SITE_VISIT' } }),
+    prisma.lead.count({ where: { deletedAt: null, ...scope } }),
+    prisma.lead.count({ where: { deletedAt: null, isNri: true, ...scope } }),
+    prisma.lead.count({ where: { deletedAt: null, status: { in: ['BOOKED', 'WON'] }, ...scope } }),
+    prisma.lead.count({ where: { deletedAt: null, status: 'SITE_VISIT', ...scope } }),
   ]);
 
   const serialized = leads.map((l) => ({
