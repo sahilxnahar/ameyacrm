@@ -7,11 +7,10 @@ import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
 export type MktResult = { ok: true; id: string } | { error: string };
-const CHANNELS = ['META', 'GOOGLE', 'LINKEDIN', 'YOUTUBE', 'WHATSAPP', 'EMAIL', 'OFFLINE', 'OTHER'] as const;
 
 const campaignSchema = z.object({
   name: z.string().min(2).max(160),
-  channel: z.enum(CHANNELS).default('META'),
+  channel: z.enum(['META', 'GOOGLE', 'LINKEDIN', 'YOUTUBE', 'WHATSAPP', 'EMAIL', 'OFFLINE', 'OTHER']).default('META'),
   objective: z.string().max(300).optional(),
   budget: z.coerce.number().nonnegative().optional(),
   startDate: z.string().optional().nullable(),
@@ -49,7 +48,7 @@ export async function updateCampaignStatus(id: string, status: CampaignStatus): 
 const postSchema = z.object({
   title: z.string().min(2).max(200),
   content: z.string().max(2000).optional(),
-  channel: z.enum(CHANNELS).default('META'),
+  channel: z.enum(['META', 'GOOGLE', 'LINKEDIN', 'YOUTUBE', 'WHATSAPP', 'EMAIL', 'OFFLINE', 'OTHER']).default('META'),
   scheduledAt: z.string().optional().nullable(),
 });
 export async function createSocialPost(input: unknown): Promise<MktResult> {

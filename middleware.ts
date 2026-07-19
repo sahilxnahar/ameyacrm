@@ -25,6 +25,6 @@ export function middleware(req: NextRequest) {
 export const config = {
   // Protect everything except Next internals, API routes, and static assets.
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|icons|brand|.well-known).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|icons|brand|screenshots|.well-known).*)',
   ],
 };

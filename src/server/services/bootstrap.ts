@@ -61,7 +61,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   });
   await prisma.folder.upsert({ where: { id: 'root-ah' }, update: {}, create: { id: 'root-ah', name: 'Ameya Heights', visibility: 'ORGANIZATION', path: '/' } });
   for (const [key, value] of [['branding.displayName', 'Ameya Heights'], ['branding.tagline', 'Building Spaces. Shaping Legacies.'], ['security.passwordExpiryDays', 90]] as const) {
-    await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } });
+    await prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
   }
 
   // Super Admin

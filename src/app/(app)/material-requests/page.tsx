@@ -10,7 +10,7 @@ export default async function MaterialRequestsPage() {
   const ctx = await requirePermission('material.view');
   const [requests, projects, departments, approvers] = await Promise.all([
     prisma.materialRequest.findMany({
-      where: { deletedAt: undefined }, orderBy: { createdAt: 'desc' }, take: 100,
+      orderBy: { createdAt: 'desc' }, take: 100,
       include: {
         requester: { select: { name: true } }, department: { select: { name: true } }, project: { select: { name: true } },
         items: true, email: { select: { status: true, toEmails: true } },
