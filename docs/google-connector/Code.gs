@@ -321,7 +321,8 @@ var TRIGGER_PLAN = [
   { fn: 'pingEscalation',  every: 'hours',   n: 1,  what: 'Overdue reminders, hourly' },
   { fn: 'scanMailOnce',    every: 'minutes', n: 15, what: 'Buyer emails, every 15 minutes' },
   { fn: 'scanPortalsOnce', every: 'minutes', n: 15, what: 'Portal leads, every 15 minutes' },
-  { fn: 'scanSocialOnce',  every: 'hours',   n: 1,  what: 'Social activity, hourly' }
+  { fn: 'scanSocialOnce',  every: 'hours',   n: 1,  what: 'Social activity, hourly' },
+  { fn: 'scanDriveOnce',   every: 'minutes', n: 15, what: 'Files added straight to Drive, every 15 minutes' }
 ];
 
 function setupEverything() {
@@ -358,6 +359,7 @@ function setupEverything() {
   log.push(checkPost('Buyer email', '/api/ingest/email'));
   log.push(checkPost('Portal leads', '/api/ingest/portal'));
   log.push(checkPost('Social', '/api/ingest/social-email'));
+  log.push(checkPost('Drive import', '/api/ingest/drive'));
   log.push(checkOne('Mailbox', function () {
     return GmailApp.search('newer_than:1d', 0, 1).length + ' recent thread(s) readable';
   }));
@@ -391,7 +393,9 @@ function checkHttp(label, url) {
 
 function checkPost(label, path) {
   try {
-    var code = postJson(path, { messages: [] }).getResponseCode();
+    // The Drive route expects files, the mail routes expect messages. Send both
+    // so one probe works for every endpoint.
+    var code = postJson(path, { messages: [], files: [] }).getResponseCode();
     return (code === 200 ? '  ok       ' : '  FAILED   ') + label + ': HTTP ' + code +
       (code === 401 ? '  (INGEST_KEY does not match Vercel)' : '');
   } catch (err) { return '  FAILED   ' + label + ': ' + err; }
@@ -467,4 +471,35 @@ function resetScanHistory() {
   props.deleteProperty('lastPortalScan');
   props.deleteProperty('lastSocialScan');
   Logger.log('Scan history cleared. The next run will re-read the last few days.');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  G.  DRIVE → CRM  (v9.6)
+ *
+ *  The other direction. Anything you drop straight into the Drive folder —
+ *  including whole folders dragged from your desktop — becomes a document in
+ *  the CRM, in a matching folder tree, visible to everyone with access.
+ *
+ *  Files the CRM itself put in Drive are recognised and skipped, so nothing
+ *  bounces back and forth.
+ *
+ *  Added automatically by setupEverything. To add it by hand:
+ *    Triggers > Add Trigger > scanDriveOnce > Time-driven >
+ *    Minutes timer > Every 15 minutes.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function scanDriveOnce() {
+  if (INGEST_KEY.indexOf('PASTE') === 0) {
+    Logger.log('INGEST_KEY is not filled in yet — stopping.');
+    return;
+  }
+
+  var root = DriveApp.getFolderById(FOLDER_ID);
+  var found = [];
+  collect(root, [], found, 0);
+
+  if (!found.length) { Logger.log('drive: nothing in the folder'); return; }
+
+  var res = postJson('/api/ingest/drive', { files: found });
+  Logger.log('drive ' + res.getResponseCode() + ' ' + res.getContentText());
 }

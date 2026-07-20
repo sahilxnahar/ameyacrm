@@ -30,6 +30,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
+  // Files that live in Drive have no copy in blob storage — send the viewer
+  // there rather than trying to stream bytes that were never uploaded here.
+  if (file.bucket === 'drive' && file.driveUrl) {
+    await writeAudit({ actorId: ctx.user.id, action: 'VIEW', entityType: 'FileObject', entityId: file.id, summary: `Opened ${file.originalName} in Google Drive` });
+    return NextResponse.redirect(file.driveUrl);
+  }
+
   const download = req.nextUrl.searchParams.get('download') === '1';
   await writeAudit({ actorId: ctx.user.id, action: 'DOWNLOAD', entityType: 'FileObject', entityId: file.id, summary: `${download ? 'Downloaded' : 'Viewed'} ${file.originalName}` });
 
