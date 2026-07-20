@@ -1683,9 +1683,21 @@ model AutomationRun {
 // ════════════════════════════════════════════════════════════════════════════
 //  Channel Partner (Broker) Management  — Phase 4
 // ════════════════════════════════════════════════════════════════════════════
-enum ChannelPartnerStatus { PENDING APPROVED SUSPENDED }
-enum KycStatus { PENDING VERIFIED REJECTED }
-enum BrokerageStatus { PENDING INVOICED PAID }
+enum ChannelPartnerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+enum BrokerageStatus {
+  PENDING
+  INVOICED
+  PAID
+}
 
 model ChannelPartner {
   id            String               @id @default(cuid())
@@ -1732,7 +1744,11 @@ model BrokeragePayout {
 // ════════════════════════════════════════════════════════════════════════════
 //  Customer / Buyer Portal  — Phase 5
 // ════════════════════════════════════════════════════════════════════════════
-enum SnagStatus { OPEN IN_PROGRESS RESOLVED }
+enum SnagStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
 
 model Customer {
   id            String   @id @default(cuid())
@@ -1794,7 +1810,17 @@ model CustomerDocument {
 // ════════════════════════════════════════════════════════════════════════════
 //  Social / Marketing Integrations Hub
 // ════════════════════════════════════════════════════════════════════════════
-enum SocialChannel { WHATSAPP LINKEDIN INSTAGRAM FACEBOOK TWITTER YOUTUBE GOOGLE WEBSITE OTHER }
+enum SocialChannel {
+  WHATSAPP
+  LINKEDIN
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  YOUTUBE
+  GOOGLE
+  WEBSITE
+  OTHER
+}
 
 model SocialActivity {
   id        String        @id @default(cuid())
