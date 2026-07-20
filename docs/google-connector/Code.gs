@@ -1,47 +1,44 @@
 /**
- * Ameya Heights CRM — Google connector (personal account, no Cloud Console, no billing).
+ * ══════════════════════════════════════════════════════════════════════════
+ *  AMEYA HEIGHTS CRM — Google connector
+ *  v9.0 · everything below is already filled in. Paste and go.
+ * ══════════════════════════════════════════════════════════════════════════
  *
- * This one file now does three jobs:
- *   A. Drive uploads + Sheets export   (doPost — already working, unchanged)
- *   B. Social capture from Gmail       (scanSocialOnce — hourly trigger)
- *   C. Hourly overdue reminders        (pingEscalation — hourly trigger)
+ *  WHAT TO DO
+ *   1. Select all in the editor (Cmd+A) and paste this over the top. Save.
+ *   2. Run  testEverything  once. Approve the permissions Google asks for.
+ *      You want five ticks in the Execution log.
+ *   3. Left sidebar → clock icon (Triggers) → Add Trigger, four times:
  *
- * ── FIRST-TIME SETUP (already done for part A) ────────────────────────────
- *  1. script.google.com → New project → paste this file.
- *  2. Fill in FOLDER_ID and SHEET_ID below.
- *  3. Deploy → New deployment → Web app
- *        Execute as:      Me
- *        Who has access:  Anyone
- *     → Deploy → Authorize → copy the /exec URL.
- *  4. In Vercel: GAS_WEBAPP_URL = that URL, GAS_SECRET = the SECRET below.
+ *        pingEscalation    Time-driven   Hour timer      Every hour
+ *        scanMailOnce      Time-driven   Minutes timer   Every 15 minutes
+ *        scanPortalsOnce   Time-driven   Minutes timer   Every 15 minutes
+ *        scanSocialOnce    Time-driven   Hour timer      Every hour
  *
- * ── AFTER PASTING THIS UPDATE ─────────────────────────────────────────────
- *  5. Fill in CRON_KEY and INGEST_KEY below (see the CRM deploy notes).
- *  6. Save. Click Run with "pingEscalation" selected → approve the permissions.
- *  7. Run "scanSocialOnce" once → approve the Gmail permission.
- *  8. Left sidebar → the clock icon (Triggers) → Add Trigger, twice:
- *        pingEscalation  · Time-driven · Hour timer · Every hour
- *        scanSocialOnce  · Time-driven · Hour timer · Every hour
- *  9. Deploy → Manage deployments → edit → Version: NEW VERSION → Deploy.
- *     (Editing the code alone does not update the live web app.)
+ *      Set "Failure notification" to "Notify me immediately" on each.
+ *   4. Deploy → Manage deployments → pencil → Version: NEW VERSION → Deploy.
+ *      Editing the code alone does not update the live web app.
  *
- * Files are created BY YOU, so they use your own 15GB Drive quota. No service
- * account, no API keys, no payment method.
+ *  This runs as YOU. It uses your own 15GB Drive quota and your own mailbox
+ *  permission. No Cloud Console, no API project, no billing, no card.
  */
 
-// ── Settings ───────────────────────────────────────────────────────────────
+// ── Settings — all filled in ────────────────────────────────────────────────
 var SECRET     = '3b6b3f81ab2515276cbd09b6e15c2592464ae364';
-var FOLDER_ID  = '1zkJogniKQSdLFksHIr0wQuCdECJoEQIy';   // drive.google.com/drive/folders/<THIS_ID>
-var SHEET_ID   = '1iO_jlkiX6Jhq8zWyhcRwcDDZDPpOEenQPv-WaFP5hmk'; // docs.google.com/spreadsheets/d/<THIS_ID>/edit
+var FOLDER_ID  = '1zkJogniKQSdLFksHIr0wQuCdECJoEQIy';
+var SHEET_ID   = '1iO_jlkiX6Jhq8zWyhcRwcDDZDPpOEenQPv-WaFP5hmk';
 
-var CRM_URL    = 'https://ameyacrm.vercel.app';   // no trailing slash
-var CRON_KEY   = 'PASTE_CRON_SECRET_HERE';        // must equal CRON_SECRET in Vercel
-var INGEST_KEY = 'PASTE_INGEST_SECRET_HERE';      // must equal INGEST_SECRET in Vercel
+var CRM_URL    = 'https://ameyacrm.vercel.app';
+var CRON_KEY   = '71066c12b37ebc8b7c847648994e409f39c2ae25';
+var INGEST_KEY = 'ab89b3bd3f28246e5c28f67d30ff0702b7732032';
+
+// Your own address, used to tell outgoing mail from incoming.
+var MY_EMAIL   = 'hi@ameyaheights.com';
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  A.  Drive uploads + Sheets export  (called by the CRM)
-// ═══════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  A.  Drive uploads and Sheets export — called by the CRM
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 function doPost(e) {
   try {
@@ -85,157 +82,121 @@ function out(obj) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  B.  Social capture from Gmail
-//
-//  Instagram, LinkedIn, Facebook and X already email you when something
-//  happens. This reads those emails and posts them to the CRM, which writes a
-//  one-line summary and notifies the right people. No platform API, no
-//  developer account, no cost.
-// ═══════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Shared helpers
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
-var SOCIAL_QUERY =
-  'newer_than:2d (' +
-  'from:mail.instagram.com OR from:instagram.com OR ' +
-  'from:linkedin.com OR from:facebookmail.com OR ' +
-  'from:x.com OR from:twitter.com OR from:youtube.com' +
-  ') -label:crm-captured';
+/**
+ * Gmail search window since this scanner last ran.
+ *
+ * Earlier versions labelled threads and excluded them next time. That quietly
+ * broke replies: once a thread carried the label, every later message in it was
+ * skipped. The CRM already ignores any message id it has seen, so scanning by
+ * time and letting the server deduplicate is both simpler and correct.
+ */
+function windowFor(key, fallbackDays) {
+  var props = PropertiesService.getScriptProperties();
+  var last = props.getProperty(key);
+  if (!last) return 'newer_than:' + fallbackDays + 'd';
+  return 'after:' + last;
+}
 
-function scanSocialOnce() {
-  if (INGEST_KEY.indexOf('PASTE') === 0) {
-    Logger.log('INGEST_KEY is not filled in yet — stopping.');
-    return;
-  }
+function markScanned(key) {
+  // Rewind five minutes so a message arriving mid-run is never missed.
+  var stamp = Math.floor(Date.now() / 1000) - 300;
+  PropertiesService.getScriptProperties().setProperty(key, String(stamp));
+}
 
-  var label = GmailApp.getUserLabelByName('crm-captured') || GmailApp.createLabel('crm-captured');
-  var threads = GmailApp.search(SOCIAL_QUERY, 0, 25);
+function postJson(path, payload) {
+  return UrlFetchApp.fetch(CRM_URL + path, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-ingest-key': INGEST_KEY },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+}
+
+function myAddress() {
+  var a = '';
+  try { a = Session.getActiveUser().getEmail() || ''; } catch (err) { a = ''; }
+  return (a || MY_EMAIL).toLowerCase();
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  B.  Hourly overdue reminders
+ *
+ *  Vercel's free plan allows one scheduled job a day, so this does the hourly
+ *  run instead. Calling it more often than needed is harmless — the CRM keeps
+ *  the per-item timing, so nobody is messaged twice.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function pingEscalation() {
+  var res = UrlFetchApp.fetch(
+    CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY),
+    { method: 'get', muteHttpExceptions: true }
+  );
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  C.  Two-way email — the conversation with buyers
+ *
+ *  Reads what they send you and what you send them, and threads it onto the
+ *  right lead. Anything from an address the CRM does not recognise is thrown
+ *  away by the server — your personal mail is never stored.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+var MACHINE_SENDERS = /99acres|magicbricks|housing\.com|proptiger|commonfloor|nobroker|instagram|linkedin|facebookmail|twitter\.com|x\.com|youtube|no-?reply|noreply|notification|mailer-daemon|calendar-notification/i;
+
+function scanMailOnce() {
+  var me = myAddress();
+  var query = windowFor('lastMailScan', 3) + ' -in:chats -in:spam -in:trash';
+  var threads = GmailApp.search(query, 0, 50);
   var messages = [];
 
   for (var i = 0; i < threads.length; i++) {
     var msgs = threads[i].getMessages();
     for (var j = 0; j < msgs.length; j++) {
       var m = msgs[j];
+      var from = m.getFrom().toLowerCase();
+      if (MACHINE_SENDERS.test(from)) continue;
+
       messages.push({
         messageId: m.getId(),
         from: m.getFrom(),
+        to: m.getTo(),
         subject: m.getSubject(),
-        body: m.getPlainBody().substring(0, 4000)
+        body: m.getPlainBody().substring(0, 8000),
+        date: m.getDate().toISOString(),
+        outbound: from.indexOf(me) !== -1
       });
     }
   }
 
-  if (!messages.length) { Logger.log('nothing new'); return; }
+  if (!messages.length) { Logger.log('mail: nothing new'); return; }
 
-  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/social-email', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'x-ingest-key': INGEST_KEY },
-    payload: JSON.stringify({ messages: messages }),
-    muteHttpExceptions: true
-  });
-
-  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
-
-  // Label only after the CRM accepts them, so a failure simply retries next hour.
-  if (res.getResponseCode() === 200) {
-    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
-  }
+  var res = postJson('/api/ingest/email', { messages: messages });
+  Logger.log('mail ' + res.getResponseCode() + ' ' + res.getContentText());
+  if (res.getResponseCode() === 200) markScanned('lastMailScan');
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  C.  Hourly overdue reminders
-//
-//  Vercel's free plan allows only ONE scheduled job per day, so this does the
-//  hourly run instead. Calling it more often than needed is harmless — the CRM
-//  tracks per-item timing, so nobody is messaged twice.
-// ═══════════════════════════════════════════════════════════════════════════
-
-function pingEscalation() {
-  if (CRON_KEY.indexOf('PASTE') === 0) {
-    Logger.log('CRON_KEY is not filled in yet — stopping.');
-    return;
-  }
-
-  var res = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), {
-    method: 'get',
-    muteHttpExceptions: true
-  });
-
-  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
-}
-
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  D.  One-click check — run this after setup to confirm everything works.
-// ═══════════════════════════════════════════════════════════════════════════
-
-function testEverything() {
-  var report = [];
-
-  try {
-    report.push('Drive folder: ' + DriveApp.getFolderById(FOLDER_ID).getName() + '  ✓');
-  } catch (err) {
-    report.push('Drive folder FAILED: ' + err);
-  }
-
-  try {
-    report.push('Sheet: ' + SpreadsheetApp.openById(SHEET_ID).getName() + '  ✓');
-  } catch (err) {
-    report.push('Sheet FAILED: ' + err);
-  }
-
-  try {
-    var a = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), { muteHttpExceptions: true });
-    report.push('Escalation endpoint: HTTP ' + a.getResponseCode() +
-                (a.getResponseCode() === 200 ? '  ✓' : '  ← 401 means CRON_KEY does not match Vercel'));
-  } catch (err) {
-    report.push('Escalation FAILED: ' + err);
-  }
-
-  try {
-    var b = UrlFetchApp.fetch(CRM_URL + '/api/ingest/social-email', {
-      method: 'post', contentType: 'application/json',
-      headers: { 'x-ingest-key': INGEST_KEY },
-      payload: JSON.stringify({ messages: [] }),
-      muteHttpExceptions: true
-    });
-    report.push('Social endpoint: HTTP ' + b.getResponseCode() +
-                (b.getResponseCode() === 200 ? '  ✓' : '  ← 401 means INGEST_KEY does not match Vercel'));
-  } catch (err) {
-    report.push('Social FAILED: ' + err);
-  }
-
-  Logger.log(report.join('\n'));
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
- *  PROPERTY PORTAL LEADS  (v8.2)
- *  99acres, MagicBricks, Housing.com and the rest all email you the moment
- *  someone enquires. This reads those emails and turns them into CRM leads.
- *  Their partner APIs need a paid listing contract; these emails do not.
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  D.  Property portal leads
  *
- *  SETUP
- *   1. INGEST_KEY above must already be filled in.
- *   2. Run scanPortalsOnce() once and approve the permission.
- *   3. Triggers > Add Trigger > scanPortalsOnce > Time-driven >
- *      Minutes timer > Every 15 minutes. Portal leads go cold fast.
- * ═══════════════════════════════════════════════════════════════════════ */
-
-var PORTAL_QUERY =
-  'newer_than:2d (' +
-  'from:99acres.com OR from:magicbricks.com OR from:housing.com OR ' +
-  'from:proptiger.com OR from:commonfloor.com OR from:nobroker.in' +
-  ') -label:crm-portal';
+ *  99acres, MagicBricks, Housing and the rest email you the moment somebody
+ *  enquires. Their partner APIs need a paid listing contract; these emails
+ *  need nothing.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
 function scanPortalsOnce() {
-  if (INGEST_KEY.indexOf('PASTE') === 0) {
-    Logger.log('INGEST_KEY is not filled in yet — stopping.');
-    return;
-  }
-
-  var label = GmailApp.getUserLabelByName('crm-portal') || GmailApp.createLabel('crm-portal');
-  var threads = GmailApp.search(PORTAL_QUERY, 0, 30);
+  var query = windowFor('lastPortalScan', 2) +
+    ' (from:99acres.com OR from:magicbricks.com OR from:housing.com OR ' +
+    'from:proptiger.com OR from:commonfloor.com OR from:nobroker.in)';
+  var threads = GmailApp.search(query, 0, 40);
   var messages = [];
 
   for (var i = 0; i < threads.length; i++) {
@@ -250,87 +211,100 @@ function scanPortalsOnce() {
     }
   }
 
-  if (!messages.length) { Logger.log('no portal leads'); return; }
+  if (!messages.length) { Logger.log('portals: nothing new'); return; }
 
-  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/portal', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'x-ingest-key': INGEST_KEY },
-    payload: JSON.stringify({ messages: messages }),
-    muteHttpExceptions: true
-  });
-
-  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
-
-  if (res.getResponseCode() === 200) {
-    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
-  }
+  var res = postJson('/api/ingest/portal', { messages: messages });
+  Logger.log('portals ' + res.getResponseCode() + ' ' + res.getContentText());
+  if (res.getResponseCode() === 200) markScanned('lastPortalScan');
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- *  TWO-WAY EMAIL  (v9.0)
- *  Reads the actual conversation with buyers — both what they send you and
- *  what you send them — and threads it onto the right lead in the CRM.
- *
- *  Uses the mailbox permission this script already has. No Cloud Console,
- *  no OAuth app, no API project, no cost.
- *
- *  SETUP
- *   1. INGEST_KEY above must already be filled in.
- *   2. Run scanMailOnce() once and approve the permission.
- *   3. Triggers > Add Trigger > scanMailOnce > Time-driven >
- *      Minutes timer > Every 15 minutes.
- *
- *  Anything from an address the CRM does not recognise is ignored — your
- *  personal mail is never stored.
- * ═══════════════════════════════════════════════════════════════════════ */
 
-function scanMailOnce() {
-  if (INGEST_KEY.indexOf('PASTE') === 0) {
-    Logger.log('INGEST_KEY is not filled in yet — stopping.');
-    return;
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  E.  Social activity
+ *
+ *  Instagram, LinkedIn, Facebook and X already email you when something
+ *  happens. The CRM summarises each one in a line and notifies the right
+ *  people. No platform API, no developer account.
+ * ═══════════════════════════════════════════════════════════════════════════ */
 
-  var me = Session.getActiveUser().getEmail().toLowerCase();
-  var threads = GmailApp.search('newer_than:3d -in:chats -label:crm-mailed', 0, 40);
+function scanSocialOnce() {
+  var query = windowFor('lastSocialScan', 2) +
+    ' (from:mail.instagram.com OR from:instagram.com OR from:linkedin.com OR ' +
+    'from:facebookmail.com OR from:x.com OR from:twitter.com OR from:youtube.com)';
+  var threads = GmailApp.search(query, 0, 30);
   var messages = [];
 
   for (var i = 0; i < threads.length; i++) {
     var msgs = threads[i].getMessages();
     for (var j = 0; j < msgs.length; j++) {
-      var m = msgs[j];
-      var from = m.getFrom().toLowerCase();
-      var outbound = from.indexOf(me) !== -1;
-
-      // Skip the machine mail we already capture elsewhere.
-      if (/99acres|magicbricks|housing\.com|instagram|linkedin|facebookmail|no-?reply|notification/.test(from)) continue;
-
       messages.push({
-        messageId: m.getId(),
-        from: m.getFrom(),
-        to: m.getTo(),
-        subject: m.getSubject(),
-        body: m.getPlainBody().substring(0, 8000),
-        date: m.getDate().toISOString(),
-        outbound: outbound
+        messageId: msgs[j].getId(),
+        from: msgs[j].getFrom(),
+        subject: msgs[j].getSubject(),
+        body: msgs[j].getPlainBody().substring(0, 4000)
       });
     }
   }
 
-  if (!messages.length) { Logger.log('no mail to sync'); return; }
+  if (!messages.length) { Logger.log('social: nothing new'); return; }
 
-  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/email', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'x-ingest-key': INGEST_KEY },
-    payload: JSON.stringify({ messages: messages }),
-    muteHttpExceptions: true
-  });
+  var res = postJson('/api/ingest/social-email', { messages: messages });
+  Logger.log('social ' + res.getResponseCode() + ' ' + res.getContentText());
+  if (res.getResponseCode() === 200) markScanned('lastSocialScan');
+}
 
-  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
 
-  if (res.getResponseCode() === 200) {
-    var label = GmailApp.getUserLabelByName('crm-mailed') || GmailApp.createLabel('crm-mailed');
-    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  F.  Run this after pasting. Five ticks means everything works.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function testEverything() {
+  var report = ['Signed in as: ' + myAddress(), ''];
+
+  try {
+    report.push('Drive folder: ' + DriveApp.getFolderById(FOLDER_ID).getName() + '   OK');
+  } catch (err) { report.push('Drive folder FAILED: ' + err); }
+
+  try {
+    report.push('Sheet: ' + SpreadsheetApp.openById(SHEET_ID).getName() + '   OK');
+  } catch (err) { report.push('Sheet FAILED: ' + err); }
+
+  try {
+    var a = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), { muteHttpExceptions: true });
+    report.push('Reminders endpoint: HTTP ' + a.getResponseCode() +
+      (a.getResponseCode() === 200 ? '   OK' : '   <- 401 means CRON_KEY does not match Vercel'));
+  } catch (err) { report.push('Reminders FAILED: ' + err); }
+
+  try {
+    var b = postJson('/api/ingest/email', { messages: [] });
+    report.push('Email endpoint: HTTP ' + b.getResponseCode() +
+      (b.getResponseCode() === 200 ? '   OK' : '   <- 401 means INGEST_KEY does not match Vercel'));
+  } catch (err) { report.push('Email FAILED: ' + err); }
+
+  try {
+    var c = postJson('/api/ingest/portal', { messages: [] });
+    report.push('Portal endpoint: HTTP ' + c.getResponseCode() +
+      (c.getResponseCode() === 200 ? '   OK' : '   <- check INGEST_KEY'));
+  } catch (err) { report.push('Portal FAILED: ' + err); }
+
+  try {
+    var d = postJson('/api/ingest/social-email', { messages: [] });
+    report.push('Social endpoint: HTTP ' + d.getResponseCode() +
+      (d.getResponseCode() === 200 ? '   OK' : '   <- check INGEST_KEY'));
+  } catch (err) { report.push('Social FAILED: ' + err); }
+
+  try {
+    report.push('', 'Mailbox reachable: ' + GmailApp.search('newer_than:1d', 0, 1).length + ' recent thread(s) visible');
+  } catch (err) { report.push('Gmail permission FAILED: ' + err); }
+
+  Logger.log(report.join('\n'));
+}
+
+/** Forget the scan history and re-read the last few days. Safe — the CRM ignores duplicates. */
+function resetScanHistory() {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty('lastMailScan');
+  props.deleteProperty('lastPortalScan');
+  props.deleteProperty('lastSocialScan');
+  Logger.log('Scan history cleared. The next run will re-read the last few days.');
 }
