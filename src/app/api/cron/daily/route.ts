@@ -5,6 +5,7 @@ import { notify } from '@/lib/notifications/notify';
 import { putObject } from '@/lib/storage/storage';
 import { releaseExpiredHolds } from '@/lib/inventory/auto-release';
 import { writeAudit } from '@/lib/audit/log';
+import { getBriefing } from '@/server/services/briefing-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -74,6 +75,9 @@ export async function GET(req: NextRequest) {
     result.backup = { key: stored.key, sizeKb: Math.round(body.length / 1024) };
     await writeAudit({ action: 'EXPORT', entityType: 'Backup', summary: `Automated daily backup ${stamp}` });
   } catch { result.backup = 'failed'; }
+
+  // 5) regenerate the AI daily briefing
+  try { const b = await getBriefing(true); result.briefing = b.cached ? 'generated' : 'skipped'; } catch { result.briefing = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

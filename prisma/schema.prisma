@@ -1909,3 +1909,13 @@ model Reminder {
   @@index([userId, status])
   @@index([dueAt])
 }
+
+model DailyBriefing {
+  id        String   @id @default(cuid())
+  forDate   String   @unique // YYYY-MM-DD
+  headline  String
+  bullets   Json
+  actions   Json
+  metrics   Json
+  createdAt DateTime @default(now())
+}

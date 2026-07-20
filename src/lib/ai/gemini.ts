@@ -157,3 +157,65 @@ export async function analyzeCallRecording(audio: Buffer, mimeType: string): Pro
     };
   } catch { return null; }
 }
+
+export interface Briefing { headline: string; bullets: string[]; actions: string[] }
+const BRIEF_SCHEMA = { type: 'OBJECT', properties: {
+  headline: { type: 'STRING' },
+  bullets: { type: 'ARRAY', items: { type: 'STRING' } },
+  actions: { type: 'ARRAY', items: { type: 'STRING' } },
+} } as const;
+
+/** Turn today's CRM signals into a short executive briefing. Never throws — null on failure. */
+export async function generateBriefing(signals: string): Promise<Briefing | null> {
+  if (!env.GEMINI_API_KEY) return null;
+  const prompt =
+    'You are the sales director of a Bengaluru real-estate developer reading the CRM first thing in the morning. ' +
+    'From the numbers below write: a one-line "headline" on where the business stands today; 3-5 short "bullets" ' +
+    'on what changed and what is at risk (be specific, quote the numbers); and 3 concrete "actions" for today, ' +
+    'each starting with a verb. Be direct and brief. No preamble.\n\nSIGNALS:\n' + signals;
+  const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.35, responseMimeType: 'application/json', responseSchema: BRIEF_SCHEMA } };
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
+    if (!raw) return null;
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const arr = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x).slice(0, 300)).slice(0, 6) : []);
+    return { headline: String(j.headline ?? '').slice(0, 240), bullets: arr(j.bullets), actions: arr(j.actions) };
+  } catch { return null; }
+}
+
+export interface VoiceNote { transcript: string; kind: 'update' | 'task'; title: string; description: string; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' }
+const VOICE_SCHEMA = { type: 'OBJECT', properties: {
+  transcript: { type: 'STRING' }, kind: { type: 'STRING' }, title: { type: 'STRING' },
+  description: { type: 'STRING' }, priority: { type: 'STRING' },
+} } as const;
+
+/** Transcribe a site voice note and structure it into an update or a task. */
+export async function transcribeSiteNote(audio: Buffer, mimeType: string): Promise<VoiceNote | null> {
+  if (!env.GEMINI_API_KEY) return null;
+  if (audio.length > 18 * 1024 * 1024) return null;
+  const prompt =
+    'This is a voice note from a site engineer at a Bengaluru construction site. It may mix English, Hindi and Kannada. ' +
+    'Return: the full "transcript"; "kind" = "update" if it reports site progress, or "task" if it asks for something to be done/fixed; ' +
+    'a short "title" (max 10 words); a clear "description" in professional English; and "priority" ' +
+    '(LOW, MEDIUM, HIGH or URGENT) based on urgency expressed.';
+  const body = { contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: audio.toString('base64') } }, { text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: VOICE_SCHEMA } };
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
+    if (!raw) return null;
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const pr = String(j.priority ?? 'MEDIUM').toUpperCase();
+    return {
+      transcript: String(j.transcript ?? '').slice(0, 5000),
+      kind: String(j.kind ?? 'update').toLowerCase() === 'task' ? 'task' : 'update',
+      title: String(j.title ?? 'Site note').slice(0, 160),
+      description: String(j.description ?? '').slice(0, 2000),
+      priority: (['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(pr) ? pr : 'MEDIUM') as VoiceNote['priority'],
+    };
+  } catch { return null; }
+}

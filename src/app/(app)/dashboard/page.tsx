@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PriorityBadge } from '@/components/tasks/badges';
 import { formatCurrency, timeAgo } from '@/lib/utils/format';
+import { Sparkles } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
     prisma.paymentMilestone.groupBy({ by: ['status'], _sum: { amount: true } }),
   ]);
 
+  const briefing = await prisma.dailyBriefing.findUnique({ where: { forDate: now.toISOString().slice(0, 10) } }).catch(() => null);
   const paid = num(msAgg.find((m) => m.status === 'PAID')?._sum.amount);
   const totalDue = msAgg.reduce((s, m) => s + num(m._sum.amount), 0);
   const collectionRate = totalDue > 0 ? Math.round((paid / totalDue) * 100) : 0;
@@ -58,6 +60,19 @@ export default async function DashboardPage() {
         <StatCard label="Collections" value={`${collectionRate}%`} icon={Percent} tone={collectionRate < 50 ? 'warning' : 'success'} hint={`${formatCurrency(paid)} received`} />
         <StatCard label="Open work" value={data.stats.assignedOpen} icon={CheckSquare} hint={`${data.stats.dueTodayCount} due today`} />
       </div>
+
+      {briefing && (
+        <Card className="mt-6 border-primary/30 bg-primary/5 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><Sparkles className="h-4 w-4" /> Today&apos;s briefing</p>
+              <p className="font-display text-lg font-semibold">{briefing.headline}</p>
+              {((briefing.actions as string[]) ?? [])[0] && <p className="mt-1 text-sm text-muted-foreground">Next: {((briefing.actions as string[]) ?? [])[0]}</p>}
+            </div>
+            <Button asChild size="sm" variant="outline"><Link href="/briefing">Open</Link></Button>
+          </div>
+        </Card>
+      )}
 
       {/* Action cards */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
