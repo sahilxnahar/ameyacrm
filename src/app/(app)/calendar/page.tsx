@@ -7,8 +7,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { getWorkItems, getWorkloadTable } from '@/server/services/workload-service';
-import dynamic from 'next/dynamic';
-const CalendarView = dynamic(() => import('@/components/calendar/calendar-view').then((m) => m.CalendarView), {
+import nextDynamic from 'next/dynamic';
+const CalendarView = nextDynamic(() => import('@/components/calendar/calendar-view').then((m) => m.CalendarView), {
   loading: () => <div className="h-[560px] animate-pulse rounded-lg bg-secondary" />,
 });
 

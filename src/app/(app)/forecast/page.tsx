@@ -5,8 +5,8 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { getForecast, getProbabilities } from '@/server/services/forecast-service';
-import dynamic from 'next/dynamic';
-const ForecastView = dynamic(() => import('@/components/forecast/forecast-view').then((m) => m.ForecastView), {
+import nextDynamic from 'next/dynamic';
+const ForecastView = nextDynamic(() => import('@/components/forecast/forecast-view').then((m) => m.ForecastView), {
   loading: () => <div className="h-96 animate-pulse rounded-lg bg-secondary" />,
 });
 

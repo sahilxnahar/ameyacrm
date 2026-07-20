@@ -3,9 +3,9 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 // Map libraries are large and only needed on this page.
-const MapView = dynamic(() => import('@/components/map/map-view').then((m) => m.MapView), {
+const MapView = nextDynamic(() => import('@/components/map/map-view').then((m) => m.MapView), {
   loading: () => <div className="h-[560px] animate-pulse rounded-lg bg-secondary" />,
 });
 

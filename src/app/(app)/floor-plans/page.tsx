@@ -3,8 +3,8 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
-import dynamic from 'next/dynamic';
-const FloorPlanView = dynamic(() => import('@/components/floorplan/floor-plan-view').then((m) => m.FloorPlanView), {
+import nextDynamic from 'next/dynamic';
+const FloorPlanView = nextDynamic(() => import('@/components/floorplan/floor-plan-view').then((m) => m.FloorPlanView), {
   loading: () => <div className="h-[500px] animate-pulse rounded-lg bg-secondary" />,
 });
 
