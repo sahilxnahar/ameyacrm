@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CheckSquare, Inbox, Users2, FolderOpen, Receipt, Mail, Calendar,
-  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, LineChart, BellRing, Sparkles, Mic, type LucideIcon,
+  BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, LineChart, BellRing, Sparkles, Mic, ListChecks, IndianRupee, type LucideIcon,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -17,14 +17,20 @@ export interface NavGroup {
 
 export const NAVIGATION: NavGroup[] = [
   {
+    label: 'My Day',
+    items: [
+      { label: "Today's Priorities", href: '/today', icon: ListChecks },
+      { label: 'Daily Briefing', href: '/briefing', icon: Sparkles, permission: 'dashboard.view' },
+      { label: 'Reminders', href: '/reminders', icon: BellRing },
+    ],
+  },
+  {
     label: 'Workspace',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
-      { label: 'Daily Briefing', href: '/briefing', icon: Sparkles, permission: 'dashboard.view' },
       { label: 'Tasks', href: '/tasks', icon: CheckSquare, permission: 'task.view' },
       { label: 'Approvals', href: '/approvals', icon: Inbox },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view' },
-      { label: 'Reminders', href: '/reminders', icon: BellRing },
     ],
   },
   {
@@ -39,6 +45,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'NRI Desk', href: '/nri', icon: Globe2, permission: 'lead.view' },
       { label: 'Documents', href: '/documents', icon: FolderOpen, permission: 'document.view' },
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view' },
+      { label: 'Payment Requests', href: '/payment-requests', icon: IndianRupee, permission: 'billing.view' },
       { label: 'Material Requests', href: '/material-requests', icon: Mail, permission: 'material.view' },
       { label: 'Marketing', href: '/marketing', icon: Megaphone, permission: 'marketing.view' },
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view' },

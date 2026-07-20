@@ -1919,3 +1919,36 @@ model DailyBriefing {
   metrics   Json
   createdAt DateTime @default(now())
 }
+
+enum PaymentRequestStatus {
+  PENDING
+  VIEWED
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+model PaymentRequest {
+  id              String               @id @default(cuid())
+  reference       String               @unique // PAY-1001
+  token           String               @unique // unguessable public link
+  payeeName       String
+  payeeEmail      String?
+  payeePhone      String?
+  amount          Decimal              @db.Decimal(14, 2)
+  description     String
+  status          PaymentRequestStatus @default(PENDING)
+  dueDate         DateTime?
+  customerId      String?
+  bookingId       String?
+  requestedById   String?
+  requestedByName String?
+  payerReference  String? // UTR / txn reference entered by the payer
+  emailSentAt     DateTime?
+  viewedAt        DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([status])
+}
