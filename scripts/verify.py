@@ -42,6 +42,23 @@ for f in files:
     leaks += [(f, m) for m in re.findall(r"^import \{[^}]*\} from '(@/server/services/[^']+)'", t, re.M)]
 check('no server code in client components', leaks)
 
+# Required (non-optional) relation ids must never be handed a nullable value.
+required_rel = {}
+for m in re.finditer(r'model (\w+) \{(.*?)\n\}', s, re.S):
+    for fm in re.finditer(r'^\s{2}(\w+Id)\s+String(\??)', m.group(2), re.M):
+        if not fm.group(2):
+            required_rel.setdefault(m.group(1), set()).add(fm.group(1))
+nullable_writes = []
+for f in glob.glob('src/**/*.ts', recursive=True):
+    t = open(f).read()
+    for mm in re.finditer(r'prisma\.(\w+)\.create\(', t):
+        model = mm.group(1)[0].upper() + mm.group(1)[1:]
+        for field in required_rel.get(model, ()):
+            seg = t[mm.end():mm.end() + 700]
+            if re.search(field + r':\s*(null|undefined)\b', seg):
+                nullable_writes.append((f.replace('src/', ''), model + '.' + field))
+check('no null written to a required relation', nullable_writes)
+
 bad = []
 for f in glob.glob('src/server/actions/*.ts'):
     t = open(f).read()

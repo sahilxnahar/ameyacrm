@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     files = Array.isArray(body.files) ? body.files : [];
   } catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }
 
+  try {
   // Whoever owns the connector is credited as the uploader.
   const owner = await prisma.user.findFirst({
     where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] }, status: 'ACTIVE', deletedAt: null },
@@ -43,16 +44,40 @@ export async function POST(req: NextRequest) {
   if (!owner) return NextResponse.json({ error: 'no administrator to attribute files to' }, { status: 400 });
 
   let imported = 0, skipped = 0;
-  const folderCache = new Map<string, string | null>();
+  const failures: Array<{ name: string; error: string }> = [];
+  const folderCache = new Map<string, string>();
 
-  /** Find or create the CRM folder matching a Drive path. */
-  async function folderFor(path: string[]): Promise<string | null> {
-    const cacheKey = path.join('/');
+  /**
+   * Document.folderId is required, so a file sitting at the root of the Drive
+   * folder — the most common case — needs somewhere to live. One shared
+   * top-level folder rather than refusing the file.
+   */
+  async function rootFolderId(): Promise<string> {
+    const existing = await prisma.folder.findFirst({
+      where: { name: 'From Google Drive', parentId: null, deletedAt: null },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+    const made = await prisma.folder.create({
+      data: { name: 'From Google Drive', parentId: null, createdById: owner!.id, path: 'From Google Drive', visibility: 'DEPARTMENT' },
+    });
+    return made.id;
+  }
+
+  /** Find or create the CRM folder matching a Drive path. Never returns null. */
+  async function folderFor(path: string[]): Promise<string> {
+    const clean = (path ?? []).map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+    const cacheKey = clean.join('/');
     if (folderCache.has(cacheKey)) return folderCache.get(cacheKey)!;
+
+    if (!clean.length) {
+      const id = await rootFolderId();
+      folderCache.set(cacheKey, id);
+      return id;
+    }
+
     let parentId: string | null = null;
-    for (const raw of path.slice(0, 8)) {
-      const name = String(raw).trim().slice(0, 80);
-      if (!name) continue;
+    for (const name of clean) {
       const existing: { id: string } | null = await prisma.folder.findFirst({
         where: { name, parentId, deletedAt: null }, select: { id: true },
       });
@@ -62,12 +87,13 @@ export async function POST(req: NextRequest) {
             data: { name, parentId, createdById: owner!.id, path: name, visibility: 'DEPARTMENT' },
           })).id;
     }
-    folderCache.set(cacheKey, parentId);
-    return parentId;
+    folderCache.set(cacheKey, parentId!);
+    return parentId!;
   }
 
   for (const f of files.slice(0, 200)) {
     if (!f?.id || !f.name) { skipped++; continue; }
+    try {
 
     // Already here — either imported before, or the CRM put it there itself.
     const seen = await prisma.fileObject.findFirst({
@@ -98,7 +124,11 @@ export async function POST(req: NextRequest) {
         versions: { create: { version: 1, fileId: fileObj.id, createdById: owner.id } },
       },
     });
-    imported++;
+      imported++;
+    } catch (err) {
+      // One unreadable file must not lose the rest of the batch.
+      failures.push({ name: f.name, error: err instanceof Error ? err.message.slice(0, 200) : 'failed' });
+    }
   }
 
   if (imported > 0) {
@@ -115,5 +145,12 @@ export async function POST(req: NextRequest) {
     await writeAudit({ actorId: owner.id, action: 'UPLOAD', entityType: 'Document', summary: `Imported ${imported} files from Google Drive` });
   }
 
-  return NextResponse.json({ ok: true, imported, skipped });
+  return NextResponse.json({ ok: true, imported, skipped, failed: failures.length, failures: failures.slice(0, 5) });
+  } catch (err) {
+    // Whatever goes wrong, say so. A blank 500 tells nobody anything.
+    return NextResponse.json(
+      { ok: false, error: err instanceof Error ? err.message.slice(0, 300) : 'import failed' },
+      { status: 500 },
+    );
+  }
 }

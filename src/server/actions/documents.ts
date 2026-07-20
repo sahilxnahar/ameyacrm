@@ -54,6 +54,14 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
     const key = makeObjectKey(folderId, file.name);
     const stored = await putObject(key, buffer, file.type || 'application/octet-stream');
 
+    // Document.folderId is required, so an upload with no folder chosen needs
+    // somewhere to go rather than throwing.
+    if (!targetFolderId) {
+      const home = await prisma.folder.findFirst({ where: { name: 'Unfiled', parentId: null, deletedAt: null }, select: { id: true } })
+        ?? await prisma.folder.create({ data: { name: 'Unfiled', parentId: null, createdById: ctx.user.id, path: 'Unfiled', visibility: 'DEPARTMENT' } });
+      targetFolderId = home.id;
+    }
+
     const fileObj = await prisma.fileObject.create({
       data: { key: stored.key, bucket: stored.bucket, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: stored.size, checksum, uploadedById: ctx.user.id },
     });
