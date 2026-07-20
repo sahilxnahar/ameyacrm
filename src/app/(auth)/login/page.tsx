@@ -4,18 +4,35 @@ import { getCurrentUser } from '@/lib/auth/current-user';
 import Link from 'next/link';
 import { LoginForm } from '@/components/auth/login-form';
 import { getSignupConfig } from '@/server/actions/signup';
+import { getSamlConfig } from '@/lib/auth/saml';
 import { prisma } from '@/lib/db/prisma';
 import { InstallGuide } from '@/components/install/install-guide';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ sso?: string }> }) {
   if (await getCurrentUser()) redirect('/dashboard');
   const { enabled } = await getSignupConfig();
+  const sso = await getSamlConfig();
+  const { sso: ssoError } = await searchParams;
   const apkRow = await prisma.setting.findUnique({ where: { key: 'app.apkUrl' } }).catch(() => null);
   const apkUrl = (apkRow?.value as string) || null;
   return (
     <div className="space-y-4">
+      {ssoError && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-sm">{ssoError}</p>}
+
+      {sso.enabled && (
+        <>
+          <a href="/api/auth/saml/login"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-[#D9D2C4] bg-white text-sm font-medium text-[#14120E]">
+            Sign in with your work account
+          </a>
+          <p className="flex items-center gap-3 text-xs text-[#5E584C]">
+            <span className="h-px flex-1 bg-[#D9D2C4]" /> or use a password <span className="h-px flex-1 bg-[#D9D2C4]" />
+          </p>
+        </>
+      )}
+
       <LoginForm />
       {enabled && (
         <p className="text-sm">

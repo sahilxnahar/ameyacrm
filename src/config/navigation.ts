@@ -8,6 +8,7 @@ import {
   MessageCircleQuestion,
   LayoutGrid,
   HardHat,
+  MailPlus,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -47,6 +48,7 @@ export const NAVIGATION: NavGroup[] = [
     label: 'Business',
     items: [
       { label: 'Sales & Leads', href: '/sales', icon: Users2, permission: 'lead.view' },
+      { label: 'Email Sequences', href: '/sequences', icon: MailPlus, permission: 'lead.view' },
       { label: 'Inventory', href: '/inventory', icon: Building2, permission: 'booking.view' },
       { label: 'Floor Plans', href: '/floor-plans', icon: LayoutGrid, permission: 'booking.view' },
       { label: 'Site Visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },

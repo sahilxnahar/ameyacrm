@@ -2375,3 +2375,108 @@ model OnboardingStep {
 
   @@unique([userId, stepKey])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Two-way email  (v9.0)
+//
+//  EmailMessage above is the outbound queue for system mail (material requests
+//  and the like). This is different: the actual conversation with a buyer,
+//  both directions, threaded onto the lead.
+// ════════════════════════════════════════════════════════════════════════════
+
+enum MailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model MailThreadMessage {
+  id          String        @id @default(cuid())
+  externalId  String?       @unique // Gmail message id — a rescan never duplicates
+  threadKey   String // groups one conversation
+  direction   MailDirection
+  fromAddress String
+  toAddresses String[]
+  subject     String?
+  bodyText    String?
+  snippet     String?
+  sentAt      DateTime      @default(now())
+
+  leadId     String?
+  customerId String?
+  userId     String? // whoever here sent it
+
+  trackToken String?   @unique // open-tracking pixel
+  openedAt   DateTime?
+  openCount  Int       @default(0)
+
+  enrollmentId String?
+  createdAt    DateTime @default(now())
+
+  @@index([leadId, sentAt])
+  @@index([customerId, sentAt])
+  @@index([threadKey])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Email sequences  (v9.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+enum SequenceStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  RUNNING
+  REPLIED
+  FINISHED
+  STOPPED
+}
+
+model EmailSequence {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  status      SequenceStatus @default(PAUSED)
+  stopOnReply Boolean        @default(true)
+  stopOnStage String? // exit when the lead reaches this status
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+}
+
+model SequenceStep {
+  id         String   @id @default(cuid())
+  sequenceId String
+  ordinal    Int      @default(0)
+  dayOffset  Int      @default(0) // days after enrolment
+  subject    String
+  body       String
+  createdAt  DateTime @default(now())
+
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, ordinal])
+}
+
+model SequenceEnrollment {
+  id           String           @id @default(cuid())
+  sequenceId   String
+  leadId       String
+  status       EnrollmentStatus @default(RUNNING)
+  stepsSent    Int              @default(0)
+  nextStepAt   DateTime?
+  enrolledById String?
+  enrolledAt   DateTime         @default(now())
+  endedAt      DateTime?
+  endReason    String?
+
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, leadId])
+  @@index([status, nextStepAt])
+}

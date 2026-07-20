@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { env } from '@/config/env';
 import { runOverdueEscalation } from '@/server/services/escalation-service';
+import { runSequences } from '@/server/services/sequence-service';
 import { logError } from '@/lib/monitoring/log-error';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await runOverdueEscalation();
-    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result });
+    let sequences: unknown = 'skipped';
+    try { sequences = await runSequences(); } catch { sequences = 'failed'; }
+    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result, sequences });
   } catch (err) {
     await logError(err, { path: '/api/cron/escalate' });
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'failed' }, { status: 500 });

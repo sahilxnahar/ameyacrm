@@ -33,6 +33,7 @@ export default async function AdminPage() {
           { href: '/admin/company', icon: Building2, title: 'Company Details', desc: 'GST, bank, addresses for invoices' },
           { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours' },
           { href: '/admin/automations', icon: Zap, title: 'Automations', desc: 'Rules, assignment, follow-ups' },
+          { href: '/admin/sso', icon: KeyRound, title: 'Single Sign-On', desc: 'Sign in with Google Workspace' },
           { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA & login rules' },
           { href: '/admin/security-center', icon: ShieldAlert, title: 'Security Center', desc: 'Logins, sessions, backup' },
           { href: '/admin/collections', icon: Percent, title: 'Collections & Tax', desc: 'Interest rate, default GST' },

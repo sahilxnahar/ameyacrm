@@ -266,3 +266,71 @@ function scanPortalsOnce() {
     for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  TWO-WAY EMAIL  (v9.0)
+ *  Reads the actual conversation with buyers — both what they send you and
+ *  what you send them — and threads it onto the right lead in the CRM.
+ *
+ *  Uses the mailbox permission this script already has. No Cloud Console,
+ *  no OAuth app, no API project, no cost.
+ *
+ *  SETUP
+ *   1. INGEST_KEY above must already be filled in.
+ *   2. Run scanMailOnce() once and approve the permission.
+ *   3. Triggers > Add Trigger > scanMailOnce > Time-driven >
+ *      Minutes timer > Every 15 minutes.
+ *
+ *  Anything from an address the CRM does not recognise is ignored — your
+ *  personal mail is never stored.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+function scanMailOnce() {
+  if (INGEST_KEY.indexOf('PASTE') === 0) {
+    Logger.log('INGEST_KEY is not filled in yet — stopping.');
+    return;
+  }
+
+  var me = Session.getActiveUser().getEmail().toLowerCase();
+  var threads = GmailApp.search('newer_than:3d -in:chats -label:crm-mailed', 0, 40);
+  var messages = [];
+
+  for (var i = 0; i < threads.length; i++) {
+    var msgs = threads[i].getMessages();
+    for (var j = 0; j < msgs.length; j++) {
+      var m = msgs[j];
+      var from = m.getFrom().toLowerCase();
+      var outbound = from.indexOf(me) !== -1;
+
+      // Skip the machine mail we already capture elsewhere.
+      if (/99acres|magicbricks|housing\.com|instagram|linkedin|facebookmail|no-?reply|notification/.test(from)) continue;
+
+      messages.push({
+        messageId: m.getId(),
+        from: m.getFrom(),
+        to: m.getTo(),
+        subject: m.getSubject(),
+        body: m.getPlainBody().substring(0, 8000),
+        date: m.getDate().toISOString(),
+        outbound: outbound
+      });
+    }
+  }
+
+  if (!messages.length) { Logger.log('no mail to sync'); return; }
+
+  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/email', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-ingest-key': INGEST_KEY },
+    payload: JSON.stringify({ messages: messages }),
+    muteHttpExceptions: true
+  });
+
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+
+  if (res.getResponseCode() === 200) {
+    var label = GmailApp.getUserLabelByName('crm-mailed') || GmailApp.createLabel('crm-mailed');
+    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
+  }
+}
