@@ -1,73 +1,74 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
-import { ROLE_LABELS } from '@/lib/rbac/roles';
-import { isGeminiEnabled } from '@/lib/ai/gemini';
-import { isDriveConfigured } from '@/lib/google/drive';
 import { PageHeader } from '@/components/layout/page-header';
-import { DocumentsView } from '@/components/documents/documents-view';
 import { getFolderTree } from '@/server/services/folder-access-service';
-import { redirect } from 'next/navigation';
+import { DriveBrowser } from '@/components/documents/drive-browser';
 
 export const metadata: Metadata = { title: 'Documents' };
+export const dynamic = 'force-dynamic';
 
 export default async function DocumentsPage({ searchParams }: { searchParams: Promise<{ folder?: string }> }) {
   const ctx = await requirePermission('document.view');
   const { folder } = await searchParams;
   const folderId = folder ?? null;
-  const allFolders = await prisma.folder.findMany({ where: { deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 });
-  const canManage = can(ctx.permissions, 'document.manage');
 
-  // Folders are always listed; their contents are not always readable.
   const tree = await getFolderTree(ctx);
   const access = new Map(tree.map((t) => [t.id, t]));
-  if (folderId && access.get(folderId)?.canOpen === false) {
-    redirect('/documents?locked=' + folderId);
-  }
+  if (folderId && access.get(folderId)?.canOpen === false) redirect('/documents');
 
-  const [current, folders, documents, projects, perms, users, departments] = await Promise.all([
-    folderId ? prisma.folder.findUnique({ where: { id: folderId } }) : null,
-    prisma.folder.findMany({ where: { parentId: folderId, deletedAt: null }, orderBy: { name: 'asc' }, include: { _count: { select: { documents: true, children: true } } } }),
-    prisma.document.findMany({ where: { folderId: folderId ?? undefined, deletedAt: null }, orderBy: { updatedAt: 'desc' }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { file: true } }, owner: { select: { name: true } }, _count: { select: { versions: true } } } }),
-    prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
-    folderId ? prisma.folderPermission.findMany({ where: { folderId }, include: { user: { select: { name: true } }, department: { select: { name: true } } } }) : Promise.resolve([]),
-    canManage ? prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
-    canManage ? prisma.department.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
-  ]);
+  const documents = await prisma.document.findMany({
+    where: { folderId: folderId ?? undefined, deletedAt: null },
+    orderBy: { updatedAt: 'desc' },
+    take: 300,
+    select: {
+      id: true, title: true, updatedAt: true,
+      owner: { select: { name: true } },
+      versions: {
+        orderBy: { version: 'desc' }, take: 1,
+        select: { file: { select: { id: true, originalName: true, mimeType: true, size: true, driveUrl: true } } },
+      },
+    },
+  });
 
+  // Breadcrumbs, walking up from wherever we are.
   const crumbs: { id: string; name: string }[] = [];
-  if (current) {
-    const ids = current.path.split('/').filter(Boolean);
-    if (ids.length) {
-      const parents = await prisma.folder.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
-      const byId = new Map(parents.map((p) => [p.id, p.name] as const));
-      ids.forEach((pid) => byId.has(pid) && crumbs.push({ id: pid, name: byId.get(pid)! }));
-    }
-    crumbs.push({ id: current.id, name: current.name });
+  let cur = folderId;
+  for (let i = 0; i < 10 && cur; i++) {
+    const node = access.get(cur);
+    if (!node) break;
+    crumbs.unshift({ id: node.id, name: node.name });
+    cur = node.parentId;
   }
 
   return (
     <div>
-      <PageHeader title="Document Control" description="Versioned, permissioned, searchable document library." />
-      <DocumentsView
-        allFolders={allFolders.map((f) => ({ id: f.id, name: f.name }))}
-        folderId={folderId}
-        folderName={current?.name ?? 'Library'}
-        crumbs={crumbs}
-        projects={projects}
-        canManage={canManage}
-        geminiEnabled={isGeminiEnabled()}
-        driveEnabled={isDriveConfigured()}
-        users={users}
-        departments={departments}
-        permissions={perms.map((p) => ({
-          id: p.id, level: p.level,
-          kind: p.userId ? 'User' : p.departmentId ? 'Dept' : 'Role',
-          who: p.user?.name ?? p.department?.name ?? (p.role ? ROLE_LABELS[p.role] : '—'),
+      <PageHeader
+        title={crumbs.at(-1)?.name ?? 'Documents'}
+        description="Everything the company has filed. Drag files onto a folder to move them; anything added in Google Drive turns up here too."
+      />
+      <DriveBrowser
+        tree={tree.map((t) => ({
+          id: t.id, name: t.name, parentId: t.parentId,
+          documentCount: t.documentCount, canOpen: t.canOpen, reason: t.reason,
         }))}
-        folders={folders.map((f) => ({ id: f.id, name: f.name, visibility: f.visibility, docs: f._count.documents, subfolders: f._count.children, locked: access.get(f.id)?.canOpen === false, lockReason: access.get(f.id)?.reason ?? null }))}
-        documents={documents.map((d) => ({ id: d.id, title: d.title, versions: d._count.versions, owner: d.owner?.name ?? null, updatedAt: d.updatedAt.toISOString(), expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null, fileId: d.versions[0]?.file.id ?? null, size: d.versions[0]?.file.size ?? null, mime: d.versions[0]?.file.mimeType ?? null, summary: d.versions[0]?.file.ocrText ?? null, driveUrl: d.versions[0]?.file.driveUrl ?? null }))}
+        documents={documents.map((d) => {
+          const f = d.versions[0]?.file ?? null;
+          return {
+            id: d.id, title: d.title,
+            fileId: f?.id ?? null, fileName: f?.originalName ?? null,
+            mimeType: f?.mimeType ?? null, size: f?.size ?? 0,
+            driveUrl: f?.driveUrl ?? null,
+            ownerName: d.owner?.name ?? null,
+            updatedAt: d.updatedAt.toISOString(),
+          };
+        })}
+        crumbs={crumbs}
+        currentId={folderId}
+        canManage={can(ctx.permissions, 'document.manage')}
+        canUpload={can(ctx.permissions, 'document.create')}
       />
     </div>
   );

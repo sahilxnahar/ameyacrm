@@ -9,7 +9,7 @@ import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
-export type DocResult = { ok: true; id: string; fileId?: string } | { error: string };
+export type DocResult = { ok: true; id: string; fileId?: string; message?: string } | { error: string };
 
 const folderSchema = z.object({
   name: z.string().min(1).max(120),
@@ -256,5 +256,57 @@ export async function sendDocumentToDrive(documentId: string): Promise<DocResult
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: `Copied ${file.originalName} to Google Drive` });
     revalidatePath('/documents');
     return { ok: true, id: documentId };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Move several documents at once. Refuses to drop anything into a folder you cannot open. */
+export async function moveDocuments(documentIds: string[], folderId: string): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.update');
+    const ids = documentIds.slice(0, 300);
+    if (!ids.length) return { error: 'Nothing selected.' };
+
+    const { lockedFolderIds } = await import('@/server/services/folder-access-service');
+    const locked = await lockedFolderIds(ctx);
+    if (locked.includes(folderId)) return { error: 'You cannot move files into a folder you do not have access to.' };
+
+    const r = await prisma.document.updateMany({
+      where: { id: { in: ids }, deletedAt: null, ...(locked.length ? { folderId: { notIn: locked } } : {}) },
+      data: { folderId },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', summary: `Moved ${r.count} document(s)` });
+    revalidatePath('/documents');
+    return { ok: true, id: folderId, message: `${r.count} moved.` } as DocResult;
+  } catch (err) { return toActionError(err); }
+}
+
+/** Rename a folder. */
+export async function renameFolder(folderId: string, name: string): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.manage');
+    const clean = name.trim().slice(0, 80);
+    if (clean.length < 1) return { error: 'Give the folder a name.' };
+    await prisma.folder.update({ where: { id: folderId }, data: { name: clean, path: clean } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: folderId, summary: `Renamed folder to ${clean}` });
+    revalidatePath('/documents');
+    return { ok: true, id: folderId };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Move a folder under another one. Refuses to create a loop. */
+export async function moveFolder(folderId: string, parentId: string | null): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.manage');
+    if (folderId === parentId) return { error: 'A folder cannot sit inside itself.' };
+    let cur: string | null = parentId;
+    for (let i = 0; i < 10 && cur; i++) {
+      if (cur === folderId) return { error: 'That would put the folder inside one of its own subfolders.' };
+      const up: { parentId: string | null } | null = await prisma.folder.findUnique({ where: { id: cur }, select: { parentId: true } });
+      cur = up?.parentId ?? null;
+    }
+    await prisma.folder.update({ where: { id: folderId }, data: { parentId } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: folderId, summary: 'Moved a folder' });
+    revalidatePath('/documents');
+    return { ok: true, id: folderId };
   } catch (err) { return toActionError(err); }
 }

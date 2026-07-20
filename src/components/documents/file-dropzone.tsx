@@ -20,7 +20,7 @@ function relativeFolder(file: File): string[] {
   return parts.filter(Boolean).slice(0, 6);
 }
 
-export function FileDropzone({ folderId, onFinished }: { folderId: string; onFinished?: () => void }) {
+export function FileDropzone({ folderId, onFinished }: { folderId?: string; onFinished?: () => void }) {
   const router = useRouter();
   const [items, setItems] = React.useState<Item[]>([]);
   const [dragging, setDragging] = React.useState(false);
