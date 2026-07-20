@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, CheckSquare, Inbox, Users2, FolderOpen, Receipt, Mail, Calendar,
   BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, LineChart, BellRing, Sparkles, Mic, ListChecks, IndianRupee, type LucideIcon,
+  Network,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -31,6 +32,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Tasks', href: '/tasks', icon: CheckSquare, permission: 'task.view' },
       { label: 'Approvals', href: '/approvals', icon: Inbox },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view' },
+      { label: 'Team & Hierarchy', href: '/team', icon: Network },
     ],
   },
   {

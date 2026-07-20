@@ -301,6 +301,11 @@ model Department {
   headId String?
   head   User?   @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
 
+  // Two-level structure: a division and the teams inside it.
+  parentId String?
+  parent   Department?  @relation("DeptTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Department[] @relation("DeptTree")
+
   users            User[]             @relation("UserDepartment")
   tasks            Task[]
   materialRequests MaterialRequest[]
@@ -343,6 +348,11 @@ model User {
 
   departmentId String?
   department   Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Reporting line. Drives who can see whose work (see lib/rbac/scope.ts).
+  managerId     String?
+  manager       User?   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports User[]  @relation("UserHierarchy")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

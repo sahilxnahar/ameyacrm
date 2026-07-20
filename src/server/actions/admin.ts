@@ -108,7 +108,22 @@ export async function setUserManager(userId: string, managerId: string | null): 
     }
     await prisma.user.update({ where: { id: userId }, data: { managerId } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: managerId ? 'Updated reporting manager' : 'Cleared reporting manager' });
+    revalidatePath('/team');
     revalidatePath('/admin');
     return { ok: true, id: userId };
   } catch (err) { return toActionError(err); }
+}
+
+/** Move a person into a department (or out of one). */
+export async function setUserDepartment(userId: string, departmentId: string | null): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    await prisma.user.update({ where: { id: userId }, data: { departmentId } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: departmentId ? 'Moved to a department' : 'Removed from department' });
+    revalidatePath('/team');
+    revalidatePath('/admin');
+    return { ok: true };
+  } catch (err) {
+    return toActionError(err);
+  }
 }
