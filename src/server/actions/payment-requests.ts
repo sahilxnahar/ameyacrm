@@ -8,7 +8,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { env } from '@/config/env';
 import { ensure, toActionError } from './_helpers';
 
-export type PayResult = { ok: true; id?: string; link?: string; emailed?: boolean } | { error: string };
+export type PayResult = { ok: true; id?: string; link?: string; emailed?: boolean; emailError?: string } | { error: string };
 
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 const money = (n: number) => `Rs. ${inr.format(n)}`;
@@ -43,6 +43,7 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
 
     const link = `${baseUrl()}/pay/${token}`;
     let emailed = false;
+    let emailError: string | undefined;
     if (d.payeeEmail) {
       const instructions = String((await prisma.setting.findUnique({ where: { key: 'payments.instructions' } }))?.value ?? '');
       const text = [
@@ -63,12 +64,13 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
       ].filter(Boolean).join('\n');
       const res = await sendEmail({ to: [d.payeeEmail], subject: `Payment request ${reference} — ${money(d.amount)}`, text });
       emailed = res.ok;
+      if (!res.ok) { emailError = res.error ?? 'email not configured'; console.error('[payment-request] email failed:', emailError); }
       if (res.ok) await prisma.paymentRequest.update({ where: { id: pr.id }, data: { emailSentAt: new Date() } });
     }
 
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'PaymentRequest', entityId: pr.id, summary: `Requested ${money(d.amount)} from ${d.payeeName} (${reference})` });
     revalidatePath('/payment-requests');
-    return { ok: true, id: pr.id, link, emailed };
+    return { ok: true, id: pr.id, link, emailed, emailError };
   } catch (err) { return toActionError(err); }
 }
 

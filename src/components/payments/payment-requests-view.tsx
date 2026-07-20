@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Plus, Loader2, Link2, MessageCircle, Send, Check, Ban, Settings2 } from 'lucide-react';
 import { createPaymentRequest, resendPaymentRequest, setPaymentRequestStatus, savePaymentInstructions } from '@/server/actions/payment-requests';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils/cn';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +20,8 @@ const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const money = (n: number) => `₹${inr.format(n)}`;
 const tone = (s: string) => (s === 'PAID' ? 'success' : s === 'CANCELLED' ? 'secondary' : s === 'CONFIRMED' ? 'warning' : 'secondary') as 'success' | 'secondary' | 'warning';
 
+const AB = 'h-7 gap-1.5 px-2 text-xs font-normal';
+
 export function PaymentRequestsView({ requests, customers, instructions, appUrl }: { requests: Req[]; customers: Opt[]; instructions: string; appUrl: string }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -27,7 +30,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
   const [fresh, setFresh] = React.useState<string | null>(null);
 
   const link = (t: string) => `${appUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/pay/${t}`;
-  const act = (fn: () => Promise<{ ok: true } | { error: string } | { ok: true; link?: string; emailed?: boolean }>, ok: string) =>
+  const act = (fn: () => Promise<{ ok: true } | { error: string } | { ok: true; link?: string; emailed?: boolean; emailError?: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); router.refresh(); });
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,7 +43,8 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
       });
       if ('error' in r) return toast.error(r.error);
       setFresh(r.link ?? null); form.reset(); setOpen(false); router.refresh();
-      toast.success(r.emailed ? 'Request created and emailed' : 'Request created — email not configured, share the link');
+      if (r.emailed) toast.success('Request created and emailed');
+      else { toast.warning('Request created, but the email did not send — copy the link below and share it.'); if (r.emailError) toast.error(`Email error: ${r.emailError}`, { duration: 12000 }); }
     });
   };
 
@@ -77,16 +81,16 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
                 <TableCell className="text-right font-medium">{money(r.amount)}</TableCell>
                 <TableCell><Badge variant={tone(r.status)}>{r.status}</Badge></TableCell>
                 <TableCell className="text-right">
-                  <span className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Copy link" onClick={() => { navigator.clipboard?.writeText(link(r.token)); toast.success('Link copied'); }}><Link2 className="h-4 w-4" /></Button>
+                  <span className="flex flex-wrap justify-end gap-1.5">
+                    <Button size="sm" variant="outline" className={AB} title="Copy the secure payment link so you can paste it anywhere" onClick={() => { navigator.clipboard?.writeText(link(r.token)); toast.success('Link copied'); }}><Link2 className="h-3.5 w-3.5" /> Copy link</Button>
                     {r.payeePhone && (
-                      <Button asChild size="icon" variant="ghost" className="h-7 w-7" title="WhatsApp">
-                        <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${money(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-4 w-4 text-emerald-600" /></a>
+                      <Button asChild size="sm" variant="outline" className={AB} title="Send the request to this person on WhatsApp">
+                        <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${money(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp</a>
                       </Button>
                     )}
-                    {r.payeeEmail && <Button size="icon" variant="ghost" className="h-7 w-7" title="Resend email" disabled={pending} onClick={() => act(() => resendPaymentRequest(r.id), 'Email sent')}><Send className="h-4 w-4" /></Button>}
-                    {r.status !== 'PAID' && <Button size="icon" variant="ghost" className="h-7 w-7 text-success" title="Mark paid" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'PAID'), 'Marked paid')}><Check className="h-4 w-4" /></Button>}
-                    {r.status !== 'CANCELLED' && <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Cancel" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'CANCELLED'), 'Cancelled')}><Ban className="h-4 w-4" /></Button>}
+                    {r.payeeEmail && <Button size="sm" variant="outline" className={AB} title="Email the request to the payee again" disabled={pending} onClick={() => act(() => resendPaymentRequest(r.id), 'Email sent')}><Send className="h-3.5 w-3.5" /> Resend email</Button>}
+                    {r.status !== 'PAID' && <Button size="sm" variant="outline" className={cn(AB, 'text-success')} title="Confirm the money has reached your account" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'PAID'), 'Marked paid')}><Check className="h-3.5 w-3.5" /> Mark paid</Button>}
+                    {r.status !== 'CANCELLED' && <Button size="sm" variant="outline" className={cn(AB, 'text-destructive')} title="Withdraw this request — the link stops working" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'CANCELLED'), 'Cancelled')}><Ban className="h-3.5 w-3.5" /> Cancel</Button>}
                   </span>
                 </TableCell>
               </TableRow>

@@ -99,3 +99,34 @@
   .card-elevated { @apply rounded-lg border bg-card shadow-sm; }
   .focus-ring { @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring; }
 }
+
+@layer components {
+  /* Shiny metallic gold text — used for page titles, section labels and card headings. */
+  .gold-shine {
+    background-image: linear-gradient(100deg,
+      #8C6E2C 0%, #A07D34 18%, #E4C878 38%, #FFF3D0 48%,
+      #E4C878 58%, #A07D34 78%, #8C6E2C 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: gold-sweep 7s ease-in-out infinite;
+  }
+  @keyframes gold-sweep {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .gold-shine { animation: none; } }
+
+  /* Solid readable gold for nav items and smaller labels. */
+  /* background-clip:text makes color transparent — keep any nested icon visible. */
+  .gold-shine svg, .gold-shine img { -webkit-text-fill-color: initial; color: #A07D34; }
+  .gold-solid { color: #8C6E2C; }
+  .dark .gold-solid { color: #D9BE79; }
+  .dark .gold-shine {
+    background-image: linear-gradient(100deg,
+      #C2A05B 0%, #D9BE79 18%, #F6E3AE 38%, #FFFBEF 48%,
+      #F6E3AE 58%, #D9BE79 78%, #C2A05B 100%);
+  }
+}

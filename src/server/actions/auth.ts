@@ -28,6 +28,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       return { error: 'Invalid credentials. Please try again.' };
     case 'disabled':
       return { error: 'This account is disabled. Contact your administrator.' };
+    case 'pending':
+      return { error: 'This account is not active yet. Confirm your email, then wait for an administrator to approve access if you are outside the company domain.' };
     case 'locked':
       return { error: `Account locked. Try again after ${result.retryAt.toLocaleTimeString()}.` };
     case 'needs_2fa':

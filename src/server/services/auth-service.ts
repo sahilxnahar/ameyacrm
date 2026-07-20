@@ -11,6 +11,7 @@ export type AuthResult =
   | { status: 'needs_2fa'; user: User }
   | { status: 'locked'; retryAt: Date }
   | { status: 'disabled' }
+  | { status: 'pending' }
   | { status: 'invalid' };
 
 async function recordLogin(userId: string | null, username: string, success: boolean, reason?: string) {
@@ -44,6 +45,11 @@ export async function authenticate(identifier: string, password: string): Promis
   if (!user) {
     await recordLogin(null, id, false, 'user_not_found');
     return { status: 'invalid' };
+  }
+
+  if (user.status === 'PENDING' || user.status === 'INVITED') {
+    await recordLogin(user.id, id, false, 'account_pending');
+    return { status: 'pending' };
   }
 
   if (user.status === 'DISABLED' || user.status === 'SUSPENDED') {

@@ -28,6 +28,7 @@ enum RoleName {
 
 enum UserStatus {
   INVITED
+  PENDING
   ACTIVE
   SUSPENDED
   DISABLED
@@ -331,6 +332,14 @@ model User {
   lockedUntil        DateTime?
   passwordChangedAt  DateTime  @default(now())
   mustChangePassword Boolean   @default(false)
+
+  // Self-signup / access requests
+  emailVerifiedAt  DateTime?
+  verifyToken      String?   @unique
+  verifyExpiresAt  DateTime?
+  signupNote       String?
+  approvedAt       DateTime?
+  approvedById     String?
 
   departmentId String?
   department   Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
