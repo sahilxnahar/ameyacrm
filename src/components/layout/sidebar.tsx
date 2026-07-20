@@ -41,7 +41,7 @@ export function Sidebar({
             if (items.length === 0) return null;
             return (
               <div key={group.label}>
-                <p className="gold-shine mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em]">
+                <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">
                   {group.label}
                 </p>
                 <ul className="space-y-1">
@@ -60,8 +60,8 @@ export function Sidebar({
                               : 'gold-solid hover:bg-primary/5',
                           )}
                         >
-                          <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#A07D34]' : 'text-[#8C6E2C]/75')} />
-                          <span className={active ? 'gold-shine' : undefined}>{item.label}</span>
+                          <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#A07D34]' : 'text-[#6B6459]')} />
+                          <span className={active ? 'font-semibold text-[#14120E] dark:text-[#F1EAD9]' : undefined}>{item.label}</span>
                         </Link>
                       </li>
                     );
@@ -72,7 +72,7 @@ export function Sidebar({
           })}
         </nav>
         <div className="border-t p-4 text-[10px] text-muted-foreground">
-          Ameya Heights CRM · v6.0
+          Ameya Heights CRM · v7.1
         </div>
       </aside>
     </>

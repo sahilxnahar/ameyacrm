@@ -2,6 +2,9 @@ import {
   LayoutDashboard, CheckSquare, Inbox, Users2, FolderOpen, Receipt, Mail, Calendar,
   BarChart3, Shield, ScrollText, Settings, Megaphone, KeyRound, PencilRuler, Globe2, Building2, ClipboardCheck, Handshake, UserRound, LineChart, BellRing, Sparkles, Mic, ListChecks, IndianRupee, type LucideIcon,
   Network,
+  TrendingUp,
+  MapPin,
+  AtSign,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -33,6 +36,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Approvals', href: '/approvals', icon: Inbox },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view' },
       { label: 'Team & Hierarchy', href: '/team', icon: Network },
+      { label: 'Social Accounts', href: '/social-accounts', icon: AtSign },
     ],
   },
   {
@@ -52,6 +56,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Marketing', href: '/marketing', icon: Megaphone, permission: 'marketing.view' },
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view' },
       { label: 'Architecture', href: '/architecture', icon: PencilRuler, permission: 'architecture.view' },
+      { label: 'Forecast', href: '/forecast', icon: TrendingUp, permission: 'report.view' },
+      { label: 'Map', href: '/map', icon: MapPin, permission: 'lead.view' },
       { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'report.view' },
       { label: 'Analytics', href: '/analytics', icon: LineChart, permission: 'report.view' },
     ],

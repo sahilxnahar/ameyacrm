@@ -4,6 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 // Brand colours (RGB 0..1)
 const BRASS = rgb(0.627, 0.49, 0.204);
 const CHARCOAL = rgb(0.063, 0.059, 0.051);
+const SAND = rgb(0.945, 0.929, 0.898);
 const MUTE = rgb(0.45, 0.42, 0.38);
 const LINE = rgb(0.85, 0.83, 0.79);
 
@@ -16,7 +17,12 @@ export interface InvoicePdfData {
   number: string; clientName: string; clientGstin: string | null; status: string;
   issueDate: Date; dueDate: Date | null;
   subTotal: number; cgst: number; sgst: number; igst: number; total: number; notes: string | null;
-  company: { name: string; tagline: string; website: string; reraNote: string };
+  company: {
+    name: string; tagline: string; website: string; reraNote: string;
+    gstin?: string; pan?: string; registeredAddress?: string; siteName?: string; siteAddress?: string;
+    bankName?: string; bankAccountName?: string; bankAccountNumber?: string; bankIfsc?: string;
+    bankBranch?: string; upiId?: string; phone?: string; email?: string;
+  };
   project: string | null; items: InvoiceItemPdf[];
 }
 
@@ -40,14 +46,20 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
   // Header
   page.drawRectangle({ x: 0, y: 828, width: W, height: 14, color: BRASS });
   text(d.company.name, M, y, 22, bold, CHARCOAL);
-  text(d.company.tagline, M, y - 18, 9, font, MUTE);
-  text(d.company.website.replace('https://', ''), M, y - 30, 9, font, MUTE);
+  text(d.company.tagline, M, y - 16, 9, font, MUTE);
+  if (d.company.registeredAddress) {
+    const addr = d.company.registeredAddress;
+    text(addr.slice(0, 62), M, y - 28, 8, font, MUTE);
+    if (addr.length > 62) text(addr.slice(62, 124), M, y - 38, 8, font, MUTE);
+  }
+  text(d.company.website.replace('https://', '').replace('www.', ''), M, y - 50, 8, font, MUTE);
+  if (d.company.gstin) text(`GSTIN: ${d.company.gstin}`, M, y - 62, 9, bold, CHARCOAL);
   right('TAX INVOICE', W - M, y, 18, bold, BRASS);
   right(`# ${d.number}`, W - M, y - 20, 11, bold);
   right(`Date: ${d.issueDate.toLocaleDateString('en-IN')}`, W - M, y - 34, 9, font, MUTE);
   if (d.dueDate) right(`Due: ${d.dueDate.toLocaleDateString('en-IN')}`, W - M, y - 46, 9, font, MUTE);
 
-  y -= 74;
+  y -= 92;
   page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1, color: LINE });
   y -= 24;
 
@@ -94,7 +106,24 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
 
   if (d.notes) { text('Notes', M, y, 8, bold, MUTE); text(d.notes, M, y - 13, 9, font, CHARCOAL); y -= 34; }
 
+  // Bank details — so the payer never has to ask for them
+  const bank = [
+    d.company.bankAccountName ? `A/c name: ${d.company.bankAccountName}` : '',
+    d.company.bankName ? `Bank: ${d.company.bankName}` : '',
+    d.company.bankAccountNumber ? `A/c no: ${d.company.bankAccountNumber}` : '',
+    d.company.bankIfsc ? `IFSC: ${d.company.bankIfsc}` : '',
+    d.company.bankBranch ? `Branch: ${d.company.bankBranch}` : '',
+    d.company.upiId ? `UPI: ${d.company.upiId}` : '',
+  ].filter(Boolean);
+  if (bank.length) {
+    const boxY = Math.max(96, y - 8);
+    page.drawRectangle({ x: M - 6, y: boxY - 12 - bank.length * 11, width: 290, height: bank.length * 11 + 26, color: SAND });
+    text('PAYMENT DETAILS', M, boxY, 8, bold, MUTE);
+    bank.forEach((line, i) => text(line, M, boxY - 13 - i * 11, 8, font, CHARCOAL));
+  }
+
   // Footer
+  if (d.company.siteAddress) text(`Site: ${d.company.siteName ? d.company.siteName + ' — ' : ''}${d.company.siteAddress}`.slice(0, 110), M, 72, 7, font, MUTE);
   text(d.company.reraNote, M, 60, 8, font, MUTE);
   text(`Status: ${d.status}`, M, 48, 8, font, MUTE);
   page.drawRectangle({ x: 0, y: 0, width: W, height: 10, color: BRASS });

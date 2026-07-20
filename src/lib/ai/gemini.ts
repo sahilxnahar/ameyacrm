@@ -219,3 +219,40 @@ export async function transcribeSiteNote(audio: Buffer, mimeType: string): Promi
     };
   } catch { return null; }
 }
+
+export interface SocialBrief { summary: string; importance: 'high' | 'normal' | 'low'; isLead: boolean }
+const SOCIAL_SCHEMA = { type: 'OBJECT', properties: {
+  summary: { type: 'STRING' }, importance: { type: 'STRING' }, isLead: { type: 'BOOLEAN' },
+} } as const;
+
+/**
+ * Turn a raw social notification into one plain sentence a busy person can read
+ * at a glance, and say whether it looks like a genuine buyer enquiry.
+ */
+export async function summarizeSocialActivity(input: {
+  channel: string; kind: string; name?: string | null; handle?: string | null; message?: string | null;
+}): Promise<SocialBrief | null> {
+  if (!env.GEMINI_API_KEY) return null;
+  const prompt =
+    'You work for a Bengaluru real-estate developer. Below is a raw notification from a social platform. ' +
+    'Write "summary": ONE short sentence (max 22 words) saying what happened and what it means commercially, ' +
+    'in plain English, no jargon, no preamble. Set "importance" to "high" if someone is asking about price, ' +
+    'availability, a site visit or possession; "normal" for ordinary engagement; "low" for follows and likes. ' +
+    'Set "isLead" true only if a real person is enquiring about buying or renting.\n\nNOTIFICATION:\n' +
+    JSON.stringify(input).slice(0, 4000);
+  const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: SOCIAL_SCHEMA } };
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) return null;
+    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
+    if (!raw) return null;
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const imp = String(j.importance ?? 'normal').toLowerCase();
+    return {
+      summary: String(j.summary ?? '').slice(0, 240),
+      importance: imp === 'high' || imp === 'low' ? imp : 'normal',
+      isLead: Boolean(j.isLead),
+    };
+  } catch { return null; }
+}

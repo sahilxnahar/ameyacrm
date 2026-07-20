@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2 } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
@@ -27,6 +27,7 @@ export default async function AdminPage() {
           { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },
           { href: '/admin/permissions', icon: ShieldCheck, title: 'Roles & Permissions', desc: 'Toggle what each role can do' },
           { href: '/admin/templates', icon: Mail, title: 'Email Templates', desc: 'Edit system emails' },
+          { href: '/admin/company', icon: Building2, title: 'Company Details', desc: 'GST, bank, addresses for invoices' },
           { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours' },
           { href: '/admin/automations', icon: Zap, title: 'Automations', desc: 'Rules, assignment, follow-ups' },
           { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA & login rules' },
@@ -34,6 +35,8 @@ export default async function AdminPage() {
           { href: '/admin/collections', icon: Percent, title: 'Collections & Tax', desc: 'Interest rate, default GST' },
           { href: '/admin/fields', icon: SlidersHorizontal, title: 'Custom Fields', desc: 'Add your own lead fields' },
           { href: '/admin/api-tokens', icon: KeyRound, title: 'API Tokens', desc: 'Programmatic access' },
+          { href: '/admin/privacy', icon: ShieldCheck, title: 'Privacy & DPDP', desc: 'Consent, retention, data requests' },
+          { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often' },
         ].map((c) => (
           <Link key={c.href} href={c.href}>
             <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">

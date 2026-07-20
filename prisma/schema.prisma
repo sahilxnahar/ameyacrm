@@ -260,6 +260,8 @@ model Project {
   description String?
   address     String?
   city        String    @default("Bangalore")
+  latitude    Float?
+  longitude   Float?
   reraNumber  String?
   isActive    Boolean   @default(true)
   startedAt   DateTime?
@@ -353,6 +355,13 @@ model User {
   managerId     String?
   manager       User?   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
   directReports User[]  @relation("UserHierarchy")
+
+  salesTargets    SalesTarget[]    @relation("UserTargets")
+  incentiveEntries IncentiveEntry[] @relation("UserIncentives")
+  socialAccounts   UserSocialAccount[] @relation("UserSocials")
+
+  /** Personal WhatsApp number used for click-to-chat from the CRM. */
+  whatsappNumber String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -866,6 +875,11 @@ model Lead {
   timezone     String?
   nextFollowUp DateTime?
   lostReason   String?
+  locality     String? // for the lead map / heat-map
+  latitude     Float?
+  longitude    Float?
+  consentAt    DateTime? // DPDP: when this person agreed to be contacted
+  consentSource String?
   channelPartnerId String? // broker who owns this lead
   cpLockedUntil    DateTime? // commission-protection lock window
   createdAt    DateTime   @default(now())
@@ -1673,7 +1687,11 @@ model AutomationRule {
   trigger     AutomationTrigger
   isActive    Boolean           @default(true)
   conditions  Json? // [{ field, op, value }]
-  actions     Json // [{ type, params }]
+  matchAll    Boolean           @default(true) // true = AND, false = OR
+  actions     Json // [{ type, params }] — runs when conditions match
+  elseActions Json? // runs when they do not
+  slaMinutes  Int? // escalate if still unresolved after this long
+  escalateToId String?
   runCount    Int               @default(0)
   lastRunAt   DateTime?
   createdById String?
@@ -1850,6 +1868,8 @@ model SocialActivity {
   message   String?
   url       String?
   leadId    String?
+  summary   String? // one-line AI brief shown in the notification
+  notifiedAt DateTime?
   isRead    Boolean       @default(false)
   createdAt DateTime      @default(now())
 
@@ -1970,4 +1990,192 @@ model PaymentRequest {
   updatedAt       DateTime             @updatedAt
 
   @@index([status])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Forecasting, quotas & internal incentives  (v7.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+enum TargetMetric {
+  BOOKING_VALUE
+  BOOKINGS
+  LEADS
+  SITE_VISITS
+}
+
+enum IncentiveStatus {
+  ACCRUED
+  APPROVED
+  PAID
+}
+
+model SalesTarget {
+  id          String       @id @default(cuid())
+  userId      String
+  periodStart DateTime
+  periodEnd   DateTime
+  metric      TargetMetric @default(BOOKING_VALUE)
+  target      Decimal      @db.Decimal(14, 2)
+  note        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user User @relation("UserTargets", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart, metric])
+  @@index([periodStart])
+}
+
+model IncentiveSlab {
+  id          String   @id @default(cuid())
+  name        String
+  fromValue   Decimal  @default(0) @db.Decimal(14, 2)
+  toValue     Decimal? @db.Decimal(14, 2)
+  ratePercent Decimal  @default(0) @db.Decimal(6, 3)
+  flatAmount  Decimal? @db.Decimal(14, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model IncentiveEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  bookingId   String?
+  periodStart DateTime
+  baseValue   Decimal         @db.Decimal(14, 2)
+  amount      Decimal         @db.Decimal(14, 2)
+  slabName    String?
+  status      IncentiveStatus @default(ACCRUED)
+  note        String?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime        @default(now())
+
+  user User @relation("UserIncentives", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, periodStart])
+  @@index([status])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  E-signature  (v7.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+enum SignatureStatus {
+  PENDING
+  VIEWED
+  SIGNED
+  DECLINED
+  EXPIRED
+}
+
+model SignatureRequest {
+  id              String          @id @default(cuid())
+  reference       String          @unique
+  title           String
+  fileUrl         String
+  signedFileUrl   String?
+  entityType      String?
+  entityId        String?
+  requestedById   String?
+  requestedByName String?
+  signerName      String
+  signerEmail     String?
+  signerPhone     String?
+  token           String          @unique
+  status          SignatureStatus @default(PENDING)
+  message         String?
+  viewedAt        DateTime?
+  signedAt        DateTime?
+  declineReason   String?
+  signatureData   String? // PNG data URL of the drawn signature
+  signerIp        String?
+  signerUserAgent String?
+  expiresAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  DPDP compliance  (v7.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+enum DataRequestType {
+  EXPORT
+  DELETE
+  CORRECTION
+}
+
+enum DataRequestStatus {
+  RECEIVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+model DataRequest {
+  id           String            @id @default(cuid())
+  reference    String            @unique
+  type         DataRequestType
+  status       DataRequestStatus @default(RECEIVED)
+  subjectName  String
+  subjectEmail String
+  subjectPhone String?
+  details      String?
+  handledById  String?
+  handledAt    DateTime?
+  resultUrl    String?
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([status])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Error monitoring  (v7.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+model ErrorLog {
+  id          String    @id @default(cuid())
+  fingerprint String    @unique
+  level       String    @default("error")
+  message     String
+  stack       String?
+  path        String?
+  userId      String?
+  count       Int       @default(1)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  resolvedAt  DateTime?
+  notifiedAt  DateTime?
+
+  @@index([lastSeenAt])
+  @@index([resolvedAt])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Per-person social accounts  (v7.1)
+// ════════════════════════════════════════════════════════════════════════════
+
+model UserSocialAccount {
+  id          String        @id @default(cuid())
+  userId      String
+  channel     SocialChannel
+  handle      String
+  profileUrl  String?
+  displayName String?
+  isPrimary   Boolean       @default(false)
+  isActive    Boolean       @default(true)
+  notes       String?
+  lastSyncAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user User @relation("UserSocials", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, handle])
+  @@index([channel])
 }

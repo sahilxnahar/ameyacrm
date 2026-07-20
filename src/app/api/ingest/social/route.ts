@@ -5,6 +5,7 @@ import { env } from '@/config/env';
 import { nextReference } from '@/lib/utils/reference';
 import { runAutomations } from '@/lib/automation/engine';
 import { findDuplicateLead } from '@/lib/leads/dedup';
+import { announceSocialActivity } from '@/lib/social/notify-social';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -51,5 +52,6 @@ export async function POST(req: NextRequest) {
   }
 
   const activity = await prisma.socialActivity.create({ data: { channel, kind, name, handle, message, url, leadId } });
+  await announceSocialActivity(activity.id);
   return NextResponse.json({ ok: true, activityId: activity.id, leadId });
 }

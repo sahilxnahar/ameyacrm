@@ -106,7 +106,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label htmlFor="payeeName">Payee name *</Label><Input id="payeeName" name="payeeName" required /></div>
               <div className="space-y-1"><Label htmlFor="amount">Amount (₹) *</Label><Input id="amount" name="amount" type="number" min="1" step="0.01" required placeholder="1000000" /></div>
-              <div className="space-y-1"><Label htmlFor="payeeEmail">Email</Label><Input id="payeeEmail" name="payeeEmail" type="email" placeholder="they get the notification here" /></div>
+              <div className="space-y-1"><Label htmlFor="payeeEmail">Email <span className="font-normal opacity-70">— separate several with commas</span></Label><Input id="payeeEmail" name="payeeEmail" placeholder="accounts@firm.com, praveen@ameyaheights.com" /></div>
               <div className="space-y-1"><Label htmlFor="payeePhone">Phone</Label><Input id="payeePhone" name="payeePhone" placeholder="for WhatsApp" /></div>
               <div className="space-y-1"><Label htmlFor="dueDate">Due date</Label><Input id="dueDate" name="dueDate" type="date" /></div>
               <div className="space-y-1"><Label htmlFor="customerId">Link to buyer</Label>

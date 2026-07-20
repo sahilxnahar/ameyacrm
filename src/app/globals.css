@@ -101,8 +101,22 @@
 }
 
 @layer components {
-  /* Shiny metallic gold text — used for page titles, section labels and card headings. */
+  /* Headings and navigation are near-black for legibility; gold survives as an
+     accent on the emblem, rules and active states. Reverted from the all-gold
+     treatment because gold-on-ivory failed at small sizes. */
   .gold-shine {
+    color: #14120E;
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+    animation: none;
+  }
+  .dark .gold-shine { color: #F1EAD9; }
+
+  .gold-solid { color: #2A261E; }
+  .dark .gold-solid { color: #DCD5C6; }
+
+  /* The one place a metallic sweep still earns its keep: the wordmark. */
+  .gold-emblem {
     background-image: linear-gradient(100deg,
       #8C6E2C 0%, #A07D34 18%, #E4C878 38%, #FFF3D0 48%,
       #E4C878 58%, #A07D34 78%, #8C6E2C 100%);
@@ -117,16 +131,5 @@
     0%, 100% { background-position: 0% 50%; }
     50%      { background-position: 100% 50%; }
   }
-  @media (prefers-reduced-motion: reduce) { .gold-shine { animation: none; } }
-
-  /* Solid readable gold for nav items and smaller labels. */
-  /* background-clip:text makes color transparent — keep any nested icon visible. */
-  .gold-shine svg, .gold-shine img { -webkit-text-fill-color: initial; color: #A07D34; }
-  .gold-solid { color: #8C6E2C; }
-  .dark .gold-solid { color: #D9BE79; }
-  .dark .gold-shine {
-    background-image: linear-gradient(100deg,
-      #C2A05B 0%, #D9BE79 18%, #F6E3AE 38%, #FFFBEF 48%,
-      #F6E3AE 58%, #D9BE79 78%, #C2A05B 100%);
-  }
+  @media (prefers-reduced-motion: reduce) { .gold-emblem { animation: none; } }
 }

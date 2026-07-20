@@ -26,17 +26,28 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             priority
             className="h-auto w-48 drop-shadow-[0_8px_30px_rgba(0,0,0,0.35)] sm:w-56 lg:w-72"
           />
-          <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.38em] text-[#E3C176]">CRM Platform</p>
+          <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.38em] text-[#E3C176]">Internal CRM Platform</p>
           <h1
-            className="mt-3 whitespace-nowrap font-display font-semibold leading-none tracking-tight text-[clamp(2.5rem,5vw,4.5rem)]"
-            style={{ color: '#F0D9A0' }}
+            className="mt-3 whitespace-nowrap font-display font-bold leading-[0.95] tracking-tight text-[clamp(3.25rem,7vw,6rem)] drop-shadow-[0_4px_18px_rgba(0,0,0,0.35)]"
+            style={{ color: '#F6E3AE' }}
           >
             {brand.company.displayName}
           </h1>
-          <p className="mt-3 text-lg text-white/80">{brand.company.tagline}</p>
-          <p className="mt-6 max-w-md text-sm text-white/60">
-            The CRM platform for {brand.company.legalName}. Every task owned. Every file searchable.
-            Every action traceable.
+          <p className="mt-4 text-xl font-medium text-white/85 sm:text-2xl">{brand.company.tagline}</p>
+
+          <p className="mt-7 max-w-md text-base leading-relaxed text-white/75">
+            This is the private working system for {brand.company.legalName} — where every enquiry,
+            booking, payment and site update is recorded.
+          </p>
+          <ul className="mt-5 max-w-md space-y-2 text-sm text-white/65">
+            <li className="flex gap-2"><span aria-hidden className="text-[#E3C176]">•</span> Sales, inventory, collections and the buyer portal in one place</li>
+            <li className="flex gap-2"><span aria-hidden className="text-[#E3C176]">•</span> Every action is logged against your name and visible to management</li>
+            <li className="flex gap-2"><span aria-hidden className="text-[#E3C176]">•</span> Customer data here is confidential and covered by the DPDP Act</li>
+          </ul>
+          <p className="mt-6 max-w-md text-xs leading-relaxed text-white/50">
+            Authorised staff and approved partners only. If you do not have an account,
+            use &ldquo;Create an account&rdquo; — company email addresses are approved automatically,
+            everyone else is reviewed by an administrator.
           </p>
         </div>
 

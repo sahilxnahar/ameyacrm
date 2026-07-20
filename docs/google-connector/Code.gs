@@ -57,3 +57,64 @@ function out(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  SOCIAL SCANNER  (v7.0)
+ *  Reads the notification emails Instagram / LinkedIn / Facebook / X already
+ *  send you and posts them to the CRM. No platform API, no developer account.
+ *
+ *  SETUP
+ *   1. Fill CRM_URL and INGEST_KEY below.
+ *   2. Run scanSocialOnce() manually once and approve the Gmail permission.
+ *   3. Triggers (clock icon) > Add Trigger > scanSocialOnce > Time-driven >
+ *      Hour timer > Every hour.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+var CRM_URL    = 'https://ameyacrm.vercel.app';   // no trailing slash
+var INGEST_KEY = 'PASTE_YOUR_INGEST_SECRET_HERE';
+
+var SOCIAL_QUERY =
+  'newer_than:2d (' +
+  'from:mail.instagram.com OR from:instagram.com OR ' +
+  'from:linkedin.com OR from:facebookmail.com OR ' +
+  'from:x.com OR from:twitter.com OR from:youtube.com' +
+  ') -label:crm-captured';
+
+function scanSocialOnce() {
+  var label = GmailApp.getUserLabelByName('crm-captured') || GmailApp.createLabel('crm-captured');
+  var threads = GmailApp.search(SOCIAL_QUERY, 0, 25);
+  var messages = [];
+  var handled = [];
+
+  for (var i = 0; i < threads.length; i++) {
+    var msgs = threads[i].getMessages();
+    for (var j = 0; j < msgs.length; j++) {
+      var m = msgs[j];
+      messages.push({
+        messageId: m.getId(),
+        from: m.getFrom(),
+        subject: m.getSubject(),
+        body: m.getPlainBody().slice(0, 4000)
+      });
+    }
+    handled.push(threads[i]);
+  }
+
+  if (!messages.length) { Logger.log('nothing new'); return; }
+
+  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/social-email', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-ingest-key': INGEST_KEY },
+    payload: JSON.stringify({ messages: messages }),
+    muteHttpExceptions: true
+  });
+
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+
+  // Only label once the CRM has accepted them, so a failure retries next hour.
+  if (res.getResponseCode() === 200) {
+    for (var k = 0; k < handled.length; k++) handled[k].addLabel(label);
+  }
+}

@@ -4,9 +4,16 @@ import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { sendEmail } from '@/lib/email/email';
+import { getCompanyDetails } from '@/server/services/company-service';
+import { bankBlock } from '@/config/company';
 import { writeAudit } from '@/lib/audit/log';
 import { env } from '@/config/env';
 import { ensure, toActionError } from './_helpers';
+
+/** Split "a@x.com, b@y.com; c@z.com" into a clean list. */
+function splitEmails(v?: string | null): string[] {
+  return (v ?? '').split(/[,;\s]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
 
 export type PayResult = { ok: true; id?: string; link?: string; emailed?: boolean; emailError?: string } | { error: string };
 
@@ -16,7 +23,10 @@ const baseUrl = () => (env.APP_URL || '').replace(/\/$/, '');
 
 const createSchema = z.object({
   payeeName: z.string().min(2).max(160),
-  payeeEmail: z.string().email().optional().or(z.literal('')),
+  payeeEmail: z.string().optional().or(z.literal('')).refine(
+    (v) => !v || splitEmails(v).every((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+    'One of those email addresses is not valid. Separate several with commas.',
+  ),
   payeePhone: z.string().max(30).optional(),
   amount: z.coerce.number().positive(),
   description: z.string().min(3).max(1000),
@@ -35,7 +45,7 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
 
     const pr = await prisma.paymentRequest.create({
       data: {
-        reference, token, payeeName: d.payeeName, payeeEmail: d.payeeEmail || null, payeePhone: d.payeePhone || null,
+        reference, token, payeeName: d.payeeName, payeeEmail: splitEmails(d.payeeEmail).join(', ') || null, payeePhone: d.payeePhone || null,
         amount: d.amount, description: d.description, dueDate: d.dueDate ? new Date(d.dueDate) : null,
         customerId: d.customerId || null, requestedById: ctx.user.id, requestedByName: ctx.user.name,
       },
@@ -45,7 +55,8 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
     let emailed = false;
     let emailError: string | undefined;
     if (d.payeeEmail) {
-      const instructions = String((await prisma.setting.findUnique({ where: { key: 'payments.instructions' } }))?.value ?? '');
+      const saved = String((await prisma.setting.findUnique({ where: { key: 'payments.instructions' } }))?.value ?? '');
+      const instructions = saved || bankBlock(await getCompanyDetails());
       const text = [
         `Dear ${d.payeeName},`,
         '',
@@ -62,7 +73,7 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
         '',
         '— Ameya Heights LLP',
       ].filter(Boolean).join('\n');
-      const res = await sendEmail({ to: [d.payeeEmail], subject: `Payment request ${reference} — ${money(d.amount)}`, text });
+      const res = await sendEmail({ to: splitEmails(d.payeeEmail), subject: `Payment request ${reference} — ${money(d.amount)}`, text });
       emailed = res.ok;
       if (!res.ok) { emailError = res.error ?? 'email not configured'; console.error('[payment-request] email failed:', emailError); }
       if (res.ok) await prisma.paymentRequest.update({ where: { id: pr.id }, data: { emailSentAt: new Date() } });
@@ -82,7 +93,7 @@ export async function resendPaymentRequest(id: string): Promise<PayResult> {
     if (!pr.payeeEmail) return { error: 'This request has no email address on it.' };
     const link = `${baseUrl()}/pay/${pr.token}`;
     const text = `Dear ${pr.payeeName},\n\nReminder: ${pr.requestedByName ?? 'Ameya Heights'} has requested a payment of ${money(Number(pr.amount))} towards:\n"${pr.description}"\n\nReference: ${pr.reference}\n\n${link}\n\n— Ameya Heights LLP`;
-    const res = await sendEmail({ to: [pr.payeeEmail], subject: `Reminder: payment request ${pr.reference}`, text });
+    const res = await sendEmail({ to: splitEmails(pr.payeeEmail), subject: `Reminder: payment request ${pr.reference}`, text });
     if (!res.ok) return { error: `Could not send: ${res.error ?? 'email not configured'}` };
     await prisma.paymentRequest.update({ where: { id }, data: { emailSentAt: new Date() } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'PaymentRequest', entityId: id, summary: `Resent ${pr.reference}` });
