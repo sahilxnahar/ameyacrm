@@ -5,13 +5,25 @@ import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
 import { NotificationsBell } from './notifications-bell';
 import type { ShellUser } from './app-shell';
+import { ProjectSwitcher, type ProjectOption } from './project-switcher';
 
-export function Topbar({ user, onMenu, onSearch }: { user: ShellUser; onMenu: () => void; onSearch: () => void }) {
+export function Topbar({
+  user, projects, activeProjectId, activeProjectName, onMenu, onSearch,
+}: {
+  user: ShellUser;
+  projects: ProjectOption[];
+  activeProjectId: string | null;
+  activeProjectName: string;
+  onMenu: () => void;
+  onSearch: () => void;
+}) {
   return (
     <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </Button>
+
+      <div className="hidden sm:block"><ProjectSwitcher projects={projects} activeId={activeProjectId} activeName={activeProjectName} /></div>
 
       <button
         onClick={onSearch}

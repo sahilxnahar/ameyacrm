@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
+import { getActiveProject } from '@/server/services/active-project-service';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
@@ -13,7 +14,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   await releaseExpiredHolds(); // opportunistic auto-release of expired holds
   const projects = await prisma.project.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } });
   const sp = await searchParams;
-  const projectId = sp.project && projects.some((p) => p.id === sp.project) ? sp.project : projects[0]?.id ?? null;
+  // The URL wins if it names a real project; otherwise fall back to whatever
+  // the person has selected in the header, and only then to the first one.
+  const active = await getActiveProject(ctx.user.id);
+  const projectId = sp.project && projects.some((p) => p.id === sp.project)
+    ? sp.project
+    : (active.id && projects.some((p) => p.id === active.id) ? active.id : projects[0]?.id ?? null);
   const [units, leads] = projectId
     ? await Promise.all([
         prisma.unit.findMany({ where: { projectId }, orderBy: [{ tower: 'asc' }, { floor: 'desc' }, { code: 'asc' }] }),
