@@ -118,3 +118,25 @@ function scanSocialOnce() {
     for (var k = 0; k < handled.length; k++) handled[k].addLabel(label);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  HOURLY OVERDUE ESCALATION  (v7.2)
+ *  Vercel's free plan only allows one scheduled job per day, so this script
+ *  does the hourly run instead. Costs nothing.
+ *
+ *  SETUP
+ *   1. Fill CRON_KEY below with the CRON_SECRET from your Vercel settings.
+ *   2. Run pingEscalation() once and approve the permission.
+ *   3. Triggers (clock icon) > Add Trigger > pingEscalation >
+ *      Time-driven > Hour timer > Every hour.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+var CRON_KEY = 'PASTE_YOUR_CRON_SECRET_HERE';
+
+function pingEscalation() {
+  var res = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), {
+    method: 'get',
+    muteHttpExceptions: true
+  });
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+}

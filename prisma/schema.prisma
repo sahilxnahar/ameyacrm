@@ -2179,3 +2179,38 @@ model UserSocialAccount {
   @@unique([userId, channel, handle])
   @@index([channel])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Overdue escalation  (v7.2)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * One row per (piece of work, person) that has gone past its date. Tracks when
+ * each channel last fired so the escalation endpoint can be called as often as
+ * you like without spamming anyone — the cadence lives here, not in the cron.
+ */
+model OverdueNotice {
+  id        String @id @default(cuid())
+  itemKey   String // e.g. task:clx123
+  userId    String
+  kind      String // TASK | REMINDER | APPROVAL | COLLECTION
+  title     String
+  dueAt     DateTime
+  href      String?
+
+  lastPushAt     DateTime?
+  lastEmailAt    DateTime?
+  lastWhatsappAt DateTime?
+  pushCount      Int       @default(0)
+  emailCount     Int       @default(0)
+  whatsappQueued Boolean   @default(false)
+
+  snoozedUntil DateTime?
+  resolvedAt   DateTime?
+  firstSeenAt  DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([itemKey, userId])
+  @@index([userId, resolvedAt])
+  @@index([resolvedAt])
+}

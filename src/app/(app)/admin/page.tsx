@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2 } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
@@ -37,6 +37,7 @@ export default async function AdminPage() {
           { href: '/admin/api-tokens', icon: KeyRound, title: 'API Tokens', desc: 'Programmatic access' },
           { href: '/admin/privacy', icon: ShieldCheck, title: 'Privacy & DPDP', desc: 'Consent, retention, data requests' },
           { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often' },
+          { href: '/admin/mobile-app', icon: Smartphone, title: 'Mobile App & Reminders', desc: 'APK link, push coverage, overdue chasing' },
         ].map((c) => (
           <Link key={c.href} href={c.href}>
             <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">

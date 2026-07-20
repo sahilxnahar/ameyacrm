@@ -72,7 +72,7 @@ export function Sidebar({
           })}
         </nav>
         <div className="border-t p-4 text-[10px] text-muted-foreground">
-          Ameya Heights CRM · v7.1
+          Ameya Heights CRM · v7.2
         </div>
       </aside>
     </>

@@ -55,6 +55,10 @@ const schema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: z.string().default('false').transform((v) => v === 'true' || v === '1'),
   RESEND_API_KEY: z.string().optional(),
+
+  // WhatsApp sending gateway (optional). Any endpoint accepting { to, message }.
+  WHATSAPP_WEBHOOK_URL: z.string().optional(),
+  WHATSAPP_WEBHOOK_TOKEN: z.string().optional(),
   AWS_SES_REGION: z.string().optional(),
 
   // Web Push (VAPID). Generate with: npx web-push generate-vapid-keys
