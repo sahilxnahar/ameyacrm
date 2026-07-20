@@ -18,6 +18,7 @@ export default async function ImportPage() {
       prisma.booking.count(),
       prisma.paymentMilestone.count(),
       prisma.customer.count(),
+      prisma.voucher.count({ where: { kind: 'CASH_PAID' } }),
     ]),
   ]);
 
@@ -30,7 +31,7 @@ export default async function ImportPage() {
       <ImportWizard
         kinds={IMPORT_KINDS}
         projects={projects}
-        counts={{ units: counts[0], leads: counts[1], bookings: counts[2], milestones: counts[3], customers: counts[4] }}
+        counts={{ units: counts[0], leads: counts[1], bookings: counts[2], milestones: counts[3], customers: counts[4], expenses: counts[5] }}
       />
     </div>
   );

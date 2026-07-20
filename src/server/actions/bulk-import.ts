@@ -8,6 +8,20 @@ import { ensure, toActionError } from '@/server/actions/_helpers';
 import { toNumber, toDate } from '@/lib/import/parse';
 import type { UnitStatus, LeadSource, LeadStatus, PaymentStatus } from '@prisma/client';
 
+/**
+ * Work out who was paid from a line like "Paid to SV for Plan sanction".
+ * Expense sheets rarely have a clean party column, and guessing well beats
+ * making somebody retype 200 rows.
+ */
+function partyFrom(text: string): string {
+  const t = text.trim();
+  const m = t.match(/paid to ([A-Za-z][A-Za-z .&]*?)(?:\s+for\b|\s*[-–,.]|$)/i);
+  if (m?.[1]) return m[1].trim().slice(0, 60);
+  const known = ['BBMP', 'BESCOM', 'BWSSB', 'KPTCL', 'Google', 'Geofrontier'];
+  for (const k of known) if (new RegExp(k, 'i').test(t)) return k;
+  return t.split(/[-–]/)[0].trim().slice(0, 60) || 'Unrecorded';
+}
+
 export interface RowResult { row: number; ok: boolean; message: string }
 export type ImportResult =
   | { ok: true; created: number; updated: number; skipped: number; failed: number; results: RowResult[] }
@@ -29,7 +43,7 @@ const pick = <T extends string>(v: string, allowed: T[], fallback: T): T => {
  * the preview step uses — people should see what will happen before it happens.
  */
 export async function runImport(
-  kind: 'units' | 'bookings' | 'milestones' | 'customers' | 'leads',
+  kind: 'units' | 'bookings' | 'milestones' | 'customers' | 'leads' | 'expenses',
   projectId: string | null,
   rows: Rows,
   dryRun: boolean,
@@ -153,6 +167,51 @@ export async function runImport(
           }
           created++;
           results.push({ row: line, ok: true, message: `${code} · ${label} · ${amount.toLocaleString('en-IN')}` });
+        }
+
+        else if (kind === 'expenses') {
+          const particulars = (r.particulars || '').trim();
+          const amount = toNumber(r.amount ?? '');
+          if (!particulars || amount === null || amount <= 0) {
+            results.push({ row: line, ok: false, message: 'Needs a description and an amount above zero.' });
+            failed++; continue;
+          }
+
+          const party = (r.partyName || '').trim() || partyFrom(particulars);
+          const when = toDate(r.date ?? '');
+
+          // Same description, same amount, same day — almost certainly a re-paste.
+          const dupe = await prisma.voucher.findFirst({
+            where: { kind: 'CASH_PAID', amount, narration: particulars },
+            select: { number: true },
+          });
+          if (dupe) { skipped++; results.push({ row: line, ok: true, message: `Already recorded as ${dupe.number}` }); continue; }
+
+          if (!dryRun) {
+            const last = await prisma.voucher.findFirst({
+              where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true },
+            });
+            const seq = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
+            const notes = [r.notes, r.poc ? `Handled by ${r.poc}` : ''].filter(Boolean).join(' · ');
+            await prisma.voucher.create({
+              data: {
+                number: `CP-${(Number.isFinite(seq) ? seq : 1000) + 1}`,
+                kind: 'CASH_PAID',
+                voucherDate: when ?? new Date(),
+                partyName: party,
+                projectId: projectId || null,
+                amount,
+                mode: /cash/i.test(particulars) ? 'CASH' : 'BANK_TRANSFER',
+                reference: r.reference || null,
+                narration: [particulars, notes].filter(Boolean).join(' — ').slice(0, 500),
+              },
+            });
+          }
+          created++;
+          results.push({
+            row: line, ok: true,
+            message: `${party} · ${amount.toLocaleString('en-IN')}${when ? '' : ' (no date given — dated today)'}`,
+          });
         }
 
         else if (kind === 'leads') {

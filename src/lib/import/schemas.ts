@@ -8,7 +8,7 @@ export interface ImportField {
 }
 
 export interface ImportKind {
-  key: 'units' | 'bookings' | 'milestones' | 'customers' | 'leads';
+  key: 'units' | 'bookings' | 'milestones' | 'customers' | 'leads' | 'expenses';
   label: string;
   description: string;
   fields: ImportField[];
@@ -16,6 +16,21 @@ export interface ImportKind {
 }
 
 export const IMPORT_KINDS: ImportKind[] = [
+  {
+    key: 'expenses',
+    label: 'Expenses paid',
+    description: 'Money already spent — from your expense sheet straight into the cash book.',
+    fields: [
+      { key: 'particulars', label: 'What it was for', required: true, aliases: ['description', 'details', 'narration', 'expense', 'head', 'purpose'] },
+      { key: 'amount', label: 'Amount', required: true, aliases: ['value', 'paid', 'total', 'rs', 'inr', 'debit'] },
+      { key: 'date', label: 'Date', hint: 'dd-mm-yy or dd/mm/yyyy', aliases: ['paiddate', 'expensedate', 'on'] },
+      { key: 'partyName', label: 'Paid to', hint: 'Worked out from the description if you leave this out', aliases: ['party', 'vendor', 'paidto', 'payee', 'supplier', 'to'] },
+      { key: 'notes', label: 'Notes', aliases: ['remarks', 'comment', 'note'] },
+      { key: 'reference', label: 'Invoice / reference', aliases: ['invoice', 'bill', 'utr', 'cheque', 'challan', 'ref'] },
+      { key: 'poc', label: 'Handled by', aliases: ['contact', 'personincharge', 'owner', 'responsible'] },
+    ],
+    sample: 'Date\tParticulars\tAmount\tNotes\tInvoice\tPOC\n05-01-26\tPaid to SV for Plan sanction\t350000\tInitial payment\t\tRatan Sir',
+  },
   {
     key: 'units',
     label: 'Units / inventory',
