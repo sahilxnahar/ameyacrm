@@ -9,7 +9,7 @@ import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
-export type DocResult = { ok: true; id: string } | { error: string };
+export type DocResult = { ok: true; id: string; fileId?: string } | { error: string };
 
 const folderSchema = z.object({
   name: z.string().min(1).max(120),
@@ -75,7 +75,7 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
     } catch { /* ignore */ }
     await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Document', entityId: doc.id, summary: `Uploaded ${file.name}` });
     revalidatePath('/documents');
-    return { ok: true, id: doc.id };
+    return { ok: true, id: doc.id, fileId: fileObj.id };
   } catch (err) {
     return toActionError(err);
   }
@@ -154,35 +154,54 @@ const registerSchema = z.object({
   originalName: z.string().min(1).max(255),
   mimeType: z.string().max(120).default('application/octet-stream'),
   size: z.coerce.number().int().nonnegative().default(0),
+  subPath: z.array(z.string().max(80)).max(6).optional(), // folders the file came from
 });
 /** Records a file that the browser uploaded straight to blob storage (bulk / large-file path). */
 export async function registerUploadedDocument(input: unknown): Promise<DocResult> {
   try {
     const ctx = await ensure('document.create');
     const d = registerSchema.parse(input);
+
+    // A whole folder was dropped: recreate the same tree in the CRM so it can
+    // be mirrored into Drive with the same shape.
+    let targetFolderId = d.folderId;
+    if (d.subPath?.length) {
+      let parentId: string | null = d.folderId ?? null;
+      for (const raw of d.subPath) {
+        const name = raw.trim().slice(0, 80);
+        if (!name || name === '.' || name === '..') continue;
+        const existing: { id: string } | null = await prisma.folder.findFirst({
+          where: { name, parentId, deletedAt: null }, select: { id: true },
+        });
+        if (existing) { parentId = existing.id; continue; }
+        const created = await prisma.folder.create({
+          data: { name, parentId, createdById: ctx.user.id, path: name, visibility: 'DEPARTMENT' },
+        });
+        parentId = created.id;
+      }
+      targetFolderId = parentId ?? undefined;
+    }
+
     const fileObj = await prisma.fileObject.create({
       data: { key: d.url, bucket: 'blob', originalName: d.originalName, mimeType: d.mimeType, size: d.size, uploadedById: ctx.user.id },
     });
     const doc = await prisma.document.create({
       data: {
-        title: d.title?.trim() || d.originalName, folderId: d.folderId, ownerId: ctx.user.id, currentVersion: 1,
+        title: d.title?.trim() || d.originalName, folderId: targetFolderId, ownerId: ctx.user.id, currentVersion: 1,
         versions: { create: { version: 1, fileId: fileObj.id, createdById: ctx.user.id } },
       },
     });
-    // Best-effort: fetch once, then AI-summarise and mirror a copy into Google Drive.
-    if (d.size > 0 && d.size < 25 * 1024 * 1024) {
-      try {
-        const { body } = await getObjectStream(d.url);
-        if (d.size < 15 * 1024 * 1024) {
-          const summary = await summarizeFile(body, d.mimeType, d.originalName);
-          if (summary) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { ocrText: summary } });
-        }
-        if (isDriveConfigured()) {
-          const drive = await uploadToDrive(d.originalName, d.mimeType, body);
-          if (!('error' in drive)) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { driveUrl: drive.webViewLink } });
-        }
-      } catch { /* ignore */ }
-    }
+    // Nothing slow happens here.
+    //
+    // The AI summary and the Google Drive copy used to run inside this request,
+    // which is why a 300KB file felt slow — the browser was waiting on a Gemini
+    // round trip and a base64 upload to Apps Script, not on the file transfer.
+    // They are now marked pending and done afterwards by /api/documents/process.
+    await prisma.fileObject.update({
+      where: { id: fileObj.id },
+      data: { syncState: d.size > 0 && d.size < 25 * 1024 * 1024 ? 'PENDING' : 'SKIPPED' },
+    });
+
     await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Document', entityId: doc.id, summary: `Uploaded ${d.originalName}` });
     revalidatePath('/documents');
     return { ok: true, id: doc.id };

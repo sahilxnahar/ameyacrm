@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { SocialChannel } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
 import { findDuplicateLead } from '@/lib/leads/dedup';
 import { announceSocialActivity } from '@/lib/social/notify-social';
@@ -49,6 +50,9 @@ const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/;
 const PHONE_RE = /(?:\+?91[-\s]?)?[6-9]\d{9}/;
 
 export async function POST(req: NextRequest) {
+  const over = await limitOr429(`ingest:social:${await callerIp()}`, 60, 60);
+  if (over) return over;
+
   const secret = env.INGEST_SECRET;
   const key = req.headers.get('x-ingest-key') || req.nextUrl.searchParams.get('key');
   if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

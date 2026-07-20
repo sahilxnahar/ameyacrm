@@ -15,10 +15,10 @@ const QUOTA_HELP =
 export interface DriveFile { id: string; webViewLink: string }
 
 /** Upload a file into the configured Drive folder. Never throws — returns { error } instead. */
-export async function uploadToDrive(name: string, mimeType: string, body: Buffer): Promise<DriveFile | { error: string }> {
+export async function uploadToDrive(name: string, mimeType: string, body: Buffer, folderPath: string[] = []): Promise<DriveFile | { error: string }> {
   // Preferred path: your own Apps Script web app (personal Drive, no Cloud Console, no billing).
   if (isAppsScriptConfigured()) {
-    const r = await gasUpload(name, mimeType, body);
+    const r = await gasUpload(name, mimeType, body, folderPath);
     return 'error' in r ? r : { id: r.id, webViewLink: r.url };
   }
   if (!isDriveConfigured()) return { error: 'Google Drive is not connected. Set GAS_WEBAPP_URL + GAS_SECRET (easiest) in Vercel.' };

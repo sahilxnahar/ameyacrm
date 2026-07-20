@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 
 /** Receives crashes from the browser error boundary. */
 export async function POST(req: NextRequest) {
+  const over = await limitOr429(`client-error:${await callerIp()}`, 30, 60);
+  if (over) return over;
+
   try {
     const b = (await req.json()) as { message?: string; stack?: string; path?: string };
     const user = await getCurrentUser().catch(() => null);

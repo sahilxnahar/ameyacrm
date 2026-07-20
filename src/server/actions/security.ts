@@ -2,6 +2,8 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { breachVerdict } from '@/lib/auth/breach';
+import { getSecurityPolicy } from '@/lib/auth/policy';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '@/lib/auth/password';
 import {
   generateTotpSecret, sealSecret, openSecret, totpUri, totpQrDataUrl, verifyTotp, generateBackupCodes,
@@ -69,6 +71,11 @@ export async function changePassword(input: unknown): Promise<SecurityResult> {
     const ctx = await getActionContext();
     const d = pwSchema.parse(input);
     const errs = validatePasswordStrength(d.next);
+    const policy = await getSecurityPolicy();
+    if (policy.breachCheck) {
+      const breach = await breachVerdict(d.next);
+      if (!breach.ok) return { error: breach.message ?? 'Please choose a different password.' };
+    }
     if (errs.length) return { error: `Weak password: ${errs.join(', ')}` };
 
     const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });

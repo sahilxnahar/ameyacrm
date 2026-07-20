@@ -3,7 +3,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Folder, FileText, Upload, FolderPlus, ChevronRight, Home, Download, Eye, Loader2, History, Shield, MoreVertical, CalendarClock, Sparkles, Pencil, FolderInput, HardDrive } from 'lucide-react';
+import { Folder, FileText, Upload, FolderPlus, ChevronRight, Home, Download, Eye, Loader2, History, Shield, MoreVertical, CalendarClock, Sparkles, Pencil, FolderInput, HardDrive, Lock } from 'lucide-react';
 import { createFolder, updateDocumentExpiry, summarizeDocument, renameDocument, moveDocument, sendDocumentToDrive } from '@/server/actions/documents';
 import { FileDropzone } from './file-dropzone';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils/cn';
 import { FolderAccessDialog } from './folder-access-dialog';
 import { formatDate, titleCase } from '@/lib/utils/format';
 
-interface FolderRow { id: string; name: string; visibility: string; docs: number; subfolders: number }
+interface FolderRow { id: string; name: string; visibility: string; docs: number; subfolders: number; locked?: boolean; lockReason?: string | null }
 interface DocRow { id: string; title: string; versions: number; owner: string | null; updatedAt: string; expiresAt: string | null; fileId: string | null; size: number | null; mime: string | null; summary: string | null; driveUrl: string | null }
 interface Opt { id: string; name: string }
 interface Perm { id: string; level: string; who: string; kind: string }
@@ -74,14 +75,27 @@ export function DocumentsView({
 
       {folders.length > 0 && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {folders.map((f) => (
-            <Link key={f.id} href={`/documents?folder=${f.id}`}>
-              <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">
-                <Folder className="h-8 w-8 text-brass" />
-                <div className="min-w-0"><p className="truncate text-sm font-medium">{f.name}</p><p className="text-xs text-muted-foreground">{f.subfolders} folders - {f.docs} files</p></div>
+          {folders.map((f) => {
+            // Locked folders are still shown. People should know the folder
+            // exists — they just cannot open it.
+            const card = (
+              <Card className={cn(
+                'flex items-center gap-3 p-4 transition-colors',
+                f.locked ? 'cursor-not-allowed opacity-70' : 'hover:border-primary hover:bg-secondary/40',
+              )}>
+                {f.locked ? <Lock className="h-8 w-8 shrink-0 text-muted-foreground" /> : <Folder className="h-8 w-8 shrink-0 text-brass" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{f.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {f.locked ? (f.lockReason ?? 'Restricted') : `${f.subfolders} folders - ${f.docs} files`}
+                  </p>
+                </div>
               </Card>
-            </Link>
-          ))}
+            );
+            return f.locked
+              ? <div key={f.id} title={f.lockReason ?? 'You do not have access to this folder'}>{card}</div>
+              : <Link key={f.id} href={`/documents?folder=${f.id}`}>{card}</Link>;
+          })}
         </div>
       )}
 

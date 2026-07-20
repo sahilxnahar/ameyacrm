@@ -369,6 +369,11 @@ model User {
   /** Personal sidebar layout: { pinned: string[], order: string[], hidden: string[] } */
   navPrefs Json?
 
+  // Security
+  twoFactorGraceUntil DateTime? // must enrol before this date
+  allowForeignAccess  Boolean   @default(false) // may sign in from outside the allowed countries
+  lastCountry         String?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -535,6 +540,11 @@ model TrustedDevice {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  ipAddress   String?
+  country     String?
+  userAgent   String?
+  approvedAt  DateTime  @default(now())
+  revokedAt   DateTime?
 }
 
 model WebAuthnCredential {
@@ -561,6 +571,7 @@ model LoginHistory {
   ipAddress String?
   userAgent String?
   city      String?
+  country   String?
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -591,6 +602,8 @@ model FileObject {
   size         Int
   checksum     String? // sha256
   ocrText      String? // extracted text for search (OCR-ready)
+  syncState  String   @default("PENDING") // PENDING | DONE | FAILED | SKIPPED
+  syncError  String?
   driveUrl     String? // Google Drive copy
   uploadedById String?
   createdAt    DateTime @default(now())
@@ -613,6 +626,7 @@ model Folder {
   parentId    String?
   projectId   String?
   visibility  FolderVisibility @default(DEPARTMENT)
+  driveFolderId String? // the matching folder in Google Drive
   path        String           @default("/") // materialized path for fast subtree queries
   createdById String?
   createdAt   DateTime         @default(now())
@@ -629,6 +643,7 @@ model Folder {
 
   @@index([parentId])
   @@index([projectId])
+  @@index([parentId, deletedAt])
 }
 
 model FolderPermission {
@@ -667,6 +682,7 @@ model Document {
 
   @@index([folderId])
   @@index([expiresAt])
+  @@index([folderId, deletedAt])
 }
 
 model DocumentVersion {
@@ -683,6 +699,7 @@ model DocumentVersion {
   createdBy User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([documentId, version])
+  @@index([fileId])
 }
 
 model Tag {
@@ -2479,4 +2496,49 @@ model SequenceEnrollment {
 
   @@unique([sequenceId, leadId])
   @@index([status, nextStepAt])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Device approval  (v9.2)
+//
+//  Signing in from an unrecognised device is not enough on its own. A code is
+//  emailed to the account holder and must be entered before a session exists.
+//  A stolen password and a stolen phone are then both insufficient alone.
+// ════════════════════════════════════════════════════════════════════════════
+
+model DeviceApproval {
+  id         String    @id @default(cuid())
+  userId     String
+  token      String    @unique // identifies the pending challenge
+  codeHash   String // SHA-256 of the six digits emailed out
+  deviceHash String // the device this would trust
+  ipAddress  String?
+  country    String?
+  userAgent  String?
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Rate limiting  (v9.5)
+//
+//  Counted in the database rather than in memory, because each serverless
+//  instance has its own memory — an in-process counter would let an attacker
+//  simply spread requests across instances.
+// ════════════════════════════════════════════════════════════════════════════
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  bucket      String // e.g. "login:1.2.3.4" or "ingest:portal"
+  windowStart DateTime
+  count       Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bucket, windowStart])
+  @@index([windowStart])
 }

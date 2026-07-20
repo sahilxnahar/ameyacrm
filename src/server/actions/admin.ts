@@ -2,6 +2,8 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { breachVerdict } from '@/lib/auth/breach';
+import { getSecurityPolicy } from '@/lib/auth/policy';
 import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
 import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
@@ -26,6 +28,11 @@ export async function createUser(input: unknown): Promise<AdminResult> {
     const ctx = await ensure('admin.user.manage');
     const d = userSchema.parse(input);
     const pwErrors = validatePasswordStrength(d.password);
+    const policy = await getSecurityPolicy();
+    if (policy.breachCheck) {
+      const breach = await breachVerdict(d.password);
+      if (!breach.ok) return { error: breach.message ?? 'Please choose a different password.' };
+    }
     if (pwErrors.length) return { error: `Weak password: ${pwErrors.join(', ')}` };
 
     const dupe = await prisma.user.findFirst({ where: { OR: [{ username: d.username }, { email: d.email.toLowerCase() }] } });

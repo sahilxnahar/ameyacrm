@@ -7,8 +7,12 @@ import { createSession, destroySession, markTrustedDevice } from '@/lib/auth/ses
 import { issueMfaTicket, readMfaTicket, clearMfaTicket } from '@/lib/auth/mfa-ticket';
 import { openSecret, verifyTotp, verifyBackupCode } from '@/lib/auth/totp';
 import { getCurrentUser } from '@/lib/auth/current-user';
-import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
+import { getSecurityPolicy, mustEnroll2FA, countryAllowed } from '@/lib/auth/policy';
+import { requestCountry, requestCity, countryName } from '@/lib/auth/geo';
+import { isKnownDevice, beginDeviceApproval, alertNewSignIn } from '@/lib/auth/device';
+import { getClientInfo } from '@/lib/auth/session';
 import { writeAudit } from '@/lib/audit/log';
+import { checkRate, callerIp } from '@/lib/security/rate-limit';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Username or email is required'),
@@ -20,6 +24,17 @@ export type ActionState = { error?: string; ok?: boolean };
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'Please enter your username/email and password.' };
+
+  // Two buckets: one per address, one per account. The first blunts a flood
+  // from a single machine; the second stops one password being tried against
+  // many accounts from many machines.
+  const ip = await callerIp();
+  const byIp = await checkRate(`login:ip:${ip}`, 20, 300);
+  const byUser = await checkRate(`login:user:${parsed.data.identifier.toLowerCase()}`, 10, 300);
+  if (!byIp.allowed || !byUser.allowed) {
+    await writeAudit({ action: 'LOGIN_FAILED', summary: `Rate limited from ${ip}` }).catch(() => undefined);
+    return { error: 'Too many attempts. Please wait a few minutes and try again.' };
+  }
 
   const result = await authenticate(parsed.data.identifier, parsed.data.password);
 
@@ -36,10 +51,40 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       await issueMfaTicket(result.user.id);
       redirect('/two-factor');
     case 'ok': {
+      const policy = await getSecurityPolicy();
+      const country = await requestCountry();
+
+      // Where from. An unknown country is never treated as a refusal.
+      if (!countryAllowed(country, result.user, policy)) {
+        await writeAudit({
+          actorId: result.user.id, action: 'LOGIN_FAILED',
+          summary: `Refused — sign-in from ${countryName(country)}, outside the allowed countries`,
+        });
+        return { error: `Sign-in from ${countryName(country)} is not permitted. Ask an administrator to allow access from outside India for your account.` };
+      }
+
+      // A device nobody has approved does not get a session, password or not.
+      const known = await isKnownDevice(result.user.id);
+      if (policy.deviceApproval && !known) {
+        const token = await beginDeviceApproval(result.user);
+        await writeAudit({
+          actorId: result.user.id, action: 'LOGIN_FAILED',
+          summary: `Device approval required — code emailed (${countryName(country)})`,
+        });
+        redirect(`/device-check?t=${token}`);
+      }
+
       await createSession(result.user.id);
-      await writeAudit({ actorId: result.user.id, action: 'LOGIN', summary: 'Password login' });
+      await prisma.user.update({ where: { id: result.user.id }, data: { lastCountry: country ?? undefined } }).catch(() => undefined);
+      await writeAudit({ actorId: result.user.id, action: 'LOGIN', summary: `Password login from ${countryName(country)}` });
+
+      if (policy.alertNewDevice && !known) {
+        const info = await getClientInfo();
+        await alertNewSignIn(result.user, { country, city: await requestCity(), ip: info.ip, ua: info.userAgent });
+      }
+
       if (result.mustChangePassword) redirect('/settings/security?force=1');
-      if (mustEnroll2FA(result.user, await getSecurityPolicy())) redirect('/settings/security?enroll=1');
+      if (mustEnroll2FA(result.user, policy)) redirect('/settings/security?enroll=1');
       redirect('/dashboard');
     }
   }

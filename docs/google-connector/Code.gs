@@ -1,26 +1,28 @@
 /**
  * ══════════════════════════════════════════════════════════════════════════
  *  AMEYA HEIGHTS CRM — Google connector
- *  v9.0 · everything below is already filled in. Paste and go.
+ *  v9.1 · one-click setup. Everything is filled in already.
  * ══════════════════════════════════════════════════════════════════════════
  *
- *  WHAT TO DO
- *   1. Select all in the editor (Cmd+A) and paste this over the top. Save.
- *   2. Run  testEverything  once. Approve the permissions Google asks for.
- *      You want five ticks in the Execution log.
- *   3. Left sidebar → clock icon (Triggers) → Add Trigger, four times:
+ *  ALL YOU DO:
  *
- *        pingEscalation    Time-driven   Hour timer      Every hour
- *        scanMailOnce      Time-driven   Minutes timer   Every 15 minutes
- *        scanPortalsOnce   Time-driven   Minutes timer   Every 15 minutes
- *        scanSocialOnce    Time-driven   Hour timer      Every hour
+ *   1. Paste this whole file over whatever is in the editor. Save (Cmd+S).
+ *   2. Choose  setupEverything  in the function dropdown at the top.
+ *   3. Press Run. Approve the permissions Google asks for.
+ *   4. Read the Execution log. It creates all four triggers, tests every
+ *      connection, and tells you if anything is left to do.
  *
- *      Set "Failure notification" to "Notify me immediately" on each.
- *   4. Deploy → Manage deployments → pencil → Version: NEW VERSION → Deploy.
- *      Editing the code alone does not update the live web app.
+ *   That is it. Running it again is safe — it clears the old triggers first,
+ *   so you never end up with duplicates.
  *
- *  This runs as YOU. It uses your own 15GB Drive quota and your own mailbox
- *  permission. No Cloud Console, no API project, no billing, no card.
+ *  ONE THING THE SCRIPT CANNOT DO FOR ITSELF:
+ *   Publishing the web app. If Drive uploads or Sheets export are not working,
+ *   do this once: Deploy → New deployment → type "Web app" →
+ *   Execute as: Me · Who has access: Anyone → Deploy → copy the /exec URL →
+ *   paste it into Vercel as GAS_WEBAPP_URL → Create Deployment.
+ *
+ *  This runs as whoever owns this project. Best owned by hi@ameyaheights.com
+ *  rather than a person, so it survives someone leaving.
  */
 
 // ── Settings — all filled in ────────────────────────────────────────────────
@@ -28,12 +30,14 @@ var SECRET     = '3b6b3f81ab2515276cbd09b6e15c2592464ae364';
 var FOLDER_ID  = '1zkJogniKQSdLFksHIr0wQuCdECJoEQIy';
 var SHEET_ID   = '1iO_jlkiX6Jhq8zWyhcRwcDDZDPpOEenQPv-WaFP5hmk';
 
-var CRM_URL    = 'https://ameyacrm.vercel.app';
+var CRM_URL    = 'https://crm.ameyaheights.com';
 var CRON_KEY   = '71066c12b37ebc8b7c847648994e409f39c2ae25';
 var INGEST_KEY = 'ab89b3bd3f28246e5c28f67d30ff0702b7732032';
 
-// Your own address, used to tell outgoing mail from incoming.
-var MY_EMAIL   = 'hi@ameyaheights.com';
+// Every address that counts as "us", so replies and sent mail are told apart
+// correctly. The script reads the mailbox of whoever owns it (Sahil), but the
+// CRM sends as crm@ via hi@ — all three must be recognised.
+var MY_ADDRESSES = ['sahil@ameyaheights.com', 'hi@ameyaheights.com', 'crm@ameyaheights.com'];
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -50,14 +54,26 @@ function doPost(e) {
     }
 
     if (body.action === 'upload') {
-      var folder = DriveApp.getFolderById(FOLDER_ID);
+      var folder = resolvePath(body.folderPath);
       var blob = Utilities.newBlob(
         Utilities.base64Decode(body.data),
         body.mimeType || 'application/octet-stream',
         body.name || 'file'
       );
       var file = folder.createFile(blob);
-      return out({ ok: true, id: file.getId(), url: file.getUrl() });
+      return out({ ok: true, id: file.getId(), url: file.getUrl(), folderId: folder.getId() });
+    }
+
+    if (body.action === 'folder') {
+      var f = resolvePath(body.folderPath);
+      return out({ ok: true, id: f.getId(), name: f.getName() });
+    }
+
+    if (body.action === 'list') {
+      var root = resolvePath(body.folderPath);
+      var found = [];
+      collect(root, [], found, 0);
+      return out({ ok: true, files: found });
     }
 
     if (body.action === 'sheet') {
@@ -73,6 +89,40 @@ function doPost(e) {
     return out({ error: 'unknown action' });
   } catch (err) {
     return out({ error: String(err) });
+  }
+}
+
+/**
+ * Walk (and create) a folder path inside the connected Drive folder, so the
+ * CRM's folder tree is mirrored rather than everything landing in one heap.
+ */
+function resolvePath(path) {
+  var folder = DriveApp.getFolderById(FOLDER_ID);
+  if (!path || !path.length) return folder;
+  for (var i = 0; i < Math.min(path.length, 8); i++) {
+    var name = String(path[i]).trim();
+    if (!name || name === '.' || name === '..') continue;
+    var it = folder.getFoldersByName(name);
+    folder = it.hasNext() ? it.next() : folder.createFolder(name);
+  }
+  return folder;
+}
+
+/** Everything under a folder, with the path each file sits at. */
+function collect(folder, path, out_, depth) {
+  if (depth > 6 || out_.length > 400) return;
+  var files = folder.getFiles();
+  while (files.hasNext() && out_.length <= 400) {
+    var f = files.next();
+    out_.push({
+      id: f.getId(), name: f.getName(), mimeType: f.getMimeType(),
+      size: f.getSize(), url: f.getUrl(), path: path
+    });
+  }
+  var subs = folder.getFolders();
+  while (subs.hasNext()) {
+    var sf = subs.next();
+    collect(sf, path.concat([sf.getName()]), out_, depth + 1);
   }
 }
 
@@ -120,7 +170,17 @@ function postJson(path, payload) {
 function myAddress() {
   var a = '';
   try { a = Session.getActiveUser().getEmail() || ''; } catch (err) { a = ''; }
-  return (a || MY_EMAIL).toLowerCase();
+  return (a || MY_ADDRESSES[0]).toLowerCase();
+}
+
+/** True when a message came from us rather than from a buyer. */
+function isOurs(from) {
+  var f = String(from).toLowerCase();
+  if (f.indexOf(myAddress()) !== -1) return true;
+  for (var i = 0; i < MY_ADDRESSES.length; i++) {
+    if (f.indexOf(MY_ADDRESSES[i].toLowerCase()) !== -1) return true;
+  }
+  return false;
 }
 
 
@@ -152,7 +212,6 @@ function pingEscalation() {
 var MACHINE_SENDERS = /99acres|magicbricks|housing\.com|proptiger|commonfloor|nobroker|instagram|linkedin|facebookmail|twitter\.com|x\.com|youtube|no-?reply|noreply|notification|mailer-daemon|calendar-notification/i;
 
 function scanMailOnce() {
-  var me = myAddress();
   var query = windowFor('lastMailScan', 3) + ' -in:chats -in:spam -in:trash';
   var threads = GmailApp.search(query, 0, 50);
   var messages = [];
@@ -171,7 +230,7 @@ function scanMailOnce() {
         subject: m.getSubject(),
         body: m.getPlainBody().substring(0, 8000),
         date: m.getDate().toISOString(),
-        outbound: from.indexOf(me) !== -1
+        outbound: isOurs(from)
       });
     }
   }
@@ -251,6 +310,107 @@ function scanSocialOnce() {
   var res = postJson('/api/ingest/social-email', { messages: messages });
   Logger.log('social ' + res.getResponseCode() + ' ' + res.getContentText());
   if (res.getResponseCode() === 200) markScanned('lastSocialScan');
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  SETUP — run this one function and everything else happens by itself.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+var TRIGGER_PLAN = [
+  { fn: 'pingEscalation',  every: 'hours',   n: 1,  what: 'Overdue reminders, hourly' },
+  { fn: 'scanMailOnce',    every: 'minutes', n: 15, what: 'Buyer emails, every 15 minutes' },
+  { fn: 'scanPortalsOnce', every: 'minutes', n: 15, what: 'Portal leads, every 15 minutes' },
+  { fn: 'scanSocialOnce',  every: 'hours',   n: 1,  what: 'Social activity, hourly' }
+];
+
+function setupEverything() {
+  var log = [];
+  log.push('AMEYA HEIGHTS CRM — CONNECTOR SETUP');
+  log.push('Account: ' + myAddress());
+  log.push('CRM:     ' + CRM_URL);
+  log.push('');
+
+  // 1. Clear any triggers already here, so running this twice is harmless.
+  var existing = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < existing.length; i++) ScriptApp.deleteTrigger(existing[i]);
+  log.push('Removed ' + existing.length + ' old trigger(s).');
+
+  // 2. Create the four we need.
+  for (var j = 0; j < TRIGGER_PLAN.length; j++) {
+    var t = TRIGGER_PLAN[j];
+    try {
+      var b = ScriptApp.newTrigger(t.fn).timeBased();
+      if (t.every === 'hours') b.everyHours(t.n); else b.everyMinutes(t.n);
+      b.create();
+      log.push('  created  ' + t.fn + '  —  ' + t.what);
+    } catch (err) {
+      log.push('  FAILED   ' + t.fn + '  —  ' + err);
+    }
+  }
+  log.push('');
+
+  // 3. Check every connection.
+  log.push('CONNECTIONS');
+  log.push(checkOne('Drive folder', function () { return DriveApp.getFolderById(FOLDER_ID).getName(); }));
+  log.push(checkOne('Sheet', function () { return SpreadsheetApp.openById(SHEET_ID).getName(); }));
+  log.push(checkHttp('Reminders', CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY)));
+  log.push(checkPost('Buyer email', '/api/ingest/email'));
+  log.push(checkPost('Portal leads', '/api/ingest/portal'));
+  log.push(checkPost('Social', '/api/ingest/social-email'));
+  log.push(checkOne('Mailbox', function () {
+    return GmailApp.search('newer_than:1d', 0, 1).length + ' recent thread(s) readable';
+  }));
+  log.push('');
+
+  // 4. Say what is left.
+  log.push('WHAT IS LEFT FOR YOU');
+  log.push('  · Deploy → New deployment → Web app (Execute as: Me, Access: Anyone),');
+  log.push('    then paste the /exec URL into Vercel as GAS_WEBAPP_URL.');
+  log.push('    Skip this if Drive and Sheets already work.');
+  log.push('  · Optional: Triggers page → each trigger → set failure notification');
+  log.push('    to "Notify me immediately". Google does not allow that to be set here.');
+  log.push('');
+  log.push('Anything above marked FAILED needs attention. Everything else is running.');
+
+  Logger.log(log.join('\n'));
+}
+
+function checkOne(label, fn) {
+  try { return '  ok       ' + label + ': ' + fn(); }
+  catch (err) { return '  FAILED   ' + label + ': ' + err; }
+}
+
+function checkHttp(label, url) {
+  try {
+    var code = UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getResponseCode();
+    return (code === 200 ? '  ok       ' : '  FAILED   ') + label + ': HTTP ' + code +
+      (code === 401 ? '  (CRON_KEY does not match Vercel)' : '');
+  } catch (err) { return '  FAILED   ' + label + ': ' + err; }
+}
+
+function checkPost(label, path) {
+  try {
+    var code = postJson(path, { messages: [] }).getResponseCode();
+    return (code === 200 ? '  ok       ' : '  FAILED   ') + label + ': HTTP ' + code +
+      (code === 401 ? '  (INGEST_KEY does not match Vercel)' : '');
+  } catch (err) { return '  FAILED   ' + label + ': ' + err; }
+}
+
+/** What is currently scheduled. Run any time to check. */
+function showTriggers() {
+  var t = ScriptApp.getProjectTriggers();
+  var out = ['Scheduled jobs on this project: ' + t.length, ''];
+  for (var i = 0; i < t.length; i++) out.push('  ' + t[i].getHandlerFunction());
+  if (!t.length) out.push('  none — run setupEverything');
+  Logger.log(out.join('\n'));
+}
+
+/** Turn everything off. Use on the OLD project after moving to a new account. */
+function removeAllTriggers() {
+  var t = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < t.length; i++) ScriptApp.deleteTrigger(t[i]);
+  Logger.log('Removed ' + t.length + ' trigger(s). Nothing is scheduled on this project any more.');
 }
 
 

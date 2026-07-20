@@ -10,6 +10,7 @@ import { sendEmail } from '@/lib/email/email';
 import { putObject } from '@/lib/storage/storage';
 import { notifyMany } from '@/lib/notifications/notify';
 import { writeAudit } from '@/lib/audit/log';
+import { checkRate, callerIp } from '@/lib/security/rate-limit';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 
 export type SigResult = { ok: true; link?: string; emailed?: boolean; id?: string } | { error: string };

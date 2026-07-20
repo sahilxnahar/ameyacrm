@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { verifyPassword } from '@/lib/auth/password';
 import { getClientInfo } from '@/lib/auth/session';
+import { requestCountry } from '@/lib/auth/geo';
 
 export type AuthResult =
   | { status: 'ok'; user: User; mustChangePassword: boolean }
@@ -16,6 +17,7 @@ export type AuthResult =
 
 async function recordLogin(userId: string | null, username: string, success: boolean, reason?: string) {
   const info = await getClientInfo();
+  const country = await requestCountry();
   await prisma.loginHistory.create({
     data: {
       userId: userId ?? undefined,
@@ -24,6 +26,7 @@ async function recordLogin(userId: string | null, username: string, success: boo
       reason,
       ipAddress: info.ip ?? undefined,
       userAgent: info.userAgent ?? undefined,
+      country: country ?? undefined,
     },
   });
 }

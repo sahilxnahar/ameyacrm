@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
 import { findDuplicateLead } from '@/lib/leads/dedup';
 import { runAutomations } from '@/lib/automation/engine';
@@ -20,6 +21,9 @@ export const maxDuration = 60;
  * Auth: INGEST_SECRET.
  */
 export async function POST(req: NextRequest) {
+  const over = await limitOr429(`ingest:portal:${await callerIp()}`, 60, 60);
+  if (over) return over;
+
   const secret = env.INGEST_SECRET;
   const key = req.headers.get('x-ingest-key') || req.nextUrl.searchParams.get('key');
   if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

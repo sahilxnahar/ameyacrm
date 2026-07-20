@@ -1,5 +1,6 @@
 import 'server-only';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
+import { cache } from 'react';
 import { prisma } from '@/lib/db/prisma';
 
 export type WorkKind = 'TASK' | 'REMINDER' | 'APPROVAL' | 'COLLECTION' | 'EVENT';
@@ -33,19 +34,20 @@ export interface WorkloadRow {
  * Every piece of dated work in the system, from four sources, normalised into
  * one shape. The calendar and the admin workload table are two views of this.
  */
-export async function getWorkItems(opts: { from: Date; to: Date; userIds?: string[] }): Promise<WorkItem[]> {
-  const { from, to, userIds } = opts;
+export async function getWorkItems(opts: { from: Date; to: Date; userIds?: string[]; light?: boolean }): Promise<WorkItem[]> {
+  const { from, to, userIds, light } = opts;
   const range = { gte: from, lte: to };
   const items: WorkItem[] = [];
 
-  const users = await prisma.user.findMany({ where: { deletedAt: null }, select: { id: true, name: true } });
+  // In light mode nobody reads the labels, so skip the user lookup entirely.
+  const users = light ? [] : await prisma.user.findMany({ where: { deletedAt: null }, select: { id: true, name: true } });
   const nameOf = new Map(users.map((u) => [u.id, u.name]));
   const inScope = (id: string | null | undefined) => !userIds || (id ? userIds.includes(id) : false);
 
   // 1 — tasks with a due date
   const tasks = await prisma.task.findMany({
     where: { deletedAt: null, dueDate: range, status: { not: 'DONE' } },
-    select: { id: true, reference: true, title: true, dueDate: true, priority: true, status: true, assignees: { select: { userId: true } } },
+    select: { id: true, reference: !light, title: !light, dueDate: true, priority: !light, status: !light, assignees: { select: { userId: true } } },
     take: 800,
   });
   for (const t of tasks) {
@@ -53,7 +55,7 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
     for (const ownerId of owners) {
       if (!inScope(ownerId)) continue;
       items.push({
-        id: `task:${t.id}:${ownerId ?? 'none'}`, kind: 'TASK', title: t.title,
+        id: `task:${t.id}:${ownerId ?? 'none'}`, kind: 'TASK', title: t.title ?? '',
         detail: t.reference, due: t.dueDate!.toISOString(),
         ownerId, ownerName: ownerId ? nameOf.get(ownerId) ?? null : null,
         href: '/tasks', priority: t.priority,
@@ -64,13 +66,13 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
   // 2 — reminders and lead follow-ups
   const reminders = await prisma.reminder.findMany({
     where: { dueAt: range, status: 'PENDING' },
-    select: { id: true, title: true, notes: true, dueAt: true, userId: true, leadId: true },
+    select: { id: true, title: !light, notes: !light, dueAt: true, userId: true, leadId: !light },
     take: 500,
   });
   for (const r of reminders) {
     if (!inScope(r.userId)) continue;
     items.push({
-      id: `rem:${r.id}`, kind: 'REMINDER', title: r.title, detail: r.notes ?? undefined,
+      id: `rem:${r.id}`, kind: 'REMINDER', title: r.title ?? '', detail: r.notes ?? undefined,
       due: r.dueAt.toISOString(), ownerId: r.userId, ownerName: nameOf.get(r.userId) ?? null,
       href: r.leadId ? `/sales?lead=${r.leadId}` : '/reminders',
     });
@@ -78,13 +80,13 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
 
   const followUps = await prisma.lead.findMany({
     where: { deletedAt: null, nextFollowUp: range, status: { notIn: ['WON', 'LOST'] } },
-    select: { id: true, name: true, reference: true, nextFollowUp: true, ownerId: true, temperature: true },
+    select: { id: true, name: !light, reference: !light, nextFollowUp: true, ownerId: true, temperature: !light },
     take: 500,
   });
   for (const l of followUps) {
     if (!inScope(l.ownerId)) continue;
     items.push({
-      id: `lead:${l.id}`, kind: 'REMINDER', title: `Follow up: ${l.name}`, detail: l.reference,
+      id: `lead:${l.id}`, kind: 'REMINDER', title: l.name ? `Follow up: ${l.name}` : '', detail: l.reference ?? undefined,
       due: l.nextFollowUp!.toISOString(), ownerId: l.ownerId, ownerName: l.ownerId ? nameOf.get(l.ownerId) ?? null : null,
       href: `/sales?lead=${l.id}`, priority: l.temperature === 'HOT' ? 'URGENT' : undefined,
     });
@@ -149,9 +151,21 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
 }
 
 /** Per-person summary for the admin view: how much is late, due today, due soon. */
+/**
+ * Counts per person.
+ *
+ * This used to pull a two-year window of every task, reminder, approval and
+ * instalment in the company — thousands of full records — and then throw
+ * almost all of it away to produce four numbers. It now asks for a 90-day
+ * window in light mode, which fetches only the owner and the date.
+ */
 export async function getWorkloadTable(): Promise<WorkloadRow[]> {
   const now = new Date();
-  const items = await getWorkItems({ from: addDays(startOfDay(now), -365), to: addDays(endOfDay(now), 365) });
+  const items = await getWorkItems({
+    from: addDays(startOfDay(now), -90),
+    to: addDays(endOfDay(now), 90),
+    light: true,
+  });
   const users = await prisma.user.findMany({
     where: { deletedAt: null, status: 'ACTIVE' },
     select: { id: true, name: true, department: { select: { name: true } } },

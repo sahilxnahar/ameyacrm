@@ -32,9 +32,28 @@ async function call<T>(payload: Record<string, unknown>): Promise<T | { error: s
   }
 }
 
-export async function gasUpload(name: string, mimeType: string, body: Buffer): Promise<{ id: string; url: string } | { error: string }> {
+export async function gasUpload(
+  name: string,
+  mimeType: string,
+  body: Buffer,
+  folderPath: string[] = [],
+): Promise<{ id: string; url: string; folderId?: string } | { error: string }> {
   if (body.length > MAX_BYTES) return { error: `File is too large for the Google connector (${Math.round(body.length / 1048576)}MB; limit 8MB). It stays in the CRM.` };
-  return call<{ id: string; url: string }>({ action: 'upload', name, mimeType, data: body.toString('base64') });
+  // folderPath mirrors the CRM's folder tree inside Drive, creating any part
+  // that does not exist yet.
+  return call<{ id: string; url: string; folderId?: string }>({
+    action: 'upload', name, mimeType, folderPath, data: body.toString('base64'),
+  });
+}
+
+/** Create (or find) a folder path in Drive without uploading anything. */
+export async function gasFolder(folderPath: string[]): Promise<{ id: string; name: string } | { error: string }> {
+  return call<{ id: string; name: string }>({ action: 'folder', folderPath });
+}
+
+/** Everything currently sitting in the Drive folder tree, for the reverse sync. */
+export async function gasList(folderPath: string[] = []): Promise<{ files: Array<{ id: string; name: string; mimeType: string; size: number; url: string; path: string[] }> } | { error: string }> {
+  return call<{ files: Array<{ id: string; name: string; mimeType: string; size: number; url: string; path: string[] }> }>({ action: 'list', folderPath });
 }
 
 export async function gasSheet(tab: string, header: string[], rows: (string | number)[][]): Promise<{ rows: number } | { error: string }> {

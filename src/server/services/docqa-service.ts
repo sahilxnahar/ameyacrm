@@ -53,10 +53,28 @@ export async function askDocuments(question: string): Promise<Answer> {
   if (!q) return { answer: 'Ask a question about your documents.', sources: [], searched: 0 };
 
   const qvec = await embed(q, 'query');
-  const chunks = await prisma.docChunk.findMany({
-    select: { id: true, title: true, content: true, documentId: true, fileObjectId: true, embedding: true, source: true },
-    take: 4000,
-  });
+
+  // Narrow before scoring. Loading every embedding meant pulling roughly 25MB
+  // into memory for a single question; a keyword pass first cuts the candidate
+  // set to something small, and only then do we do the expensive maths.
+  const words = [...new Set(q.toLowerCase().split(/\W+/).filter((w) => w.length > 3))].slice(0, 8);
+  let chunks = words.length
+    ? await prisma.docChunk.findMany({
+        where: { OR: words.map((w) => ({ content: { contains: w, mode: 'insensitive' as const } })) },
+        select: { id: true, title: true, content: true, documentId: true, fileObjectId: true, embedding: true, source: true },
+        take: 400,
+      })
+    : [];
+
+  // Nothing matched on words alone — fall back to a bounded scan so an
+  // unusually phrased question still finds something.
+  if (chunks.length < 5) {
+    chunks = await prisma.docChunk.findMany({
+      select: { id: true, title: true, content: true, documentId: true, fileObjectId: true, embedding: true, source: true },
+      orderBy: { createdAt: 'desc' },
+      take: 600,
+    });
+  }
   if (!chunks.length) {
     return { answer: 'No documents have been indexed yet. Open Documents and press "Index for search".', sources: [], searched: 0 };
   }

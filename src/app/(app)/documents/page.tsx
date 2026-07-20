@@ -7,6 +7,8 @@ import { isGeminiEnabled } from '@/lib/ai/gemini';
 import { isDriveConfigured } from '@/lib/google/drive';
 import { PageHeader } from '@/components/layout/page-header';
 import { DocumentsView } from '@/components/documents/documents-view';
+import { getFolderTree } from '@/server/services/folder-access-service';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = { title: 'Documents' };
 
@@ -16,6 +18,13 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const folderId = folder ?? null;
   const allFolders = await prisma.folder.findMany({ where: { deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 });
   const canManage = can(ctx.permissions, 'document.manage');
+
+  // Folders are always listed; their contents are not always readable.
+  const tree = await getFolderTree(ctx);
+  const access = new Map(tree.map((t) => [t.id, t]));
+  if (folderId && access.get(folderId)?.canOpen === false) {
+    redirect('/documents?locked=' + folderId);
+  }
 
   const [current, folders, documents, projects, perms, users, departments] = await Promise.all([
     folderId ? prisma.folder.findUnique({ where: { id: folderId } }) : null,
@@ -57,7 +66,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           kind: p.userId ? 'User' : p.departmentId ? 'Dept' : 'Role',
           who: p.user?.name ?? p.department?.name ?? (p.role ? ROLE_LABELS[p.role] : '—'),
         }))}
-        folders={folders.map((f) => ({ id: f.id, name: f.name, visibility: f.visibility, docs: f._count.documents, subfolders: f._count.children }))}
+        folders={folders.map((f) => ({ id: f.id, name: f.name, visibility: f.visibility, docs: f._count.documents, subfolders: f._count.children, locked: access.get(f.id)?.canOpen === false, lockReason: access.get(f.id)?.reason ?? null }))}
         documents={documents.map((d) => ({ id: d.id, title: d.title, versions: d._count.versions, owner: d.owner?.name ?? null, updatedAt: d.updatedAt.toISOString(), expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null, fileId: d.versions[0]?.file.id ?? null, size: d.versions[0]?.file.size ?? null, mime: d.versions[0]?.file.mimeType ?? null, summary: d.versions[0]?.file.ocrText ?? null, driveUrl: d.versions[0]?.file.driveUrl ?? null }))}
       />
     </div>

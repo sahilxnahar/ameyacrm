@@ -8,6 +8,7 @@ import { getCompanyDetails } from '@/server/services/company-service';
 import { bankBlock } from '@/config/company';
 import { writeAudit } from '@/lib/audit/log';
 import { env } from '@/config/env';
+import { checkRate, callerIp } from '@/lib/security/rate-limit';
 import { ensure, toActionError } from './_helpers';
 
 /** Split "a@x.com, b@y.com; c@z.com" into a clean list. */

@@ -11,6 +11,13 @@ check('no single-line enums', re.findall(r'enum\s+\w+\s*\{[^\n}]*\}', s))
 rel = collections.Counter(re.findall(r'@relation\("(\w+)"', s))
 check('all named relations paired', [k for k, v in rel.items() if v != 2])
 
+dupfields = []
+for m in re.finditer(r'model (\w+) \{(.*?)\n\}', s, re.S):
+    names = re.findall(r'^\s{2}(\w+)\s', m.group(2), re.M)
+    d = [n for n in set(names) if names.count(n) > 1]
+    if d: dupfields.append((m.group(1), d))
+check('no duplicate fields in a model', dupfields)
+
 files = glob.glob('src/**/*.ts', recursive=True) + glob.glob('src/**/*.tsx', recursive=True) + ['middleware.ts']
 
 # NEW: an identifier imported at module scope must not also be exported as a const.
