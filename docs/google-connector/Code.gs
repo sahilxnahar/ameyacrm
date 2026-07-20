@@ -1,21 +1,47 @@
 /**
  * Ameya Heights CRM — Google connector (personal account, no Cloud Console, no billing).
  *
- * SETUP (5 minutes):
- *  1. Go to script.google.com  →  New project  →  delete the sample code  →  paste this file.
- *  2. Fill in FOLDER_ID (and SHEET_ID if you want Sheets export) below.
- *  3. Deploy  →  New deployment  →  type "Web app"
- *        Execute as:      Me  (your own Google account)
- *        Who has access:  Anyone
- *     →  Deploy  →  Authorize  →  copy the /exec URL.
- *  4. In Vercel add:  GAS_WEBAPP_URL = that URL       GAS_SECRET = the value below.
+ * This one file now does three jobs:
+ *   A. Drive uploads + Sheets export   (doPost — already working, unchanged)
+ *   B. Social capture from Gmail       (scanSocialOnce — hourly trigger)
+ *   C. Hourly overdue reminders        (pingEscalation — hourly trigger)
  *
- * Files are created BY YOU, so they use your own 15GB Drive quota. No service account,
- * no API keys, no payment method.
+ * ── FIRST-TIME SETUP (already done for part A) ────────────────────────────
+ *  1. script.google.com → New project → paste this file.
+ *  2. Fill in FOLDER_ID and SHEET_ID below.
+ *  3. Deploy → New deployment → Web app
+ *        Execute as:      Me
+ *        Who has access:  Anyone
+ *     → Deploy → Authorize → copy the /exec URL.
+ *  4. In Vercel: GAS_WEBAPP_URL = that URL, GAS_SECRET = the SECRET below.
+ *
+ * ── AFTER PASTING THIS UPDATE ─────────────────────────────────────────────
+ *  5. Fill in CRON_KEY and INGEST_KEY below (see the CRM deploy notes).
+ *  6. Save. Click Run with "pingEscalation" selected → approve the permissions.
+ *  7. Run "scanSocialOnce" once → approve the Gmail permission.
+ *  8. Left sidebar → the clock icon (Triggers) → Add Trigger, twice:
+ *        pingEscalation  · Time-driven · Hour timer · Every hour
+ *        scanSocialOnce  · Time-driven · Hour timer · Every hour
+ *  9. Deploy → Manage deployments → edit → Version: NEW VERSION → Deploy.
+ *     (Editing the code alone does not update the live web app.)
+ *
+ * Files are created BY YOU, so they use your own 15GB Drive quota. No service
+ * account, no API keys, no payment method.
  */
-var SECRET    = '3b6b3f81ab2515276cbd09b6e15c2592464ae364';
-var FOLDER_ID = 'PASTE_YOUR_DRIVE_FOLDER_ID';   // from drive.google.com/drive/folders/<THIS_ID>
-var SHEET_ID  = '';                              // optional: from docs.google.com/spreadsheets/d/<THIS_ID>/edit
+
+// ── Settings ───────────────────────────────────────────────────────────────
+var SECRET     = '3b6b3f81ab2515276cbd09b6e15c2592464ae364';
+var FOLDER_ID  = '1zkJogniKQSdLFksHIr0wQuCdECJoEQIy';   // drive.google.com/drive/folders/<THIS_ID>
+var SHEET_ID   = '1iO_jlkiX6Jhq8zWyhcRwcDDZDPpOEenQPv-WaFP5hmk'; // docs.google.com/spreadsheets/d/<THIS_ID>/edit
+
+var CRM_URL    = 'https://ameyacrm.vercel.app';   // no trailing slash
+var CRON_KEY   = 'PASTE_CRON_SECRET_HERE';        // must equal CRON_SECRET in Vercel
+var INGEST_KEY = 'PASTE_INGEST_SECRET_HERE';      // must equal INGEST_SECRET in Vercel
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  A.  Drive uploads + Sheets export  (called by the CRM)
+// ═══════════════════════════════════════════════════════════════════════════
 
 function doPost(e) {
   try {
@@ -59,20 +85,14 @@ function out(obj) {
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
- *  SOCIAL SCANNER  (v7.0)
- *  Reads the notification emails Instagram / LinkedIn / Facebook / X already
- *  send you and posts them to the CRM. No platform API, no developer account.
- *
- *  SETUP
- *   1. Fill CRM_URL and INGEST_KEY below.
- *   2. Run scanSocialOnce() manually once and approve the Gmail permission.
- *   3. Triggers (clock icon) > Add Trigger > scanSocialOnce > Time-driven >
- *      Hour timer > Every hour.
- * ═══════════════════════════════════════════════════════════════════════ */
-
-var CRM_URL    = 'https://ameyacrm.vercel.app';   // no trailing slash
-var INGEST_KEY = 'PASTE_YOUR_INGEST_SECRET_HERE';
+// ═══════════════════════════════════════════════════════════════════════════
+//  B.  Social capture from Gmail
+//
+//  Instagram, LinkedIn, Facebook and X already email you when something
+//  happens. This reads those emails and posts them to the CRM, which writes a
+//  one-line summary and notifies the right people. No platform API, no
+//  developer account, no cost.
+// ═══════════════════════════════════════════════════════════════════════════
 
 var SOCIAL_QUERY =
   'newer_than:2d (' +
@@ -82,10 +102,14 @@ var SOCIAL_QUERY =
   ') -label:crm-captured';
 
 function scanSocialOnce() {
+  if (INGEST_KEY.indexOf('PASTE') === 0) {
+    Logger.log('INGEST_KEY is not filled in yet — stopping.');
+    return;
+  }
+
   var label = GmailApp.getUserLabelByName('crm-captured') || GmailApp.createLabel('crm-captured');
   var threads = GmailApp.search(SOCIAL_QUERY, 0, 25);
   var messages = [];
-  var handled = [];
 
   for (var i = 0; i < threads.length; i++) {
     var msgs = threads[i].getMessages();
@@ -95,10 +119,9 @@ function scanSocialOnce() {
         messageId: m.getId(),
         from: m.getFrom(),
         subject: m.getSubject(),
-        body: m.getPlainBody().slice(0, 4000)
+        body: m.getPlainBody().substring(0, 4000)
       });
     }
-    handled.push(threads[i]);
   }
 
   if (!messages.length) { Logger.log('nothing new'); return; }
@@ -113,30 +136,75 @@ function scanSocialOnce() {
 
   Logger.log(res.getResponseCode() + ' ' + res.getContentText());
 
-  // Only label once the CRM has accepted them, so a failure retries next hour.
+  // Label only after the CRM accepts them, so a failure simply retries next hour.
   if (res.getResponseCode() === 200) {
-    for (var k = 0; k < handled.length; k++) handled[k].addLabel(label);
+    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
   }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- *  HOURLY OVERDUE ESCALATION  (v7.2)
- *  Vercel's free plan only allows one scheduled job per day, so this script
- *  does the hourly run instead. Costs nothing.
- *
- *  SETUP
- *   1. Fill CRON_KEY below with the CRON_SECRET from your Vercel settings.
- *   2. Run pingEscalation() once and approve the permission.
- *   3. Triggers (clock icon) > Add Trigger > pingEscalation >
- *      Time-driven > Hour timer > Every hour.
- * ═══════════════════════════════════════════════════════════════════════ */
 
-var CRON_KEY = 'PASTE_YOUR_CRON_SECRET_HERE';
+// ═══════════════════════════════════════════════════════════════════════════
+//  C.  Hourly overdue reminders
+//
+//  Vercel's free plan allows only ONE scheduled job per day, so this does the
+//  hourly run instead. Calling it more often than needed is harmless — the CRM
+//  tracks per-item timing, so nobody is messaged twice.
+// ═══════════════════════════════════════════════════════════════════════════
 
 function pingEscalation() {
+  if (CRON_KEY.indexOf('PASTE') === 0) {
+    Logger.log('CRON_KEY is not filled in yet — stopping.');
+    return;
+  }
+
   var res = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), {
     method: 'get',
     muteHttpExceptions: true
   });
+
   Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  D.  One-click check — run this after setup to confirm everything works.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function testEverything() {
+  var report = [];
+
+  try {
+    report.push('Drive folder: ' + DriveApp.getFolderById(FOLDER_ID).getName() + '  ✓');
+  } catch (err) {
+    report.push('Drive folder FAILED: ' + err);
+  }
+
+  try {
+    report.push('Sheet: ' + SpreadsheetApp.openById(SHEET_ID).getName() + '  ✓');
+  } catch (err) {
+    report.push('Sheet FAILED: ' + err);
+  }
+
+  try {
+    var a = UrlFetchApp.fetch(CRM_URL + '/api/cron/escalate?key=' + encodeURIComponent(CRON_KEY), { muteHttpExceptions: true });
+    report.push('Escalation endpoint: HTTP ' + a.getResponseCode() +
+                (a.getResponseCode() === 200 ? '  ✓' : '  ← 401 means CRON_KEY does not match Vercel'));
+  } catch (err) {
+    report.push('Escalation FAILED: ' + err);
+  }
+
+  try {
+    var b = UrlFetchApp.fetch(CRM_URL + '/api/ingest/social-email', {
+      method: 'post', contentType: 'application/json',
+      headers: { 'x-ingest-key': INGEST_KEY },
+      payload: JSON.stringify({ messages: [] }),
+      muteHttpExceptions: true
+    });
+    report.push('Social endpoint: HTTP ' + b.getResponseCode() +
+                (b.getResponseCode() === 200 ? '  ✓' : '  ← 401 means INGEST_KEY does not match Vercel'));
+  } catch (err) {
+    report.push('Social FAILED: ' + err);
+  }
+
+  Logger.log(report.join('\n'));
 }

@@ -61,7 +61,7 @@ export function PrivacyView({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Leads with recorded consent</p>
           <p className="font-display text-2xl font-semibold">{pct}%</p>
@@ -105,7 +105,7 @@ export function PrivacyView({
         </p>
       </Card>
 
-      <Card className="overflow-x-auto">
+      <Card className="table-scroll">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
             <tr><th className="p-3">Ref</th><th className="p-3">Person</th><th className="p-3">Type</th><th className="p-3">Received</th><th className="p-3">Status</th><th className="p-3"></th></tr>

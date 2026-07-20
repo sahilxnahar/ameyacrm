@@ -35,7 +35,7 @@ export function Sidebar({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
           {NAVIGATION.map((group) => {
             const items = group.items.filter((i) => canSee(i.permission));
             if (items.length === 0) return null;
@@ -54,7 +54,7 @@ export function Sidebar({
                           href={item.href}
                           onClick={onClose}
                           className={cn(
-                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                            'flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors active:bg-secondary',
                             active
                               ? 'bg-primary/10 font-semibold'
                               : 'gold-solid hover:bg-primary/5',
@@ -72,7 +72,7 @@ export function Sidebar({
           })}
         </nav>
         <div className="border-t p-4 text-[10px] text-muted-foreground">
-          Ameya Heights CRM · v7.2
+          Ameya Heights CRM · v7.3
         </div>
       </aside>
     </>

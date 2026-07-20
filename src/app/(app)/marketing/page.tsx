@@ -24,7 +24,7 @@ export default async function MarketingPage() {
   return (
     <div>
       <PageHeader title="Marketing" description="Campaigns, budget, social calendar and creative assets." />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Active campaigns" value={active} icon={Megaphone} />
         <StatCard label="Total budget" value={formatCurrency(Number(agg._sum.budget ?? 0))} icon={Target} />
         <StatCard label="Spend to date" value={formatCurrency(Number(agg._sum.spend ?? 0))} icon={Wallet} tone="warning" />

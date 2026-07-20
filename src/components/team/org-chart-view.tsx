@@ -77,7 +77,7 @@ export function OrgChartView({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Gap label="People with no manager" value={gaps.noManager} hint="They sit at the top of the chart. Fine for you; a gap for everyone else." />
         <Gap label="People with no department" value={gaps.noDepartment} hint="They will not appear under any team." />
         <Gap label="Departments with no head" value={gaps.deptNoHead} hint="Set one on Admin → Departments." />

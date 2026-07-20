@@ -25,7 +25,7 @@ export default async function PaymentRequestsPage() {
   return (
     <div>
       <PageHeader title="Payment requests" description="Ask anyone to pay — they get an email with a secure link." />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Outstanding" value={formatCurrency(outstanding)} icon={Clock} tone="warning" />
         <StatCard label="Collected" value={formatCurrency(collected)} icon={CheckCircle2} tone="success" />
         <StatCard label="Awaiting verification" value={awaiting} icon={Send} tone={awaiting ? 'destructive' : 'default'} />

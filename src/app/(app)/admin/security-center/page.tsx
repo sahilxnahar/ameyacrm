@@ -36,7 +36,7 @@ export default async function SecurityCenterPage() {
           <Button asChild variant="outline" size="sm"><a href="/api/admin/email-check" target="_blank" rel="noreferrer"><Mail className="h-4 w-4" /> Test email (SMTP)</a></Button>
         </div>
       </PageHeader>
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Failed logins (7d)" value={failed7d} icon={ShieldAlert} tone={failed7d > 0 ? 'warning' : undefined} />
         <StatCard label="Successful logins (7d)" value={success7d} icon={LogIn} />
         <StatCard label="Active sessions" value={activeSessions} icon={Monitor} />

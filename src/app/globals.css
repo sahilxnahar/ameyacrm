@@ -133,3 +133,54 @@
   }
   @media (prefers-reduced-motion: reduce) { .gold-emblem { animation: none; } }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobile ergonomics.
+
+   Phones are the primary device for site staff, so these are not "responsive
+   tweaks" — they fix the things that make a web app feel broken on a phone.
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS zooms the whole page when you focus an input under 16px. */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+
+  /* Comfortable targets. Apple asks for 44px, Google for 48dp. */
+  @media (pointer: coarse) {
+    button, a[role='button'], [role='tab'], summary { min-height: 40px; }
+    input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; }
+  }
+
+  /* Momentum scrolling inside tables and dialogs. */
+  .overflow-x-auto, .overflow-y-auto, .overflow-auto { -webkit-overflow-scrolling: touch; }
+
+  /* Nothing should ever push the page sideways on a phone. */
+  body { overflow-x: hidden; }
+}
+
+@layer components {
+  /* Horizontally scrollable table with an edge fade hinting there is more. */
+  .table-scroll {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+    scrollbar-width: thin;
+  }
+  .table-scroll::-webkit-scrollbar { height: 6px; }
+
+  /* A row of filter chips that scrolls rather than wrapping into three lines. */
+  .chip-row {
+    @apply -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0;
+    scrollbar-width: none;
+  }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip-row > * { flex-shrink: 0; }
+
+  /* Safe area helpers for notches and home indicators. */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}

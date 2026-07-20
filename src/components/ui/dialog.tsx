@@ -17,7 +17,11 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg border bg-card p-6 shadow-lg data-[state=open]:animate-fade-in',
+        // On phones this behaves as a bottom sheet: full width, rounded top only,
+        // and never taller than the screen so the buttons stay reachable.
+        'fixed z-50 grid gap-4 border bg-card shadow-lg data-[state=open]:animate-fade-in',
+        'inset-x-0 bottom-0 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
+        'sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:pb-6',
         className,
       )}
       {...props}

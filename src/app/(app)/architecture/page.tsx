@@ -25,7 +25,7 @@ export default async function ArchitecturePage() {
   return (
     <div>
       <PageHeader title="Architecture" description="Drawings, revisions, RFIs, consultants and issue logs." />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Drawings" value={drawingCount} icon={PencilRuler} />
         <StatCard label="Open RFIs" value={openRfis} icon={FileQuestion} tone="warning" />
         <StatCard label="Open issues" value={openIssues} icon={AlertOctagon} tone={openIssues ? 'destructive' : 'default'} />

@@ -22,7 +22,7 @@ export default async function NriPage() {
   return (
     <div>
       <PageHeader title="NRI Desk" description="International buyers — time zones, follow-ups and communication in one place." />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="NRI leads" value={total} icon={Users2} />
         <StatCard label="Countries" value={countries.length} icon={Globe2} tone="warning" />
         <StatCard label="Follow-ups (7 days)" value={dueSoon} icon={CalendarClock} />

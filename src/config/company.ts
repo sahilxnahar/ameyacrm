@@ -30,7 +30,7 @@ export interface CompanyDetails {
 
 export const COMPANY_DEFAULTS: CompanyDetails = {
   legalName: 'Ameya Heights LLP',
-  gstin: '29AC0FA6794K1ZG',
+  gstin: '29ACOFA6794K1ZG',
   gstState: 'Karnataka (29)',
   pan: '',
   cin: '',
@@ -48,14 +48,36 @@ export const COMPANY_DEFAULTS: CompanyDetails = {
   website: 'www.ameyaheights.com',
 };
 
-/** Plain-text block used in emails and on the public payment page. */
+/**
+ * Bank details laid out the way an accounts department expects to receive
+ * them — aligned labels, in the order a person fills in a transfer form.
+ * Used in emails, on the public payment page and on invoices.
+ */
 export function bankBlock(c: CompanyDetails): string {
+  const rows: Array<[string, string]> = [
+    ['Account Name', c.bankAccountName],
+    ['Bank', c.bankName],
+    ['Account No.', c.bankAccountNumber],
+    ['IFSC Code', c.bankIfsc],
+    ['Branch', c.bankBranch],
+    ['GSTIN', c.gstin],
+  ];
+  if (c.upiId) rows.push(['UPI ID', c.upiId]);
+  const pad = Math.max(...rows.map(([k]) => k.length));
+  return rows
+    .filter(([, v]) => Boolean(v))
+    .map(([k, v]) => `${k.padEnd(pad, ' ')} : ${v}`)
+    .join('\n');
+}
+
+/** Same details as label/value pairs, for tables and PDFs. */
+export function bankRows(c: CompanyDetails): Array<{ label: string; value: string }> {
   return [
-    `Account name: ${c.bankAccountName}`,
-    `Bank: ${c.bankName}`,
-    `A/c no: ${c.bankAccountNumber}`,
-    `IFSC: ${c.bankIfsc}`,
-    c.bankBranch ? `Branch: ${c.bankBranch}` : '',
-    c.upiId ? `UPI: ${c.upiId}` : '',
-  ].filter(Boolean).join('\n');
+    { label: 'Account Name', value: c.bankAccountName },
+    { label: 'Bank', value: c.bankName },
+    { label: 'Account No.', value: c.bankAccountNumber },
+    { label: 'IFSC Code', value: c.bankIfsc },
+    { label: 'Branch', value: c.bankBranch },
+    { label: 'UPI ID', value: c.upiId },
+  ].filter((r) => Boolean(r.value));
 }

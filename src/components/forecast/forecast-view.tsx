@@ -53,7 +53,7 @@ export function ForecastView({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={Target} label="Target this month" value={lakh(totals.target)} />
         <Stat icon={Trophy} label="Booked" value={lakh(totals.booked)} tone={totals.booked >= totals.target && totals.target > 0 ? 'good' : undefined} />
         <Stat icon={TrendingUp} label="Weighted pipeline" value={lakh(totals.weightedPipeline)} hint="Open leads × their stage odds" />
@@ -103,7 +103,7 @@ export function ForecastView({
             <p className="mt-2 text-xs text-muted-foreground">Last column is the weighted value — what the stage is realistically worth.</p>
           </Card>
 
-          <Card className="overflow-x-auto">
+          <Card className="table-scroll">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -161,7 +161,7 @@ export function ForecastView({
             )}
           </Card>
 
-          <Card className="overflow-x-auto">
+          <Card className="table-scroll">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr><th className="p-3">Person</th><th className="p-3">Booking</th><th className="p-3 text-right">Value</th><th className="p-3">Slab</th><th className="p-3 text-right">Earns</th><th className="p-3">Status</th><th className="p-3"></th></tr>

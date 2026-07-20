@@ -24,7 +24,7 @@ export default async function PartnersPage() {
   return (
     <div>
       <PageHeader title="Channel Partners" description="Broker onboarding, RERA/KYC, lead protection and brokerage payouts." />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Partners" value={partners.length} icon={Handshake} />
         <StatCard label="Approved" value={approved} icon={BadgeCheck} tone="success" />
         <StatCard label="KYC pending" value={kycPending} icon={Clock} tone="warning" />

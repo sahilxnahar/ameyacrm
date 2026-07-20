@@ -39,7 +39,7 @@ export default async function SalesPage() {
         <Button asChild variant="outline" size="sm"><Link href="/sales/import"><Upload className="h-4 w-4" /> Import CSV</Link></Button>
         <Button asChild variant="outline" size="sm"><Link href="/sales/duplicates"><Merge className="h-4 w-4" /> Duplicates</Link></Button>
       </PageHeader>
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Total leads" value={total} icon={Users2} />
         <StatCard label="NRI leads" value={nri} icon={Globe2} tone="warning" />
         <StatCard label="Site visits" value={siteVisits} icon={CalendarCheck} />

@@ -79,7 +79,7 @@ export function CalendarView({
             </select>
           </>
         )}
-        <span className="ml-auto flex flex-wrap gap-1">
+        <span className="chip-row ml-auto w-full sm:w-auto">
           {(Object.keys(KIND) as WorkKind[]).map((k) => {
             const K = KIND[k];
             return (
@@ -102,7 +102,7 @@ export function CalendarView({
       {tab === 'workload' && canSeeEveryone ? (
         <WorkloadTable rows={workload} onPick={(id) => { setWho(id); setTab('calendar'); }} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_20rem]">
           <Card className="p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="font-display text-lg font-semibold">{format(month, 'MMMM yyyy')}</p>
@@ -121,7 +121,7 @@ export function CalendarView({
                 const late = list.some((i) => isBefore(new Date(i.due), startOfDay(new Date())));
                 return (
                   <button key={d.toISOString()} onClick={() => setSelected(d)}
-                    className={cn('min-h-[76px] bg-card p-1.5 text-left align-top transition-colors hover:bg-secondary/60',
+                    className={cn('min-h-[54px] bg-card p-1 text-left align-top transition-colors hover:bg-secondary/60 sm:min-h-[76px] sm:p-1.5',
                       !isSameMonth(d, month) && 'opacity-40',
                       selected && isSameDay(d, selected) && 'ring-2 ring-inset ring-primary')}>
                     <span className={cn('inline-flex h-5 w-5 items-center justify-center rounded-full text-xs',
@@ -137,7 +137,7 @@ export function CalendarView({
             </div>
           </Card>
 
-          <Card className="p-3">
+          <Card className="order-first p-3 lg:order-none">
             <p className="mb-2 text-sm font-semibold">{selected ? format(selected, 'EEEE d MMMM') : 'Pick a day'}</p>
             {dayItems.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Nothing due.</p>
@@ -176,7 +176,7 @@ function WorkloadTable({ rows, onPick }: { rows: WorkloadRow[]; onPick: (userId:
     sort === 'name' ? a.name.localeCompare(b.name) : sort === 'total' ? b.total - a.total : b.overdue - a.overdue || b.total - a.total);
 
   return (
-    <Card className="overflow-x-auto">
+    <Card className="table-scroll">
       <table className="w-full text-sm">
         <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
           <tr>

@@ -59,7 +59,7 @@ export function MobileAppView({
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Phones receiving push</p>
           <p className="font-display text-2xl font-semibold">{pushEnabled} <span className="text-base font-normal text-muted-foreground">of {totalPeople}</span></p>
@@ -87,7 +87,7 @@ export function MobileAppView({
         </Card>
       )}
 
-      <Card className="overflow-x-auto">
+      <Card className="table-scroll">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
             <tr><th className="p-3">Work</th><th className="p-3">Owner</th><th className="p-3">Late by</th><th className="p-3 text-right">Nudges</th><th className="p-3"></th></tr>

@@ -126,7 +126,7 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
 
       <p className="text-xs text-muted-foreground">Showing {rows.length} of {total} record{total === 1 ? '' : 's'}.</p>
 
-      <Card className="overflow-x-auto">
+      <Card className="table-scroll">
         <Table>
           <TableHeader><TableRow>{columns.map((c) => <TableHead key={c}>{pretty(c.replace(/([A-Z])/g, ' $1'))}</TableHead>)}</TableRow></TableHeader>
           <TableBody>

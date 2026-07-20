@@ -5,13 +5,13 @@ import { toast } from 'sonner';
 import { Plus, Loader2, Link2, MessageCircle, Send, Check, Ban, Settings2 } from 'lucide-react';
 import { createPaymentRequest, resendPaymentRequest, setPaymentRequestStatus, savePaymentInstructions } from '@/server/actions/payment-requests';
 import { Button } from '@/components/ui/button';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { cn } from '@/lib/utils/cn';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Req { id: string; reference: string; token: string; payeeName: string; payeeEmail: string | null; payeePhone: string | null; amount: number; description: string; status: string; dueDate: string | null; payerReference: string | null; emailSentAt: string | null; createdAt: string }
@@ -65,39 +65,41 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
         </Card>
       )}
 
-      <Card>
-        <Table>
-          <TableHeader><TableRow><TableHead>Request</TableHead><TableHead>Payee</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
-          <TableBody>
-            {requests.length === 0 && <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">No payment requests yet.</TableCell></TableRow>}
-            {requests.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>
-                  <p className="font-mono text-xs text-muted-foreground">{r.reference}</p>
-                  <p className="max-w-xs truncate text-sm">{r.description}</p>
-                  {r.payerReference && <p className="text-[11px] text-amber-700">Payer ref: {r.payerReference}</p>}
-                </TableCell>
-                <TableCell className="text-sm">{r.payeeName}<p className="text-xs text-muted-foreground">{r.payeeEmail ?? r.payeePhone ?? '—'}</p></TableCell>
-                <TableCell className="text-right font-medium">{money(r.amount)}</TableCell>
-                <TableCell><Badge variant={tone(r.status)}>{r.status}</Badge></TableCell>
-                <TableCell className="text-right">
-                  <span className="flex flex-wrap justify-end gap-1.5">
-                    <Button size="sm" variant="outline" className={AB} title="Copy the secure payment link so you can paste it anywhere" onClick={() => { navigator.clipboard?.writeText(link(r.token)); toast.success('Link copied'); }}><Link2 className="h-3.5 w-3.5" /> Copy link</Button>
-                    {r.payeePhone && (
-                      <Button asChild size="sm" variant="outline" className={AB} title="Send the request to this person on WhatsApp">
-                        <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${money(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp</a>
-                      </Button>
-                    )}
-                    {r.payeeEmail && <Button size="sm" variant="outline" className={AB} title="Email the request to the payee again" disabled={pending} onClick={() => act(() => resendPaymentRequest(r.id), 'Email sent')}><Send className="h-3.5 w-3.5" /> Resend email</Button>}
-                    {r.status !== 'PAID' && <Button size="sm" variant="outline" className={cn(AB, 'text-success')} title="Confirm the money has reached your account" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'PAID'), 'Marked paid')}><Check className="h-3.5 w-3.5" /> Mark paid</Button>}
-                    {r.status !== 'CANCELLED' && <Button size="sm" variant="outline" className={cn(AB, 'text-destructive')} title="Withdraw this request — the link stops working" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'CANCELLED'), 'Cancelled')}><Ban className="h-3.5 w-3.5" /> Cancel</Button>}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <ResponsiveTable
+        rows={requests}
+        rowKey={(r) => r.id}
+        empty="No payment requests yet."
+        columns={[
+          { key: 'request', header: 'Request', primary: true, cell: (r) => (
+            <span>
+              <span className="block font-mono text-[11px] text-muted-foreground">{r.reference}</span>
+              <span className="block">{r.description}</span>
+              {r.payerReference && <span className="block text-[11px] text-amber-700">Payer ref: {r.payerReference}</span>}
+            </span>
+          ) },
+          { key: 'payee', header: 'Payee', cell: (r) => (
+            <span>
+              {r.payeeName}
+              <span className="block break-all text-xs text-muted-foreground">{r.payeeEmail ?? r.payeePhone ?? '—'}</span>
+            </span>
+          ) },
+          { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <span className="font-medium">{money(r.amount)}</span> },
+          { key: 'status', header: 'Status', cell: (r) => <Badge variant={tone(r.status)}>{r.status}</Badge> },
+        ]}
+        actions={(r) => (
+          <>
+            <Button size="sm" variant="outline" className={AB} title="Copy the secure payment link so you can paste it anywhere" onClick={() => { navigator.clipboard?.writeText(link(r.token)); toast.success('Link copied'); }}><Link2 className="h-3.5 w-3.5" /> Copy link</Button>
+            {r.payeePhone && (
+              <Button asChild size="sm" variant="outline" className={AB} title="Send the request to this person on WhatsApp">
+                <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${money(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp</a>
+              </Button>
+            )}
+            {r.payeeEmail && <Button size="sm" variant="outline" className={AB} title="Email the request to the payee again" disabled={pending} onClick={() => act(() => resendPaymentRequest(r.id), 'Email sent')}><Send className="h-3.5 w-3.5" /> Resend email</Button>}
+            {r.status !== 'PAID' && <Button size="sm" variant="outline" className={cn(AB, 'text-success')} title="Confirm the money has reached your account" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'PAID'), 'Marked paid')}><Check className="h-3.5 w-3.5" /> Mark paid</Button>}
+            {r.status !== 'CANCELLED' && <Button size="sm" variant="outline" className={cn(AB, 'text-destructive')} title="Withdraw this request — the link stops working" disabled={pending} onClick={() => act(() => setPaymentRequestStatus(r.id, 'CANCELLED'), 'Cancelled')}><Ban className="h-3.5 w-3.5" /> Cancel</Button>}
+          </>
+        )}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
