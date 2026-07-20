@@ -162,8 +162,10 @@ export async function extractBill(formData: FormData): Promise<{ ok: true; draft
     if (!(file instanceof File)) return { error: 'No file provided.' };
     if (file.size > 15 * 1024 * 1024) return { error: 'File exceeds the 15MB limit for AI reading.' };
     const buffer = Buffer.from(await file.arrayBuffer());
-    const draft = await extractInvoiceData(buffer, file.type || 'application/octet-stream', file.name);
-    if (!draft) return { error: 'Could not read billing data from this file. PDF, image and text files are supported.' };
+    const draft = await extractInvoiceData(buffer, file.type, file.name);
+    if (!draft) return { error: 'Could not read billing data from this file.' };
+    // The reader now says what went wrong rather than one message for everything.
+    if ('error' in draft) return { error: draft.error };
     return { ok: true, draft };
   } catch (err) { return toActionError(err); }
 }

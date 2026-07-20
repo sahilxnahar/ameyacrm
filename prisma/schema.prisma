@@ -2545,3 +2545,82 @@ model RateLimit {
   @@unique([bucket, windowStart])
   @@index([windowStart])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Cash book  (v10.2)
+//
+//  Every rupee and every bag of cement that moves, as a numbered voucher.
+//  Deliberately simple double-entry-lite: each voucher is money or material
+//  moving in or out, against a party and a project.
+// ════════════════════════════════════════════════════════════════════════════
+
+enum VoucherKind {
+  CASH_RECEIVED
+  CASH_PAID
+  MATERIAL_RECEIVED
+  MATERIAL_ISSUED
+  BANK_RECEIVED
+  BANK_PAID
+}
+
+enum VoucherStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum PayMode {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  CARD
+  ADJUSTMENT
+}
+
+model Voucher {
+  id        String        @id @default(cuid())
+  number    String        @unique // CR-1001, CP-1001, MR-1001 …
+  kind      VoucherKind
+  status    VoucherStatus @default(POSTED)
+  voucherDate DateTime    @default(now())
+
+  // Who it is with — free text so a one-off vendor needs no master record,
+  // with optional links when the party is already in the system.
+  partyName   String
+  partyPhone  String?
+  vendorId    String?
+  customerId  String?
+  leadId      String?
+
+  projectId String?
+  bookingId String?
+
+  amount     Decimal  @default(0) @db.Decimal(14, 2)
+  mode       PayMode  @default(CASH)
+  reference  String? // UTR, cheque number, challan number
+  narration  String?
+
+  // Material vouchers
+  materialName String?
+  quantity     Decimal? @db.Decimal(12, 3)
+  unit         String? // bags, cft, tonnes, nos
+  rate         Decimal? @db.Decimal(12, 2)
+
+  gstRate   Decimal? @db.Decimal(5, 2)
+  gstAmount Decimal? @db.Decimal(14, 2)
+
+  attachmentId String?
+  createdById  String?
+  approvedById String?
+  approvedAt   DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([kind, voucherDate])
+  @@index([projectId, voucherDate])
+  @@index([status])
+  @@index([partyName])
+}

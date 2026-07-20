@@ -80,7 +80,7 @@ export function Sidebar({
 
     return (
       <li key={(isPinnedRow ? 'p:' : '') + item.href} className={cn(customising && hidden && 'opacity-40')}>
-        <div className="group flex items-center gap-0.5">
+        <div className="group flex flex-col">
           <Link
             href={item.href}
             onClick={customising ? (e) => e.preventDefault() : onClose}
@@ -91,20 +91,22 @@ export function Sidebar({
             )}
           >
             <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#A07D34]' : 'text-[#6B6459]')} />
-            <span className={cn('truncate', active && 'font-semibold text-[#14120E] dark:text-[#F1EAD9]')}>{item.label}</span>
+            <span className="truncate">{item.label}</span>
             {!customising && isPinned && <Pin className="ml-auto h-3 w-3 shrink-0 text-[#A07D34]" />}
           </Link>
 
+          {/* The controls get their own row. Squeezed next to the label they
+              were clipped off the edge of the sidebar and unusable. */}
           {customising && (
-            <span className="flex shrink-0 items-center">
-              <button onClick={() => move(item.href, -1, groupHrefs)} title="Move up" className="rounded p-1 hover:bg-secondary"><ChevronUp className="h-3.5 w-3.5" /></button>
-              <button onClick={() => move(item.href, 1, groupHrefs)} title="Move down" className="rounded p-1 hover:bg-secondary"><ChevronDown className="h-3.5 w-3.5" /></button>
-              <button onClick={() => togglePin(item.href)} title={isPinned ? 'Unpin from the top' : 'Pin to the top'} className="rounded p-1 hover:bg-secondary">
+            <span className="mb-1 ml-3 flex items-center gap-1">
+              <CtrlButton onClick={() => move(item.href, -1, groupHrefs)} title="Move up"><ChevronUp className="h-3.5 w-3.5" /></CtrlButton>
+              <CtrlButton onClick={() => move(item.href, 1, groupHrefs)} title="Move down"><ChevronDown className="h-3.5 w-3.5" /></CtrlButton>
+              <CtrlButton onClick={() => togglePin(item.href)} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>
                 {isPinned ? <PinOff className="h-3.5 w-3.5 text-[#A07D34]" /> : <Pin className="h-3.5 w-3.5" />}
-              </button>
-              <button onClick={() => toggleHide(item.href)} title={hidden ? 'Show this again' : 'Hide from my menu'} className="rounded p-1 hover:bg-secondary">
+              </CtrlButton>
+              <CtrlButton onClick={() => toggleHide(item.href)} title={hidden ? 'Show this again' : 'Hide from my menu'}>
                 {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              </button>
+              </CtrlButton>
             </span>
           )}
         </div>
@@ -117,7 +119,8 @@ export function Sidebar({
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[17rem] max-w-[85vw] flex-col border-r bg-card shadow-2xl transition-transform duration-200 lg:w-64 lg:max-w-none lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex max-w-[92vw] flex-col border-r bg-card shadow-2xl transition-all duration-200 lg:max-w-none lg:shadow-none lg:translate-x-0',
+          customising ? 'w-[19rem] lg:w-[19rem]' : 'w-[17rem] lg:w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -173,10 +176,24 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.0</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.2</p>
         </div>
       </aside>
     </>
+  );
+}
+
+function CtrlButton({ children, title, onClick }: { children: React.ReactNode; title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -8,6 +8,27 @@ export function geminiSupports(mimeType: string): boolean {
   return mimeType === 'application/pdf' || mimeType.startsWith('image/') || mimeType.startsWith('text/');
 }
 
+const BY_EXTENSION: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+  gif: 'image/gif', heic: 'image/heic', heif: 'image/heif', bmp: 'image/bmp', tiff: 'image/tiff',
+  txt: 'text/plain', csv: 'text/csv', md: 'text/markdown', html: 'text/html',
+};
+
+/**
+ * Work out the type from the filename when the browser will not say.
+ *
+ * Files dragged from some applications arrive with an empty type, or with
+ * application/octet-stream. Rejecting those meant a perfectly readable PDF was
+ * refused with a message claiming PDFs were supported.
+ */
+export function inferMimeType(reported: string, filename: string): string {
+  const r = (reported || '').toLowerCase();
+  if (r && r !== 'application/octet-stream' && r !== 'binary/octet-stream') return r;
+  const ext = filename.toLowerCase().split('.').pop() ?? '';
+  return BY_EXTENSION[ext] ?? r ?? '';
+}
+
 /** Summarize a file with Gemini (multimodal). Returns null (never throws) on any problem. */
 export async function summarizeFile(buffer: Buffer, mimeType: string, filename: string): Promise<string | null> {
   if (!env.GEMINI_API_KEY || !geminiSupports(mimeType)) return null;
@@ -60,9 +81,15 @@ const BILL_SCHEMA = {
 const numOr = (v: unknown, d = 0) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '')); return Number.isFinite(n) ? n : d; };
 
 /** Extract structured billing data (vendor, GSTIN, date, line items, totals) from a bill/invoice file. Never throws — null on any problem. */
-export async function extractInvoiceData(buffer: Buffer, mimeType: string, filename: string): Promise<ExtractedBill | null> {
-  if (!env.GEMINI_API_KEY || !geminiSupports(mimeType)) return null;
-  if (buffer.length > 15 * 1024 * 1024) return null;
+export async function extractInvoiceData(
+  buffer: Buffer, mimeType: string, filename: string,
+): Promise<ExtractedBill | { error: string } | null> {
+  if (!env.GEMINI_API_KEY) return { error: 'No Gemini key is configured, so files cannot be read.' };
+  const type = inferMimeType(mimeType, filename);
+  if (!geminiSupports(type)) {
+    return { error: `"${filename}" is a ${type || 'file type we could not identify'}. Only PDFs, images and text files can be read.` };
+  }
+  if (buffer.length > 15 * 1024 * 1024) return { error: 'That file is over 15MB, which is more than the reader accepts.' };
   const prompt =
     `Extract the billing / invoice data from the attached file "${filename}". Return the vendor or company name (clientName), ` +
     `their GST number (clientGstin), the invoice number, the invoice/purchase date as YYYY-MM-DD, and every line item ` +
@@ -70,16 +97,19 @@ export async function extractInvoiceData(buffer: Buffer, mimeType: string, filen
     `Also return subTotal (before GST), totalGst, and total (grand total including GST). Use null for anything not present. ` +
     `All monetary/numeric values must be plain numbers with no currency symbols or commas.`;
   const body = {
-    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: buffer.toString('base64') } }, { text: prompt }] }],
+    contents: [{ parts: [{ inline_data: { mime_type: type, data: buffer.toString('base64') } }, { text: prompt }] }],
     generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: BILL_SCHEMA },
   };
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+    }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
-    if (!raw) return null;
+    if (!raw) return { error: 'The AI read the file but found no billing data in it. Is this actually an invoice?' };
     const j = JSON.parse(raw) as Record<string, unknown>;
     const items = Array.isArray(j.items) ? (j.items as Record<string, unknown>[]).map((it) => ({
       description: String(it.description ?? '').slice(0, 200) || 'Item',
@@ -109,10 +139,13 @@ export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScor
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: LEAD_SCORE_SCHEMA } };
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+    }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
-    if (!raw) return null;
+    if (!raw) return { error: 'The AI read the file but found no billing data in it. Is this actually an invoice?' };
     const j = JSON.parse(raw) as { score?: unknown; reason?: unknown; nextAction?: unknown };
     const score = Math.max(0, Math.min(100, Math.round(Number(j.score) || 0)));
     return { score, reason: String(j.reason ?? '').slice(0, 300), nextAction: String(j.nextAction ?? '').slice(0, 300) };
@@ -144,10 +177,13 @@ export async function analyzeCallRecording(audio: Buffer, mimeType: string): Pro
   };
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+    }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
-    if (!raw) return null;
+    if (!raw) return { error: 'The AI read the file but found no billing data in it. Is this actually an invoice?' };
     const j = JSON.parse(raw) as Record<string, unknown>;
     const str = (v: unknown, max = 400) => (v == null ? null : String(v).slice(0, max));
     return {
