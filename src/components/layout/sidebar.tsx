@@ -25,11 +25,11 @@ export function Sidebar({
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[17rem] max-w-[85vw] flex-col border-r bg-card shadow-2xl transition-transform duration-200 lg:w-64 lg:max-w-none lg:shadow-none lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b px-5">
+        <div className="app-drawer-head flex items-center justify-between border-b px-5">
           <BrandLogo />
           <button className="lg:hidden" onClick={onClose} aria-label="Close menu">
             <X className="h-5 w-5" />
@@ -72,7 +72,7 @@ export function Sidebar({
           })}
         </nav>
         <div className="border-t p-4 text-[10px] text-muted-foreground">
-          Ameya Heights CRM · v7.3
+          Ameya Heights CRM · v7.4
         </div>
       </aside>
     </>

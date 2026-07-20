@@ -17,17 +17,26 @@ const ITEMS = [
   { href: '/tasks', label: 'Tasks', icon: CheckSquare, permission: 'task.view' },
 ] as const;
 
-export function MobileNav({ allowed, onMore }: { allowed: Set<string>; onMore: () => void }) {
+export function MobileNav({
+  allowed, isSuperAdmin, onMore,
+}: {
+  allowed: Set<string>;
+  isSuperAdmin: boolean;
+  onMore: () => void;
+}) {
   const pathname = usePathname();
-  const visible = ITEMS.filter((i) => !i.permission || allowed.has(i.permission));
+  // Super admins carry the single key '*', not every individual permission —
+  // checking allowed.has() alone wrongly hid most of this bar from them.
+  const canSee = (perm?: string | null) => !perm || isSuperAdmin || allowed.has('*') || allowed.has(perm);
+  const visible = ITEMS.filter((i) => canSee(i.permission));
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Main"
     >
-      <div className="flex items-stretch">
+      <div className="mx-auto flex max-w-lg items-stretch">
         {visible.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -36,7 +45,7 @@ export function MobileNav({ allowed, onMore }: { allowed: Set<string>; onMore: (
               key={item.href}
               href={item.href}
               className={cn(
-                'flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+                'relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
                 active ? 'text-primary' : 'text-muted-foreground active:bg-secondary',
               )}
               aria-current={active ? 'page' : undefined}
@@ -49,7 +58,7 @@ export function MobileNav({ allowed, onMore }: { allowed: Set<string>; onMore: (
         })}
         <button
           onClick={onMore}
-          className="flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground active:bg-secondary"
+          className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground active:bg-secondary"
         >
           <Menu className="h-5 w-5" />
           More

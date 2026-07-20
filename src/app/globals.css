@@ -180,6 +180,20 @@
   .chip-row::-webkit-scrollbar { display: none; }
   .chip-row > * { flex-shrink: 0; }
 
+  /* Header sits below the status bar / Dynamic Island. viewport-fit=cover
+     lets content run under it, so the inset must be added back by hand. */
+  .app-topbar {
+    height: calc(3.5rem + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+  @media (min-width: 640px) {
+    .app-topbar { height: calc(4rem + env(safe-area-inset-top)); }
+  }
+  .app-drawer-head {
+    height: calc(4rem + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+
   /* Safe area helpers for notches and home indicators. */
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pt-safe { padding-top: env(safe-area-inset-top); }

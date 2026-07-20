@@ -8,21 +8,21 @@ import type { ShellUser } from './app-shell';
 
 export function Topbar({ user, onMenu, onSearch }: { user: ShellUser; onMenu: () => void; onSearch: () => void }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:h-16 sm:px-6">
+    <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </Button>
 
       <button
         onClick={onSearch}
-        className="flex h-9 flex-1 items-center gap-2 rounded-md border bg-secondary/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary sm:max-w-md"
+        className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border bg-secondary/50 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary sm:px-3 sm:max-w-md"
       >
         <Search className="h-4 w-4" />
         <span className="truncate">Search…</span>
         <kbd className="ml-auto hidden rounded border bg-background px-1.5 text-[10px] sm:inline">⌘K</kbd>
       </button>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <NotificationsBell />
         <ThemeToggle />
         <UserMenu user={user} />
