@@ -44,6 +44,7 @@ export const brand = {
   assets: {
     markGoldDark: '/brand/mark-gold-dark.svg',
     markGoldLight: '/brand/mark-gold-light.svg',
+    markGoldMetal: '/brand/mark-gold-metal.svg',
     markWhite: '/brand/mark-white.svg',
     lockupGoldDark: '/brand/lockup-gold-dark.svg',
     lockupWhite: '/brand/lockup-white.svg',
