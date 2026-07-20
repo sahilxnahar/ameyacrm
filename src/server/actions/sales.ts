@@ -196,3 +196,14 @@ export async function scoreLead(leadId: string): Promise<SalesResult> {
     return { ok: true, id: leadId };
   } catch (err) { return toActionError(err); }
 }
+
+/** Hot / Warm / Cold classification for pipeline triage. */
+export async function setLeadTemperature(leadId: string, temperature: 'HOT' | 'WARM' | 'COLD'): Promise<SalesResult> {
+  try {
+    const ctx = await ensure('lead.update');
+    await prisma.lead.update({ where: { id: leadId }, data: { temperature } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Lead', entityId: leadId, summary: `Marked ${temperature.toLowerCase()}` });
+    revalidatePath(`/sales/${leadId}`); revalidatePath('/sales');
+    return { ok: true, id: leadId };
+  } catch (err) { return toActionError(err); }
+}

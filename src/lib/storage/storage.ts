@@ -14,6 +14,10 @@ import { env } from '@/config/env';
  */
 export interface StoredObject { key: string; bucket: string; size: number }
 
+const STORAGE_HELP =
+  'File storage is not configured correctly. An admin needs to open Vercel → Storage, connect a Blob store to this project ' +
+  '(which sets BLOB_READ_WRITE_TOKEN automatically), then redeploy.';
+
 const LOCAL_DIR = path.join(process.cwd(), 'uploads-local');
 const isBlobUrl = (key: string) => /^https?:\/\//.test(key);
 
@@ -30,9 +34,15 @@ function client(): S3Client {
 
 export async function putObject(key: string, body: Buffer, contentType: string): Promise<StoredObject> {
   if (env.STORAGE_PROVIDER === 'blob') {
-    const { put } = await import('@vercel/blob');
-    const res = await put(key, body, { access: 'public', contentType, token: env.BLOB_READ_WRITE_TOKEN, addRandomSuffix: false });
-    return { key: res.url, bucket: 'blob', size: body.length }; // store the public URL as the key
+    if (!env.BLOB_READ_WRITE_TOKEN) throw new Error(STORAGE_HELP);
+    try {
+      const { put } = await import('@vercel/blob');
+      const res = await put(key, body, { access: 'public', contentType, token: env.BLOB_READ_WRITE_TOKEN, addRandomSuffix: false });
+      return { key: res.url, bucket: 'blob', size: body.length }; // store the public URL as the key
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`${STORAGE_HELP} (storage said: ${detail})`);
+    }
   }
   if (env.STORAGE_PROVIDER === 'local') {
     const full = path.join(LOCAL_DIR, key);

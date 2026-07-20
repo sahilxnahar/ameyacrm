@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Users2, Globe2, TrendingUp, CalendarCheck, Upload } from 'lucide-react';
+import { Users2, Globe2, TrendingUp, CalendarCheck, Upload, Merge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requirePermission } from '@/lib/auth/current-user';
-import { can } from '@/lib/rbac/can';
+import { leadScope } from '@/lib/rbac/scope';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Sales & Leads' };
 
 export default async function SalesPage() {
   const ctx = await requirePermission('lead.view');
-  const scope = can(ctx.permissions, 'lead.assign') ? {} : { ownerId: ctx.user.id };
+  const scope = await leadScope(ctx); // all / own + my reports, by hierarchy
   const [leads, users, projects, total, nri, booked, siteVisits] = await Promise.all([
     prisma.lead.findMany({
       where: { deletedAt: null, ...scope }, orderBy: { updatedAt: 'desc' }, take: 300,
@@ -37,6 +37,7 @@ export default async function SalesPage() {
     <div>
       <PageHeader title="Sales & Leads" description="Track every inquiry from first touch to booking.">
         <Button asChild variant="outline" size="sm"><Link href="/sales/import"><Upload className="h-4 w-4" /> Import CSV</Link></Button>
+        <Button asChild variant="outline" size="sm"><Link href="/sales/duplicates"><Merge className="h-4 w-4" /> Duplicates</Link></Button>
       </PageHeader>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total leads" value={total} icon={Users2} />

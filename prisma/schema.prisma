@@ -58,6 +58,12 @@ enum AssigneeState {
   COMPLETED
 }
 
+enum LeadTemperature {
+  HOT
+  WARM
+  COLD
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
@@ -551,6 +557,7 @@ model FileObject {
   size         Int
   checksum     String? // sha256
   ocrText      String? // extracted text for search (OCR-ready)
+  driveUrl     String? // Google Drive copy
   uploadedById String?
   createdAt    DateTime @default(now())
 
@@ -828,6 +835,7 @@ model Lead {
   source       LeadSource @default(WEBSITE)
   status       LeadStatus @default(NEW)
   score        Int        @default(0)
+  temperature  LeadTemperature @default(WARM)
   budgetMin    Decimal?   @db.Decimal(14, 2)
   budgetMax    Decimal?   @db.Decimal(14, 2)
   requirement  String?
@@ -1845,4 +1853,33 @@ model ApiToken {
   createdAt   DateTime  @default(now())
 
   @@index([revokedAt])
+}
+
+model SavedView {
+  id        String   @id @default(cuid())
+  name      String
+  entity    String // lead | booking | unit | collection
+  filters   Json
+  ownerId   String?
+  isShared  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([ownerId])
+}
+
+model Reminder {
+  id          String    @id @default(cuid())
+  title       String
+  notes       String?
+  dueAt       DateTime
+  userId      String // who is reminded
+  leadId      String?
+  status      String    @default("PENDING") // PENDING | DONE | DISMISSED
+  notifiedAt  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([dueAt])
 }

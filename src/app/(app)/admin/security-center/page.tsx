@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ShieldAlert, LogIn, Monitor, Lock, Download } from 'lucide-react';
+import { ShieldAlert, LogIn, Monitor, Lock, Download, HardDrive } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
@@ -29,7 +29,11 @@ export default async function SecurityCenterPage() {
   return (
     <div>
       <PageHeader title="Security center" description="Logins, sessions, 2FA coverage and the audit trail — at a glance.">
-        <Button asChild variant="outline" size="sm"><a href="/api/admin/backup"><Download className="h-4 w-4" /> Download full backup (JSON)</a></Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm"><a href="/api/admin/backup"><Download className="h-4 w-4" /> Download full backup (JSON)</a></Button>
+          <Button asChild variant="outline" size="sm"><a href="/api/admin/storage-check" target="_blank" rel="noreferrer"><HardDrive className="h-4 w-4" /> Test file storage</a></Button>
+          <Button asChild variant="outline" size="sm"><a href="/api/admin/drive-check" target="_blank" rel="noreferrer"><HardDrive className="h-4 w-4" /> Test Google Drive</a></Button>
+        </div>
       </PageHeader>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Failed logins (7d)" value={failed7d} icon={ShieldAlert} tone={failed7d > 0 ? 'warning' : undefined} />

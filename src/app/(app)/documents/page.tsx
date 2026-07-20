@@ -4,6 +4,7 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { isGeminiEnabled } from '@/lib/ai/gemini';
+import { isDriveConfigured } from '@/lib/google/drive';
 import { PageHeader } from '@/components/layout/page-header';
 import { DocumentsView } from '@/components/documents/documents-view';
 
@@ -13,6 +14,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const ctx = await requirePermission('document.view');
   const { folder } = await searchParams;
   const folderId = folder ?? null;
+  const allFolders = await prisma.folder.findMany({ where: { deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 });
   const canManage = can(ctx.permissions, 'document.manage');
 
   const [current, folders, documents, projects, perms, users, departments] = await Promise.all([
@@ -40,12 +42,14 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
     <div>
       <PageHeader title="Document Control" description="Versioned, permissioned, searchable document library." />
       <DocumentsView
+        allFolders={allFolders.map((f) => ({ id: f.id, name: f.name }))}
         folderId={folderId}
         folderName={current?.name ?? 'Library'}
         crumbs={crumbs}
         projects={projects}
         canManage={canManage}
         geminiEnabled={isGeminiEnabled()}
+        driveEnabled={isDriveConfigured()}
         users={users}
         departments={departments}
         permissions={perms.map((p) => ({
@@ -54,7 +58,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           who: p.user?.name ?? p.department?.name ?? (p.role ? ROLE_LABELS[p.role] : '—'),
         }))}
         folders={folders.map((f) => ({ id: f.id, name: f.name, visibility: f.visibility, docs: f._count.documents, subfolders: f._count.children }))}
-        documents={documents.map((d) => ({ id: d.id, title: d.title, versions: d._count.versions, owner: d.owner?.name ?? null, updatedAt: d.updatedAt.toISOString(), expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null, fileId: d.versions[0]?.file.id ?? null, size: d.versions[0]?.file.size ?? null, mime: d.versions[0]?.file.mimeType ?? null, summary: d.versions[0]?.file.ocrText ?? null }))}
+        documents={documents.map((d) => ({ id: d.id, title: d.title, versions: d._count.versions, owner: d.owner?.name ?? null, updatedAt: d.updatedAt.toISOString(), expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null, fileId: d.versions[0]?.file.id ?? null, size: d.versions[0]?.file.size ?? null, mime: d.versions[0]?.file.mimeType ?? null, summary: d.versions[0]?.file.ocrText ?? null, driveUrl: d.versions[0]?.file.driveUrl ?? null }))}
       />
     </div>
   );

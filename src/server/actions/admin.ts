@@ -91,3 +91,24 @@ export async function createDepartment(input: unknown): Promise<AdminResult> {
     return toActionError(err);
   }
 }
+
+/** Set who a user reports to (drives hierarchy-based visibility and work assignment). */
+export async function setUserManager(userId: string, managerId: string | null): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    if (managerId === userId) return { error: 'A user cannot report to themselves.' };
+    if (managerId) {
+      // prevent cycles: walk up from the proposed manager
+      let cur: string | null = managerId;
+      for (let i = 0; i < 10 && cur; i++) {
+        if (cur === userId) return { error: 'That would create a reporting loop.' };
+        const up: { managerId: string | null } | null = await prisma.user.findUnique({ where: { id: cur }, select: { managerId: true } });
+        cur = up?.managerId ?? null;
+      }
+    }
+    await prisma.user.update({ where: { id: userId }, data: { managerId } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: managerId ? 'Updated reporting manager' : 'Cleared reporting manager' });
+    revalidatePath('/admin');
+    return { ok: true, id: userId };
+  } catch (err) { return toActionError(err); }
+}

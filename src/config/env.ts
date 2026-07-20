@@ -38,6 +38,12 @@ const schema = z.object({
   CRON_SECRET: z.string().optional(), // guards Vercel Cron endpoints
   INGEST_SECRET: z.string().optional(), // guards the public lead-ingestion webhook
   TELEPHONY_SECRET: z.string().optional(), // guards the telephony (call-recording) webhook
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
+  GOOGLE_PRIVATE_KEY: z.string().optional(),
+  GOOGLE_SHEETS_ID: z.string().optional(),
+  GOOGLE_DRIVE_FOLDER_ID: z.string().optional(), // shared Drive folder for document copies
+  GAS_WEBAPP_URL: z.string().optional(), // Google Apps Script web app (personal Drive/Sheets — no Cloud Console)
+  GAS_SECRET: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Email (pluggable): smtp | ses | resend | console

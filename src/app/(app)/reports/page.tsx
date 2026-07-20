@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { FileSpreadsheet } from 'lucide-react';
+import Link from 'next/link';
+import { FileSpreadsheet, Compass } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { getReportData } from '@/server/services/report-service';
 import { PageHeader } from '@/components/layout/page-header';
@@ -15,6 +16,7 @@ export default async function ReportsPage() {
     <div>
       <PageHeader title="Reports & Analytics" description="Workload, performance and pipeline at a glance.">
         <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm"><Link href="/reports/explorer"><Compass className="h-4 w-4" /> Explorer</Link></Button>
           <Button asChild variant="outline" size="sm"><a href="/api/reports/tasks.csv"><FileSpreadsheet className="h-4 w-4" /> Tasks</a></Button>
           <Button asChild variant="outline" size="sm"><a href="/api/reports/leads.csv"><FileSpreadsheet className="h-4 w-4" /> Leads</a></Button>
           <Button asChild variant="outline" size="sm"><a href="/api/reports/bookings.csv"><FileSpreadsheet className="h-4 w-4" /> Bookings</a></Button>

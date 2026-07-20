@@ -42,7 +42,7 @@ export default async function AdminPage() {
         ))}
       </div>
       <AdminView
-        users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled }))}
+        users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled, managerId: u.managerId ?? null }))}
         departments={departments.map((d) => ({ id: d.id, name: d.name, users: d._count.users, head: d.head?.name ?? null, active: d.isActive }))}
         deptOptions={departments.map((d) => ({ id: d.id, name: d.name }))}
       />

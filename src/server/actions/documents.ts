@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { putObject, makeObjectKey, getObjectStream } from '@/lib/storage/storage';
 import { summarizeFile, isGeminiEnabled } from '@/lib/ai/gemini';
+import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
@@ -65,6 +66,12 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
     try {
       const summary = await summarizeFile(buffer, file.type || 'application/octet-stream', file.name);
       if (summary) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { ocrText: summary } });
+    } catch { /* ignore */ }
+    try {
+      if (isDriveConfigured()) {
+        const drive = await uploadToDrive(file.name, file.type || 'application/octet-stream', buffer);
+        if (!('error' in drive)) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { driveUrl: drive.webViewLink } });
+      }
     } catch { /* ignore */ }
     await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Document', entityId: doc.id, summary: `Uploaded ${file.name}` });
     revalidatePath('/documents');
@@ -135,6 +142,91 @@ export async function summarizeDocument(documentId: string): Promise<DocResult> 
     const summary = await summarizeFile(body, file.mimeType, file.originalName);
     if (!summary) return { error: 'Could not summarize this file type (PDF, image and text are supported).' };
     await prisma.fileObject.update({ where: { id: file.id }, data: { ocrText: summary } });
+    revalidatePath('/documents');
+    return { ok: true, id: documentId };
+  } catch (err) { return toActionError(err); }
+}
+
+const registerSchema = z.object({
+  folderId: z.string().min(1),
+  title: z.string().max(200).optional(),
+  url: z.string().min(5).max(1000),
+  originalName: z.string().min(1).max(255),
+  mimeType: z.string().max(120).default('application/octet-stream'),
+  size: z.coerce.number().int().nonnegative().default(0),
+});
+/** Records a file that the browser uploaded straight to blob storage (bulk / large-file path). */
+export async function registerUploadedDocument(input: unknown): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.create');
+    const d = registerSchema.parse(input);
+    const fileObj = await prisma.fileObject.create({
+      data: { key: d.url, bucket: 'blob', originalName: d.originalName, mimeType: d.mimeType, size: d.size, uploadedById: ctx.user.id },
+    });
+    const doc = await prisma.document.create({
+      data: {
+        title: d.title?.trim() || d.originalName, folderId: d.folderId, ownerId: ctx.user.id, currentVersion: 1,
+        versions: { create: { version: 1, fileId: fileObj.id, createdById: ctx.user.id } },
+      },
+    });
+    // Best-effort: fetch once, then AI-summarise and mirror a copy into Google Drive.
+    if (d.size > 0 && d.size < 25 * 1024 * 1024) {
+      try {
+        const { body } = await getObjectStream(d.url);
+        if (d.size < 15 * 1024 * 1024) {
+          const summary = await summarizeFile(body, d.mimeType, d.originalName);
+          if (summary) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { ocrText: summary } });
+        }
+        if (isDriveConfigured()) {
+          const drive = await uploadToDrive(d.originalName, d.mimeType, body);
+          if (!('error' in drive)) await prisma.fileObject.update({ where: { id: fileObj.id }, data: { driveUrl: drive.webViewLink } });
+        }
+      } catch { /* ignore */ }
+    }
+    await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Document', entityId: doc.id, summary: `Uploaded ${d.originalName}` });
+    revalidatePath('/documents');
+    return { ok: true, id: doc.id };
+  } catch (err) { return toActionError(err); }
+}
+
+export async function renameDocument(documentId: string, title: string): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.update');
+    const clean = String(title || '').trim().slice(0, 200);
+    if (clean.length < 1) return { error: 'Give the document a name.' };
+    await prisma.document.update({ where: { id: documentId }, data: { title: clean } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: `Renamed to ${clean}` });
+    revalidatePath('/documents');
+    return { ok: true, id: documentId };
+  } catch (err) { return toActionError(err); }
+}
+
+export async function moveDocument(documentId: string, folderId: string): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.update');
+    const folder = await prisma.folder.findUnique({ where: { id: folderId }, select: { id: true, name: true } });
+    if (!folder) return { error: 'Target folder not found.' };
+    await prisma.document.update({ where: { id: documentId }, data: { folderId } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: `Moved to ${folder.name}` });
+    revalidatePath('/documents');
+    return { ok: true, id: documentId };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Push (or re-push) a document's file into the connected Google Drive folder. */
+export async function sendDocumentToDrive(documentId: string): Promise<DocResult> {
+  try {
+    const ctx = await ensure('document.update');
+    if (!isDriveConfigured()) return { error: 'Google Drive is not connected. Add the service-account keys and GOOGLE_DRIVE_FOLDER_ID in Vercel.' };
+    const doc = await prisma.document.findUnique({ where: { id: documentId }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { file: true } } } });
+    const file = doc?.versions[0]?.file;
+    if (!file) return { error: 'File not found.' };
+    if (file.size > 25 * 1024 * 1024) return { error: 'File is too large to copy to Drive from here (25MB limit).' };
+    const { body } = await getObjectStream(file.key);
+    const drive = await uploadToDrive(file.originalName, file.mimeType, body);
+    if ('error' in drive) return { error: drive.error };
+    await prisma.fileObject.update({ where: { id: file.id }, data: { driveUrl: drive.webViewLink } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: `Copied ${file.originalName} to Google Drive` });
     revalidatePath('/documents');
     return { ok: true, id: documentId };
   } catch (err) { return toActionError(err); }

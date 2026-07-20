@@ -5,15 +5,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="relative hidden overflow-hidden lg:block" style={{ backgroundColor: '#0E1A36' }}>
+      <div className="relative hidden overflow-hidden lg:block" style={{ background: 'linear-gradient(160deg, #0B2F73 0%, #0A2864 55%, #12439B 100%)' }}>
         <div className="brass-gradient absolute inset-0 opacity-[0.06]" />
         <div className="relative flex h-full flex-col items-center justify-center px-12 text-center">
-          <Image src={brand.assets.markGoldLight} alt="Ameya Heights" width={420} height={420} priority className="h-auto w-1/2 max-w-[480px]" />
+          <Image src={brand.assets.markGoldLight} alt="Ameya Heights" width={560} height={560} priority className="h-auto w-3/5 max-w-[520px] drop-shadow-[0_6px_28px_rgba(0,0,0,0.35)]" />
           <p className="mt-8 text-xs font-semibold uppercase tracking-[0.32em] text-brass-light">CRM Platform</p>
-          <h1 className="mt-3 font-display text-6xl font-semibold xl:text-7xl" style={{ color: '#C2A05B' }}>
+          <h1 className="mt-4 whitespace-nowrap font-display font-semibold leading-none tracking-tight text-[clamp(2.75rem,5.2vw,5rem)]" style={{ color: '#E3C176' }}>
             {brand.company.displayName}
           </h1>
-          <p className="mt-4 text-xl text-sand/80">{brand.company.tagline}</p>
+          <p className="mt-4 text-lg text-sand/75">{brand.company.tagline}</p>
           <p className="mt-8 max-w-md text-sm text-sand/50">
             The CRM platform for {brand.company.legalName}. Every task owned. Every file
             searchable. Every action traceable.

@@ -13,6 +13,8 @@ import { CallButton } from '@/components/sales/call-button';
 import { EmailLeadButton } from '@/components/sales/email-lead-button';
 import { LeadCustomFields } from '@/components/sales/lead-custom-fields';
 import { AiScoreButton } from '@/components/sales/ai-score-button';
+import { LeadTemperature } from '@/components/sales/lead-temperature';
+import { ReminderButton } from '@/components/sales/reminder-button';
 import { isGeminiEnabled } from '@/lib/ai/gemini';
 import { formatCurrency, formatDateTime, titleCase } from '@/lib/utils/format';
 
@@ -45,6 +47,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <h1 className="font-display text-2xl font-semibold">{lead.name}</h1>
           {lead.isNri && <Badge variant="warning"><Globe2 className="mr-1 h-3 w-3" />NRI · {lead.country}</Badge>}
           <Badge>{titleCase(lead.status)}</Badge>
+          <Badge variant={lead.temperature === 'HOT' ? 'destructive' : lead.temperature === 'COLD' ? 'secondary' : 'warning'}>{titleCase(lead.temperature)}</Badge>
         </div>
         <p className="font-mono text-xs text-muted-foreground">{lead.reference}</p>
         {lead.requirement && <p className="text-sm text-muted-foreground">{lead.requirement}</p>}
@@ -89,12 +92,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {lead.email ?? '—'}</p>
           <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {lead.phone ?? '—'}</p>
-          <div className="flex flex-wrap gap-2"><CallButton phone={lead.phone} /><WhatsAppButton phone={lead.phone} name={lead.name} /><EmailLeadButton leadId={lead.id} email={lead.email} name={lead.name} /></div>
+          <div className="flex flex-wrap gap-2"><CallButton phone={lead.phone} /><WhatsAppButton phone={lead.phone} name={lead.name} /><EmailLeadButton leadId={lead.id} email={lead.email} name={lead.name} /><ReminderButton leadId={lead.id} leadName={lead.name} /></div>
           <p className="text-muted-foreground">Source: {titleCase(lead.source)}</p>
           <p className="text-muted-foreground">Owner: {lead.owner?.name ?? '—'}</p>
           <p className="text-muted-foreground">Project: {lead.project?.name ?? '—'}</p>
           <p className="text-muted-foreground">Budget: {formatCurrency(lead.budgetMin ? Number(lead.budgetMin) : null)} – {formatCurrency(lead.budgetMax ? Number(lead.budgetMax) : null)}</p>
           {lead.isNri && lead.timezone && <p className="text-muted-foreground">Time zone: {lead.timezone}</p>}
+          <div className="pt-1"><p className="mb-1 text-[10px] uppercase text-muted-foreground">Temperature</p><LeadTemperature leadId={lead.id} value={lead.temperature} /></div>
           <p className="text-muted-foreground">Lead score: <span className="font-medium text-foreground">{lead.score}/100</span></p>
           {isGeminiEnabled() && <AiScoreButton leadId={lead.id} />}
         </CardContent>

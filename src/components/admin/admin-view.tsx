@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, KeyRound, Ban, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { createUser, setUserStatus, forcePasswordReset, createDepartment } from '@/server/actions/admin';
+import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager } from '@/server/actions/admin';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { titleCase } from '@/lib/utils/format';
 
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 const ROLES = ['SUPER_ADMIN','ADMIN','DEPARTMENT_HEAD','MANAGER','EXECUTIVE','EMPLOYEE','READ_ONLY','GUEST'];
-interface U { id: string; name: string; username: string; email: string; role: string; status: string; department: string | null; twoFactor: boolean }
+interface U { id: string; name: string; username: string; email: string; role: string; status: string; department: string | null; twoFactor: boolean; managerId: string | null }
 interface D { id: string; name: string; users: number; head: string | null; active: boolean }
 
 export function AdminView({ users, departments, deptOptions }: { users: U[]; departments: D[]; deptOptions: { id: string; name: string }[] }) {
@@ -54,13 +54,25 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
       <TabsContent value="users">
         <div className="mb-3 flex justify-end"><Button size="sm" onClick={() => setUserOpen(true)}><Plus className="h-4 w-4" /> New user</Button></div>
         <Card><Table>
-          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Department</TableHead><TableHead>2FA</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Department</TableHead><TableHead>Reports to</TableHead><TableHead>2FA</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>
             {users.map((u) => (
               <TableRow key={u.id}>
                 <TableCell><p className="font-medium">{u.name}</p><p className="text-xs text-muted-foreground">@{u.username} · {u.email}</p></TableCell>
                 <TableCell><Badge variant="secondary">{ROLE_LABELS[u.role as keyof typeof ROLE_LABELS]}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{u.department ?? '—'}</TableCell>
+                <TableCell>
+                  <select
+                    aria-label={`reportsTo-${u.id}`}
+                    defaultValue={u.managerId ?? ''}
+                    disabled={pending}
+                    onChange={(e) => act(() => setUserManager(u.id, e.target.value || null), 'Reporting manager updated')}
+                    className="h-8 max-w-[150px] rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="">—</option>
+                    {users.filter((m2) => m2.id !== u.id).map((m2) => <option key={m2.id} value={m2.id}>{m2.name}</option>)}
+                  </select>
+                </TableCell>
                 <TableCell>{u.twoFactor ? <ShieldCheck className="h-4 w-4 text-success" /> : <span className="text-xs text-muted-foreground">Off</span>}</TableCell>
                 <TableCell><Badge variant={u.status === 'ACTIVE' ? 'success' : u.status === 'DISABLED' ? 'destructive' : 'warning'}>{titleCase(u.status)}</Badge></TableCell>
                 <TableCell>
