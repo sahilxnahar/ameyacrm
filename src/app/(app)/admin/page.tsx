@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
@@ -23,6 +23,9 @@ export default async function AdminPage() {
       <PageHeader title="Administration" description="Users, departments, roles and system configuration." />
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
+          { href: '/admin/marketplace', icon: Store, title: 'Free Extras', desc: 'Ready-made automations, templates and views' },
+          { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working' },
+          { href: '/admin/import', icon: Upload, title: 'Import Data', desc: 'Paste units, bookings and leads from Excel' },
           { href: '/admin/access-requests', icon: UserPlus, title: 'Access Requests', desc: 'Approve people who signed themselves up' },
           { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },
           { href: '/admin/permissions', icon: ShieldCheck, title: 'Roles & Permissions', desc: 'Toggle what each role can do' },
@@ -33,7 +36,8 @@ export default async function AdminPage() {
           { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA & login rules' },
           { href: '/admin/security-center', icon: ShieldAlert, title: 'Security Center', desc: 'Logins, sessions, backup' },
           { href: '/admin/collections', icon: Percent, title: 'Collections & Tax', desc: 'Interest rate, default GST' },
-          { href: '/admin/fields', icon: SlidersHorizontal, title: 'Custom Fields', desc: 'Add your own lead fields' },
+          { href: '/admin/fields', icon: SlidersHorizontal, title: 'Custom Fields', desc: 'Add your own fields to any record' },
+          { href: '/admin/customisation', icon: Type, title: 'Words & Stages', desc: 'Rename things, configure the pipeline' },
           { href: '/admin/api-tokens', icon: KeyRound, title: 'API Tokens', desc: 'Programmatic access' },
           { href: '/admin/privacy', icon: ShieldCheck, title: 'Privacy & DPDP', desc: 'Consent, retention, data requests' },
           { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often' },

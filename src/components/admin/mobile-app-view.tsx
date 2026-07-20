@@ -62,16 +62,16 @@ export function MobileAppView({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Phones receiving push</p>
-          <p className="font-display text-2xl font-semibold">{pushEnabled} <span className="text-base font-normal text-muted-foreground">of {totalPeople}</span></p>
+          <p className="font-display text-2xl font-semibold tabular">{pushEnabled} <span className="text-base font-normal text-muted-foreground">of {totalPeople}</span></p>
           {pushEnabled < totalPeople && <p className="text-[11px] text-warning">The rest will not get hourly reminders until they install and allow notifications.</p>}
         </Card>
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Currently overdue</p>
-          <p className="font-display text-2xl font-semibold">{notices.length}</p>
+          <p className="font-display text-2xl font-semibold tabular">{notices.length}</p>
         </Card>
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">WhatsApp sending</p>
-          <p className="font-display text-2xl font-semibold">{whatsappConfigured ? 'On' : 'Manual'}</p>
+          <p className="font-display text-2xl font-semibold tabular">{whatsappConfigured ? 'On' : 'Manual'}</p>
           {!whatsappConfigured && <p className="text-[11px] text-muted-foreground">No gateway set — use the one-tap buttons below.</p>}
         </Card>
       </div>

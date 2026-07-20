@@ -4,6 +4,7 @@ import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { CommandPalette } from './command-palette';
 import { MobileNav } from './mobile-nav';
+import type { NavPrefs } from '@/lib/nav/prefs';
 
 export interface ShellUser {
   name: string;
@@ -17,11 +18,13 @@ export function AppShell({
   user,
   permissionKeys,
   isSuperAdmin,
+  navPrefs,
   children,
 }: {
   user: ShellUser;
   permissionKeys: string[];
   isSuperAdmin: boolean;
+  navPrefs: NavPrefs;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -34,6 +37,7 @@ export function AppShell({
         allowed={allowed}
         isSuperAdmin={isSuperAdmin}
         mobileOpen={mobileOpen}
+        navPrefs={navPrefs}
         onClose={() => setMobileOpen(false)}
       />
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">

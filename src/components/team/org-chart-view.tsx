@@ -226,7 +226,7 @@ function Gap({ label, value, hint }: { label: string; value: number; hint: strin
   return (
     <Card className="p-3">
       <p className="flex items-baseline gap-2">
-        <span className={cn('font-display text-2xl font-semibold', value > 0 ? 'text-warning' : 'text-success')}>{value}</span>
+        <span className={cn('font-display text-2xl font-semibold tabular', value > 0 ? 'text-warning' : 'text-success')}>{value}</span>
         <span className="text-sm">{label}</span>
       </p>
       <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>

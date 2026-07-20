@@ -5,6 +5,9 @@ import {
   TrendingUp,
   MapPin,
   AtSign,
+  MessageCircleQuestion,
+  LayoutGrid,
+  HardHat,
 } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
@@ -36,6 +39,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Approvals', href: '/approvals', icon: Inbox },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view' },
       { label: 'Team & Hierarchy', href: '/team', icon: Network },
+      { label: 'Site & Attendance', href: '/field', icon: HardHat },
       { label: 'Social Accounts', href: '/social-accounts', icon: AtSign },
     ],
   },
@@ -44,12 +48,14 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { label: 'Sales & Leads', href: '/sales', icon: Users2, permission: 'lead.view' },
       { label: 'Inventory', href: '/inventory', icon: Building2, permission: 'booking.view' },
+      { label: 'Floor Plans', href: '/floor-plans', icon: LayoutGrid, permission: 'booking.view' },
       { label: 'Site Visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
       { label: 'Voice Note', href: '/voice-note', icon: Mic, permission: 'task.create' },
       { label: 'Channel Partners', href: '/partners', icon: Handshake, permission: 'booking.view' },
       { label: 'Buyers & Portal', href: '/customers', icon: UserRound, permission: 'booking.view' },
       { label: 'NRI Desk', href: '/nri', icon: Globe2, permission: 'lead.view' },
       { label: 'Documents', href: '/documents', icon: FolderOpen, permission: 'document.view' },
+      { label: 'Ask Documents', href: '/ask', icon: MessageCircleQuestion, permission: 'document.view' },
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view' },
       { label: 'Payment Requests', href: '/payment-requests', icon: IndianRupee, permission: 'billing.view' },
       { label: 'Material Requests', href: '/material-requests', icon: Mail, permission: 'material.view' },

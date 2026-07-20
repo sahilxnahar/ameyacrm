@@ -77,7 +77,7 @@ export function SignDocument({
     return (
       <div className="space-y-2 text-center text-[#14120E]">
         <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-700" />
-        <h1 className="font-display text-2xl font-semibold">Thank you</h1>
+        <h1 className="font-display text-2xl font-semibold tabular">Thank you</h1>
         <p className="text-sm">Your response to &ldquo;{title}&rdquo; has been recorded. A confirmation is on its way to you.</p>
       </div>
     );
@@ -86,7 +86,7 @@ export function SignDocument({
   return (
     <div className="space-y-4 text-[#14120E]">
       <div>
-        <h1 className="font-display text-2xl font-semibold">{title}</h1>
+        <h1 className="font-display text-2xl font-semibold tabular">{title}</h1>
         <p className="text-sm text-[#5E584C]">
           {requestedBy ? `${requestedBy} has asked you to sign this.` : 'You have been asked to sign this document.'} Reference {reference}.
           {expiresAt && ` Valid until ${new Date(expiresAt).toLocaleDateString('en-IN')}.`}

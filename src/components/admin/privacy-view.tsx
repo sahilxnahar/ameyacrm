@@ -64,7 +64,7 @@ export function PrivacyView({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Leads with recorded consent</p>
-          <p className="font-display text-2xl font-semibold">{pct}%</p>
+          <p className="font-display text-2xl font-semibold tabular">{pct}%</p>
           <p className="text-[11px] text-muted-foreground">{consented} of {totalLeads}</p>
         </Card>
         <Card className="p-3">
@@ -78,7 +78,7 @@ export function PrivacyView({
         </Card>
         <Card className="p-3">
           <p className="text-xs text-muted-foreground">Open requests</p>
-          <p className="font-display text-2xl font-semibold">{requests.filter((r) => r.status !== 'COMPLETED' && r.status !== 'REJECTED').length}</p>
+          <p className="font-display text-2xl font-semibold tabular">{requests.filter((r) => r.status !== 'COMPLETED' && r.status !== 'REJECTED').length}</p>
         </Card>
       </div>
 

@@ -269,6 +269,7 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  floorPlans       FloorPlan[]        @relation("ProjectFloorPlans")
   memberships      ProjectMembership[]
   units            Unit[]
   tasks            Task[]
@@ -358,10 +359,15 @@ model User {
 
   salesTargets    SalesTarget[]    @relation("UserTargets")
   incentiveEntries IncentiveEntry[] @relation("UserIncentives")
+  attendance       Attendance[]     @relation("UserAttendance")
+  dutyRoster       DutyRoster[]     @relation("UserRoster")
   socialAccounts   UserSocialAccount[] @relation("UserSocials")
 
   /** Personal WhatsApp number used for click-to-chat from the CRM. */
   whatsappNumber String?
+
+  /** Personal sidebar layout: { pinned: string[], order: string[], hidden: string[] } */
+  navPrefs Json?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -895,6 +901,8 @@ model Lead {
   @@index([status])
   @@index([ownerId])
   @@index([isNri])
+  @@index([nextFollowUp])
+  @@index([status, ownerId])
 }
 
 model LeadActivity {
@@ -930,17 +938,20 @@ model Unit {
   heldById       String? // rep who placed the hold
   tokenAmount    Decimal?   @db.Decimal(14, 2)
   holdNote       String?
+  customFields   Json? // admin-defined custom field values
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   bookings Booking[]
+  pins     UnitPin[] @relation("UnitPins")
 
   leases      Lease[]
   maintenance MaintenanceRequest[]
 
   @@unique([projectId, code])
   @@index([status])
+  @@index([projectId, status])
 }
 
 model Booking {
@@ -957,6 +968,7 @@ model Booking {
   forfeitAmount  Decimal?      @db.Decimal(14, 2)
   refundAmount   Decimal?      @db.Decimal(14, 2)
   bookedAt       DateTime      @default(now())
+  customFields Json? // admin-defined custom field values
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -966,6 +978,7 @@ model Booking {
   payments PaymentMilestone[]
 
   @@index([status])
+  @@index([bookedAt])
 }
 
 model PaymentMilestone {
@@ -981,6 +994,8 @@ model PaymentMilestone {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
+  @@index([dueDate])
+  @@index([status])
 }
 
 // ─── Billing ────────────────────────────────────────────────────────────────
@@ -1796,6 +1811,7 @@ model Customer {
   bookingId     String?
   projectId     String?
   isActive      Boolean  @default(true)
+  customFields Json? // admin-defined custom field values
   onboardedById String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1875,6 +1891,7 @@ model SocialActivity {
 
   @@index([channel])
   @@index([createdAt])
+  @@index([isRead])
 }
 
 model SocialConnection {
@@ -1947,6 +1964,7 @@ model Reminder {
 
   @@index([userId, status])
   @@index([dueAt])
+  @@index([dueAt, status])
 }
 
 model DailyBriefing {
@@ -2213,4 +2231,147 @@ model OverdueNotice {
   @@unique([itemKey, userId])
   @@index([userId, resolvedAt])
   @@index([resolvedAt])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Document Q&A  (v8.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * A slice of a document, with its Gemini embedding stored as a plain float
+ * array. No pgvector extension needed — at this document volume, cosine
+ * similarity in memory is fast enough and avoids a database dependency that
+ * could block a deploy.
+ */
+model DocChunk {
+  id           String   @id @default(cuid())
+  documentId   String?
+  fileObjectId String?
+  title        String
+  source       String? // human label shown next to an answer
+  page         Int?
+  ordinal      Int      @default(0)
+  content      String
+  embedding    Float[]
+  tokens       Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([documentId])
+  @@index([fileObjectId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Visual floor plans  (v8.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+model FloorPlan {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  tower       String?
+  floor       Int?
+  imageUrl    String
+  imageWidth  Int      @default(1000)
+  imageHeight Int      @default(700)
+  isActive    Boolean  @default(true)
+  kind        String   @default("FLOOR") // UNIT | FLOOR | TOWER | MASTER | AMENITY
+  description String?
+  shareToken  String?  @unique
+  isPublic    Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project    @relation("ProjectFloorPlans", fields: [projectId], references: [id], onDelete: Cascade)
+  pins    UnitPin[]
+
+  @@index([projectId])
+}
+
+/** Where a unit sits on a plan, as a percentage box so it scales to any screen. */
+model UnitPin {
+  id          String   @id @default(cuid())
+  floorPlanId String
+  unitId      String
+  x           Float // 0-100, % from left
+  y           Float // 0-100, % from top
+  w           Float    @default(8)
+  h           Float    @default(8)
+  createdAt   DateTime @default(now())
+
+  floorPlan FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  unit      Unit      @relation("UnitPins", fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([floorPlanId, unitId])
+  @@index([unitId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Field operations  (v8.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+enum AttendanceKind {
+  CHECK_IN
+  CHECK_OUT
+}
+
+model Attendance {
+  id         String         @id @default(cuid())
+  userId     String
+  projectId  String?
+  kind       AttendanceKind
+  at         DateTime       @default(now())
+  latitude   Float?
+  longitude  Float?
+  accuracyM  Float?
+  distanceM  Float? // from the site, when the project has coordinates
+  withinSite Boolean        @default(false)
+  note       String?
+  photoUrl   String?
+  offline    Boolean        @default(false) // captured with no signal, synced later
+  createdAt  DateTime       @default(now())
+
+  user User @relation("UserAttendance", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, at])
+  @@index([projectId, at])
+}
+
+enum ShiftKind {
+  MORNING
+  EVENING
+  NIGHT
+  FULL_DAY
+  OFF
+}
+
+model DutyRoster {
+  id        String    @id @default(cuid())
+  userId    String
+  projectId String?
+  date      DateTime // day only
+  shift     ShiftKind @default(FULL_DAY)
+  note      String?
+  createdById String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation("UserRoster", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Onboarding  (v8.0)
+// ════════════════════════════════════════════════════════════════════════════
+
+model OnboardingStep {
+  id          String    @id @default(cuid())
+  userId      String
+  stepKey     String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, stepKey])
 }

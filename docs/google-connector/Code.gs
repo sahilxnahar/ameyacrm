@@ -208,3 +208,61 @@ function testEverything() {
 
   Logger.log(report.join('\n'));
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ *  PROPERTY PORTAL LEADS  (v8.2)
+ *  99acres, MagicBricks, Housing.com and the rest all email you the moment
+ *  someone enquires. This reads those emails and turns them into CRM leads.
+ *  Their partner APIs need a paid listing contract; these emails do not.
+ *
+ *  SETUP
+ *   1. INGEST_KEY above must already be filled in.
+ *   2. Run scanPortalsOnce() once and approve the permission.
+ *   3. Triggers > Add Trigger > scanPortalsOnce > Time-driven >
+ *      Minutes timer > Every 15 minutes. Portal leads go cold fast.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+var PORTAL_QUERY =
+  'newer_than:2d (' +
+  'from:99acres.com OR from:magicbricks.com OR from:housing.com OR ' +
+  'from:proptiger.com OR from:commonfloor.com OR from:nobroker.in' +
+  ') -label:crm-portal';
+
+function scanPortalsOnce() {
+  if (INGEST_KEY.indexOf('PASTE') === 0) {
+    Logger.log('INGEST_KEY is not filled in yet — stopping.');
+    return;
+  }
+
+  var label = GmailApp.getUserLabelByName('crm-portal') || GmailApp.createLabel('crm-portal');
+  var threads = GmailApp.search(PORTAL_QUERY, 0, 30);
+  var messages = [];
+
+  for (var i = 0; i < threads.length; i++) {
+    var msgs = threads[i].getMessages();
+    for (var j = 0; j < msgs.length; j++) {
+      messages.push({
+        messageId: msgs[j].getId(),
+        from: msgs[j].getFrom(),
+        subject: msgs[j].getSubject(),
+        body: msgs[j].getPlainBody().substring(0, 4000)
+      });
+    }
+  }
+
+  if (!messages.length) { Logger.log('no portal leads'); return; }
+
+  var res = UrlFetchApp.fetch(CRM_URL + '/api/ingest/portal', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-ingest-key': INGEST_KEY },
+    payload: JSON.stringify({ messages: messages }),
+    muteHttpExceptions: true
+  });
+
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText());
+
+  if (res.getResponseCode() === 200) {
+    for (var k = 0; k < threads.length; k++) threads[k].addLabel(label);
+  }
+}

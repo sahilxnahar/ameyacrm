@@ -5,19 +5,29 @@ import { sendEmail, renderTemplate } from '@/lib/email/email';
 import { nextReference } from '@/lib/utils/reference';
 
 export type AutoTrigger = 'LEAD_CREATED' | 'LEAD_STAGE_CHANGED' | 'TASK_CREATED' | 'TASK_STATUS_CHANGED' | 'SCHEDULE';
-export interface Condition { field: string; op: string; value: string }
+export interface Condition { field: string; op: string; value: string | number | boolean | Array<string | number> }
 export interface Action { type: string; params: Record<string, unknown> }
 export interface RunContext { entityType: string; entityId: string; data: Record<string, unknown>; actorId?: string }
 
 function evalCondition(data: Record<string, unknown>, c: Condition): boolean {
   const actual = data[c.field];
-  const v = c.value ?? '';
+  const raw = c.value ?? '';
+  const v = String(raw);
+  const list = Array.isArray(raw) ? raw.map((x) => String(x)) : String(raw).split(',').map((x) => x.trim());
+
   switch (c.op) {
     case 'eq': return String(actual ?? '') === v;
     case 'neq': return String(actual ?? '') !== v;
     case 'contains': return String(actual ?? '').toLowerCase().includes(v.toLowerCase());
-    case 'gt': return Number(actual) > Number(v);
-    case 'lt': return Number(actual) < Number(v);
+    case 'not_contains': return !String(actual ?? '').toLowerCase().includes(v.toLowerCase());
+    case 'gt': return Number(actual) > Number(raw);
+    case 'gte': return Number(actual) >= Number(raw);
+    case 'lt': return Number(actual) < Number(raw);
+    case 'lte': return Number(actual) <= Number(raw);
+    case 'in': return list.includes(String(actual ?? ''));
+    case 'not_in': return !list.includes(String(actual ?? ''));
+    case 'is_set': return actual !== null && actual !== undefined && String(actual) !== '';
+    case 'is_empty': return actual === null || actual === undefined || String(actual) === '';
     case 'is_true': return Boolean(actual) === true;
     case 'is_false': return Boolean(actual) === false;
     default: return false;
@@ -38,15 +48,27 @@ export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Pro
   for (const rule of rules) {
     try {
       const conditions = (rule.conditions as Condition[] | null) ?? [];
-      if (!conditions.every((c) => evalCondition(ctx.data, c))) {
+      // matchAll decides whether every condition must hold, or just one.
+      const matchAll = (rule as { matchAll?: boolean }).matchAll !== false;
+      const passed = conditions.length === 0
+        ? true
+        : matchAll
+          ? conditions.every((c) => evalCondition(ctx.data, c))
+          : conditions.some((c) => evalCondition(ctx.data, c));
+
+      const elseActions = ((rule as { elseActions?: unknown }).elseActions as Action[] | null) ?? [];
+      if (!passed && elseActions.length === 0) {
         await logRun(rule.id, ctx, 'SKIPPED', { reason: 'conditions not met' });
         continue;
       }
-      const actions = (rule.actions as Action[] | null) ?? [];
+
+      const actions = passed
+        ? ((rule.actions as Action[] | null) ?? [])
+        : elseActions;
       const results: string[] = [];
       for (const a of actions) results.push(await executeAction(a, rule, ctx));
       await prisma.automationRule.update({ where: { id: rule.id }, data: { runCount: { increment: 1 }, lastRunAt: new Date() } });
-      await logRun(rule.id, ctx, 'SUCCESS', { actions: results });
+      await logRun(rule.id, ctx, 'SUCCESS', { branch: passed ? 'then' : 'else', actions: results });
     } catch (err) {
       await logRun(rule.id, ctx, 'FAILED', { error: err instanceof Error ? err.message : 'error' });
     }
@@ -83,6 +105,26 @@ async function executeAction(a: Action, rule: { id: string; name: string; runCou
       if (ctx.entityType === 'Lead') await prisma.lead.update({ where: { id: ctx.entityId }, data: { ownerId: uid } });
       await notify({ userId: uid, type: 'SYSTEM', title: `Assigned: ${String(ctx.data.name ?? '')}`, link: leadLink });
       return `assigned to ${uid}`;
+    }
+    case 'NOTIFY_ROLE': {
+      // Tell everyone holding a role — "a manager should see this", without
+      // naming a person who might leave.
+      const role = (p.role as string) || 'MANAGER';
+      const above: Record<string, string[]> = {
+        MANAGER: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'],
+        ADMIN: ['SUPER_ADMIN', 'ADMIN'],
+        DEPARTMENT_HEAD: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD'],
+      };
+      const roles = above[role] ?? [role];
+      const people = await prisma.user.findMany({
+        where: { status: 'ACTIVE', deletedAt: null, role: { in: roles as never } },
+        select: { id: true },
+      });
+      if (!people.length) return `notify role ${role}: nobody holds it`;
+      for (const u of people) {
+        await notify({ userId: u.id, type: 'SYSTEM', title: (p.title as string) || `Automation: ${rule.name}`, link: leadLink });
+      }
+      return `notified ${people.length} × ${role}`;
     }
     case 'NOTIFY_USER': {
       const uid = p.userId as string;

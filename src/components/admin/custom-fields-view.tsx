@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 
+import { CUSTOM_FIELD_ENTITIES } from '@/config/customisation';
+
 interface Field { id: string; entity: string; key: string; label: string; type: string; options: string[]; required: boolean; order: number; isActive: boolean }
 const sel = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 
@@ -22,7 +24,7 @@ export function CustomFieldsView({ fields }: { fields: Field[] }) {
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
     start(async () => {
-      const r = await createCustomField({ entity: 'lead', key: fd.get('key'), label: fd.get('label'), type: fd.get('type'), options: fd.get('options') || undefined, required: fd.get('required') === 'on', order: fd.get('order') || 0 });
+      const r = await createCustomField({ entity: fd.get('entity') || 'lead', key: fd.get('key'), label: fd.get('label'), type: fd.get('type'), options: fd.get('options') || undefined, required: fd.get('required') === 'on', order: fd.get('order') || 0 });
       if ('error' in r) return toast.error(r.error);
       toast.success('Field added'); form.reset(); setType('text'); router.refresh();
     });

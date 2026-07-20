@@ -5,6 +5,10 @@ import { requireAuth } from '@/lib/auth/current-user';
 import { getTodayList, type TodayItem, type Urgency } from '@/server/services/today-service';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
+import { prisma } from '@/lib/db/prisma';
+import { can } from '@/lib/rbac/can';
+import { ONBOARDING } from '@/config/onboarding';
+import { OnboardingChecklist } from '@/components/onboarding/onboarding-checklist';
 
 export const metadata: Metadata = { title: "Today's priorities" };
 
@@ -37,12 +41,21 @@ function Row({ item }: { item: TodayItem }) {
 }
 
 export default async function TodayPage() {
-  const { user } = await requireAuth();
+  const ctx = await requireAuth();
+  const user = ctx.user;
   const items = await getTodayList(user.id);
   const counts = { overdue: items.filter((i) => i.urgency === 'overdue').length, today: items.filter((i) => i.urgency === 'today').length };
 
+
+  const isAdmin = can(ctx.permissions, 'admin.setting.manage');
+  const steps = ONBOARDING.filter((s) => !s.adminOnly || isAdmin);
+  const doneRows = await prisma.onboardingStep.findMany({
+    where: { userId: ctx.user.id, completedAt: { not: null } },
+    select: { stepKey: true },
+  });
   return (
     <div className="max-w-md">
+      <OnboardingChecklist steps={steps} doneKeys={doneRows.map((d) => d.stepKey)} />
       <PageHeader title="Today's priorities" description={items.length ? `${counts.overdue} overdue · ${counts.today} due today` : 'Your day, in one column.'} />
       {items.length === 0 ? (
         <Card className="p-10 text-center">
