@@ -1,32 +1,27 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.9 (feature batches 1,2,13,4,24,5,14,16 done; UI/perf track advanced).**
+**Written 21 July 2026. Build v14.10 (feature batches 1,2,13,4,24,5,14,16 done + batch 7 engines; UI track advanced).**
 
-> **v14.9 continues the 19-batch UI/performance track.** Working through it revealed
-> the app already had much of the plan built (command palette, global search,
-> `/admin/performance`, `/admin/errors`, `loading.tsx`/skeletons, error & global-error
-> boundaries, `next/font`, reduced-motion CSS, offline outbox, mobile nav, recharts).
-> So this pass added the genuinely-missing, additive, non-breaking pieces and left
-> the deep cross-cutting refactors (97-screen component migration, React Compiler,
-> PPR, full WCAG audit, real-time push, offline sync engine) as dedicated future work.
+> **v14.10.** UI track: added a searchable **Combobox** (`src/components/ui/combobox.tsx`,
+> Radix Popover + cmdk) for Batch 7-style forms. Feature track: started **Batch 7
+> (Sales & buyer portal)** with its three pure calculation engines — the parts the
+> app lacked — each fully unit-tested:
+> - `src/lib/sales/pricing.ts` — unit pricing (base + floor rise + PLC + view premium
+>   − discount) with a discount-approval matrix.
+> - `src/lib/sales/interest.ts` — simple interest on delayed buyer payments, with grace.
+> - `src/lib/sales/commission.ts` — slab-based broker commission with TDS and milestone splits.
 >
-> Added this pass, all green and production-building:
-> - **Batch 6 + 17:** the `⌘K` command palette now searches *records* live
->   (debounced, stale-guarded), and `globalSearch` was extended to the new modules
->   (land parcels, approvals, programme activities, investors).
-> - **Batch 4:** `optimizePackageImports: ['lucide-react']` in next.config — tree-shakes
->   the icon barrel so every screen ships fewer bytes.
-> - **Batch 13:** real-user Core Web Vitals capture (`src/components/perf/web-vitals.tsx`
->   → `/api/vitals`, logged, no table).
-> - **Batch 12:** a skip-to-content link and `id="main"` for keyboard/screen-reader users.
-> - **Batch 16:** a `?` keyboard-shortcuts help sheet.
-> - **Batch 1 (from v14.8):** shared `StatTile`/`Field`/`Select`/`Chip` primitives +
->   `/admin/components` gallery. **Batch 18 (v14.8):** in-shell error boundary + feature flags.
+> These are the reusable cores; the Batch 7 models, screens and demand/dunning flow
+> wire onto them next. **No schema change in v14.10 — nothing to migrate.** Hard check:
+> 0 type errors, 255 tests, all verifier checks, full production build of all routes (exit 0).
 >
-> **No schema change since v14.7 — nothing to migrate for v14.8 or v14.9.** Hard check:
-> 0 type errors, 243 tests, all verifier checks, and a full production build of every
-> route (exit 0). An adversarial review of the earlier batches found no correctness
-> bugs (one dedupe scalability risk + two minor items fixed).
+> **UI/performance track status:** the additive surface is done or enhanced (design-system
+> primitives + gallery, command-palette record search, lucide bundle optimization, Web Vitals,
+> skip link, shortcuts sheet, error boundary, feature flags, combobox), and much was already
+> present (charts, offline outbox, mobile nav, reduced-motion, next/font, skeletons). The
+> remaining UI work is the large refactors: 97-screen component migration, React Compiler
+> (plugin not installed), PPR (needs Next canary), full WCAG audit, real-time push, offline
+> sync engine, seed-data tooling. Each is a focused future effort.
 
 > **v14.7 adds Batch 16 — capital, investors & RERA escrow.** A `/capital` screen:
 > the capital stack (equity/debt/buyer-advance with cost), an investor register
@@ -131,8 +126,8 @@ Not a product, not being commercialised — a system the company runs on.
 | Screens (app pages) | 97 |
 | Server services | 45 |
 | Server action files | 71 |
-| React components | 162 |
-| Test files / tests | 23 / 243 |
+| React components | 163 |
+| Test files / tests | 24 / 255 |
 | Verifier checks | 18 |
 | Type errors | 0 |
 
