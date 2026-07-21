@@ -58,7 +58,7 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
         <section key={g} className="space-y-2">
           <h2 className="font-display text-lg">{g}</h2>
           {providers.filter((p) => p.group === g).map((p) => {
-            const st = STATUS[p.status] ?? STATUS.DISCONNECTED;
+            const st = STATUS[p.status] ?? { label: 'Not connected', cls: 'bg-muted text-muted-foreground' };
             const isOpen = open === p.key;
             return (
               <div key={p.key} className="card-elevated overflow-hidden">

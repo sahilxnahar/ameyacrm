@@ -1,6 +1,6 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v10.6_
+_Last updated: 21 July 2026 · current build v10.7_
 
 ---
 
@@ -16,7 +16,7 @@ _Last updated: 21 July 2026 · current build v10.6_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v10.6** — run `MIGRATION_v10.6_all.sql` in Neon, sync `ameya-heights-crm-v10.6.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v10.7** — run `MIGRATION_v10.7_all.sql` in Neon, sync `ameya-heights-crm-v10.7.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |
@@ -93,6 +93,9 @@ the Apps Script connector, Vercel, Neon, and your brand kit.
 ---
 
 ## 5. Known problems
+
+- **A stale extracted copy of the project sits in `CRM/ameya-heights-crm/`.** It is many versions old. If you ever sync *that* folder to GitHub you will deploy an ancient build. Always extract the newest zip fresh, or delete that folder.
+
 
 - **IFSC is invalid** — 12 characters, must be 11
 - **GSTIN corrected** to `29ACOFA6794K1ZG` — validates cleanly now

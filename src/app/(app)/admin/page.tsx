@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles, Landmark, Link2 } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles, Landmark, Link2, MessageSquare } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { Card } from '@/components/ui/card';
@@ -33,7 +33,8 @@ export default async function AdminPage() {
           { href: '/admin/access-requests', icon: UserPlus, title: 'Access Requests', desc: 'Approve people who signed themselves up' },
           { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },
           { href: '/admin/permissions', icon: ShieldCheck, title: 'Roles & Permissions', desc: 'Toggle what each role can do' },
-          { href: '/admin/templates', icon: Mail, title: 'Email Templates', desc: 'Edit system emails' },
+          { href: '/admin/templates', icon: Mail, title: 'System Emails', desc: 'The built-in emails the CRM sends automatically' },
+          { href: '/admin/message-templates', icon: MessageSquare, title: 'Templates', desc: 'WhatsApp, email, SMS and letters you write yourself' },
           { href: '/admin/company', icon: Building2, title: 'Company Details', desc: 'GST, bank, addresses for invoices' },
           { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours' },
           { href: '/admin/automations', icon: Zap, title: 'Automations', desc: 'Rules, assignment, follow-ups' },

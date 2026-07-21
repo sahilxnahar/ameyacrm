@@ -5,7 +5,7 @@ import { embed, cosine, chunkText } from '@/lib/ai/embeddings';
 import { can } from '@/lib/rbac/can';
 import { ALL_PERMISSION_KEYS } from '@/lib/rbac/permissions';
 import { lockedFolderIds } from '@/server/services/folder-access-service';
-import type { AuthContext } from '@/lib/auth/current-user';
+import type { AuthContext } from '@/types/auth';
 
 export interface Source { title: string; snippet: string; documentId: string | null; fileObjectId: string | null; score: number }
 export interface Answer { answer: string; sources: Source[]; searched: number }

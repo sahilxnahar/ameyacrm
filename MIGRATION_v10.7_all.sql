@@ -224,3 +224,54 @@ CREATE TABLE IF NOT EXISTS "IntegrationConnection" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "IntegrationConnection_provider_key" ON "IntegrationConnection"("provider");
 CREATE INDEX IF NOT EXISTS "IntegrationConnection_status_idx" ON "IntegrationConnection"("status");
+
+-- v10.7 — templates you write yourself, on any channel -----------------------
+CREATE TABLE IF NOT EXISTS "MessageTemplate" (
+  "id"             TEXT NOT NULL,
+  "key"            TEXT NOT NULL,
+  "name"           TEXT NOT NULL,
+  "channel"        TEXT NOT NULL,
+  "category"       TEXT,
+  "language"       TEXT NOT NULL DEFAULT 'en',
+  "subject"        TEXT,
+  "header"         TEXT,
+  "body"           TEXT NOT NULL,
+  "footer"         TEXT,
+  "buttons"        JSONB,
+  "description"    TEXT,
+  "isActive"       BOOLEAN NOT NULL DEFAULT true,
+  "metaStatus"     TEXT,
+  "metaTemplateId" TEXT,
+  "metaRejection"  TEXT,
+  "submittedAt"    TIMESTAMP(3),
+  "reviewedAt"     TIMESTAMP(3),
+  "usageCount"     INTEGER NOT NULL DEFAULT 0,
+  "lastUsedAt"     TIMESTAMP(3),
+  "createdById"    TEXT,
+  "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "MessageTemplate_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "MessageTemplate_key_key" ON "MessageTemplate"("key");
+CREATE INDEX IF NOT EXISTS "MessageTemplate_channel_isActive_idx" ON "MessageTemplate"("channel", "isActive");
+CREATE INDEX IF NOT EXISTS "MessageTemplate_metaStatus_idx" ON "MessageTemplate"("metaStatus");
+
+-- Four starter templates, already inside Meta's rules. Edit the wording freely;
+-- just keep a word before the first variable and after the last one.
+INSERT INTO "MessageTemplate" ("id","key","name","channel","category","language","header","body","footer","metaStatus","createdAt","updatedAt") VALUES
+ ('tpl_pay_due','payment_reminder','Payment reminder','WHATSAPP','UTILITY','en','Payment reminder',
+  'Hello {{buyer.firstName}}, an instalment of Rs {{payment.amount}} for unit {{unit.code}} at {{project.name}} is due on {{payment.dueDate}}. Please ignore this message if you have already paid.',
+  'Ameya Heights LLP','DRAFT',NOW(),NOW()),
+ ('tpl_pay_rcvd','payment_received','Payment received','WHATSAPP','UTILITY','en','Payment received',
+  'Thank you {{buyer.firstName}}. We have received Rs {{payment.amount}} towards unit {{unit.code}} on {{payment.receivedOn}}. Your receipt is attached in your buyer portal.',
+  'Ameya Heights LLP','DRAFT',NOW(),NOW()),
+ ('tpl_visit','site_visit_confirmed','Site visit confirmed','WHATSAPP','UTILITY','en','Site visit confirmed',
+  'Hello {{buyer.firstName}}, your site visit to {{project.name}} is confirmed. The address is {{project.address}}. Please call {{company.phone}} if you need directions.',
+  'Ameya Heights LLP','DRAFT',NOW(),NOW())
+ON CONFLICT ("key") DO NOTHING;
+
+INSERT INTO "MessageTemplate" ("id","key","name","channel","language","subject","body","createdAt","updatedAt") VALUES
+ ('tpl_stmt','account_statement','Account statement','EMAIL','en','Statement for {{unit.code}} at {{project.name}}',
+  E'Dear {{buyer.name}},\n\nPlease find below the current position on unit {{unit.code}} at {{project.name}}.\n\nAgreement value: Rs {{booking.value}}\nBalance outstanding: Rs {{payment.balance}}\nNext instalment: Rs {{payment.amount}}, due {{payment.dueDate}}\n\nDo write back if anything looks wrong.\n\nRegards,\n{{sender.name}}\n{{company.name}}',
+  NOW(),NOW())
+ON CONFLICT ("key") DO NOTHING;

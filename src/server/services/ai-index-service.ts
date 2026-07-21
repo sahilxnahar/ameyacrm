@@ -29,36 +29,42 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
   if (key === 'leads') {
     const rows = await prisma.lead.findMany({
       where: { deletedAt: null }, take: 500, orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, phone: true, email: true, source: true, status: true, requirement: true,
-        budgetMin: true, budgetMax: true, city: true, country: true, project: { select: { name: true } } },
+      select: { id: true, reference: true, name: true, phone: true, email: true, source: true, status: true,
+        requirement: true, budgetMin: true, budgetMax: true, locality: true, country: true, isNri: true,
+        project: { select: { name: true } } },
     });
-    return rows.map((l) => ({
-      id: l.id, title: `Lead: ${l.name}`,
-      text: [
-        `Lead ${l.name}.`, l.phone ? `Phone ${l.phone}.` : '', l.email ? `Email ${l.email}.` : '',
-        `Source ${l.source}. Status ${l.status}.`,
-        l.project?.name ? `Interested in ${l.project.name}.` : '',
-        l.budgetMin || l.budgetMax ? `Budget ${inr(Number(l.budgetMin ?? 0))} to ${inr(Number(l.budgetMax ?? 0))}.` : '',
-        l.requirement ? `Requirement: ${l.requirement}.` : '',
-        [l.city, l.country].filter(Boolean).join(', ') ? `Located in ${[l.city, l.country].filter(Boolean).join(', ')}.` : '',
-      ].filter(Boolean).join(' '),
-    }));
+    return rows.map((l) => {
+      const where = [l.locality, l.country].filter(Boolean).join(', ');
+      return {
+        id: l.id, title: `Lead ${l.reference}: ${l.name}`,
+        text: [
+          `Lead ${l.reference} is ${l.name}.`, l.phone ? `Phone ${l.phone}.` : '', l.email ? `Email ${l.email}.` : '',
+          `Source ${l.source}. Status ${l.status}.`,
+          l.project?.name ? `Interested in ${l.project.name}.` : '',
+          l.budgetMin || l.budgetMax ? `Budget ${inr(Number(l.budgetMin ?? 0))} to ${inr(Number(l.budgetMax ?? 0))}.` : '',
+          l.requirement ? `Requirement: ${l.requirement}.` : '',
+          where ? `Located in ${where}.` : '',
+          l.isNri ? 'This is an NRI enquiry.' : '',
+        ].filter(Boolean).join(' '),
+      };
+    });
   }
 
   if (key === 'bookings') {
     const rows = await prisma.booking.findMany({
       take: 500, orderBy: { createdAt: 'desc' },
-      select: { id: true, bookingNumber: true, status: true, agreementValue: true, bookingDate: true,
-        customer: { select: { name: true } }, unit: { select: { code: true, typology: true, tower: true } },
-        project: { select: { name: true } } },
+      select: { id: true, reference: true, status: true, paymentStatus: true, agreementValue: true, bookedAt: true,
+        lead: { select: { name: true, phone: true } },
+        unit: { select: { code: true, typology: true, tower: true, project: { select: { name: true } } } } },
     });
     return rows.map((b) => ({
-      id: b.id, title: `Booking ${b.bookingNumber}`,
+      id: b.id, title: `Booking ${b.reference}`,
       text: [
-        `Booking ${b.bookingNumber} for ${b.customer?.name ?? 'a buyer'}.`,
+        `Booking ${b.reference} for ${b.lead?.name ?? 'a buyer'}.`,
+        b.lead?.phone ? `Phone ${b.lead.phone}.` : '',
         b.unit?.code ? `Unit ${b.unit.code}${b.unit.typology ? ` (${b.unit.typology})` : ''}${b.unit.tower ? ` in tower ${b.unit.tower}` : ''}.` : '',
-        b.project?.name ? `Project ${b.project.name}.` : '',
-        `Status ${b.status}. Agreement value ${inr(Number(b.agreementValue ?? 0))}. Booked on ${day(b.bookingDate)}.`,
+        b.unit?.project?.name ? `Project ${b.unit.project.name}.` : '',
+        `Status ${b.status}. Payment status ${b.paymentStatus}. Agreement value ${inr(Number(b.agreementValue ?? 0))}. Booked on ${day(b.bookedAt)}.`,
       ].filter(Boolean).join(' '),
     }));
   }
@@ -66,11 +72,18 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
   if (key === 'invoices') {
     const rows = await prisma.invoice.findMany({
       take: 500, orderBy: { issueDate: 'desc' },
-      select: { id: true, number: true, clientName: true, status: true, total: true, issueDate: true, dueDate: true, notes: true },
+      select: { id: true, number: true, clientName: true, status: true, total: true, amountPaid: true,
+        issueDate: true, dueDate: true, notes: true, project: { select: { name: true } } },
     });
     return rows.map((i) => ({
       id: i.id, title: `Invoice ${i.number}`,
-      text: `Invoice ${i.number} to ${i.clientName} for ${inr(Number(i.total))}. Status ${i.status}. Issued ${day(i.issueDate)}${i.dueDate ? `, due ${day(i.dueDate)}` : ''}. ${i.notes ?? ''}`.trim(),
+      text: [
+        `Invoice ${i.number} to ${i.clientName} for ${inr(Number(i.total))}.`,
+        `Status ${i.status}. Received so far ${inr(Number(i.amountPaid))}.`,
+        i.project?.name ? `Project ${i.project.name}.` : '',
+        `Issued ${day(i.issueDate)}${i.dueDate ? `, due ${day(i.dueDate)}` : ''}.`,
+        i.notes ?? '',
+      ].filter(Boolean).join(' '),
     }));
   }
 
@@ -95,12 +108,19 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
   if (key === 'tasks') {
     const rows = await prisma.task.findMany({
       where: { deletedAt: null }, take: 500, orderBy: { createdAt: 'desc' },
-      select: { id: true, title: true, description: true, status: true, priority: true, dueDate: true,
-        assignee: { select: { name: true } } },
+      select: { id: true, reference: true, title: true, description: true, status: true, priority: true,
+        dueDate: true, completedAt: true, project: { select: { name: true } } },
     });
     return rows.map((t) => ({
-      id: t.id, title: `Task: ${t.title}`,
-      text: `Task "${t.title}". Status ${t.status}, priority ${t.priority}. ${t.assignee?.name ? `Assigned to ${t.assignee.name}.` : ''} ${t.dueDate ? `Due ${day(t.dueDate)}.` : ''} ${t.description ?? ''}`.trim(),
+      id: t.id, title: `Task ${t.reference}: ${t.title}`,
+      text: [
+        `Task ${t.reference}: "${t.title}".`,
+        `Status ${t.status}, priority ${t.priority}.`,
+        t.project?.name ? `Project ${t.project.name}.` : '',
+        t.dueDate ? `Due ${day(t.dueDate)}.` : '',
+        t.completedAt ? `Completed ${day(t.completedAt)}.` : '',
+        t.description ?? '',
+      ].filter(Boolean).join(' '),
     }));
   }
 

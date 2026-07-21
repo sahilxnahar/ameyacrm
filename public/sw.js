@@ -1,5 +1,5 @@
 /* Ameya Heights CRM — service worker (offline shell + push). */
-const VERSION = 'ameya-crm-v106';
+const VERSION = 'ameya-crm-v107';
 const CORE = [
   '/', '/offline.html', '/manifest.webmanifest',
   '/icons/icon-192.png', '/icons/icon-512.png', '/brand/mark-gold-dark.svg',

@@ -2668,3 +2668,40 @@ model IntegrationConnection {
 
   @@index([status])
 }
+
+
+/// A reusable message you write once and send many times, on any channel.
+/// WhatsApp templates additionally carry Meta's approval state, because Meta
+/// must approve the wording before it can be sent to anyone who has not
+/// messaged you first.
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique // lowercase_snake, also the name Meta sees
+  name        String
+  channel     String // EMAIL, WHATSAPP, SMS, LETTER
+  category    String? // WhatsApp: UTILITY, MARKETING, AUTHENTICATION
+  language    String   @default("en")
+  subject     String? // email only
+  header      String? // WhatsApp header / letter title
+  body        String
+  footer      String?
+  buttons     Json? // WhatsApp quick replies and links
+  description String?
+  isActive    Boolean  @default(true)
+
+  // Meta approval, only meaningful for WhatsApp
+  metaStatus     String? // DRAFT, PENDING, APPROVED, REJECTED
+  metaTemplateId String?
+  metaRejection  String?
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+
+  usageCount  Int       @default(0)
+  lastUsedAt  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([channel, isActive])
+  @@index([metaStatus])
+}
