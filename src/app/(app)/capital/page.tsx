@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { capitalOverview } from '@/server/services/capital-service';
 import { CapitalView } from '@/components/capital/capital-view';
@@ -26,6 +27,7 @@ export default async function CapitalPage({ searchParams }: { searchParams: Prom
           title="Capital & Escrow"
           description="The capital stack, the investor register, and the RERA escrow control — 70% of buyer receipts ring-fenced, withdrawn only against certified progress, enforced on every movement. Plus the loan covenants you have promised to hold, with a warning before a breach rather than a letter after one."
         />
+        <ScreenHelp id="capital" />
         <CapitalView canManage={canManage} projects={projects} projectId={projectId} overview={overview} />
       </div>
     );

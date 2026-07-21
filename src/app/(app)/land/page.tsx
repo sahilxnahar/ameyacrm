@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { landOverview } from '@/server/services/land-service';
 import { LandView } from '@/components/land/land-view';
@@ -28,6 +29,7 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
           title="Land & Approvals"
           description="The parcels, the title chain, the sanctions and the matters in court. A gap in the chain shows as a gap here — not when a buyer's lawyer finds it — and an approval whose expected date has passed is flagged rather than forgotten."
         />
+        <ScreenHelp id="land" />
         <LandView
           canManage={canManage}
           projects={projects}

@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { programmeOverview, activityOptions } from '@/server/services/programme-service';
 import { ProgrammeView } from '@/components/programme/programme-view';
@@ -29,6 +30,7 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
           title="Programme & Progress"
           description="A real schedule with a critical path, measured progress, and earned value — the honest answer to “are we on track”, not the optimistic one. The critical path is the chain where a day lost is a day lost off the whole project."
         />
+        <ScreenHelp id="programme" />
         <ProgrammeView
           canManage={canManage}
           projects={projects}

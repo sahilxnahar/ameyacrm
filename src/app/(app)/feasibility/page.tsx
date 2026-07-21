@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { feasibilityModels } from '@/server/services/feasibility-service';
 import { FeasibilityView } from '@/components/feasibility/feasibility-view';
@@ -23,6 +24,7 @@ export default async function FeasibilityPage({ searchParams }: { searchParams: 
     return (
       <div className="space-y-6">
         <PageHeader title="Feasibility & Appraisal" description="Model a potential project — land, construction, finance and sales — to see profit on cost, margin and the residual land value that decides what to bid, with a scenario knob for sale rate down and cost up." />
+        <ScreenHelp id="feasibility" />
         <FeasibilityView canManage={canManage} projects={projects} projectId={projectId} rows={rows} />
       </div>
     );

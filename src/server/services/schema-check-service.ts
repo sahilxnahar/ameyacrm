@@ -43,6 +43,8 @@ const REQUIRED_TABLES = [
   'WalkIn', 'CommercialTenancy',
   // Batch 10 — report builder
   'SavedReport',
+  // UX-12 — in-app feedback
+  'Feedback',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

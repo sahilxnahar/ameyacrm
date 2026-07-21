@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { TrackRecentRecord } from '@/components/layout/recent-records';
 import type { Metadata } from 'next';
 import { CalendarDays, Clock, Building2, FolderKanban } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
@@ -31,6 +32,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
+      <TrackRecentRecord type="Task" label={task.title} href={`/tasks/${task.id}`} />
       <div className="space-y-6 lg:col-span-2">
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">

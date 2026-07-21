@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { qualityOverview } from '@/server/services/quality-service';
 import { QualityView } from '@/components/quality/quality-view';
@@ -26,6 +27,7 @@ export default async function QualityPage({ searchParams }: { searchParams: Prom
           title="Quality & Safety"
           description="Inspections with hold points — work that cannot be certified complete until the inspection passes — non-conformances tracked to closure, a safety register where the near-miss is the free warning, and time-bound permits to work. This is what makes the programme's progress numbers honest."
         />
+        <ScreenHelp id="quality" />
         <QualityView canManage={canManage} projects={projects} projectId={projectId} overview={overview} />
       </div>
     );

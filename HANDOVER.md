@@ -1,5 +1,27 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.17 — 24 of 31 feature batches + UX batches 1–16.**
+
+> **v14.17 lands UX quick-wins 11–16.** Run **`MIGRATION_v14.17_all.sql`** once (Neon) or
+> the in-app "Fix it now" button — it adds one table (`Feedback`); nothing else needs SQL.
+> - **UX-11 Create from anywhere.** A **“＋ New”** button in the top bar on every screen —
+>   new lead, site visit, task, payment, document or voice note — each permission-gated.
+> - **UX-12 Feedback & What's new.** A feedback button on every page (writes to a `Feedback`
+>   table, readable at **Admin → Feedback**), and a **What's-new** panel that shows the release
+>   highlights once after an upgrade (from the next release — it records a baseline silently first).
+> - **UX-13 Empty states.** The shared register now renders the friendly `EmptyState` (icon, one
+>   line, an add button that opens the form) — upgrading dozens of list screens at once.
+> - **UX-14 Readable money.** `formatCompactCurrency` (₹1.2 Cr / ₹4.2 L / ₹12k) and a `<Money>`
+>   component (compact on screen, exact rupee on hover), applied to register KPI tiles.
+> - **UX-15 How this works.** A collapsible plain-language orientation on the technical screens
+>   (Procurement, Capital & Escrow, Programme, Quality, Land, Treasury, Feasibility, Report Builder),
+>   remembered per device once folded.
+> - **UX-16 Recently viewed.** Opening a lead or task remembers it; a **Recently viewed** strip on
+>   Today's Priorities gets you back in one tap.
+>
+> Hard check: 0 type errors, 275 tests, all verifier checks (115 pages, 171 models), migration
+> idempotent on a real Postgres (applied twice, drift-clean), production build exit 0.
+
 **Written 21 July 2026. Build v14.16 — 24 of 31 feature batches + UX batches 1–10.**
 
 > **v14.16 lands UX batches 6–10** (no schema change — **no SQL to run**). Much of the

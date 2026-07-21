@@ -14,6 +14,7 @@ import { EmailLeadButton } from '@/components/sales/email-lead-button';
 import { LeadCustomFields } from '@/components/sales/lead-custom-fields';
 import { AiScoreButton } from '@/components/sales/ai-score-button';
 import { LeadTemperature } from '@/components/sales/lead-temperature';
+import { TrackRecentRecord } from '@/components/layout/recent-records';
 import { ReminderButton } from '@/components/sales/reminder-button';
 import { isGeminiEnabled } from '@/lib/ai/gemini';
 import { formatCurrency, formatDateTime, titleCase } from '@/lib/utils/format';
@@ -42,6 +43,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
+      <TrackRecentRecord type="Lead" label={lead.name} href={`/sales/${lead.id}`} />
       <div className="space-y-4 lg:col-span-2">
         <div className="flex items-center gap-2">
           <h1 className="font-display text-2xl font-semibold">{lead.name}</h1>

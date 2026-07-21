@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { bankPositions, cashForecast, loanBook, reconciliationView } from '@/server/services/treasury-service';
 import { TreasuryView } from '@/components/treasury/treasury-view';
@@ -33,6 +34,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
           title="Cash Flow & Treasury"
           description="Every bank account on one screen, statement lines matched to the payments already recorded against their UTR, and a twelve-week forecast whose lowest point is the number that decides whether a payment run is safe. No payment gateway — a statement is a file."
         />
+        <ScreenHelp id="treasury" />
         <TreasuryView
           canManage={canManage}
           projects={projects}

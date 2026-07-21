@@ -11,6 +11,7 @@ import { ONBOARDING } from '@/config/onboarding';
 import { OnboardingChecklist } from '@/components/onboarding/onboarding-checklist';
 import { WelcomeWizard } from '@/components/onboarding/welcome-wizard';
 import { QuickActions, type QuickAction } from '@/components/today/quick-actions';
+import { RecentRecords } from '@/components/layout/recent-records';
 import { UserPlus, ClipboardCheck, FolderPlus, Package } from 'lucide-react';
 
 export const metadata: Metadata = { title: "Today's priorities" };
@@ -78,6 +79,7 @@ export default async function TodayPage() {
       {showWelcome && <WelcomeWizard name={user.name} />}
       <OnboardingChecklist steps={steps} doneKeys={doneKeys} />
       <QuickActions actions={quickActions} />
+      <RecentRecords />
       <PageHeader title="Today's priorities" description={items.length ? `${counts.overdue} overdue · ${counts.today} due today` : 'Your day, in one column.'} />
       {items.length === 0 ? (
         <Card className="p-10 text-center">

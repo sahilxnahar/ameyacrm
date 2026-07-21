@@ -75,6 +75,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
       { href: '/admin/performance', icon: Gauge, title: 'Performance', desc: 'Measure why a page feels slow', keywords: 'slow speed latency database pooling' },
       { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often', keywords: 'crash exception log' },
       { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working', keywords: 'status health connected' },
+      { href: '/admin/feedback', icon: MessageSquare, title: 'Feedback', desc: 'What people told us about the app', keywords: 'feedback suggestion complaint rating' },
     ],
   },
 ];

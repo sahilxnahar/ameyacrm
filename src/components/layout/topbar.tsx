@@ -3,18 +3,21 @@ import { Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './theme-toggle';
 import { DisplaySettings } from './display-settings';
+import { NewButton } from './new-button';
 import { UserMenu } from './user-menu';
 import { NotificationsBell } from './notifications-bell';
 import type { ShellUser } from './app-shell';
 import { ProjectSwitcher, type ProjectOption } from './project-switcher';
 
 export function Topbar({
-  user, projects, activeProjectId, activeProjectName, onMenu, onSearch,
+  user, projects, activeProjectId, activeProjectName, allowed, isSuperAdmin, onMenu, onSearch,
 }: {
   user: ShellUser;
   projects: ProjectOption[];
   activeProjectId: string | null;
   activeProjectName: string;
+  allowed: Set<string>;
+  isSuperAdmin: boolean;
   onMenu: () => void;
   onSearch: () => void;
 }) {
@@ -36,6 +39,7 @@ export function Topbar({
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell />
         <div className="hidden sm:block"><DisplaySettings /></div>
         <ThemeToggle />

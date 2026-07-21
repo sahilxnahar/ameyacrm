@@ -7,6 +7,8 @@ import { ShortcutsHelp } from './shortcuts-help';
 import { MobileNav } from './mobile-nav';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
+import { FeedbackWidget } from './feedback-widget';
+import { WhatsNew } from './whats-new';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
 
@@ -97,13 +99,15 @@ export function AppShell({
         onClose={() => setMobileOpen(false)}
       />
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
+        <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
       </div>
       <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />
+      <FeedbackWidget />
+      <WhatsNew />
     </div>
   );
 }

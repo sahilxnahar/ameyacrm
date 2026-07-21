@@ -4347,3 +4347,15 @@ model SavedReport {
 
   @@index([ownerId])
 }
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  path      String?
+  rating    String?
+  message   String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
