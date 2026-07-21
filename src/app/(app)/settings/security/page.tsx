@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ChangePassword } from '@/components/settings/change-password';
 import { TwoFactorSetup } from '@/components/settings/two-factor-setup';
+import { PasskeyManager } from '@/components/settings/passkey-manager';
 import { formatDateTime } from '@/lib/utils/format';
 
 export const metadata: Metadata = { title: 'Security' };
@@ -30,6 +31,7 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
       )}
       <ChangePassword />
       <TwoFactorSetup enabled={user.twoFactorEnabled} />
+      <PasskeyManager />
 
       <Card>
         <CardHeader><CardTitle className="text-lg">Active sessions</CardTitle><CardDescription>Devices currently signed in.</CardDescription></CardHeader>

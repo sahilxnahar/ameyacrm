@@ -117,5 +117,17 @@ for f in glob.glob('**/*.gs', recursive=True) + glob.glob('**/*.ts', recursive=T
         secret_hits.append(f'{f}: {val[:8]}…')
 check('no secrets in tracked files', secret_hits[:5])
 
+# ── `overflow-x: hidden` on body silently breaks every sticky element ────────
+# It turns body into a scroll container, so the sticky top bar comes unstuck
+# with no error anywhere. `clip` trims the overflow without that side effect.
+css = re.sub(r'/\*.*?\*/', '', open('src/app/globals.css', encoding='utf-8').read(), flags=re.S)
+sticky_hits = [
+    'globals.css: body has overflow-x: hidden — use `clip`, it does not break the sticky top bar'
+    for block in re.findall(r'\bbody\s*\{([^}]*)\}', css)
+    if re.search(r'overflow(-x)?\s*:\s*hidden', block)
+]
+check('sticky positioning survives the overflow rules', sticky_hits)
+
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

@@ -55,3 +55,39 @@ export async function saveCompanyDetails(input: Record<string, string>): Promise
     return { ok: true, warnings };
   } catch (err) { return toActionError(err); }
 }
+
+export type RepairActionResult = { ok: true; message: string } | { error: string };
+
+/**
+ * Bring the database up to date from inside the app, so it cannot be pointed
+ * at the wrong Neon branch by accident.
+ */
+export async function repairDatabase(): Promise<RepairActionResult> {
+  try {
+    const ctx = await ensure('admin.setting.manage');
+    const { repairSchema } = await import('@/server/services/bootstrap');
+    const r = await repairSchema();
+
+    await writeAudit({
+      actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting',
+      summary: `Database repair: ${r.ran} statements applied, ${r.failed} failed on "${r.database}"`,
+    });
+
+    if (r.failed > 0) {
+      return {
+        error:
+          `${r.ran} applied, but ${r.failed} failed on database "${r.database}". ` +
+          `First problem: ${r.errors[0] ?? 'unknown'}`,
+      };
+    }
+    return {
+      ok: true,
+      message:
+        `Database "${r.database}" is now up to date — ${r.ran} statements applied` +
+        `${r.usedDirect ? '' : ' (via the pooled connection; set DATABASE_URL_UNPOOLED for the direct one)'}. ` +
+        'Reload the page.',
+    };
+  } catch (e) {
+    return toActionError(e);
+  }
+}

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
 import { PageHeader } from '@/components/layout/page-header';
 import { measurePerformance } from '@/server/services/performance-service';
+import { RepairButton } from '@/components/layout/repair-button';
 
 export const metadata: Metadata = { title: 'Performance' };
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,9 @@ export default async function PerformancePage() {
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
           {advice.map((a) => <li key={a}>{a}</li>)}
         </ul>
+        {advice.some((a) => a.includes('behind the code')) && (
+          <div className="mt-3"><RepairButton /></div>
+        )}
       </div>
     </div>
   );

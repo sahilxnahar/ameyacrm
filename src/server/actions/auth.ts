@@ -13,13 +13,15 @@ import { isKnownDevice, beginDeviceApproval, alertNewSignIn } from '@/lib/auth/d
 import { getClientInfo } from '@/lib/auth/session';
 import { writeAudit } from '@/lib/audit/log';
 import { checkRate, callerIp } from '@/lib/security/rate-limit';
+import { createHash, randomBytes } from 'node:crypto';
+import { sendEmail } from '@/lib/email/email';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Username or email is required'),
   password: z.string().min(1, 'Password is required'),
 });
 
-export type ActionState = { error?: string; ok?: boolean };
+export type ActionState = { error?: string; ok?: boolean; success?: string };
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
@@ -111,6 +113,9 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   const code = parsed.data.code.trim();
   let verified = verifyTotp(code, openSecret(user.twoFactorSecret));
 
+  // Fallback: a code we emailed, for when the phone is not to hand.
+  if (!verified) verified = await verifyEmailSignInCode(userId, code);
+
   // Fallback: single-use backup code
   if (!verified) {
     const codes = await prisma.backupCode.findMany({ where: { userId, usedAt: null } });
@@ -127,7 +132,7 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
     await prisma.loginHistory.create({
       data: { userId, username: user.username, success: false, reason: '2fa_failed' },
     });
-    return { error: 'Incorrect code. Try again or use a backup code.' };
+    return { error: 'Incorrect code. Try again, use a backup code, or have one emailed to you.' };
   }
 
   await clearMfaTicket();
@@ -139,9 +144,79 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   // (user has 2FA here, so no enrollment gate needed)
 }
 
+/**
+ * Sign out.
+ *
+ * The order matters and every step is defensive. Signing out used to begin by
+ * reading the user and writing an audit entry — so when either of those threw
+ * (a database that had fallen behind the code was enough), the action aborted
+ * before it reached the line that clears the cookie, and the person simply
+ * stayed logged in with no error to explain it. Ending the session is the one
+ * thing that must always happen, so it goes first and nothing after it can
+ * stop it.
+ */
 export async function logoutAction(): Promise<void> {
-  const ctx = await getCurrentUser();
-  if (ctx) await writeAudit({ actorId: ctx.user.id, action: 'LOGOUT' });
-  await destroySession();
+  const ctx = await getCurrentUser().catch(() => null);
+  await destroySession().catch(() => undefined);
+  if (ctx) await writeAudit({ actorId: ctx.user.id, action: 'LOGOUT' }).catch(() => undefined);
   redirect('/login');
+}
+
+/**
+ * Send a one-time code by email as an alternative to the authenticator app.
+ *
+ * Only reachable after the password is already correct, so it never becomes a
+ * way in on its own — it is a second factor, not a first. It exists because
+ * phones get replaced, reset and left at home, and the alternative to this is
+ * a support call and an administrator turning 2FA off entirely.
+ */
+export async function sendEmailSignInCodeAction(): Promise<ActionState> {
+  const userId = await readMfaTicket();
+  if (!userId) return { error: 'Your verification session expired. Please sign in again.' };
+
+  const gate = await checkRate(`mfa:email:${userId}`, 5, 900);
+  if (!gate.allowed) return { error: 'Too many codes requested. Please wait fifteen minutes.' };
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
+  if (!user) return { error: 'Please sign in again.' };
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await prisma.deviceApproval.create({
+    data: {
+      userId: user.id,
+      token: `mfa_${randomBytes(16).toString('hex')}`,
+      codeHash: createHash('sha256').update(code).digest('hex'),
+      deviceHash: 'email-code',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+
+  const sent = await sendEmail({
+    to: [user.email],
+    subject: `${code} is your Ameya Heights sign-in code`,
+    text: `Your Ameya Heights sign-in code is ${code}. It expires in ten minutes and can be used once.`,
+    html:
+      `<p>Hello ${user.name ?? ''},</p>` +
+      `<p>Your sign-in code is <strong style="font-size:22px;letter-spacing:3px">${code}</strong></p>` +
+      `<p>It expires in ten minutes and can be used once. If you did not try to sign in, change your password.</p>` +
+      `<p>— Ameya Heights CRM</p>`,
+  });
+  if (!sent.ok) return { error: `The code could not be sent: ${sent.error ?? 'unknown email error'}` };
+
+  return { success: `A six-digit code has been sent to ${user.email.replace(/^(.).*(@.*)$/, '$1•••$2')}.` };
+}
+
+/** Check a code that was emailed rather than generated by the authenticator app. */
+async function verifyEmailSignInCode(userId: string, code: string): Promise<boolean> {
+  const hash = createHash('sha256').update(code).digest('hex');
+  const row = await prisma.deviceApproval.findFirst({
+    where: {
+      userId, deviceHash: 'email-code', codeHash: hash,
+      usedAt: null, expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!row) return false;
+  await prisma.deviceApproval.update({ where: { id: row.id }, data: { usedAt: new Date() } });
+  return true;
 }

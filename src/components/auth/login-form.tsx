@@ -6,6 +6,7 @@ import { loginAction, type ActionState } from '@/server/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasskeySignIn } from './passkey-sign-in';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -41,6 +42,8 @@ export function LoginForm() {
         )}
         <SubmitButton />
       </form>
+
+      <PasskeySignIn />
       <p className="text-center text-xs text-muted-foreground">
         Protected by 2FA, device recognition &amp; audit logging.
       </p>

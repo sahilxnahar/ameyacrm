@@ -1,8 +1,8 @@
 'use client';
-import { useActionState } from 'react';
+import { useActionState, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import { verifyTwoFactorAction, type ActionState } from '@/server/actions/auth';
+import { verifyTwoFactorAction, sendEmailSignInCodeAction, type ActionState } from '@/server/actions/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,12 +19,17 @@ function SubmitButton() {
 
 export function TwoFactorForm() {
   const [state, formAction] = useActionState<ActionState, FormData>(verifyTwoFactorAction, {});
+  const [emailState, setEmailState] = useState<ActionState | null>(null);
+  const [sending, startSend] = useTransition();
+
+  const emailMeACode = () =>
+    startSend(async () => setEmailState(await sendEmailSignInCodeAction()));
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
         <h2 className="font-display text-3xl font-semibold">Two-factor verification</h2>
         <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code from your authenticator app, or a backup code.
+          Enter the 6-digit code from your authenticator app, a backup code, or a code sent to your email.
         </p>
       </div>
       <form action={formAction} className="space-y-4">
@@ -52,6 +57,20 @@ export function TwoFactorForm() {
         )}
         <SubmitButton />
       </form>
+
+      <div className="space-y-2 border-t border-border pt-4">
+        <button
+          type="button" onClick={emailMeACode} disabled={sending}
+          className="focus-ring w-full rounded-md border border-input bg-background px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+        >
+          {sending ? 'Sending…' : 'Email me a code instead'}
+        </button>
+        <p className="text-xs text-muted-foreground">
+          Useful if your phone is not to hand. The code lasts ten minutes.
+        </p>
+        {emailState?.success && <p className="text-sm text-emerald-600 dark:text-emerald-400">{emailState.success}</p>}
+        {emailState?.error && <p role="alert" className="text-sm text-destructive">{emailState.error}</p>}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { LogOut, Settings, User } from 'lucide-react';
+import { useTransition } from 'react';
 import { logoutAction } from '@/server/actions/auth';
 import { initials } from '@/lib/utils/format';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +12,7 @@ import {
 import type { ShellUser } from './app-shell';
 
 export function UserMenu({ user }: { user: ShellUser }) {
+  const [signingOut, startSignOut] = useTransition();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus-ring rounded-full">
@@ -37,13 +39,23 @@ export function UserMenu({ user }: { user: ShellUser }) {
           <Link href="/settings/security"><Settings className="h-4 w-4" /> Security &amp; 2FA</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <form action={logoutAction}>
-          <button type="submit" className="w-full">
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
-              <LogOut className="h-4 w-4" /> Sign out
-            </DropdownMenuItem>
-          </button>
-        </form>
+        {/*
+          * Sign out is a menu item that runs the action itself, not a submit
+          * button wrapped in one. Nesting a form inside a menu item meant that
+          * choosing "Sign out" closed the menu — unmounting the form — before
+          * the browser got round to submitting it, so roughly one tap in two
+          * did nothing at all and there was no error to show for it.
+          */}
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          disabled={signingOut}
+          onSelect={(e) => {
+            e.preventDefault();
+            startSignOut(async () => { await logoutAction(); });
+          }}
+        >
+          <LogOut className="h-4 w-4" /> {signingOut ? 'Signing out…' : 'Sign out'}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

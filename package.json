@@ -2,7 +2,7 @@
   "name": "ameya-heights-crm",
   "version": "1.0.0",
   "private": true,
-  "description": "Ameya Heights \u2014 Internal CRM / Construction & Real-Estate ERP-lite",
+  "description": "Ameya Heights — Internal CRM / Construction & Real-Estate ERP-lite",
   "author": "Ameya Heights LLP",
   "license": "UNLICENSED",
   "engines": {
@@ -51,6 +51,8 @@
     "@radix-ui/react-switch": "1.1.2",
     "@radix-ui/react-tabs": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.6",
+    "@simplewebauthn/browser": "^13.1.0",
+    "@simplewebauthn/server": "^13.1.1",
     "@vercel/blob": "0.27.1",
     "bcryptjs": "2.4.3",
     "class-variance-authority": "0.7.1",

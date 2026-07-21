@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { checkSchema } from '@/server/services/schema-check-service';
+import { RepairButton } from './repair-button';
 
 /**
  * A banner that appears when the code is newer than the database. It is the
@@ -19,9 +20,10 @@ export async function SchemaWarning() {
         <span className="min-w-0 flex-1">
           <strong>The database is behind the code.</strong> {missing.length} thing
           {missing.length === 1 ? '' : 's'} missing ({shown}{missing.length > 4 ? ', …' : ''}).
-          Screens will fail with unhelpful errors until the migration SQL for this version is run in Neon.
+          Screens will fail with unhelpful errors until this is fixed.
           {' '}
           <Link href="/admin/performance" className="underline">See the full list</Link>
+          <span className="mt-2 block"><RepairButton /></span>
         </span>
       </p>
     </div>

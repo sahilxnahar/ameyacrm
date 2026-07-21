@@ -192,7 +192,12 @@
   .overflow-x-auto, .overflow-y-auto, .overflow-auto { -webkit-overflow-scrolling: touch; }
 
   /* Nothing should ever push the page sideways on a phone. */
-  body { overflow-x: hidden; }
+  /*
+   * `clip`, not `hidden` — see the note in the base layer below. This rule
+   * had been quietly stopping the sticky top bar from sticking on phones,
+   * which is why the header slid away as soon as you scrolled.
+   */
+  body { overflow-x: clip; }
 }
 
 @layer components {
@@ -309,5 +314,62 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .shimmer { animation: none; }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Text that stays inside its box  (v13.0)
+
+   Long unbroken strings — a UTR, an email address, a Vercel URL, a vendor name
+   typed without spaces — have no break point, so the browser lets them run past
+   the edge of whatever contains them. That is what "text going out of the box"
+   was. Two rules fix the whole class of it.
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  body {
+    /* Break inside a word only when there is no other option. */
+    overflow-wrap: break-word;
+    /*
+     * Nothing should ever scroll the page sideways.
+     *
+     * `clip`, not `hidden`: `overflow-x: hidden` makes the body a scroll
+     * container, which silently stops `position: sticky` working for
+     * everything inside it — the top bar and every sticky table header would
+     * have quietly come unstuck. `clip` trims the overflow without that
+     * side effect.
+     */
+    overflow-x: clip;
+  }
+
+  /*
+   * A flex or grid child defaults to min-width:auto, meaning it refuses to
+   * shrink below its content. That single default is behind almost every
+   * overflowing row in this app, and behind `truncate` silently doing nothing.
+   */
+  .flex > *, .grid > * { min-width: 0; }
+
+  /* Anything long enough to be a problem gets a break point. */
+  code, pre, .break-anywhere { overflow-wrap: anywhere; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Movement that feels like an app, not a web page  (v13.0)
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Sideways strips (chips, tabs, cards) snap instead of drifting to a stop. */
+  .snap-strip {
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+  }
+  .snap-strip > * { scroll-snap-align: start; }
+
+  /*
+   * Taps register at once.
+   *
+   * Without this a browser waits ~300ms after a tap to see whether a second
+   * tap is coming, and the delay reads as the whole app being slow.
+   */
+  button, [role='button'], a, summary, label, input, select, textarea {
+    touch-action: manipulation;
   }
 }

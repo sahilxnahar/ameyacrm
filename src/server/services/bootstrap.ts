@@ -118,3 +118,65 @@ export async function bootstrap(): Promise<BootstrapResult> {
 
   return { created: true, userCount: 1, credentials: { username, email, password } };
 }
+
+
+export interface RepairResult {
+  ran: number;
+  failed: number;
+  database: string;
+  usedDirect: boolean;
+  errors: string[];
+}
+
+/**
+ * Bring the database up to the shape this build expects, from inside the app.
+ *
+ * ensureSchema() only runs on a virgin database, so an existing install that
+ * falls behind stays behind — and pasting SQL by hand goes wrong in ways that
+ * are invisible: the wrong Neon branch, an editor that stops at the first
+ * error, a half-selected file. Running it through the app's own connection
+ * removes every one of those, because it is by definition the right database.
+ *
+ * Every statement is idempotent, so this is safe to run as often as you like.
+ */
+export async function repairSchema(): Promise<RepairResult> {
+  const directUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  const usedDirect = Boolean(process.env.DATABASE_URL_UNPOOLED);
+  const client = new PrismaClient({ datasourceUrl: directUrl });
+
+  const errors: string[] = [];
+  let ran = 0;
+  let failed = 0;
+  let database = 'unknown';
+
+  try {
+    const who = await client.$queryRawUnsafe<Array<{ db: string }>>('SELECT current_database() AS db');
+    database = who?.[0]?.db ?? 'unknown';
+
+    const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
+    const statements = sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean);
+
+    for (const raw of statements) {
+      const stmt = raw
+        .split('\n')
+        .filter((l) => !l.trim().startsWith('--'))
+        .join('\n')
+        .replace(/;\s*$/, '')
+        .trim();
+      if (!stmt) continue;
+      try {
+        await client.$executeRawUnsafe(stmt);
+        ran++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // "already exists" is the expected outcome for most of these.
+        if (/already exists|duplicate/i.test(msg)) { ran++; continue; }
+        failed++;
+        if (errors.length < 5) errors.push(`${stmt.slice(0, 60)}… → ${msg.slice(0, 160)}`);
+      }
+    }
+    return { ran, failed, database, usedDirect, errors };
+  } finally {
+    await client.$disconnect().catch(() => undefined);
+  }
+}
