@@ -85,3 +85,62 @@ export async function processPending(limit = 10): Promise<{ processed: number; f
   }
   return { processed, failed };
 }
+
+
+export interface CatchUpResult { summarised: number; indexed: number; skipped: number; remaining: number; message: string }
+
+/**
+ * Summarise files that were uploaded while the AI was unavailable.
+ *
+ * processFile() skips anything already marked DONE, and processPending() only
+ * looks at PENDING — so files uploaded during the outage were mirrored to Drive
+ * and then left without a summary for ever. This goes back for them.
+ *
+ * Bounded per run because a serverless request cannot sit for minutes; the
+ * result says how many are left so it can simply be pressed again.
+ */
+export async function summariseMissing(limit = 12): Promise<CatchUpResult> {
+  const { summarizeFile } = await import('@/lib/ai/gemini');
+  const { indexText, folderForFile } = await import('@/server/services/docqa-service');
+
+  const where = { ocrText: null, size: { gt: 0, lt: 15 * 1024 * 1024 } };
+  const [files, total] = await Promise.all([
+    prisma.fileObject.findMany({
+      where, orderBy: { createdAt: 'desc' }, take: limit,
+      select: { id: true, key: true, mimeType: true, originalName: true },
+    }),
+    prisma.fileObject.count({ where }),
+  ]);
+
+  let summarised = 0, indexed = 0, skipped = 0;
+
+  for (const f of files) {
+    try {
+      const { body } = await getObjectStream(f.key);
+      const summary = await summarizeFile(body, f.mimeType, f.originalName);
+      if (!summary) { skipped++; continue; }
+
+      await prisma.fileObject.update({ where: { id: f.id }, data: { ocrText: summary } });
+      summarised++;
+
+      const n = await indexText({
+        fileObjectId: f.id, title: f.originalName, source: 'Document library',
+        text: summary, folderId: await folderForFile(f.id),
+      }).catch(() => 0);
+      if (n > 0) indexed++;
+    } catch {
+      skipped++;
+    }
+  }
+
+  const remaining = Math.max(0, total - summarised);
+  return {
+    summarised, indexed, skipped, remaining,
+    message: summarised === 0
+      ? total === 0
+        ? 'Every file already has a summary.'
+        : `Nothing could be summarised. ${skipped} file${skipped === 1 ? '' : 's'} failed — check the provider on this page.`
+      : `${summarised} file${summarised === 1 ? '' : 's'} summarised, ${indexed} made searchable.` +
+        (remaining > 0 ? ` ${remaining} still to go — press it again.` : ' That is all of them.'),
+  };
+}

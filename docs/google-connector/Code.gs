@@ -330,7 +330,8 @@ var TRIGGER_PLAN = [
   { fn: 'scanMailOnce',    every: 'minutes', n: 15, what: 'Buyer emails, every 15 minutes' },
   { fn: 'scanPortalsOnce', every: 'minutes', n: 15, what: 'Portal leads, every 15 minutes' },
   { fn: 'scanSocialOnce',  every: 'hours',   n: 1,  what: 'Social activity, hourly' },
-  { fn: 'scanDriveOnce',   every: 'minutes', n: 15, what: 'Files added straight to Drive, every 15 minutes' }
+  { fn: 'scanDriveOnce',   every: 'minutes', n: 15, what: 'Files added straight to Drive, every 15 minutes' },
+  { fn: 'scanAttachmentsOnce', every: 'minutes', n: 15, what: 'Email attachments filed into the CRM, every 15 minutes' }
 ];
 
 function setupEverything() {
@@ -510,4 +511,61 @@ function scanDriveOnce() {
 
   var res = postJson('/api/ingest/drive', { files: found });
   Logger.log('drive ' + res.getResponseCode() + ' ' + res.getContentText());
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  F.  Attachments by email — forward a bill and it files itself
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Look for recent mail carrying attachments and send each one to the CRM.
+ *
+ * How your team uses it: forward the mail to this mailbox and put the
+ * department in the subject — "Billing", "Architecture", "Site". The CRM
+ * matches the subject to a folder that person is allowed to open, and files it
+ * there. No subject match just means it lands in "From Email".
+ *
+ * Only mail from people who are CRM users is accepted; anything else is
+ * ignored by the server.
+ */
+function scanAttachmentsOnce() {
+  var query = windowFor('lastAttachScan', 3) + ' has:attachment -in:chats -in:spam -in:trash';
+  var threads = GmailApp.search(query, 0, 25);
+  var sent = 0, skipped = 0;
+
+  for (var i = 0; i < threads.length; i++) {
+    var msgs = threads[i].getMessages();
+    for (var j = 0; j < msgs.length; j++) {
+      var m = msgs[j];
+      var from = m.getFrom().toLowerCase();
+      if (MACHINE_SENDERS.test(from)) continue;
+
+      var atts = m.getAttachments({ includeInlineImages: false, includeAttachments: true });
+      if (!atts.length) continue;
+
+      var payload = [];
+      for (var k = 0; k < atts.length && payload.length < 10; k++) {
+        var a = atts[k];
+        // 20 MB ceiling: Apps Script holds the whole thing in memory.
+        if (a.getSize() > 20 * 1024 * 1024) { skipped++; continue; }
+        payload.push({
+          filename: a.getName(),
+          mimeType: a.getContentType(),
+          data: Utilities.base64Encode(a.getBytes())
+        });
+      }
+      if (!payload.length) continue;
+
+      var res = postJson('/api/ingest/email-attachment', {
+        from: m.getFrom(),
+        subject: m.getSubject(),
+        attachments: payload
+      });
+      Logger.log('attachments ' + res.getResponseCode() + ' ' + res.getContentText());
+      if (res.getResponseCode() === 200) sent += payload.length; else skipped += payload.length;
+    }
+  }
+
+  Logger.log('attachments: ' + sent + ' filed, ' + skipped + ' skipped');
+  if (skipped === 0) markScanned('lastAttachScan');
 }

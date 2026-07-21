@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { env } from '@/config/env';
 import { decrypt } from '@/lib/utils/crypto';
 import { tokensIn, render } from '@/lib/templates/engine';
 
@@ -14,6 +15,17 @@ export interface WaConnection {
 
 /** The stored WhatsApp connection, decrypted. Null when not connected. */
 export async function getWhatsappConnection(): Promise<WaConnection | null> {
+  // A pasted System User token wins. It never expires, needs no App Review,
+  // and is the quickest way to get a single business sending.
+  if (env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID) {
+    return {
+      token: env.WHATSAPP_TOKEN,
+      wabaId: env.WHATSAPP_WABA_ID ?? null,
+      phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
+      displayNumber: null,
+    };
+  }
+
   const c = await prisma.integrationConnection.findUnique({ where: { provider: 'whatsapp' } });
   if (!c || c.status !== 'CONNECTED' || !c.accessToken) return null;
   const meta = (c.meta ?? {}) as { wabaId?: string; phoneNumberId?: string; displayNumber?: string };

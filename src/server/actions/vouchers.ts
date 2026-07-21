@@ -211,3 +211,15 @@ export async function reindexEverything(): Promise<{ reports: IndexReport[] }> {
   });
   return { reports };
 }
+
+/** Go back for files uploaded while the AI was unavailable. Admin only. */
+export async function catchUpSummaries(): Promise<{ summarised: number; indexed: number; remaining: number; message: string }> {
+  const ctx = await ensure('admin.setting.manage');
+  const { summariseMissing } = await import('@/server/services/file-sync-service');
+  const r = await summariseMissing(12);
+  await writeAudit({
+    actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document',
+    summary: `Catch-up summaries: ${r.summarised} files`,
+  });
+  return { summarised: r.summarised, indexed: r.indexed, remaining: r.remaining, message: r.message };
+}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Loader2, Play, AlertTriangle, Database, Lock } from 'lucide-react';
-import { checkAiHealth, reindexEverything } from '@/server/actions/vouchers';
+import { checkAiHealth, reindexEverything, catchUpSummaries } from '@/server/actions/vouchers';
 
 interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string; note?: boolean }
 
@@ -12,6 +12,19 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
   const [cov, setCov] = useState(coverage);
   const [indexing, startIndex] = useTransition();
   const [indexMsg, setIndexMsg] = useState<string | null>(null);
+  const [catchUp, startCatchUp] = useTransition();
+  const [catchUpMsg, setCatchUpMsg] = useState<string | null>(null);
+
+  const runCatchUp = () =>
+    startCatchUp(async () => {
+      setCatchUpMsg(null);
+      try {
+        const r = await catchUpSummaries();
+        setCatchUpMsg(r.message);
+      } catch (e) {
+        setCatchUpMsg(e instanceof Error ? e.message : 'That did not work.');
+      }
+    });
 
   const runIndex = () =>
     startIndex(async () => {
@@ -112,7 +125,20 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Summarised by AI</dt>
             <dd className="text-2xl font-semibold tabular-nums">{summarised}</dd>
-            {docs > 0 && summarised === 0 && <p className="mt-1 text-xs text-amber-700 dark:text-amber-500">Nothing summarised yet. File summaries need a provider that reads PDFs and images.</p>}
+            {docs > summarised && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground">
+                  {docs - summarised} file{docs - summarised === 1 ? '' : 's'} uploaded before the AI was working, so {docs - summarised === 1 ? 'it has' : 'they have'} no summary.
+                </p>
+                <button
+                  type="button" onClick={runCatchUp} disabled={catchUp}
+                  className="focus-ring mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-muted disabled:opacity-60"
+                >
+                  {catchUp ? <><Loader2 className="h-3 w-3 animate-spin" />Reading them…</> : 'Summarise them now'}
+                </button>
+                {catchUpMsg && <p className="mt-1.5 text-xs text-emerald-700 dark:text-emerald-400">{catchUpMsg}</p>}
+              </div>
+            )}
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Passages searchable</dt>

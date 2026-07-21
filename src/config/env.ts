@@ -59,6 +59,13 @@ const schema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
 
+  // The simple way in. A System User token from Meta never expires and skips
+  // the whole OAuth dance, which needs App Review for some permissions.
+  // Set these three and WhatsApp works without Connected Accounts.
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_WABA_ID: z.string().optional(),
+
   // Email (pluggable): smtp | ses | resend | console
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend', 'console']).default('console'),
   EMAIL_FROM: z.string().default('Ameya Heights CRM <no-reply@ameyaheights.com>'),

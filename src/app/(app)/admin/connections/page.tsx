@@ -17,15 +17,18 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
 
   const providers = PROVIDERS.map((p) => {
     const c = byProvider.get(p.key);
-    const hasCredentials = Boolean(process.env[p.clientIdEnv] && process.env[p.clientSecretEnv]);
+    // WhatsApp can also be wired up with a pasted System User token, which
+    // bypasses OAuth entirely — say so rather than showing it as unconfigured.
+    const viaToken = p.key === 'whatsapp' && Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+    const hasCredentials = viaToken || Boolean(process.env[p.clientIdEnv] && process.env[p.clientSecretEnv]);
     const expired = c?.expiresAt ? c.expiresAt.getTime() < Date.now() : false;
     return {
       key: p.key, name: p.name, what: p.what, group: p.group,
       prerequisites: p.prerequisites, cost: p.cost, docs: p.docs,
       clientIdEnv: p.clientIdEnv, clientSecretEnv: p.clientSecretEnv,
       hasCredentials,
-      status: !hasCredentials ? 'NEEDS_SETUP' : expired ? 'EXPIRED' : (c?.status ?? 'DISCONNECTED'),
-      accountName: c?.accountName ?? null,
+      status: viaToken ? 'CONNECTED' : !hasCredentials ? 'NEEDS_SETUP' : expired ? 'EXPIRED' : (c?.status ?? 'DISCONNECTED'),
+      accountName: viaToken ? `Connected with a System User token · number ${process.env.WHATSAPP_PHONE_NUMBER_ID}` : c?.accountName ?? null,
       connectedAt: c?.connectedAt?.toISOString() ?? null,
       lastError: c?.lastError ?? null,
     };
