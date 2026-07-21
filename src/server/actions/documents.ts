@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { inferMimeType } from '@/lib/files/mime';
 import { putObject, makeObjectKey, getObjectStream } from '@/lib/storage/storage';
 import { summarizeFile, isGeminiEnabled } from '@/lib/ai/gemini';
 import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
@@ -194,7 +195,7 @@ export async function registerUploadedDocument(input: unknown): Promise<DocResul
     }
 
     const fileObj = await prisma.fileObject.create({
-      data: { key: d.url, bucket: 'blob', originalName: d.originalName, mimeType: d.mimeType, size: d.size, uploadedById: ctx.user.id },
+      data: { key: d.url, bucket: 'blob', originalName: d.originalName, mimeType: inferMimeType(d.mimeType, d.originalName), size: d.size, uploadedById: ctx.user.id },
     });
     const doc = await prisma.document.create({
       data: {

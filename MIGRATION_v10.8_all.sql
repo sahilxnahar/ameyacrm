@@ -275,3 +275,13 @@ INSERT INTO "MessageTemplate" ("id","key","name","channel","language","subject",
   E'Dear {{buyer.name}},\n\nPlease find below the current position on unit {{unit.code}} at {{project.name}}.\n\nAgreement value: Rs {{booking.value}}\nBalance outstanding: Rs {{payment.balance}}\nNext instalment: Rs {{payment.amount}}, due {{payment.dueDate}}\n\nDo write back if anything looks wrong.\n\nRegards,\n{{sender.name}}\n{{company.name}}',
   NOW(),NOW())
 ON CONFLICT ("key") DO NOTHING;
+
+-- v10.8 — vendor bank details -------------------------------------------------
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "pan" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankAccountName" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankAccountNumber" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankIfsc" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankBranch" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "upiId" TEXT;
+ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "paymentNotes" TEXT;

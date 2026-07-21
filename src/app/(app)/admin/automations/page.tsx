@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { AutomationView } from '@/components/admin/automation-view';
+import { StarterAutomationsPanel } from '@/components/admin/starter-automations-panel';
 
 export const metadata: Metadata = { title: 'Automations' };
 
@@ -17,6 +18,7 @@ export default async function AutomationsPage() {
   return (
     <div>
       <PageHeader title="Automations" description="Trigger → conditions → actions. Auto-assign, notify, follow up, escalate." />
+      <StarterAutomationsPanel existingNames={rules.map((r) => r.name)} />
       <AutomationView
         users={users}
         templates={templates}

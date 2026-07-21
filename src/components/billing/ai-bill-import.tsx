@@ -54,7 +54,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
           {stage === 'upload' && (
             <form onSubmit={doExtract} className="space-y-4">
               <p className="text-sm text-muted-foreground">Upload a bill / invoice (PDF, image, or scan). Gemini reads it and fills in the vendor, GST number, date, and line items for you to review before saving.</p>
-              <Input name="file" type="file" required accept=".pdf,image/*,.txt,.csv" />
+              <Input name="file" type="file" required accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.gif,.bmp,.tiff,.txt,.csv,image/*" />
               <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<Upload className="h-4 w-4" /> Read with AI</Button></div>
             </form>
           )}

@@ -14,8 +14,14 @@ export function readPrefs(raw: unknown): NavPrefs {
  * Apply a person's ordering to one group of links. Anything they have not
  * touched keeps its original position, so a newly added page still appears.
  */
-export function applyOrder<T extends { href: string }>(items: T[], prefs: NavPrefs): T[] {
-  const visible = items.filter((i) => !prefs.hidden.includes(i.href));
+export function applyOrder<T extends { href: string }>(
+  items: T[],
+  prefs: NavPrefs,
+  opts: { keepHidden?: boolean } = {},
+): T[] {
+  // While customising, hidden items must stay on screen (greyed out) or there
+  // is no way to un-hide them.
+  const visible = opts.keepHidden ? items : items.filter((i) => !prefs.hidden.includes(i.href));
   if (!prefs.order.length) return visible;
   const rank = new Map(prefs.order.map((h, i) => [h, i]));
   return [...visible].sort((a, b) => {

@@ -1,10 +1,12 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v10.7_
+_Last updated: 21 July 2026 · current build v10.8_
 
 ---
 
 ## 1. Waiting on you — do these first
+
+- **Replace the Gemini API key — nothing AI works until you do.** Google has blocked the project behind the current key (403 PERMISSION_DENIED). Go to aistudio.google.com/apikey, delete the old key, create a new one in a **new** project, update `GEMINI_API_KEY` in Vercel, redeploy, then check Admin → AI Health.
 
 - **Run Admin → AI Health → Index everything** once after deploying, so the AI can see leads, bookings, invoices, tasks and payments — not just files.
 - **See ROADMAP.md** for what to build next, in order.
@@ -16,7 +18,7 @@ _Last updated: 21 July 2026 · current build v10.7_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v10.7** — run `MIGRATION_v10.7_all.sql` in Neon, sync `ameya-heights-crm-v10.7.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v10.8** — run `MIGRATION_v10.8_all.sql` in Neon, sync `ameya-heights-crm-v10.8.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |

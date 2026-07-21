@@ -16,7 +16,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatCurrency, formatDate, titleCase } from '@/lib/utils/format';
 
 interface Opt { id: string; name: string }
-interface Vendor { id: string; name: string; gstin: string | null; email: string | null; phone: string | null }
+interface Vendor {
+  id: string; name: string; gstin: string | null; pan: string | null;
+  email: string | null; phone: string | null; address: string | null;
+  bankAccountName: string | null; bankAccountNumber: string | null; bankIfsc: string | null;
+  bankName: string | null; bankBranch: string | null; upiId: string | null; paymentNotes: string | null;
+}
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 function statusVariant(s: string) { return s === 'PAID' || s === 'APPROVED' ? 'success' : ['OVERDUE', 'VOID', 'CANCELLED', 'REJECTED'].includes(s) ? 'destructive' : s === 'DRAFT' ? 'secondary' : s === 'PENDING_APPROVAL' ? 'warning' : 'default'; }
 
@@ -47,8 +52,16 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
     run(() => createPurchaseOrder({ vendorId: fd.get('vendorId') || null, projectId: fd.get('projectId') || null, expectedAt: fd.get('expectedAt') || null, notes: fd.get('notes'), approverIds, items: poItems.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), unit: i.unit, rate: Number(i.rate), gstRate: Number(i.gstRate) })) }), 'PO created'); };
   const submitBill = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     run(() => createVendorBill({ number: fd.get('number'), vendorId: fd.get('vendorId') || null, amount: fd.get('amount'), gstAmount: fd.get('gstAmount') || 0, billDate: fd.get('billDate') || null, dueDate: fd.get('dueDate') || null }), 'Vendor bill recorded'); };
+  const [editingVendor, setEditingVendor] = React.useState<Vendor | null>(null);
   const submitVendor = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
-    run(() => createVendor({ name: fd.get('name'), gstin: fd.get('gstin'), email: fd.get('email'), phone: fd.get('phone'), address: fd.get('address') }), 'Vendor added'); };
+    run(() => createVendor({
+      id: editingVendor?.id ?? '',
+      name: fd.get('name'), gstin: fd.get('gstin'), pan: fd.get('pan'),
+      email: fd.get('email'), phone: fd.get('phone'), address: fd.get('address'),
+      bankAccountName: fd.get('bankAccountName'), bankAccountNumber: fd.get('bankAccountNumber'),
+      bankIfsc: fd.get('bankIfsc'), bankName: fd.get('bankName'), bankBranch: fd.get('bankBranch'),
+      upiId: fd.get('upiId'), paymentNotes: fd.get('paymentNotes'),
+    }), editingVendor ? 'Vendor updated' : 'Vendor added'); };
 
   return (
     <Tabs defaultValue="invoices">
@@ -56,7 +69,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="bills">Vendor Bills</TabsTrigger><TabsTrigger value="vendors">Vendors</TabsTrigger></TabsList>
         <div className="flex gap-2">
           <AiBillImport geminiEnabled={geminiEnabled} projects={projects} />
-          <Button size="sm" variant="outline" onClick={() => setOpen('vendor')}><Plus className="h-4 w-4" /> Vendor</Button>
+          <Button size="sm" variant="outline" onClick={() => { setEditingVendor(null); setOpen('vendor'); }}><Plus className="h-4 w-4" /> Vendor</Button>
           <Button size="sm" variant="outline" onClick={() => setOpen('bill')}><Plus className="h-4 w-4" /> Bill</Button>
           <Button size="sm" variant="outline" onClick={() => setOpen('po')}><Plus className="h-4 w-4" /> PO</Button>
           <Button size="sm" onClick={() => setOpen('invoice')}><Plus className="h-4 w-4" /> Invoice</Button>
@@ -102,10 +115,23 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
 
       <TabsContent value="vendors">
         <Card><Table>
-          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Email</TableHead><TableHead>Where you pay them</TableHead></TableRow></TableHeader>
           <TableBody>
             {vendors.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No vendors yet.</TableCell></TableRow>}
-            {vendors.map((v) => (<TableRow key={v.id}><TableCell className="font-medium">{v.name}</TableCell><TableCell className="font-mono text-xs text-muted-foreground">{v.gstin ?? '—'}</TableCell><TableCell className="text-sm">{v.email ?? '—'}</TableCell><TableCell className="text-sm">{v.phone ?? '—'}</TableCell></TableRow>))}
+            {vendors.map((v) => (
+              <TableRow key={v.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setEditingVendor(v); setOpen('vendor'); }}>
+                <TableCell className="font-medium">{v.name}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{v.gstin ?? '—'}</TableCell>
+                <TableCell className="text-sm">{v.email ?? '—'}</TableCell>
+                <TableCell className="text-sm">
+                  {v.bankAccountNumber
+                    ? <span className="font-mono text-xs">{v.bankName ?? 'Bank'} ••{v.bankAccountNumber.slice(-4)} · {v.bankIfsc}</span>
+                    : v.upiId
+                      ? <span className="font-mono text-xs">{v.upiId}</span>
+                      : <span className="text-xs text-amber-700 dark:text-amber-500">No bank details</span>}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table></Card>
       </TabsContent>
@@ -183,17 +209,42 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       </Dialog>
 
       {/* Vendor dialog */}
-      <Dialog open={open === 'vendor'} onOpenChange={(o) => !o && close()}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>New vendor</DialogTitle></DialogHeader>
+      <Dialog open={open === 'vendor'} onOpenChange={(o) => { if (!o) { setEditingVendor(null); close(); } }}>
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingVendor ? editingVendor.name : 'New vendor'}</DialogTitle></DialogHeader>
           <form onSubmit={submitVendor} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label htmlFor="vname">Name</Label><Input id="vname" name="name" required /></div>
-              <div className="space-y-2"><Label htmlFor="vgstin">GSTIN</Label><Input id="vgstin" name="gstin" /></div>
-              <div className="space-y-2"><Label htmlFor="vemail">Email</Label><Input id="vemail" name="email" type="email" /></div>
-              <div className="space-y-2"><Label htmlFor="vphone">Phone</Label><Input id="vphone" name="phone" /></div>
+              <div className="space-y-2"><Label htmlFor="vname">Name</Label><Input id="vname" name="name" required defaultValue={editingVendor?.name ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="vgstin">GSTIN</Label><Input id="vgstin" name="gstin" defaultValue={editingVendor?.gstin ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="vpan">PAN</Label><Input id="vpan" name="pan" defaultValue={editingVendor?.pan ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="vphone">Phone</Label><Input id="vphone" name="phone" defaultValue={editingVendor?.phone ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="vemail">Email</Label><Input id="vemail" name="email" type="email" defaultValue={editingVendor?.email ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="vaddress">Address</Label><Input id="vaddress" name="address" defaultValue={editingVendor?.address ?? ''} /></div>
             </div>
-            <div className="space-y-2"><Label htmlFor="vaddress">Address</Label><Input id="vaddress" name="address" /></div>
-            <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={close}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Add vendor</Button></div>
+
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="text-sm font-medium">Bank details</p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Entered once here, so paying them later never means hunting for an account number again.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label htmlFor="vacname">Account name</Label><Input id="vacname" name="bankAccountName" placeholder="As printed on the cheque" defaultValue={editingVendor?.bankAccountName ?? ''} /></div>
+                <div className="space-y-2"><Label htmlFor="vacno">Account number</Label><Input id="vacno" name="bankAccountNumber" inputMode="numeric" defaultValue={editingVendor?.bankAccountNumber ?? ''} /></div>
+                <div className="space-y-2"><Label htmlFor="vifsc">IFSC</Label><Input id="vifsc" name="bankIfsc" placeholder="KKBK0000123" maxLength={11} className="font-mono uppercase" defaultValue={editingVendor?.bankIfsc ?? ''} /></div>
+                <div className="space-y-2"><Label htmlFor="vbank">Bank</Label><Input id="vbank" name="bankName" placeholder="Kotak Mahindra Bank" defaultValue={editingVendor?.bankName ?? ''} /></div>
+                <div className="space-y-2"><Label htmlFor="vbranch">Branch</Label><Input id="vbranch" name="bankBranch" defaultValue={editingVendor?.bankBranch ?? ''} /></div>
+                <div className="space-y-2"><Label htmlFor="vupi">UPI ID</Label><Input id="vupi" name="upiId" placeholder="name@bank" defaultValue={editingVendor?.upiId ?? ''} /></div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="vpaynotes">Payment notes</Label>
+                <Input id="vpaynotes" name="paymentNotes" placeholder="Pays against proforma only · always quote the PO number" defaultValue={editingVendor?.paymentNotes ?? ''} />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setEditingVendor(null); close(); }}>Cancel</Button>
+              <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}{editingVendor ? 'Save changes' : 'Add vendor'}</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

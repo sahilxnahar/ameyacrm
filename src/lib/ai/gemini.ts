@@ -1,5 +1,28 @@
 import 'server-only';
 import { env } from '@/config/env';
+import { inferMimeType, fileKindLabel } from '@/lib/files/mime';
+// Re-exported so existing callers importing these from here keep working.
+export { inferMimeType, fileKindLabel };
+
+
+/**
+ * Turn Google's error body into something a person can act on.
+ *
+ * A 403 PERMISSION_DENIED is not a bad upload and not a bug in the CRM — the
+ * key's project has been blocked — so saying "the AI service refused the file"
+ * sends people hunting in the wrong place.
+ */
+export function explainAiFailure(status: number, body: string): string {
+  if (status === 403 && /PERMISSION_DENIED|denied access/i.test(body)) {
+    return 'Google has blocked the project behind your AI key, so nothing AI-powered will work until it is replaced. ' +
+      'Go to aistudio.google.com/apikey, create a new key in a NEW project, update GEMINI_API_KEY in Vercel and redeploy. ' +
+      'Admin > AI Health will confirm once it is fixed.';
+  }
+  if (status === 429) return 'The AI is rate limited or out of free quota for now. Try again in a few minutes.';
+  if (status === 400) return 'The AI could not read that file. If it is a scan, try a clearer copy or a PDF.';
+  if (status === 401) return 'The AI key was not accepted. Check GEMINI_API_KEY in Vercel.';
+  return `The AI service returned an error (${status}). ${body.slice(0, 160)}`.trim();
+}
 
 export function isGeminiEnabled(): boolean {
   return Boolean(env.GEMINI_API_KEY);
@@ -8,26 +31,7 @@ export function geminiSupports(mimeType: string): boolean {
   return mimeType === 'application/pdf' || mimeType.startsWith('image/') || mimeType.startsWith('text/');
 }
 
-const BY_EXTENSION: Record<string, string> = {
-  pdf: 'application/pdf',
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
-  gif: 'image/gif', heic: 'image/heic', heif: 'image/heif', bmp: 'image/bmp', tiff: 'image/tiff',
-  txt: 'text/plain', csv: 'text/csv', md: 'text/markdown', html: 'text/html',
-};
 
-/**
- * Work out the type from the filename when the browser will not say.
- *
- * Files dragged from some applications arrive with an empty type, or with
- * application/octet-stream. Rejecting those meant a perfectly readable PDF was
- * refused with a message claiming PDFs were supported.
- */
-export function inferMimeType(reported: string, filename: string): string {
-  const r = (reported || '').toLowerCase();
-  if (r && r !== 'application/octet-stream' && r !== 'binary/octet-stream') return r;
-  const ext = filename.toLowerCase().split('.').pop() ?? '';
-  return BY_EXTENSION[ext] ?? r ?? '';
-}
 
 /** Summarize a file with Gemini (multimodal). Returns null (never throws) on any problem. */
 export async function summarizeFile(buffer: Buffer, mimeType: string, filename: string): Promise<string | null> {
@@ -105,7 +109,7 @@ export async function extractInvoiceData(
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+      return { error: explainAiFailure(res.status, detail) };
     }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
@@ -179,7 +183,7 @@ export async function analyzeCallRecording(audio: Buffer, mimeType: string): Pro
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+      return { error: explainAiFailure(res.status, detail) };
     }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
@@ -412,7 +416,22 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
 
   await timed('Connection', 'Reaches Google and the key is accepted', async () => {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`);
-    if (res.status === 400 || res.status === 403) return { ok: false, detail: 'Key rejected (HTTP ' + res.status + '). Generate a fresh key at aistudio.google.com.' };
+    if (res.status === 403) {
+      const body = await res.text().catch(() => '');
+      if (/PERMISSION_DENIED|denied access/i.test(body)) {
+        return {
+          ok: false,
+          detail:
+            'Google has blocked the project behind this key ("PERMISSION_DENIED — your project has been denied access"). ' +
+            'This is an account problem, not a CRM problem, and nothing in the code can work around it. ' +
+            'Fix: go to aistudio.google.com/apikey, delete this key, and create a new one in a NEW project. ' +
+            'Then replace GEMINI_API_KEY in Vercel and redeploy. ' +
+            'It usually happens when a key is generated in a Cloud project that was suspended or never had the Generative Language API enabled.',
+        };
+      }
+      return { ok: false, detail: `Key rejected (403). ${body.slice(0, 200)}` };
+    }
+    if (res.status === 400) return { ok: false, detail: 'Key rejected (400) — it is malformed. Generate a fresh key at aistudio.google.com/apikey.' };
     if (!res.ok) return { ok: false, detail: `Google returned HTTP ${res.status}.` };
     const d = (await res.json()) as { models?: Array<{ name: string }> };
     const names = (d.models ?? []).map((m) => m.name.replace('models/', ''));
@@ -426,6 +445,7 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
       body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with exactly: ALIVE' }] }], generationConfig: { temperature: 0, maxOutputTokens: 10 } }),
     });
     if (res.status === 429) return { ok: false, detail: 'Rate limited or out of free quota. It should recover on its own.' };
+    if (res.status === 403) return { ok: false, detail: 'Blocked at the project level — see the Connection check above for the fix.' };
     if (!res.ok) return { ok: false, detail: `HTTP ${res.status} — ${(await res.text()).slice(0, 140)}` };
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const t = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';

@@ -38,15 +38,23 @@ export function Sidebar({
 
   const pinned = prefs.pinned.map((h) => byHref.get(h)).filter(Boolean) as typeof allItems;
 
+  /**
+   * Move an item one place within its own group.
+   *
+   * Swapping inside one flat list across every group let an item jump from the
+   * bottom of one section to the top of the next, so the swap happens within
+   * the group and is then merged back into the saved order.
+   */
   const move = (href: string, dir: -1 | 1, groupHrefs: string[]) => {
-    // Seed the order from what is currently on screen, then swap two neighbours.
-    const base = prefs.order.length ? [...prefs.order] : [];
-    for (const h of groupHrefs) if (!base.includes(h)) base.push(h);
-    const i = base.indexOf(href);
+    const within = [...groupHrefs];
+    const i = within.indexOf(href);
     const j = i + dir;
-    if (i < 0 || j < 0 || j >= base.length) return;
-    [base[i], base[j]] = [base[j], base[i]];
-    setPrefs({ ...prefs, order: base });
+    if (i < 0 || j < 0 || j >= within.length) return;
+    [within[i], within[j]] = [within[j]!, within[i]!];
+
+    // Keep every other group's order untouched.
+    const others = prefs.order.filter((h) => !groupHrefs.includes(h));
+    setPrefs({ ...prefs, order: [...others, ...within] });
   };
 
   const togglePin = (href: string) =>
@@ -144,9 +152,12 @@ export function Sidebar({
           {NAVIGATION.map((group) => {
             const raw = group.items.filter((i) => canSee(i.permission));
             if (raw.length === 0) return null;
-            const items = customising ? raw : applyOrder(raw, prefs);
+            // Order is applied while customising too. Showing the raw list
+            // during customisation made the move arrows look like dead buttons:
+            // they updated state, but nothing on screen moved.
+            const items = applyOrder(raw, prefs, { keepHidden: customising });
             if (items.length === 0) return null;
-            const groupHrefs = applyOrder(raw, prefs).map((i) => i.href);
+            const groupHrefs = applyOrder(raw, prefs, { keepHidden: customising }).map((i) => i.href);
             return (
               <div key={group.label}>
                 <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">
@@ -176,7 +187,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.7</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.8</p>
         </div>
       </aside>
     </>

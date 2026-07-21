@@ -65,9 +65,48 @@ export async function createInvoice(input: unknown): Promise<BillingResult> {
 export async function createVendor(input: unknown): Promise<BillingResult> {
   try {
     const ctx = await ensure('billing.po.manage');
-    const d = z.object({ name: z.string().min(2), gstin: z.string().optional(), email: z.string().email().optional().or(z.literal('')), phone: z.string().optional(), address: z.string().optional() }).parse(input);
-    const v = await prisma.vendor.create({ data: { name: d.name, gstin: d.gstin || null, email: d.email || null, phone: d.phone || null, address: d.address || null } });
-    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Vendor', entityId: v.id, summary: `Added vendor ${d.name}` });
+    const d = z.object({
+      id: z.string().optional().or(z.literal('')),
+      name: z.string().min(2),
+      gstin: z.string().max(20).optional().or(z.literal('')),
+      pan: z.string().max(12).optional().or(z.literal('')),
+      email: z.string().email().optional().or(z.literal('')),
+      phone: z.string().max(20).optional().or(z.literal('')),
+      address: z.string().max(400).optional().or(z.literal('')),
+      bankAccountName: z.string().max(160).optional().or(z.literal('')),
+      bankAccountNumber: z.string().max(30).optional().or(z.literal('')),
+      bankIfsc: z.string().max(15).optional().or(z.literal('')),
+      bankName: z.string().max(80).optional().or(z.literal('')),
+      bankBranch: z.string().max(120).optional().or(z.literal('')),
+      upiId: z.string().max(80).optional().or(z.literal('')),
+      paymentNotes: z.string().max(400).optional().or(z.literal('')),
+    }).parse(input);
+
+    // An IFSC is always 11 characters: four letters, a zero, then six more.
+    // Catching it here saves a failed transfer and a day of chasing.
+    const ifsc = (d.bankIfsc || '').toUpperCase().replace(/\s/g, '');
+    if (ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
+      return { error: `"${ifsc}" is not a valid IFSC. It should be 11 characters — four letters, then a zero, then six more.` };
+    }
+    const account = (d.bankAccountNumber || '').replace(/\s/g, '');
+    if (account && !/^[0-9]{6,20}$/.test(account)) {
+      return { error: 'A bank account number should be 6 to 20 digits, with no letters or spaces.' };
+    }
+    if (d.upiId && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(d.upiId)) {
+      return { error: 'That UPI ID does not look right — it should read like name@bank.' };
+    }
+
+    const data = {
+      name: d.name, gstin: d.gstin || null, pan: d.pan ? d.pan.toUpperCase() : null,
+      email: d.email || null, phone: d.phone || null, address: d.address || null,
+      bankAccountName: d.bankAccountName || null, bankAccountNumber: account || null,
+      bankIfsc: ifsc || null, bankName: d.bankName || null, bankBranch: d.bankBranch || null,
+      upiId: d.upiId || null, paymentNotes: d.paymentNotes || null,
+    };
+    const v = d.id
+      ? await prisma.vendor.update({ where: { id: d.id }, data })
+      : await prisma.vendor.create({ data });
+    await writeAudit({ actorId: ctx.user.id, action: d.id ? 'UPDATE' : 'CREATE', entityType: 'Vendor', entityId: v.id, summary: `${d.id ? 'Updated' : 'Added'} vendor ${d.name}` });
     revalidatePath('/billing');
     return { ok: true, id: v.id };
   } catch (err) { return toActionError(err); }

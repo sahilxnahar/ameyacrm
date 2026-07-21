@@ -39,7 +39,11 @@ export default async function BillingPage() {
       </div>
       <BillingView
         projects={projects}
-        vendors={vendors.map((v) => ({ id: v.id, name: v.name, gstin: v.gstin, email: v.email, phone: v.phone }))}
+        vendors={vendors.map((v) => ({
+          id: v.id, name: v.name, gstin: v.gstin, pan: v.pan, email: v.email, phone: v.phone, address: v.address,
+          bankAccountName: v.bankAccountName, bankAccountNumber: v.bankAccountNumber, bankIfsc: v.bankIfsc,
+          bankName: v.bankName, bankBranch: v.bankBranch, upiId: v.upiId, paymentNotes: v.paymentNotes,
+        }))}
         approvers={approvers}
         canApprove={can(ctx.permissions, 'billing.approve')}
         geminiEnabled={isGeminiEnabled()}
