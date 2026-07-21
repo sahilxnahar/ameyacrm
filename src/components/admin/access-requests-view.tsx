@@ -34,7 +34,7 @@ export function AccessRequestsView({
   const run = (fn: () => Promise<{ ok?: true } | { error: string }>, ok: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success(ok);
       router.refresh();
     });

@@ -88,7 +88,8 @@ export function FieldView({
       const r = await punch(payload);
       if ('error' in r) {
         writeQueue([...readQueue(), payload]);
-        return toast.error(`${r.error} — saved on this phone for later.`);
+        toast.error(`${r.error} — saved on this phone for later.`);
+        return;
       }
       toast.success(r.message ?? 'Recorded');
       router.refresh();
@@ -195,7 +196,7 @@ export function FieldView({
                               const res = v
                                 ? await setRoster({ userId: u.id, date: d.toISOString(), shift: v })
                                 : await clearRoster(u.id, d.toISOString());
-                              if ('error' in res) return toast.error(res.error);
+                              if ('error' in res) { toast.error(res.error); return; }
                               router.refresh();
                             })}
                           >

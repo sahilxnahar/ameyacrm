@@ -29,7 +29,7 @@ export function MaterialView({ requests, projects, departments, approvers, canAp
   const decide = (id: string, decision: 'APPROVED' | 'REJECTED') =>
     start(async () => {
       const res = await decideMaterialRequest(id, decision);
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success(`Request ${decision.toLowerCase()}`); router.refresh();
     });
 
@@ -43,7 +43,7 @@ export function MaterialView({ requests, projects, departments, approvers, canAp
         recipientEmail: fd.get('recipientEmail'), approverIds,
         items: items.filter((i) => i.material && i.quantity).map((i) => ({ material: i.material, quantity: Number(i.quantity), unit: i.unit, spec: i.spec })),
       });
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Request raised & email generated');
       setOpen(false); setItems([{ material: '', quantity: '', unit: 'nos', spec: '' }]); setApproverIds([]); router.refresh();
     });

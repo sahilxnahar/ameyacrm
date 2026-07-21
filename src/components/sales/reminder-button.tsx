@@ -17,7 +17,7 @@ export function ReminderButton({ leadId, leadName }: { leadId: string; leadName:
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createReminder({ title: fd.get('title'), dueAt: fd.get('dueAt'), notes: fd.get('notes') || undefined, leadId });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Reminder set'); setOpen(false); router.refresh();
     });
   };

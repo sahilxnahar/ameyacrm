@@ -21,26 +21,26 @@ interface Opt { id: string; name: string }
 const sel9 = 'h-9 rounded-md border border-input bg-background px-3 text-sm';
 
 export function CustomersView({ customers, updates, tickets, docs, projects, bookings, users, canManage }: {
-  customers: Cust[]; updates: Upd[]; tickets: Ticket[]; docs: Doc[]; projects: Opt[]; bookings: Opt[]; users: Opt[]; canManage: boolean;
+  customers: Cust[]; updates: Upd[]; tickets: Ticket[]; docs: Doc[]; projects: Opt[]; bookings: { id: string; label: string }[]; users: Opt[]; canManage: boolean;
 }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = React.useState(false);
   const [sel, setSel] = React.useState<Cust | null>(null);
   const [pending, start] = React.useTransition();
   const act = (fn: () => Promise<{ ok: true } | { error: string } | { ok: true; token?: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
 
   const submitAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
-    start(async () => { const r = await createCustomer(Object.fromEntries(fd)); if ('error' in r) return toast.error(r.error); toast.success('Buyer onboarded'); setAddOpen(false); router.refresh(); });
+    start(async () => { const r = await createCustomer(Object.fromEntries(fd)); if ('error' in r) { toast.error(r.error); return; } toast.success('Buyer onboarded'); setAddOpen(false); router.refresh(); });
   };
   const submitUpdate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
-    start(async () => { const r = await postConstructionUpdate(Object.fromEntries(fd)); if ('error' in r) return toast.error(r.error); toast.success('Update posted'); (e.target as HTMLFormElement).reset(); router.refresh(); });
+    start(async () => { const r = await postConstructionUpdate(Object.fromEntries(fd)); if ('error' in r) { toast.error(r.error); return; } toast.success('Update posted'); (e.target as HTMLFormElement).reset(); router.refresh(); });
   };
   const submitDoc = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!sel) return; const fd = new FormData(e.currentTarget);
-    start(async () => { const r = await addCustomerDocument({ customerId: sel.id, title: fd.get('title'), category: fd.get('category') || undefined, url: fd.get('url') }); if ('error' in r) return toast.error(r.error); toast.success('Document added'); (e.target as HTMLFormElement).reset(); router.refresh(); });
+    start(async () => { const r = await addCustomerDocument({ customerId: sel.id, title: fd.get('title'), category: fd.get('category') || undefined, url: fd.get('url') }); if ('error' in r) { toast.error(r.error); return; } toast.success('Document added'); (e.target as HTMLFormElement).reset(); router.refresh(); });
   };
   const portalLink = (token: string) => (typeof window !== 'undefined' ? `${window.location.origin}/portal/${token}` : `/portal/${token}`);
   const copyLink = (token: string) => { navigator.clipboard?.writeText(portalLink(token)); toast.success('Portal link copied'); };
@@ -129,7 +129,7 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
               <div className="space-y-1"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" /></div>
               <div className="space-y-1"><Label htmlFor="projectId">Project</Label><select id="projectId" name="projectId" defaultValue="" className={`${sel9} w-full`}><option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
             </div>
-            <div className="space-y-1"><Label htmlFor="bookingId">Link booking (optional)</Label><select id="bookingId" name="bookingId" defaultValue="" className={`${sel9} w-full`}><option value="">—</option>{bookings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+            <div className="space-y-1"><Label htmlFor="bookingId">Link booking (optional)</Label><select id="bookingId" name="bookingId" defaultValue="" className={`${sel9} w-full`}><option value="">—</option>{bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select></div>
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Onboard</Button></div>
           </form>
         </DialogContent>

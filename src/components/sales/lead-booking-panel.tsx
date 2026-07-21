@@ -31,12 +31,12 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
         leadId, unitId: fd.get('unitId') || null, agreementValue: fd.get('agreementValue') || undefined,
         milestones: rows.filter((m) => m.label && m.amount).map((m) => ({ label: m.label, amount: Number(m.amount), dueDate: m.dueDate || null })),
       });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Booking created'); setOpen(false); setRows([{ label: 'Booking amount', amount: '', dueDate: '' }]); router.refresh();
     });
   };
-  const pay = (id: string) => start(async () => { const r = await markMilestonePaid(id); if ('error' in r) return toast.error(r.error); toast.success('Marked paid'); router.refresh(); });
-  const letter = (id: string, kind: 'DEMAND' | 'ALLOTMENT') => start(async () => { const r = await generateBookingLetter(id, kind); if ('error' in r) return toast.error(r.error); const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click(); toast.success('Letter downloaded'); });
+  const pay = (id: string) => start(async () => { const r = await markMilestonePaid(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Marked paid'); router.refresh(); });
+  const letter = (id: string, kind: 'DEMAND' | 'ALLOTMENT') => start(async () => { const r = await generateBookingLetter(id, kind); if ('error' in r) { toast.error(r.error); return; } const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click(); toast.success('Letter downloaded'); });
 
   return (
     <div className="space-y-3">
@@ -76,7 +76,7 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
       <Dialog open={!!cancelId} onOpenChange={(o) => !o && setCancelId(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Cancel booking</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const id = cancelId!; start(async () => { const r = await cancelBooking({ bookingId: id, forfeitAmount: fd.get('forfeitAmount') || 0, reason: fd.get('reason') || undefined }); if ('error' in r) return toast.error(r.error); toast.success('Booking cancelled, unit released'); setCancelId(null); router.refresh(); }); }} className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const id = cancelId!; start(async () => { const r = await cancelBooking({ bookingId: id, forfeitAmount: fd.get('forfeitAmount') || 0, reason: fd.get('reason') || undefined }); if ('error' in r) { toast.error(r.error); return; } toast.success('Booking cancelled, unit released'); setCancelId(null); router.refresh(); }); }} className="space-y-3">
             <p className="text-sm text-muted-foreground">The unit returns to available inventory. Refund is auto-computed as amount paid minus forfeiture.</p>
             <div className="space-y-1"><Label htmlFor="forfeitAmount">Forfeiture amount (₹)</Label><Input id="forfeitAmount" name="forfeitAmount" type="number" min="0" defaultValue="0" /></div>
             <div className="space-y-1"><Label htmlFor="reason">Reason</Label><Input id="reason" name="reason" placeholder="Buyer withdrew, financing fell through…" /></div>

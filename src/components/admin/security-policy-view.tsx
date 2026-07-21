@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils/cn';
 
 interface Person { id: string; name: string; email: string; role: string; twoFactorEnabled: boolean; graceUntil: string | null; allowForeignAccess: boolean; lastCountry: string | null; lastLoginAt: string | null }
 interface Device { id: string; userName: string; label: string | null; country: string | null; ipAddress: string | null; lastSeenAt: string }
-interface Failure { id: string; username: string; reason: string | null; country: string | null; ipAddress: string | null; at: string }
+interface Failure { id: string; username: string | null; reason: string | null; country: string | null; ipAddress: string | null; at: string }
 
 export function SecurityPolicyView({
   policy, people, devices, failures,
@@ -31,7 +31,7 @@ export function SecurityPolicyView({
   const run = (fn: () => Promise<{ ok?: true; message?: string } | { error: string }>, ok: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success(('message' in r && r.message) || ok, { duration: 8000 });
       router.refresh();
     });

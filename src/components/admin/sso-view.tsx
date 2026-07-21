@@ -92,7 +92,7 @@ export function SsoView({ config, acsUrl }: { config: SamlConfig; acsUrl: string
         <div className="mt-4 flex justify-end">
           <Button disabled={pending} onClick={() => start(async () => {
             const r = await saveSsoConfig({ ...c, allowedDomains: c.allowedDomains.join(',') } as unknown as Record<string, string | boolean>);
-            if ('error' in r) return toast.error(r.error);
+            if ('error' in r) { toast.error(r.error); return; }
             toast.success(r.message ?? 'Saved', { duration: 9000 });
             router.refresh();
           })}>

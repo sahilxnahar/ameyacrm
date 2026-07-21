@@ -38,16 +38,16 @@ export function MarketingView({ campaigns, posts, projects, socialActivities, co
   const [campOpen, setCampOpen] = React.useState(false);
   const [postOpen, setPostOpen] = React.useState(false);
   const isConn = (ch: string) => connections.find((c) => c.channel === ch)?.isConnected ?? false;
-  const toggleConn = (ch: string, cur: boolean) => start(async () => { const r = await toggleSocialConnection(ch, !cur); if ('error' in r) return toast.error(r.error); toast.success(!cur ? 'Marked connected' : 'Disconnected'); router.refresh(); });
+  const toggleConn = (ch: string, cur: boolean) => start(async () => { const r = await toggleSocialConnection(ch, !cur); if ('error' in r) { toast.error(r.error); return; } toast.success(!cur ? 'Marked connected' : 'Disconnected'); router.refresh(); });
   const copyHook = (ch: string) => { const base = typeof window !== 'undefined' ? window.location.origin : ''; navigator.clipboard?.writeText(`${base}/api/ingest/social?key=YOUR_INGEST_SECRET&channel=${ch.toLowerCase()}`); toast.success('Webhook URL copied — swap in your INGEST_SECRET'); };
   const readAct = (id: string) => start(async () => { await markActivityRead(id, true); router.refresh(); });
-  const delAct = (id: string) => start(async () => { const r = await deleteSocialActivity(id); if ('error' in r) return toast.error(r.error); toast.success('Removed'); router.refresh(); });
+  const delAct = (id: string) => start(async () => { const r = await deleteSocialActivity(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Removed'); router.refresh(); });
 
   const submitCamp = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createCampaign({ name: fd.get('name'), channel: fd.get('channel'), objective: fd.get('objective'), budget: fd.get('budget') || undefined, startDate: fd.get('startDate') || null, endDate: fd.get('endDate') || null, projectId: fd.get('projectId') || null });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Campaign created'); setCampOpen(false); router.refresh();
     });
   };
@@ -55,7 +55,7 @@ export function MarketingView({ campaigns, posts, projects, socialActivities, co
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createSocialPost({ title: fd.get('title'), content: fd.get('content'), channel: fd.get('channel'), scheduledAt: fd.get('scheduledAt') || null });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Post planned'); setPostOpen(false); router.refresh();
     });
   };

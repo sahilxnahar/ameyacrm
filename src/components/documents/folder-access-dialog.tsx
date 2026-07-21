@@ -28,11 +28,11 @@ export function FolderAccessDialog({ open, onOpenChange, folderId, folderName, p
     const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await setFolderPermission({ folderId, principalType, userId: fd.get('userId'), departmentId: fd.get('departmentId'), role: fd.get('role'), level: fd.get('level') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Access granted'); router.refresh();
     });
   };
-  const remove = (id: string) => start(async () => { const r = await removeFolderPermission(id); if ('error' in r) return toast.error(r.error); toast.success('Access revoked'); router.refresh(); });
+  const remove = (id: string) => start(async () => { const r = await removeFolderPermission(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Access revoked'); router.refresh(); });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

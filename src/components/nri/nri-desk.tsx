@@ -34,7 +34,7 @@ export function NriDesk({ leads }: { leads: Lead[] }) {
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const at = String(fd.get('at') || '');
     if (!sched) return;
-    start(async () => { const r = await scheduleFollowUp(sched.id, at); if ('error' in r) return toast.error(r.error); toast.success('Follow-up scheduled'); setSched(null); router.refresh(); });
+    start(async () => { const r = await scheduleFollowUp(sched.id, at); if ('error' in r) { toast.error(r.error); return; } toast.success('Follow-up scheduled'); setSched(null); router.refresh(); });
   };
 
   return (

@@ -17,7 +17,9 @@ async function geocode(query: string): Promise<{ lat: number; lon: number } | nu
     if (!res.ok) return null;
     const j = (await res.json()) as Array<{ lat: string; lon: string }>;
     if (!j.length) return null;
-    return { lat: Number(j[0].lat), lon: Number(j[0].lon) };
+    const hit = j[0];
+    if (!hit) return null;
+    return { lat: Number(hit.lat), lon: Number(hit.lon) };
   } catch { return null; }
 }
 

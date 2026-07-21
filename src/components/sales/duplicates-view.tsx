@@ -18,11 +18,12 @@ export function DuplicatesView({ groups, canMerge }: { groups: DupGroup[]; canMe
   const [primary, setPrimary] = React.useState<Record<string, string>>({});
 
   const merge = (g: DupGroup) => {
-    const keep = primary[g.key] ?? g.leads[0].id;
+    const keep = primary[g.key] ?? g.leads[0]?.id;
+    if (!keep) return;
     const dupes = g.leads.filter((l) => l.id !== keep).map((l) => l.id);
     start(async () => {
       const r = await mergeLeads(keep, dupes);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Merged — ${r.movedActivities} activities and ${r.movedBookings} bookings moved`);
       router.refresh();
     });
@@ -40,7 +41,7 @@ export function DuplicatesView({ groups, canMerge }: { groups: DupGroup[]; canMe
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{groups.length} duplicate group{groups.length > 1 ? 's' : ''} found. Pick which record to keep — its history absorbs the rest.</p>
       {groups.map((g) => {
-        const keep = primary[g.key] ?? g.leads[0].id;
+        const keep = primary[g.key] ?? g.leads[0]?.id ?? '';
         return (
           <Card key={`${g.kind}-${g.key}`} className="p-4">
             <div className="mb-2 flex items-center justify-between">

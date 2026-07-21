@@ -24,7 +24,7 @@ export function ImportWizard({
 }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
-  const [kindKey, setKindKey] = React.useState(kinds[0].key);
+  const [kindKey, setKindKey] = React.useState<ImportKind['key']>(kinds[0]?.key ?? 'units');
   const [projectId, setProjectId] = React.useState(projects[0]?.id ?? '');
   const [text, setText] = React.useState('');
   const [map, setMap] = React.useState<Record<string, number>>({});
@@ -54,7 +54,7 @@ export function ImportWizard({
   const go = (dryRun: boolean) =>
     start(async () => {
       const res = await runImport(kindKey, projectId || null, rows, dryRun);
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       if (dryRun) { setPreview(res); toast.success('Preview ready — nothing has been saved yet'); }
       else {
         setDone(res); setPreview(null);
@@ -139,7 +139,7 @@ export function ImportWizard({
             </Button>
             {preview && (
               <Button variant="default" disabled={pending} onClick={() => go(false)}>
-                <Upload className="h-4 w-4" /> Import {preview.ok ? preview.created + preview.updated : 0} rows
+                <Upload className="h-4 w-4" /> Import {'ok' in preview ? preview.created + preview.updated : 0} rows
               </Button>
             )}
           </div>

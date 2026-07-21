@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { generateBriefing } from '@/lib/ai/gemini';
+import type { LeadStatus } from '@prisma/client';
 
 export interface RiskAlert { severity: 'high' | 'medium' | 'low'; title: string; detail: string; href: string }
 export interface Signals { metrics: Record<string, string | number>; alerts: RiskAlert[] }
@@ -16,7 +17,8 @@ export async function collectSignals(): Promise<Signals> {
   const d14 = new Date(now.getTime() - 14 * 86400000);
   const d3 = new Date(now.getTime() - 3 * 86400000);
   const soon = new Date(now.getTime() + 86400000);
-  const OPEN = { notIn: ['WON', 'LOST'] as const };
+  // Prisma will not take a readonly array, so this is a plain one.
+  const OPEN = { notIn: ['WON', 'LOST'] as LeadStatus[] };
 
   const [
     newLeads24, newLeads7, hotOpen, hotStale, stalled, wonMonth,

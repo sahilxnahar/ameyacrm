@@ -53,11 +53,11 @@ export async function POST(req: NextRequest) {
       await writeAudit({ action: 'LOGIN_FAILED', summary: `SSO refused for ${email} — no account and auto-provisioning is off` }).catch(() => undefined);
       return fail('You do not have an account here yet. Ask an administrator.');
     }
-    let username = email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '.') || 'user';
+    let username = (email.split('@')[0] ?? '').replace(/[^a-zA-Z0-9_.]/g, '.') || 'user';
     for (let n = 1; await prisma.user.findUnique({ where: { username } }); n++) username = `${username}${n}`;
     user = await prisma.user.create({
       data: {
-        name: nameFromProfile(profile, email.split('@')[0]),
+        name: nameFromProfile(profile, email.split('@')[0] ?? email),
         email, username,
         // No password is ever used for this account; a random one keeps the
         // column honest rather than leaving a guessable blank.

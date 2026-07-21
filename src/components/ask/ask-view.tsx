@@ -28,7 +28,7 @@ export function AskView({ indexedChunks, indexedTitles, canIndex }: { indexedChu
     setQ(question);
     start(async () => {
       const r = await ask(question);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       setRes(r.data);
     });
   };
@@ -47,7 +47,7 @@ export function AskView({ indexedChunks, indexedTitles, canIndex }: { indexedChu
               title="Read every document again and make it searchable"
               onClick={() => start(async () => {
                 const r = await indexAllDocuments();
-                if ('error' in r) return toast.error(r.error);
+                if ('error' in r) { toast.error(r.error); return; }
                 toast.success(r.message, { duration: 8000 });
                 router.refresh();
               })}>

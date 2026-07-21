@@ -25,12 +25,12 @@ export function CustomFieldsView({ fields }: { fields: Field[] }) {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
     start(async () => {
       const r = await createCustomField({ entity: fd.get('entity') || 'lead', key: fd.get('key'), label: fd.get('label'), type: fd.get('type'), options: fd.get('options') || undefined, required: fd.get('required') === 'on', order: fd.get('order') || 0 });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Field added'); form.reset(); setType('text'); router.refresh();
     });
   };
   const act = (fn: () => Promise<{ ok: true } | { error: string }>, msg: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(msg); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(msg); router.refresh(); });
 
   return (
     <div className="space-y-6">

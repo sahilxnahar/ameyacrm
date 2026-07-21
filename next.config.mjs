@@ -25,11 +25,12 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  // Lint/type errors are enforced in CI, not silently ignored at build.
-  // Escape hatches so a stray type/lint issue can't block a Vercel deploy.
-  // Lint/types still run via `npm run lint` / `npm run typecheck` in CI.
+  // Lint still runs separately via `npm run lint`; it is not a deploy blocker.
   eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
+  // Type errors now fail the build. They were suppressed for a year and hid
+  // 217 problems, four of which were live runtime bugs — a wrong dropdown
+  // field, undefined variables, a crash in the error reporter. Leave this off.
+  typescript: { ignoreBuildErrors: false },
   poweredByHeader: false,
   output: 'standalone',
   experimental: { serverActions: { bodySizeLimit: '10mb' } },

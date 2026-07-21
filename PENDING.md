@@ -1,10 +1,12 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v11.2_
+_Last updated: 21 July 2026 · current build v11.3_
 
 ---
 
 ## 1. Waiting on you — do these first
+
+- **Decide which address is correct — the letterhead says Chennai, the CRM says Bangalore.** The letterhead footer reads "Heeraa Mansion, 20/18 General Muthiah Street, Sowcarpet, Chennai 600001" with `hi@naharheights.com` and `www.naharheights.com`. The CRM is set to ameyaheights.com. I have deliberately NOT applied the letterhead to invoices until you say which is right, because it would print the wrong address and domain on documents going to buyers and vendors.
 
 - **Set the pooled connection string, or the CRM stays slow.** In Neon, copy the connection string whose host contains `-pooler`, set it as `DATABASE_URL` in Vercel, and keep the direct one as `DATABASE_URL_UNPOOLED`. Then open Admin → Performance: it measures the round trip and tells you whether it worked.
 
@@ -22,7 +24,7 @@ _Last updated: 21 July 2026 · current build v11.2_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v11.2** — run `MIGRATION_v11.2_all.sql` in Neon, sync `ameya-heights-crm-v11.2.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v11.3** — run `MIGRATION_v11.3_all.sql` in Neon, sync `ameya-heights-crm-v11.3.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |

@@ -18,7 +18,7 @@ export function AssignmentActions({ taskId, state, progress }: { taskId: string;
   const run = (action: 'ACCEPT' | 'REJECT' | 'CLARIFY' | 'COMPLETE') => {
     start(async () => {
       const res = await respondToAssignment({ taskId, action, reason });
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Updated');
       setMode(null); setReason('');
       router.refresh();

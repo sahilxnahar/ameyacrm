@@ -20,11 +20,11 @@ export function ApiTokensView({ tokens }: { tokens: Tok[] }) {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
     start(async () => {
       const r = await createApiToken(String(fd.get('name') || ''));
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       setFresh(r.token ?? null); form.reset(); router.refresh(); toast.success('Token created — copy it now');
     });
   };
-  const revoke = (id: string) => start(async () => { const r = await revokeApiToken(id); if ('error' in r) return toast.error(r.error); toast.success('Revoked'); router.refresh(); });
+  const revoke = (id: string) => start(async () => { const r = await revokeApiToken(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Revoked'); router.refresh(); });
 
   return (
     <div className="space-y-6">

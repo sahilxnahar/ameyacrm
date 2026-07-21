@@ -36,7 +36,9 @@ export async function indexText(opts: {
 
   let stored = 0;
   for (let i = 0; i < Math.min(chunks.length, 60); i++) {
-    const vec = await embed(chunks[i]);
+    const piece = chunks[i];
+    if (!piece) continue;
+    const vec = await embed(piece);
     if (!vec) continue;
     await prisma.docChunk.create({
       data: {
@@ -49,9 +51,9 @@ export async function indexText(opts: {
         entityType: opts.entityType ?? null,
         entityId: opts.entityId ?? null,
         ordinal: i,
-        content: chunks[i],
+        content: piece,
         embedding: vec,
-        tokens: Math.round(chunks[i].length / 4),
+        tokens: Math.round(piece.length / 4),
       },
     });
     stored++;

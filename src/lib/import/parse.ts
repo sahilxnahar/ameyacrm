@@ -10,10 +10,10 @@ export function parseTable(text: string): ParsedTable {
   if (!clean) return { headers: [], rows: [] };
 
   const lines = clean.split('\n').filter((l) => l.trim().length > 0);
-  const delim = pickDelimiter(lines[0]);
+  const delim = pickDelimiter(lines[0] ?? '');
   const all = lines.map((l) => splitLine(l, delim));
 
-  const headers = all[0].map((h) => h.trim());
+  const headers = (all[0] ?? []).map((h) => h.trim());
   const width = headers.length;
   const rows = all.slice(1).map((r) => {
     const out = r.slice(0, width).map((c) => c.trim());
@@ -79,7 +79,7 @@ export function toDate(v: string): Date | null {
   // dd/mm/yyyy and dd-mm-yyyy are what Indian spreadsheets produce.
   const m = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (m) {
-    const yr = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+    const yr = (m[3] ?? '').length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
     const d = new Date(yr, Number(m[2]) - 1, Number(m[1]));
     return Number.isNaN(d.getTime()) ? null : d;
   }

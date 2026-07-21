@@ -30,7 +30,7 @@ export function PermissionEditor({ permissions, roles, allowedByRole }: {
   const toggle = (key: string, on: boolean) => setChecked((prev) => { const n = new Set(prev); on ? n.add(key) : n.delete(key); return n; });
   const save = () => start(async () => {
     const r = await setRolePermissions(role, [...checked]);
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     toast.success('Permissions saved');
   });
 

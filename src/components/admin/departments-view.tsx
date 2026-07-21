@@ -34,7 +34,7 @@ export function DepartmentsView({
   const run = (fn: () => Promise<{ ok?: true; created?: number; skipped?: number } | { error: string }>, ok: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success('created' in r && r.created !== undefined ? `${ok} — ${r.created} added, ${r.skipped ?? 0} already there` : ok);
       router.refresh();
       setOpen(false);

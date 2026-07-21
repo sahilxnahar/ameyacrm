@@ -53,7 +53,7 @@ export function CompanyDetailsForm({ details }: { details: CompanyDetails }) {
         const fd = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>;
         start(async () => {
           const r = await saveCompanyDetails(fd);
-          if ('error' in r) return toast.error(r.error);
+          if ('error' in r) { toast.error(r.error); return; }
           setWarnings(r.warnings ?? []);
           toast.success(r.warnings?.length ? 'Saved — but please read the warnings' : 'Saved');
           router.refresh();

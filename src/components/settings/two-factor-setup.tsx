@@ -20,12 +20,12 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
 
   const begin = () => start(async () => {
     const res = await startTwoFactorSetup();
-    if ('error' in res) return toast.error(res.error);
+    if ('error' in res) { toast.error(res.error); return; }
     setQr(res.qr); setSecret(res.secret);
   });
   const confirm = () => start(async () => {
     const res = await confirmTwoFactor(code);
-    if ('error' in res) return toast.error(res.error);
+    if ('error' in res) { toast.error(res.error); return; }
     setBackup(res.backupCodes); setQr(null); toast.success('Two-factor enabled'); router.refresh();
   });
   const disable = () => {
@@ -33,7 +33,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
     if (!pw) return;
     start(async () => {
       const res = await disableTwoFactor(pw);
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Two-factor disabled'); router.refresh();
     });
   };

@@ -14,7 +14,7 @@ export function CollectionsSettingsView({ interestPct, defaultGstPct }: { intere
   const [pending, start] = React.useTransition();
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
-    start(async () => { const r = await updateCollectionsSettings({ interestPct: fd.get('interestPct'), defaultGstPct: fd.get('defaultGstPct') }); if ('error' in r) return toast.error(r.error); toast.success('Settings saved'); router.refresh(); });
+    start(async () => { const r = await updateCollectionsSettings({ interestPct: fd.get('interestPct'), defaultGstPct: fd.get('defaultGstPct') }); if ('error' in r) { toast.error(r.error); return; } toast.success('Settings saved'); router.refresh(); });
   };
   return (
     <Card>

@@ -33,7 +33,7 @@ export function NewLeadDialog({
         projectId: fd.get('projectId') || null, ownerId: fd.get('ownerId') || null,
         isNri, country: fd.get('country') || undefined, timezone: fd.get('timezone') || undefined,
       });
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Lead created');
       onOpenChange(false); setIsNri(false); router.refresh();
     });

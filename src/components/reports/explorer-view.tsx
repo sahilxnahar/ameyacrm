@@ -50,11 +50,11 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
     const shared = confirm('Share this view with the whole team? (Cancel = keep it private)');
     start(async () => {
       const r = await saveView({ name: name.trim(), entity, filters: Object.fromEntries(Object.entries(f).filter(([, v]) => v)), isShared: shared });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('View saved'); router.refresh();
     });
   };
-  const doDelete = (id: string) => start(async () => { const r = await deleteView(id); if ('error' in r) return toast.error(r.error); toast.success('View deleted'); router.refresh(); });
+  const doDelete = (id: string) => start(async () => { const r = await deleteView(id); if ('error' in r) { toast.error(r.error); return; } toast.success('View deleted'); router.refresh(); });
 
   const showLeadFilters = entity === 'leads';
   const showDates = entity !== 'units';
@@ -119,7 +119,7 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           <Button size="sm" variant="outline" onClick={doSave} disabled={pending}>{pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save view</Button>
           {canExport && <Button asChild size="sm" variant="outline"><a href={`/api/reports/explorer.csv?${qs()}`}><FileSpreadsheet className="h-4 w-4" /> Export CSV</a></Button>}
-          {canExport && <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await pushToSheet(entity, Object.fromEntries(Object.entries(f).filter(([, v]) => v))); if ('error' in r) return toast.error(r.error); toast.success(`Pushed ${r.rows} rows to Google Sheets`); })}><Sheet className="h-4 w-4" /> Push to Sheets</Button>}
+          {canExport && <Button size="sm" variant="outline" disabled={pending} onClick={() => start(async () => { const r = await pushToSheet(entity, Object.fromEntries(Object.entries(f).filter(([, v]) => v))); if ('error' in r) { toast.error(r.error); return; } toast.success(`Pushed ${r.rows} rows to Google Sheets`); })}><Sheet className="h-4 w-4" /> Push to Sheets</Button>}
           <Button size="sm" onClick={() => apply()}><Search className="h-4 w-4" /> Apply</Button>
         </div>
       </Card>

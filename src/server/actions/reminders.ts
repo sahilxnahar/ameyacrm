@@ -28,7 +28,7 @@ export async function createReminder(input: unknown): Promise<ReminderResult> {
   } catch (err) { return toActionError(err); }
 }
 
-async function ownOrFail(id: string) {
+async function ownOrFail(id: string): Promise<{ error: string; r?: undefined } | { r: { createdById: string | null; userId: string; leadId: string | null }; error?: undefined }> {
   const ctx = await getActionContext();
   const r = await prisma.reminder.findUnique({ where: { id }, select: { userId: true, createdById: true, leadId: true } });
   if (!r) return { error: 'Reminder not found.' as const };
@@ -38,7 +38,7 @@ async function ownOrFail(id: string) {
 
 export async function completeReminder(id: string): Promise<ReminderResult> {
   try {
-    const g = await ownOrFail(id); if ('error' in g) return g;
+    const g = await ownOrFail(id); if (g.error || !g.r) return { error: g.error ?? 'Reminder not found.' };
     await prisma.reminder.update({ where: { id }, data: { status: 'DONE' } });
     revalidatePath('/reminders'); if (g.r.leadId) revalidatePath(`/sales/${g.r.leadId}`);
     return { ok: true };
@@ -47,7 +47,7 @@ export async function completeReminder(id: string): Promise<ReminderResult> {
 
 export async function snoozeReminder(id: string, minutes: number): Promise<ReminderResult> {
   try {
-    const g = await ownOrFail(id); if ('error' in g) return g;
+    const g = await ownOrFail(id); if (g.error) return { error: g.error };
     const mins = Math.max(5, Math.min(60 * 24 * 14, Number(minutes) || 60));
     await prisma.reminder.update({ where: { id }, data: { dueAt: new Date(Date.now() + mins * 60000), status: 'PENDING', notifiedAt: null } });
     revalidatePath('/reminders');
@@ -57,7 +57,7 @@ export async function snoozeReminder(id: string, minutes: number): Promise<Remin
 
 export async function deleteReminder(id: string): Promise<ReminderResult> {
   try {
-    const g = await ownOrFail(id); if ('error' in g) return g;
+    const g = await ownOrFail(id); if (g.error) return { error: g.error };
     await prisma.reminder.delete({ where: { id } });
     revalidatePath('/reminders');
     return { ok: true };

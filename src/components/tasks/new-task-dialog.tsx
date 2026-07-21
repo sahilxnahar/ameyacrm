@@ -42,7 +42,7 @@ export function NewTaskDialog({
     };
     start(async () => {
       const res = await createTask(input);
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Task created');
       onOpenChange(false);
       setAssignees([]);

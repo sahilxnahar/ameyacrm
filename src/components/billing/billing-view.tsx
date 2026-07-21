@@ -42,9 +42,9 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
   const close = () => setOpen(null);
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); close(); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
   const decide = (id: string, decision: 'APPROVED' | 'REJECTED') =>
-    start(async () => { const r = await decidePurchaseOrder(id, decision); if ('error' in r) return toast.error(r.error); toast.success(`PO ${decision.toLowerCase()}`); router.refresh(); });
+    start(async () => { const r = await decidePurchaseOrder(id, decision); if ('error' in r) { toast.error(r.error); return; } toast.success(`PO ${decision.toLowerCase()}`); router.refresh(); });
 
   const submitInvoice = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     run(() => createInvoice({ clientName: fd.get('clientName'), clientGstin: fd.get('clientGstin'), projectId: fd.get('projectId') || null, dueDate: fd.get('dueDate') || null, notes: fd.get('notes'), intraState: fd.get('intraState') === 'on', items: invItems.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), rate: Number(i.rate), gstRate: Number(i.gstRate) })) }), 'Invoice created'); };

@@ -43,14 +43,14 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
   const open = (u: UnitCell, m: 'view' | 'block' | 'cost' = 'view') => { setSel(u); setMode(m); };
   const close = () => setSel(null);
 
-  const doRelease = (id: string) => start(async () => { const r = await releaseUnit(id); if ('error' in r) return toast.error(r.error); toast.success('Unit released'); close(); router.refresh(); });
-  const doStatus = (id: string, status: string) => start(async () => { const r = await setUnitStatus({ unitId: id, status }); if ('error' in r) return toast.error(r.error); toast.success(`Marked ${status.toLowerCase()}`); close(); router.refresh(); });
+  const doRelease = (id: string) => start(async () => { const r = await releaseUnit(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Unit released'); close(); router.refresh(); });
+  const doStatus = (id: string, status: string) => start(async () => { const r = await setUnitStatus({ unitId: id, status }); if ('error' in r) { toast.error(r.error); return; } toast.success(`Marked ${status.toLowerCase()}`); close(); router.refresh(); });
 
   const submitBlock = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!sel) return; const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await blockUnit({ unitId: sel.id, hours: fd.get('hours'), tokenAmount: fd.get('tokenAmount') || undefined, leadId: fd.get('leadId') || null, note: fd.get('note') || undefined });
-      if ('error' in r) return toast.error(r.error); toast.success('Unit blocked'); close(); router.refresh();
+      if ('error' in r) { toast.error(r.error); return; } toast.success('Unit blocked'); close(); router.refresh();
     });
   };
 
@@ -66,7 +66,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
     ].filter(([, a]) => (a as number) > 0).map(([label, amount]) => ({ label: label as string, amount: amount as number }));
     start(async () => {
       const r = await generateCostSheet({ unitId: sel.id, clientName: fd.get('clientName') || undefined, basePrice: num('basePrice'), gstPercent: fd.get('gstPercent'), extras, otherCharges });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
       toast.success('Cost sheet downloaded'); close();
     });

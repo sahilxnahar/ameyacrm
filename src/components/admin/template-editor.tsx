@@ -27,13 +27,13 @@ export function TemplateEditor({ templates }: { templates: Tmpl[] }) {
 
   const save = () => { if (!current) return; start(async () => {
     const r = await updateEmailTemplate({ id: current.id, name: current.name, subject, body, isActive: current.isActive });
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     toast.success('Template saved'); router.refresh();
   }); };
   const submitNew = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createEmailTemplate({ key: fd.get('key'), name: fd.get('name'), subject: fd.get('subject'), body: fd.get('body') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Template created'); setNewOpen(false); router.refresh();
     });
   };

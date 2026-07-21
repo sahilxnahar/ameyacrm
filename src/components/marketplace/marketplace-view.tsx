@@ -42,7 +42,7 @@ export function MarketplaceView({
     start(async () => {
       const r = install ? await installExtra(id) : await uninstallExtra(id);
       setBusy(null);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success(r.message ?? (install ? 'Installed' : 'Removed'), { duration: 6000 });
       router.refresh();
     });

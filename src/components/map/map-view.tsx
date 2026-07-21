@@ -89,7 +89,7 @@ export function MapView({
   const run = (fn: () => Promise<{ ok?: true; found?: number } | { error: string }>, what: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success(`${'found' in r ? r.found ?? 0 : 0} ${what} placed on the map`);
       router.refresh();
     });

@@ -33,11 +33,11 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
   const [d, setD] = React.useState<null | 'drawing' | 'rfi' | 'issue' | 'consultant'>(null);
   const close = () => setD(null);
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); close(); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
 
   const submitDrawing = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget); run(() => createDrawing(fd), 'Drawing created'); };
   const answer = (r: Rfi) => { const resp = prompt(`Answer RFI ${r.number}:`); if (resp) run(() => answerRFI(r.id, resp), 'RFI answered'); };
-  const setIssue = (id: string, status: string) => start(async () => { const r = await updateIssueStatus(id, status as never); if ('error' in r) return toast.error(r.error); toast.success('Updated'); router.refresh(); });
+  const setIssue = (id: string, status: string) => start(async () => { const r = await updateIssueStatus(id, status as never); if ('error' in r) { toast.error(r.error); return; } toast.success('Updated'); router.refresh(); });
 
   return (
     <Tabs defaultValue="drawings">

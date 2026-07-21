@@ -16,7 +16,7 @@ export function BrandingForm({ initial }: { initial: { displayName: string; tagl
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await updateBranding({ displayName: fd.get('displayName'), tagline: fd.get('tagline'), primaryColor: fd.get('primaryColor'), supportEmail: fd.get('supportEmail') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Branding saved'); router.refresh();
     });
   };

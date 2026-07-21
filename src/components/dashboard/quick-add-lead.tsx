@@ -15,7 +15,7 @@ export function QuickAddLead() {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
     start(async () => {
       const r = await createLead({ name: fd.get('name'), phone: fd.get('phone') || undefined, source: 'WALK_IN' });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Lead added'); form.reset(); router.refresh();
     });
   };

@@ -15,10 +15,10 @@ export function ChangePassword() {
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    if (fd.get('next') !== fd.get('confirm')) return toast.error('Passwords do not match.');
+    if (fd.get('next') !== fd.get('confirm')) { toast.error('Passwords do not match.'); return; }
     start(async () => {
       const res = await changePassword({ current: fd.get('current'), next: fd.get('next') });
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       toast.success('Password updated'); (e.target as HTMLFormElement).reset(); router.refresh();
     });
   };

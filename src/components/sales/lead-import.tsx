@@ -20,7 +20,7 @@ export function LeadImport() {
     const f = e.target.files?.[0]; if (!f) return; setFileName(f.name);
     const reader = new FileReader(); reader.onload = () => setText(String(reader.result || '')); reader.readAsText(f);
   };
-  const run = () => { if (!text.trim()) return toast.error('Choose a CSV file first.'); start(async () => { const r = await importLeadsCsv(text); if ('error' in r) return toast.error(r.error); setResult(r); toast.success(`Imported ${r.created} leads`); router.refresh(); }); };
+  const run = () => { if (!text.trim()) { toast.error('Choose a CSV file first.'); return; } start(async () => { const r = await importLeadsCsv(text); if ('error' in r) { toast.error(r.error); return; } setResult(r); toast.success(`Imported ${r.created} leads`); router.refresh(); }); };
   const downloadTemplate = () => { const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`; a.download = 'leads-template.csv'; a.click(); };
 
   return (

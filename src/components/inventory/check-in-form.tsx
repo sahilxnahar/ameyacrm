@@ -18,7 +18,7 @@ export function CheckInForm({ projects }: { projects: { id: string; name: string
     e.preventDefault(); const fd = new FormData(e.currentTarget); const name = String(fd.get('name') || '');
     start(async () => {
       const r = await checkInVisitor({ name, phone: fd.get('phone'), email: fd.get('email') || '', projectId: fd.get('projectId') || null, requirement: fd.get('requirement') || undefined, budget: fd.get('budget') || undefined, sourceNote: fd.get('sourceNote') || undefined });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       setDone({ id: r.id, reference: r.reference, name });
     });
   };

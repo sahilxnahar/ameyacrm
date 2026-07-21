@@ -28,13 +28,13 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
   const [deptOpen, setDeptOpen] = React.useState(false);
 
   const act = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
 
   const submitUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createUser({ name: fd.get('name'), username: fd.get('username'), email: fd.get('email'), phone: fd.get('phone'), employeeId: fd.get('employeeId'), designation: fd.get('designation'), role: fd.get('role'), departmentId: fd.get('departmentId') || null, password: fd.get('password') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('User created'); setUserOpen(false); router.refresh();
     });
   };
@@ -42,7 +42,7 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createDepartment({ name: fd.get('name'), description: fd.get('description') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Department created'); setDeptOpen(false); router.refresh();
     });
   };

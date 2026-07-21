@@ -16,7 +16,7 @@ export function LeadCustomFields({ leadId, fields, values }: { leadId: string; f
   const [vals, setVals] = React.useState<Record<string, unknown>>(values ?? {});
   if (fields.length === 0) return null;
   const set = (k: string, v: unknown) => setVals((p) => ({ ...p, [k]: v }));
-  const save = () => start(async () => { const r = await setLeadCustomFields(leadId, vals); if ('error' in r) return toast.error(r.error); toast.success('Saved'); router.refresh(); });
+  const save = () => start(async () => { const r = await setLeadCustomFields(leadId, vals); if ('error' in r) { toast.error(r.error); return; } toast.success('Saved'); router.refresh(); });
 
   return (
     <div className="space-y-3">

@@ -75,7 +75,7 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
     const token = randomBytes(24).toString('hex');
 
     // Username must satisfy the existing ^[a-zA-Z0-9_.]+$ rule.
-    let username = email.split('@')[0].replace(/[^a-zA-Z0-9_.]/g, '.') || 'user';
+    let username = (email.split('@')[0] ?? '').replace(/[^a-zA-Z0-9_.]/g, '.') || 'user';
     for (let n = 1; await prisma.user.findUnique({ where: { username } }); n++) username = `${username}${n}`;
 
     await prisma.user.create({

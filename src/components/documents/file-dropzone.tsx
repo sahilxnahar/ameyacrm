@@ -33,9 +33,9 @@ export function FileDropzone({ folderId, onFinished }: { folderId?: string; onFi
     const next: Item[] = files.map((f) => ({ name: f.name, size: f.size, status: 'queued' }));
     setItems([...next]); setBusy(true);
     let ok = 0, fail = 0;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      next[i] = { ...next[i], status: 'uploading' }; setItems([...next]);
+    for (const [i, file] of files.entries()) {
+      const entry = next[i] ?? { name: file.name, size: file.size, status: 'queued' as const };
+      next[i] = { ...entry, status: 'uploading' }; setItems([...next]);
       try {
         const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
         const rel = relativeFolder(file);
@@ -44,9 +44,9 @@ export function FileDropzone({ folderId, onFinished }: { folderId?: string; onFi
           mimeType: file.type || 'application/octet-stream', size: file.size,
           subPath: rel,
         });
-        if ('error' in r) { next[i] = { ...next[i], status: 'error', error: r.error }; fail++; }
+        if ('error' in r) { next[i] = { ...entry, status: 'error', error: r.error }; fail++; }
         else {
-          next[i] = { ...next[i], status: 'done' }; ok++;
+          next[i] = { ...entry, status: 'done' }; ok++;
           // Summarising and copying to Drive happen afterwards. Deliberately not
           // awaited — waiting for them is what made uploads feel slow.
           if (r.fileId) {
@@ -57,7 +57,7 @@ export function FileDropzone({ folderId, onFinished }: { folderId?: string; onFi
           }
         }
       } catch (e) {
-        next[i] = { ...next[i], status: 'error', error: e instanceof Error ? e.message : 'Upload failed' }; fail++;
+        next[i] = { ...entry, status: 'error', error: e instanceof Error ? e.message : 'Upload failed' }; fail++;
       }
       setItems([...next]);
     }

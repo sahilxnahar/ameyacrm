@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -61,6 +61,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view' },
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view' },
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view' },
+      { label: 'Money Owed To Us', href: '/receivables', icon: HandCoins, permission: 'billing.view' },
       { label: 'Payment Requests', href: '/payment-requests', icon: IndianRupee, permission: 'billing.view' },
       { label: 'Material Requests', href: '/material-requests', icon: Mail, permission: 'material.view' },
       { label: 'Marketing', href: '/marketing', icon: Megaphone, permission: 'marketing.view' },

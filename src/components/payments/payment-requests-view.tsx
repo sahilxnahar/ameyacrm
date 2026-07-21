@@ -31,7 +31,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
 
   const link = (t: string) => `${appUrl || (typeof window !== 'undefined' ? window.location.origin : '')}/pay/${t}`;
   const act = (fn: () => Promise<{ ok: true } | { error: string } | { ok: true; link?: string; emailed?: boolean; emailError?: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
@@ -41,7 +41,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
         amount: fd.get('amount'), description: fd.get('description'), dueDate: fd.get('dueDate') || null,
         customerId: fd.get('customerId') || null,
       });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       setFresh(r.link ?? null); form.reset(); setOpen(false); router.refresh();
       if (r.emailed) toast.success('Request created and emailed');
       else { toast.warning('Request created, but the email did not send — copy the link below and share it.'); if (r.emailError) toast.error(`Email error: ${r.emailError}`, { duration: 12000 }); }
@@ -123,7 +123,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
       <Dialog open={cfg} onOpenChange={setCfg}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Payment details</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { const r = await savePaymentInstructions(String(fd.get('text') || '')); if ('error' in r) return toast.error(r.error); toast.success('Saved'); setCfg(false); router.refresh(); }); }} className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); start(async () => { const r = await savePaymentInstructions(String(fd.get('text') || '')); if ('error' in r) { toast.error(r.error); return; } toast.success('Saved'); setCfg(false); router.refresh(); }); }} className="space-y-3">
             <p className="text-xs text-muted-foreground">Shown on every payment page and included in the email — bank account, IFSC, UPI ID, etc.</p>
             <Textarea name="text" rows={7} defaultValue={instructions} placeholder={'Account: Ameya Heights LLP\nBank: ...\nA/c No: ...\nIFSC: ...\nUPI: ameyaheights@upi'} />
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setCfg(false)}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button></div>

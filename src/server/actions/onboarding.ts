@@ -1,10 +1,12 @@
 'use server';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import { resolveSetupToken, completeOnboarding, beginOnboarding } from '@/server/services/onboarding-service';
+import { ONBOARDING } from '@/config/onboarding';
 
 export type SetupResult = { ok: true; username: string } | { error: string };
 
@@ -72,6 +74,48 @@ export async function stopInviteReminders(userId: string): Promise<ResendResult>
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: 'Stopped the invite reminders' });
     return { ok: true, message: 'Reminders stopped. They can still sign in normally.' };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+
+// ─── First-day checklist ─────────────────────────────────────────────────────
+// These belong to the "Getting started" card on Today's Priorities. They are a
+// different thing from the invite emails above, which chase people who have
+// not signed in at all.
+
+/** Tick one step off the first-day checklist. */
+export async function completeStep(stepKey: string): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await ensure('dashboard.view');
+    if (!stepKey) return { error: 'No step given.' };
+    await prisma.onboardingStep.upsert({
+      where: { userId_stepKey: { userId: ctx.user.id, stepKey } },
+      update: { completedAt: new Date() },
+      create: { userId: ctx.user.id, stepKey, completedAt: new Date() },
+    });
+    revalidatePath('/today');
+    return { ok: true };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** Hide the checklist for good by marking every step done. */
+export async function dismissOnboarding(): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await ensure('dashboard.view');
+    const now = new Date();
+    for (const step of ONBOARDING) {
+      await prisma.onboardingStep.upsert({
+        where: { userId_stepKey: { userId: ctx.user.id, stepKey: step.key } },
+        update: { completedAt: now },
+        create: { userId: ctx.user.id, stepKey: step.key, completedAt: now },
+      });
+    }
+    revalidatePath('/today');
+    return { ok: true };
   } catch (e) {
     return toActionError(e);
   }

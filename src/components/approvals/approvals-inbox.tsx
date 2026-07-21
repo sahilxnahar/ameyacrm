@@ -18,7 +18,7 @@ export function ApprovalsInbox({ items }: { items: ApprovalItem[] }) {
   const [comments, setComments] = React.useState<Record<string, string>>({});
 
   const decide = (stepId: string, decision: 'APPROVED' | 'REJECTED') =>
-    start(async () => { const r = await decideApprovalStep(stepId, decision, comments[stepId]); if ('error' in r) return toast.error(r.error); toast.success(`Marked ${decision.toLowerCase()}`); router.refresh(); });
+    start(async () => { const r = await decideApprovalStep(stepId, decision, comments[stepId]); if ('error' in r) { toast.error(r.error); return; } toast.success(`Marked ${decision.toLowerCase()}`); router.refresh(); });
 
   if (items.length === 0) return (
     <Card className="flex flex-col items-center gap-2 p-12 text-center text-muted-foreground">

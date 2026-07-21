@@ -32,7 +32,7 @@ export async function importLeadsCsv(csvText: string): Promise<{ ok: true; creat
     const ctx = await ensure('lead.create');
     const rows = parseCsv(csvText);
     if (rows.length < 2) return { error: 'CSV needs a header row and at least one lead row.' };
-    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const header = (rows[0] ?? []).map((h) => h.trim().toLowerCase());
     const idx = (k: string) => header.indexOf(k);
     const iName = idx('name'), iEmail = idx('email'), iPhone = idx('phone'), iSource = idx('source'), iReq = idx('requirement'), iBudget = idx('budget');
     if (iName < 0) return { error: 'CSV must include a "name" column.' };

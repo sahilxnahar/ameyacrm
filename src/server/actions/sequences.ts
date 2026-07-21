@@ -62,7 +62,8 @@ export async function deleteStep(id: string): Promise<SeqResult> {
     // Close the gap so ordinals stay contiguous.
     const rest = await prisma.sequenceStep.findMany({ where: { sequenceId: step.sequenceId }, orderBy: { ordinal: 'asc' } });
     for (let i = 0; i < rest.length; i++) {
-      if (rest[i].ordinal !== i) await prisma.sequenceStep.update({ where: { id: rest[i].id }, data: { ordinal: i } });
+      const st = rest[i];
+      if (st && st.ordinal !== i) await prisma.sequenceStep.update({ where: { id: st.id }, data: { ordinal: i } });
     }
     revalidatePath('/sequences');
     return { ok: true };
@@ -106,7 +107,7 @@ export async function enrolLeads(sequenceId: string, leadIds: string[]): Promise
       await prisma.sequenceEnrollment.create({
         data: {
           sequenceId, leadId: l.id, enrolledById: ctx.user.id,
-          nextStepAt: addDays(startOfDay(new Date()), seq.steps[0].dayOffset),
+          nextStepAt: addDays(startOfDay(new Date()), seq.steps[0]?.dayOffset ?? 0),
         },
       });
       added++;

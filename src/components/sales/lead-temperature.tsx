@@ -17,7 +17,7 @@ export function LeadTemperature({ leadId, value }: { leadId: string; value: stri
   const [pending, start] = React.useTransition();
   const set = (t: 'HOT' | 'WARM' | 'COLD') => start(async () => {
     const r = await setLeadTemperature(leadId, t);
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     toast.success(`Marked ${t.toLowerCase()}`); router.refresh();
   });
   return (

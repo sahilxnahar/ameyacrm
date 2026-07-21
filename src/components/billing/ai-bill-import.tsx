@@ -26,10 +26,10 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
 
   const doExtract = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const file = fd.get('file');
-    if (!(file instanceof File) || !file.size) return toast.error('Choose a file first.');
+    if (!(file instanceof File) || !file.size) { toast.error('Choose a file first.'); return; }
     start(async () => {
       const r = await extractBill(fd);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       const d = r.draft;
       setHead({ clientName: d.clientName, clientGstin: d.clientGstin ?? '', issueDate: d.invoiceDate ?? '', projectId: '', intraState: true, notes: `AI-imported from ${file.name}${d.invoiceNumber ? ` · vendor inv ${d.invoiceNumber}` : ''}` });
       setItems(d.items.length ? d.items.map((i) => ({ description: i.description, quantity: String(i.quantity), rate: String(i.rate), gstRate: String(i.gstRate) })) : [{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
@@ -39,7 +39,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
 
   const save = () => start(async () => {
     const r = await createInvoice({ clientName: head.clientName, clientGstin: head.clientGstin, projectId: head.projectId || null, issueDate: head.issueDate || undefined, notes: head.notes, intraState: head.intraState, items: items.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), rate: Number(i.rate), gstRate: Number(i.gstRate) })) });
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     toast.success('Invoice created from bill'); close(); router.refresh();
   });
 

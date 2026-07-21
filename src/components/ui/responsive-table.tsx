@@ -36,6 +36,8 @@ export function ResponsiveTable<T>({
 
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const rest = columns.filter((c) => c !== primary && !c.hideOnMobile);
+  // Nothing to show if the caller passed no columns at all.
+  if (!primary) return null;
 
   return (
     <>

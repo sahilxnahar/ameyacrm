@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils/cn';
 
-interface Unit { id: string; code: string; projectId: string; tower: string | null; floor: number; typology: string; area: number; price: number; status: string; facing: string | null }
+interface Unit { id: string; code: string; projectId: string; tower: string | null; floor: number | null; typology: string | null; area: number; price: number; status: string; facing: string | null }
 interface Pin { id?: string; unitId: string; x: number; y: number; w: number; h: number }
 interface Plan { id: string; projectId: string; name: string; tower: string | null; floor: number | null; imageUrl: string; kind: string; description: string | null; isPublic: boolean; shareToken: string | null; pins: Pin[] }
 
@@ -62,7 +62,9 @@ export function FloorPlanView({
     const r = boxRef.current.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width) * 100;
     const y = ((e.clientY - r.top) / r.height) * 100;
-    setPins([...pins, { unitId: candidates[0].id, x: Math.max(0, x - 4), y: Math.max(0, y - 3), w: 8, h: 6 }]);
+    const next = candidates[0];
+    if (!next) return; // every unit on this plan is already placed
+    setPins([...pins, { unitId: next.id, x: Math.max(0, x - 4), y: Math.max(0, y - 3), w: 8, h: 6 }]);
   };
 
   const nudge = (i: number, dx: number, dy: number) =>
@@ -104,7 +106,7 @@ export function FloorPlanView({
                 {edit && (
                   <Button size="sm" disabled={pending} onClick={() => start(async () => {
                     const r = await savePins(plan.id, pins.map(({ unitId, x, y, w, h }) => ({ unitId, x, y, w, h })));
-                    if ('error' in r) return toast.error(r.error);
+                    if ('error' in r) { toast.error(r.error); return; }
                     toast.success('Layout saved'); setEdit(false); router.refresh();
                   })}>
                     {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save layout
@@ -114,7 +116,7 @@ export function FloorPlanView({
                   title={plan.isPublic ? 'Stop sharing this plan' : 'Create a link a buyer can open — availability only, no prices'}
                   onClick={() => start(async () => {
                     const r = await toggleShare(plan.id, !plan.isPublic);
-                    if ('error' in r) return toast.error(r.error);
+                    if ('error' in r) { toast.error(r.error); return; }
                     toast.success(plan.isPublic ? 'Sharing stopped' : 'Share link created');
                     router.refresh();
                   })}>
@@ -155,7 +157,7 @@ export function FloorPlanView({
               <p className="mb-2 flex items-center gap-2 rounded-md bg-primary/10 p-2 text-xs">
                 <MousePointerClick className="h-3.5 w-3.5" />
                 {candidates.length
-                  ? <>Click the plan to place <strong>{candidates[0].code}</strong> — {candidates.length} left to place.</>
+                  ? <>Click the plan to place <strong>{candidates[0]?.code}</strong> — {candidates.length} left to place.</>
                   : <>Every unit for this plan is placed.</>}
               </p>
             )}
@@ -206,7 +208,7 @@ export function FloorPlanView({
                 <p className="font-display text-xl font-semibold">{picked.code}</p>
                 <Badge variant={picked.status === 'AVAILABLE' ? 'success' : picked.status === 'HELD' ? 'warning' : 'secondary'}>{picked.status}</Badge>
                 <dl className="space-y-1 text-sm">
-                  <Row k="Typology" v={picked.typology} />
+                  <Row k="Typology" v={picked.typology ?? "—"} />
                   <Row k="Carpet area" v={`${picked.area.toLocaleString('en-IN')} sqft`} />
                   <Row k="Floor" v={String(picked.floor)} />
                   {picked.tower && <Row k="Tower" v={picked.tower} />}
@@ -229,10 +231,10 @@ export function FloorPlanView({
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
-            if (!imageUrl) return toast.error('Upload the plan image first.');
+            if (!imageUrl) { toast.error('Upload the plan image first.'); return; }
             start(async () => {
               const r = await createFloorPlan({ ...Object.fromEntries(fd), imageUrl });
-              if ('error' in r) return toast.error(r.error);
+              if ('error' in r) { toast.error(r.error); return; }
               toast.success('Plan added — now press “Place units”');
               setNewOpen(false); setImageUrl(''); router.refresh();
             });

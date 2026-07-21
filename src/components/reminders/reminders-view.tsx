@@ -16,13 +16,13 @@ export function RemindersView({ reminders }: { reminders: Rem[] }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const act = (fn: () => Promise<{ ok: true } | { error: string }>, msg: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(msg); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(msg); router.refresh(); });
 
   const add = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);
     start(async () => {
       const r = await createReminder({ title: fd.get('title'), dueAt: fd.get('dueAt') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Reminder added'); form.reset(); router.refresh();
     });
   };

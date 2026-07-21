@@ -93,5 +93,11 @@ for f in files:
             bad_perms.append(f'{f}:{m.group(1)}')
 check('every permission key exists', bad_perms)
 
+# ---------------------------------------------------------------- type safety
+# Suppressing type errors hid 217 problems for a year, four of them real runtime
+# bugs. If this ever goes back to true, say so loudly.
+cfg = open('next.config.mjs').read()
+check('type errors fail the build', ['ignoreBuildErrors: true'] if 'ignoreBuildErrors: true' in cfg else [])
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

@@ -31,7 +31,7 @@ export function ProjectSwitcher({ projects, activeId, activeName }: { projects: 
     setOpen(false);
     start(async () => {
       const r = await setActiveProject(id);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success(id ? `Showing ${projects.find((p) => p.id === id)?.name}` : 'Showing all projects');
       router.refresh();
     });

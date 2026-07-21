@@ -10,7 +10,7 @@ export function threadKeyFor(subject: string | null | undefined, counterparty: s
 
 export function extractAddress(raw: string): string {
   const m = raw.match(/<([^>]+)>/);
-  return (m ? m[1] : raw).trim().toLowerCase();
+  return (m?.[1] ?? raw).trim().toLowerCase();
 }
 
 /** Who does this address belong to? Leads first, then buyers. */
@@ -25,6 +25,6 @@ export async function matchParty(address: string): Promise<{ leadId: string | nu
 
 /** Strip quoted history so the thread shows what was actually written. */
 export function stripQuoted(body: string): string {
-  const cut = body.split(/\n\s*(?:On .{5,80} wrote:|-{2,}\s*Original Message|_{5,}|From:\s)/i)[0];
+  const cut = body.split(/\n\s*(?:On .{5,80} wrote:|-{2,}\s*Original Message|_{5,}|From:\s)/i)[0] ?? body;
   return cut.replace(/\n{3,}/g, '\n\n').trim();
 }

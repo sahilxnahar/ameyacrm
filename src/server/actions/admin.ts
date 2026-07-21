@@ -140,7 +140,7 @@ export async function setUserDepartment(userId: string, departmentId: string | n
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: departmentId ? 'Moved to a department' : 'Removed from department' });
     revalidatePath('/team');
     revalidatePath('/admin');
-    return { ok: true };
+    return { ok: true, id: userId };
   } catch (err) {
     return toActionError(err);
   }

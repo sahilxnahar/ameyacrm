@@ -50,8 +50,9 @@ export async function buildCostSheetPdf(d: CostSheetData): Promise<Uint8Array> {
   for (let i = 0; i < rows.length; i++) {
     const col = i % 2, rowY = y - Math.floor(i / 2) * 18;
     const x = M + col * ((W - 2 * M) / 2);
-    text(rows[i][0].toUpperCase(), x, rowY, 7.5, bold, MUTE);
-    text(rows[i][1], x, rowY - 11, 10.5, font, CHARCOAL);
+    const [label, value] = rows[i] ?? ['', ''];
+    text((label ?? '').toUpperCase(), x, rowY, 7.5, bold, MUTE);
+    text(value ?? '', x, rowY - 11, 10.5, font, CHARCOAL);
   }
   y -= Math.ceil(rows.length / 2) * 18 + 16;
 

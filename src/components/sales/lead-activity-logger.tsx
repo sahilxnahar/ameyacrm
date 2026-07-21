@@ -22,7 +22,7 @@ export function LeadActivityLogger({ leadId }: { leadId: string }) {
     const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await logLeadActivity({ leadId, type: fd.get('type'), subject: fd.get('subject'), notes: fd.get('notes') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Activity logged'); (e.target as HTMLFormElement).reset(); setOpen(false); router.refresh();
     });
   };

@@ -51,12 +51,12 @@ export function AutomationView({ rules, runs, users, templates }: {
     const payload = { name, trigger, isActive: editing?.isActive ?? true, conditions: conds.filter((c) => c.field), actions: acts };
     start(async () => {
       const r = editing ? await updateAutomationRule(editing.id, payload) : await createAutomationRule(payload);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success(editing ? 'Rule updated' : 'Rule created'); setOpen(false); router.refresh();
     });
   };
-  const toggle = (id: string, v: boolean) => start(async () => { const r = await toggleAutomationRule(id, v); if ('error' in r) return toast.error(r.error); router.refresh(); });
-  const remove = (id: string) => start(async () => { const r = await deleteAutomationRule(id); if ('error' in r) return toast.error(r.error); toast.success('Deleted'); router.refresh(); });
+  const toggle = (id: string, v: boolean) => start(async () => { const r = await toggleAutomationRule(id, v); if ('error' in r) { toast.error(r.error); return; } router.refresh(); });
+  const remove = (id: string) => start(async () => { const r = await deleteAutomationRule(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Deleted'); router.refresh(); });
 
   return (
     <div className="space-y-6">

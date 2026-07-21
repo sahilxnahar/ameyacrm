@@ -1,6 +1,7 @@
 import 'server-only';
 import { endOfDay, startOfDay, addDays } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
+import type { LeadStatus } from '@prisma/client';
 
 export type Urgency = 'overdue' | 'today' | 'soon';
 export interface TodayItem {
@@ -19,7 +20,8 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
   const dayEnd = endOfDay(now);
   const weekEnd = addDays(now, 7);
   const cold = addDays(now, -3);
-  const OPEN = { notIn: ['WON', 'LOST'] as const };
+  // Prisma will not take a readonly array.
+  const OPEN = { notIn: ['WON', 'LOST'] as LeadStatus[] };
   const t = (d: Date | null | undefined) => (d ? d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : undefined);
 
   const [reminders, tasks, approvals, followups, hotCold, duePayments] = await Promise.all([

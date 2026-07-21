@@ -34,10 +34,10 @@ export function LeaseView({ leases, tenants, maintenance, tenantOptions, units, 
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string, e?: React.FormEvent) => {
     e?.preventDefault();
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); close(); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
   };
   const setStatus = (id: string, status: string) => start(async () => {
-    const r = await updateMaintenanceStatus(id, status as never); if ('error' in r) return toast.error(r.error); toast.success('Updated'); router.refresh();
+    const r = await updateMaintenanceStatus(id, status as never); if ('error' in r) { toast.error(r.error); return; } toast.success('Updated'); router.refresh();
   });
 
   return (

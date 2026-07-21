@@ -26,27 +26,27 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
   const [sel, setSel] = React.useState<CP | null>(null);
   const [pending, start] = React.useTransition();
   const act = (fn: () => Promise<{ ok: true; id?: string } | { error: string }>, ok: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
 
   const submitAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await createChannelPartner(Object.fromEntries(fd));
-      if ('error' in r) return toast.error(r.error); toast.success('Partner onboarded'); setAdd(false); router.refresh();
+      if ('error' in r) { toast.error(r.error); return; } toast.success('Partner onboarded'); setAdd(false); router.refresh();
     });
   };
   const submitLead = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!sel) return; const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await registerCpLead({ channelPartnerId: sel.id, name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email') || '', projectId: fd.get('projectId') || null, requirement: fd.get('requirement') || undefined });
-      if ('error' in r) return toast.error(r.error); toast.success('Lead registered & locked for 60 days'); (e.target as HTMLFormElement).reset(); router.refresh();
+      if ('error' in r) { toast.error(r.error); return; } toast.success('Lead registered & locked for 60 days'); (e.target as HTMLFormElement).reset(); router.refresh();
     });
   };
   const submitPayout = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!sel) return; const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await addBrokeragePayout({ channelPartnerId: sel.id, grossValue: fd.get('grossValue'), ratePercent: fd.get('ratePercent') || sel.commissionPct, stage: fd.get('stage') || undefined, dueDate: fd.get('dueDate') || null });
-      if ('error' in r) return toast.error(r.error); toast.success('Brokerage recorded'); (e.target as HTMLFormElement).reset(); router.refresh();
+      if ('error' in r) { toast.error(r.error); return; } toast.success('Brokerage recorded'); (e.target as HTMLFormElement).reset(); router.refresh();
     });
   };
 

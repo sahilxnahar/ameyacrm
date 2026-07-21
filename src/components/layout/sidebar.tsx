@@ -66,7 +66,7 @@ export function Sidebar({
   const save = () =>
     start(async () => {
       const r = await saveNavPrefs(prefs);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Your menu is saved');
       setCustomising(false);
       router.refresh();
@@ -187,7 +187,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v11.2</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v11.3</p>
         </div>
       </aside>
     </>

@@ -29,7 +29,7 @@ export function MobileAppView({
   const run = (fn: () => Promise<{ ok?: true; message?: string } | { error: string }>, ok: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success(('message' in r && r.message) || ok);
       router.refresh();
     });

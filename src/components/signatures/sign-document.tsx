@@ -53,13 +53,13 @@ export function SignDocument({
   };
 
   const submit = async () => {
-    if (!hasInk) return toast.error('Please draw your signature first.');
-    if (!agreed) return toast.error('Please tick the box to confirm.');
+    if (!hasInk) { toast.error('Please draw your signature first.'); return; }
+    if (!agreed) { toast.error('Please tick the box to confirm.'); return; }
     setPending(true);
     const data = canvasRef.current!.toDataURL('image/png');
     const r = await submitSignature(token, data, typed);
     setPending(false);
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     setDone(true);
   };
 
@@ -68,7 +68,7 @@ export function SignDocument({
     setPending(true);
     const r = await declineSignature(token, reason);
     setPending(false);
-    if ('error' in r) return toast.error(r.error);
+    if ('error' in r) { toast.error(r.error); return; }
     toast.success('Recorded. They have been told.');
     setDone(true);
   };

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       const project = parsed.project
-        ? await prisma.project.findFirst({ where: { name: { contains: parsed.project.split(',')[0].trim(), mode: 'insensitive' } }, select: { id: true } })
+        ? await prisma.project.findFirst({ where: { name: { contains: (parsed.project.split(',')[0] ?? '').trim(), mode: 'insensitive' } }, select: { id: true } })
         : null;
       const lead = await prisma.lead.create({
         data: {

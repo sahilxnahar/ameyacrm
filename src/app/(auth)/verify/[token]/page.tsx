@@ -16,7 +16,9 @@ const COPY: Record<string, { title: string; body: string; cta: boolean }> = {
 export default async function VerifyPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const { outcome, name } = await verifyEmailToken(token);
-  const c = COPY[outcome];
+  // An outcome the copy table does not know about should still say something
+  // sensible rather than crash the page.
+  const c = COPY[outcome] ?? COPY.invalid!;
   return (
     <div className="space-y-4">
       <h2 className="font-display text-2xl font-semibold">{c.title}</h2>

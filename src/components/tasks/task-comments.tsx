@@ -18,7 +18,7 @@ export function TaskComments({ taskId, comments }: { taskId: string; comments: {
     if (!body.trim()) return;
     start(async () => {
       const res = await addTaskComment(taskId, body);
-      if ('error' in res) return toast.error(res.error);
+      if ('error' in res) { toast.error(res.error); return; }
       setBody('');
       router.refresh();
     });

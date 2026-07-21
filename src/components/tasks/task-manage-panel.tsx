@@ -26,7 +26,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
   const [mins, setMins] = React.useState('');
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string, after?: () => void) =>
-    start(async () => { const r = await fn(); if ('error' in r) return toast.error(r.error); toast.success(ok); after?.(); router.refresh(); });
+    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); after?.(); router.refresh(); });
 
   const selectCls = 'flex h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm';
 

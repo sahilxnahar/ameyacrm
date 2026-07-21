@@ -30,7 +30,7 @@ export function NotificationPreferences({ prefs, settings }: {
   };
   const saveSettings = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
-    start(async () => { const r = await saveNotificationSettings({ dnd, quietStart: fd.get('quietStart'), quietEnd: fd.get('quietEnd'), sound, vibrate }); if ('error' in r) return toast.error(r.error); toast.success('Preferences saved'); });
+    start(async () => { const r = await saveNotificationSettings({ dnd, quietStart: fd.get('quietStart'), quietEnd: fd.get('quietEnd'), sound, vibrate }); if ('error' in r) { toast.error(r.error); return; } toast.success('Preferences saved'); });
   };
 
   const on = (type: string, ch: string) => local[`${type}:${ch}`] ?? true;

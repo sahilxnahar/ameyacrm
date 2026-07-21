@@ -61,7 +61,7 @@ export function VoiceCapture({ projects, enabled }: { projects: Opt[]; enabled: 
     void (async () => {
       const r = await saveVoiceNote({ kind: draft.kind, title: draft.title, description: draft.description, priority: draft.priority, projectId: projectId || null, transcript: draft.transcript });
       setBusy(null);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       setSaved(r.kind); setDraft(null); router.refresh();
       toast.success(r.kind === 'update' ? 'Site update posted' : 'Task created');
     })();

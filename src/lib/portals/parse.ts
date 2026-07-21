@@ -40,7 +40,7 @@ function labelled(body: string, labels: string[]): string | null {
     const re = new RegExp(`${l}\\s*[:\\-]\\s*(.+)`, 'i');
     const m = body.match(re);
     if (m) {
-      const v = m[1].split('\n')[0].trim();
+      const v = (m[1] ?? '').split('\n')[0]?.trim() ?? '';
       if (v && v.length < 200) return v;
     }
   }
@@ -66,7 +66,7 @@ export function parsePortalEmail(from: string, subject: string, body: string): P
   // Some templates put the name only in the subject: "New response from Ramesh Kumar".
   if (!name) {
     const m = subject.match(/(?:from|by|of)\s+([A-Z][A-Za-z.\s]{2,40})$/);
-    if (m) name = m[1].trim();
+    if (m?.[1]) name = m[1].trim();
   }
 
   return { portal, name, phone, email: cleanEmail, requirement, project, raw: text.slice(0, 2000) };

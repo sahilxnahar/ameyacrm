@@ -19,7 +19,7 @@ export function EmailLeadButton({ leadId, email, name }: { leadId: string; email
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await sendLeadEmail({ leadId, subject: fd.get('subject'), body: fd.get('body') });
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success('Email sent'); setOpen(false); router.refresh();
     });
   };

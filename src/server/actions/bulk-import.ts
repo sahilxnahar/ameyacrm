@@ -19,7 +19,7 @@ function partyFrom(text: string): string {
   if (m?.[1]) return m[1].trim().slice(0, 60);
   const known = ['BBMP', 'BESCOM', 'BWSSB', 'KPTCL', 'Google', 'Geofrontier'];
   for (const k of known) if (new RegExp(k, 'i').test(t)) return k;
-  return t.split(/[-–]/)[0].trim().slice(0, 60) || 'Unrecorded';
+  return (t.split(/[-–]/)[0] ?? '').trim().slice(0, 60) || 'Unrecorded';
 }
 
 export interface RowResult { row: number; ok: boolean; message: string }
@@ -64,6 +64,7 @@ export async function runImport(
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const line = i + 2; // +1 for zero index, +1 for the header row
+      if (!r) continue; // cannot happen while iterating by index, but proves it to the compiler
       try {
         if (kind === 'units') {
           if (!projectId) { results.push({ row: line, ok: false, message: 'Choose a project first.' }); failed++; continue; }

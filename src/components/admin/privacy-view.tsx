@@ -28,16 +28,16 @@ export function PrivacyView({
   const run = (fn: () => Promise<{ ok?: true; message?: string } | { error: string }>, ok: string) =>
     start(async () => {
       const r = await fn();
-      if ('error' in r && r.error) return toast.error(r.error);
+      if ('error' in r && r.error) { toast.error(r.error); return; }
       toast.success(('message' in r && r.message) || ok);
       router.refresh(); setOpen(false);
     });
 
   const exportData = () =>
     start(async () => {
-      if (!lookup.trim()) return toast.error('Enter the person’s email address first.');
+      if (!lookup.trim()) { toast.error('Enter the person’s email address first.'); return; }
       const r = await gatherPersonalData(lookup.trim());
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -48,11 +48,11 @@ export function PrivacyView({
 
   const erase = () =>
     start(async () => {
-      if (!lookup.trim()) return toast.error('Enter the person’s email address first.');
+      if (!lookup.trim()) { toast.error('Enter the person’s email address first.'); return; }
       const reason = window.prompt(`Erase everything held about ${lookup.trim()}?\n\nThis cannot be undone. Type a reason to confirm:`);
       if (!reason) return;
       const r = await erasePersonalData(lookup.trim(), reason);
-      if ('error' in r) return toast.error(r.error);
+      if ('error' in r) { toast.error(r.error); return; }
       toast.success(r.message ?? 'Erased');
       router.refresh();
     });

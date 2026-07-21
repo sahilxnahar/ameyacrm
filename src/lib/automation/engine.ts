@@ -76,7 +76,7 @@ export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Pro
 }
 
 async function logRun(ruleId: string, ctx: RunContext, status: string, detail: Record<string, unknown>) {
-  await prisma.automationRun.create({ data: { ruleId, entityType: ctx.entityType, entityId: ctx.entityId, status, detail } }).catch(() => undefined);
+  await prisma.automationRun.create({ data: { ruleId, entityType: ctx.entityType, entityId: ctx.entityId, status, detail: detail as never } }).catch(() => undefined);
 }
 
 async function systemCreatorId(rule: { createdById: string | null }, ctx: RunContext): Promise<string | null> {
