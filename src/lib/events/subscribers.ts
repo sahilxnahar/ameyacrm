@@ -1,6 +1,7 @@
 import 'server-only';
 import { on } from './bus';
 import { notifyDepartment, notifyUsers } from '@/lib/notify/notify';
+import { ensureLink } from '@/server/services/links-service';
 import { prisma } from '@/lib/db/prisma';
 import { wrStatusLabel } from '@/lib/workrequests/lifecycle';
 
@@ -16,13 +17,17 @@ export function registerSubscribers(): void {
   if (registered) return;
   registered = true;
 
-  // A new request → tell the receiving department it has work waiting.
+  // A new request → tell the receiving department it has work waiting, and link
+  // the request to the record it's about, so both sides show the connection.
   on('workrequest.raised', async (e) => {
     await notifyDepartment(
       e.toDeptId,
       { type: 'SYSTEM', title: `New work request: ${e.title}`, body: e.reference, link: `/work-requests/${e.requestId}` },
       e.actorId,
     );
+    if (e.entityType && e.entityId) {
+      await ensureLink({ type: 'WorkRequest', id: e.requestId }, { type: e.entityType, id: e.entityId }, 'about', e.actorId);
+    }
   });
 
   // A request moved → tell the person who raised it where it now stands.

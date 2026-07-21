@@ -6,6 +6,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { ensure, getActionContext, toActionError } from './_helpers';
 import { canTransition, isTerminal, type WRSide, type WRStatus } from '@/lib/workrequests/lifecycle';
 import { userDeptIds } from '@/server/services/workrequest-service';
+import { ensureLink } from '@/server/services/links-service';
 import { emit } from '@/lib/events/bus';
 import { fireAndForget } from '@/lib/resilience/safely';
 import '@/lib/events/subscribers'; // registers the notification subscribers
@@ -55,7 +56,7 @@ export async function raiseWorkRequest(v: Record<string, string>): Promise<WRRes
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'WorkRequest', entityId: created.id, summary: `Raised "${title}"` });
     // Announce it — the receiving department gets notified. Fire-and-forget so a
     // notification hiccup can never fail the request itself.
-    fireAndForget(() => emit({ type: 'workrequest.raised', requestId: created.id, reference: created.reference, title, toDeptId, actorId: ctx.user.id }), 'emit workrequest.raised');
+    fireAndForget(() => emit({ type: 'workrequest.raised', requestId: created.id, reference: created.reference, title, toDeptId, entityType: data.entityType, entityId: data.entityId, actorId: ctx.user.id }), 'emit workrequest.raised');
     revalidatePath('/work-requests');
     return { ok: true, message: 'Request raised.', id: created.id };
   } catch (e) { return toActionError(e); }
@@ -102,6 +103,8 @@ export async function advanceWorkRequest(id: string, toStatus: string, note?: st
         select: { id: true },
       });
       patch.linkedTaskId = task.id;
+      // Link the spawned task back to the request so it shows in Related activity.
+      await ensureLink({ type: 'WorkRequest', id }, { type: 'Task', id: task.id }, 'spawned', ctx.user.id);
     }
 
     await prisma.workRequest.update({ where: { id }, data: patch });

@@ -1,5 +1,24 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.20 — coexistence batches I4–I5 (of I1–I7).**
+
+> **v14.20 adds universal record linking and the one access context.** Run
+> **`MIGRATION_v14.20_all.sql`** once (adds 1 table, `RecordLink`; I5 needs no schema change).
+> - **I5/15 — One access context (the safety rail).** `getAccessContext(userId)`
+>   (`src/lib/access/context.ts`) resolves a person's permissions, departments and project
+>   scope **once**, `cache()`d per request, so no subsystem re-invents "who can see what".
+>   With `accessCan()` / `inDepartment()` helpers; used by the new linking actions.
+> - **I4/14 — Universal record linking.** A `RecordLink` model links any record to any other;
+>   `getRelated()` resolves a record's links to labels + destinations; a **Related activity**
+>   panel shows them (on the work-request detail). Linking is mostly **automatic and rides the
+>   event bus (I1)**: raising a work request *about* a lead/unit links them, and accepting one
+>   links the task it spawns — a live demonstration of the systems helping each other. 5 tests.
+>
+> Still to come: I6/16 (cross-system automations on the event bus) and I7/17 (integration health
+> dashboard + end-to-end tests), then the buildable 31-plan items (26 vendor portal, 30
+> extensibility, 31 localisation). Hard check: 0 type errors, 293 tests, all verifier checks
+> (117 pages, 175 models), migration idempotent + drift-clean, build exit 0.
+
 **Written 21 July 2026. Build v14.19 — coexistence batches I1–I3 (of I1–I7).**
 
 > **v14.19 makes the systems talk to each other and fail gracefully. No SQL to run.**

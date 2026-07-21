@@ -4411,3 +4411,18 @@ model WorkRequestComment {
 
   @@index([requestId])
 }
+
+model RecordLink {
+  id          String   @id @default(cuid())
+  fromType    String
+  fromId      String
+  toType      String
+  toId        String
+  kind        String   @default("related")
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([fromType, fromId, toType, toId])
+  @@index([fromType, fromId])
+  @@index([toType, toId])
+}

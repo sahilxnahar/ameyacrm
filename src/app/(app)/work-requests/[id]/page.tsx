@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { getWorkRequest, userDeptIds } from '@/server/services/workrequest-service';
+import { getRelated } from '@/server/services/links-service';
+import { RelatedActivity } from '@/components/common/related-activity';
 import { WorkRequestDetailPanel } from '@/components/workrequests/work-request-detail-panel';
 import { wrStatusLabel, type WRSide } from '@/lib/workrequests/lifecycle';
 import { formatDate, timeAgo } from '@/lib/utils/format';
@@ -31,6 +33,7 @@ export default async function WorkRequestDetailPage({ params }: { params: Promis
       ? 'raiser'
       : null;
   const canAct = side === 'raiser' || (side === 'receiver' && can(ctx.permissions, 'workrequest.manage'));
+  const related = await getRelated('WorkRequest', wr.id);
 
   return (
     <div className="space-y-6">
@@ -78,6 +81,10 @@ export default async function WorkRequestDetailPage({ params }: { params: Promis
         </div>
 
         <div className="space-y-3">
+          <Card className="p-4">
+            <h3 className="mb-3 text-sm font-semibold">Related activity</h3>
+            <RelatedActivity items={related} />
+          </Card>
           <Card className="p-4 text-sm">
             <dl className="space-y-2">
               <div><dt className="text-xs text-muted-foreground">Priority</dt><dd>{wr.priority.toLowerCase()}</dd></div>

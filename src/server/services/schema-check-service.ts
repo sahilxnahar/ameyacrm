@@ -47,6 +47,8 @@ const REQUIRED_TABLES = [
   'Feedback',
   // C3 — inter-department work requests
   'WorkRequest', 'WorkRequestEvent', 'WorkRequestComment',
+  // I4 — universal record linking
+  'RecordLink',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

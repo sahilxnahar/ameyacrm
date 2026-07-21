@@ -14,7 +14,7 @@
  */
 
 export type AppEvent =
-  | { type: 'workrequest.raised'; requestId: string; reference: string; title: string; toDeptId: string | null; actorId?: string | null }
+  | { type: 'workrequest.raised'; requestId: string; reference: string; title: string; toDeptId: string | null; entityType?: string | null; entityId?: string | null; actorId?: string | null }
   | { type: 'workrequest.advanced'; requestId: string; reference: string; title: string; toStatus: string; raiserId?: string | null; actorId?: string | null };
 
 export type AppEventType = AppEvent['type'];
