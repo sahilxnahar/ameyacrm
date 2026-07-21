@@ -63,8 +63,14 @@ export function autoMap(headers: string[], fields: { key: string; aliases: strin
 }
 
 export const toNumber = (v: string): number | null => {
-  const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
-  return Number.isFinite(n) && String(v).trim() !== '' ? n : null;
+  const raw = String(v).trim();
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^0-9.\-]/g, '');
+  // Text like "TBD" or "n/a" strips down to nothing, and Number('') is 0 —
+  // which would quietly import a price of zero instead of rejecting the row.
+  if (!/[0-9]/.test(cleaned)) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
 };
 
 export function toDate(v: string): Date | null {

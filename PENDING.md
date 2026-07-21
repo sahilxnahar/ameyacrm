@@ -1,6 +1,6 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v10.3_
+_Last updated: 21 July 2026 · current build v10.4_
 
 ---
 
@@ -11,7 +11,7 @@ _Last updated: 21 July 2026 · current build v10.3_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v10.3** — run `MIGRATION_v10.3_all.sql` in Neon, sync `ameya-heights-crm-v10.3.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v10.4** — run `MIGRATION_v10.4_all.sql` in Neon, sync `ameya-heights-crm-v10.4.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |

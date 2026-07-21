@@ -93,9 +93,12 @@ export async function submitSignature(token: string, signatureDataUrl: string, t
       const src = await fetch(sr.fileUrl);
       if (src.ok) {
         const pdf = await PDFDocument.load(await src.arrayBuffer());
-        const png = await pdf.embedPng(Buffer.from(signatureDataUrl.split(',')[1], 'base64'));
+        const base64 = signatureDataUrl.split(',')[1];
+        if (!base64) return { error: 'That signature image could not be read. Please draw it again.' };
+        const png = await pdf.embedPng(Buffer.from(base64, 'base64'));
         const font = await pdf.embedFont(StandardFonts.Helvetica);
         const page = pdf.getPages()[pdf.getPageCount() - 1];
+        if (!page) return { error: 'That PDF has no pages to sign.' };
         const { width } = page.getSize();
         const w = 160;
         const h2 = (png.height / png.width) * w;

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'AI health' };
 export const dynamic = 'force-dynamic';
 
 export default async function AiHealthPage() {
-  await requirePermission('admin.settings.manage');
+  await requirePermission('admin.setting.manage');
 
   const [indexed, summarised, docs] = await Promise.all([
     prisma.docChunk.count().catch(() => 0),

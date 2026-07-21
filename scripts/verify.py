@@ -79,5 +79,19 @@ check('every model in the init SQL', [m for m in re.findall(r'^model (\w+)', s, 
 crons = json.load(open('vercel.json')).get('crons', [])
 check('crons legal on Vercel Hobby', [c for c in crons if c['schedule'].split()[1] == '*'])
 
+# ---------------------------------------------------------------- permissions
+# A permission key that does not exist locks the page out completely, and the
+# build says nothing. Caught "admin.settings.manage" (real key: setting).
+defined_perms = set(re.findall(r"'([a-z]+(?:\.[a-z]+)+)'", open('src/lib/rbac/permissions.ts').read()))
+bad_perms = []
+for f in files:
+    if not os.path.exists(f) or f.endswith('permissions.ts'):
+        continue
+    body = open(f).read()
+    for m in re.finditer(r"(?:requirePermission|ensure|can)\(\s*(?:[A-Za-z_.]+,\s*)?'([a-z]+(?:\.[a-z]+)+)'", body):
+        if m.group(1) not in defined_perms:
+            bad_perms.append(f'{f}:{m.group(1)}')
+check('every permission key exists', bad_perms)
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

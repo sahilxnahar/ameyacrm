@@ -195,6 +195,6 @@ export async function readPaymentAdvice(text: string): Promise<AdviceResult> {
 
 /** Run the live AI probes. Admin-only: it spends real quota. */
 export async function checkAiHealth() {
-  await ensure('admin.settings.manage');
+  await ensure('admin.setting.manage');
   return runAiSelfTest();
 }

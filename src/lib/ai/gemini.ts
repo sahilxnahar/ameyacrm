@@ -131,7 +131,7 @@ export interface LeadScore { score: number; reason: string; nextAction: string }
 const LEAD_SCORE_SCHEMA = { type: 'OBJECT', properties: { score: { type: 'INTEGER' }, reason: { type: 'STRING' }, nextAction: { type: 'STRING' } } } as const;
 
 /** Score a lead 0-100 with a reason + next-best-action. Never throws — null on any problem. */
-export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScore | null> {
+export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScore | { error: string } | null> {
   if (!env.GEMINI_API_KEY) return null;
   const prompt =
     `You are a senior real-estate sales manager at a premium Bengaluru developer. Read the lead below and return: ` +
@@ -141,11 +141,11 @@ export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScor
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      return { error: `The AI service refused the file (${res.status}). ${detail.slice(0, 160)}`.trim() };
+      return { error: `The AI service refused the request (${res.status}). ${detail.slice(0, 160)}`.trim() };
     }
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
-    if (!raw) return { error: 'The AI read the file but found no billing data in it. Is this actually an invoice?' };
+    if (!raw) return { error: 'The AI did not return a score for this lead. Try again in a moment.' };
     const j = JSON.parse(raw) as { score?: unknown; reason?: unknown; nextAction?: unknown };
     const score = Math.max(0, Math.min(100, Math.round(Number(j.score) || 0)));
     return { score, reason: String(j.reason ?? '').slice(0, 300), nextAction: String(j.nextAction ?? '').slice(0, 300) };
@@ -163,7 +163,7 @@ const CALL_SCHEMA = {
 } as const;
 
 /** Transcribe + analyse a sales call recording (English/Hindi/Kannada mix). Never throws — null on any problem. */
-export async function analyzeCallRecording(audio: Buffer, mimeType: string): Promise<CallAnalysis | null> {
+export async function analyzeCallRecording(audio: Buffer, mimeType: string): Promise<CallAnalysis | { error: string } | null> {
   if (!env.GEMINI_API_KEY) return null;
   if (audio.length > 18 * 1024 * 1024) return null;
   const prompt =

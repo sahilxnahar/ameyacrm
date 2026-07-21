@@ -54,14 +54,6 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
     const key = makeObjectKey(folderId, file.name);
     const stored = await putObject(key, buffer, file.type || 'application/octet-stream');
 
-    // Document.folderId is required, so an upload with no folder chosen needs
-    // somewhere to go rather than throwing.
-    if (!targetFolderId) {
-      const home = await prisma.folder.findFirst({ where: { name: 'Unfiled', parentId: null, deletedAt: null }, select: { id: true } })
-        ?? await prisma.folder.create({ data: { name: 'Unfiled', parentId: null, createdById: ctx.user.id, path: 'Unfiled', visibility: 'DEPARTMENT' } });
-      targetFolderId = home.id;
-    }
-
     const fileObj = await prisma.fileObject.create({
       data: { key: stored.key, bucket: stored.bucket, originalName: file.name, mimeType: file.type || 'application/octet-stream', size: stored.size, checksum, uploadedById: ctx.user.id },
     });
@@ -182,12 +174,23 @@ export async function registerUploadedDocument(input: unknown): Promise<DocResul
           where: { name, parentId, deletedAt: null }, select: { id: true },
         });
         if (existing) { parentId = existing.id; continue; }
-        const created = await prisma.folder.create({
+        const created: { id: string } = await prisma.folder.create({
           data: { name, parentId, createdById: ctx.user.id, path: name, visibility: 'DEPARTMENT' },
+          select: { id: true },
         });
         parentId = created.id;
       }
       targetFolderId = parentId ?? undefined;
+    }
+
+    // Document.folderId is required. A file dropped at the top level, or one
+    // arriving from Drive with no path, has no folder — so give it a home
+    // rather than letting Prisma throw.
+    if (!targetFolderId) {
+      const home =
+        (await prisma.folder.findFirst({ where: { name: 'Unfiled', parentId: null, deletedAt: null }, select: { id: true } })) ??
+        (await prisma.folder.create({ data: { name: 'Unfiled', parentId: null, createdById: ctx.user.id, path: 'Unfiled', visibility: 'DEPARTMENT' } }));
+      targetFolderId = home.id;
     }
 
     const fileObj = await prisma.fileObject.create({

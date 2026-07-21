@@ -17,6 +17,25 @@ function under1000(n: number): string {
   return [h ? `${ONES[h]} Hundred` : '', r ? under100(r) : ''].filter(Boolean).join(' ');
 }
 
+/**
+ * Indian grouping, recursing on the crore part so amounts above 1,000 crore
+ * still read correctly instead of running off the end of the lookup table.
+ */
+function indian(n: number): string {
+  if (n <= 0) return '';
+  if (n < 1000) return under1000(n);
+  const parts: string[] = [];
+  const crore = Math.floor(n / 10000000);
+  const lakh = Math.floor((n % 10000000) / 100000);
+  const thousand = Math.floor((n % 100000) / 1000);
+  const rest = n % 1000;
+  if (crore) parts.push(`${indian(crore)} Crore`);
+  if (lakh) parts.push(`${under1000(lakh)} Lakh`);
+  if (thousand) parts.push(`${under1000(thousand)} Thousand`);
+  if (rest) parts.push(under1000(rest));
+  return parts.join(' ');
+}
+
 export function rupeesInWords(amount: number): string {
   if (!Number.isFinite(amount)) return '';
   const negative = amount < 0;
@@ -24,18 +43,7 @@ export function rupeesInWords(amount: number): string {
   const whole = Math.floor(abs);
   const paise = Math.round((abs - whole) * 100);
 
-  const parts: string[] = [];
-  const crore = Math.floor(whole / 10000000);
-  const lakh = Math.floor((whole % 10000000) / 100000);
-  const thousand = Math.floor((whole % 100000) / 1000);
-  const rest = whole % 1000;
-
-  if (crore) parts.push(`${under1000(crore)} Crore`);
-  if (lakh) parts.push(`${under1000(lakh)} Lakh`);
-  if (thousand) parts.push(`${under1000(thousand)} Thousand`);
-  if (rest) parts.push(under1000(rest));
-
-  const rupees = parts.length ? parts.join(' ') : 'Zero';
+  const rupees = whole ? indian(whole) : 'Zero';
   const tail = paise ? ` and ${under100(paise)} Paise` : '';
   return `${negative ? 'Minus ' : ''}Rupees ${rupees}${tail} Only`;
 }
@@ -51,6 +59,6 @@ export function describeUtr(utr: string): { ok: boolean; rail: string | null; no
   if (/^[0-9]{12}$/.test(v)) return { ok: true, rail: 'UPI / IMPS', note: null };
   if (/^[A-Z]{4}[A-Z0-9]{12}$/.test(v)) return { ok: true, rail: 'NEFT', note: null };
   if (/^[A-Z]{4}[A-Z0-9]{14,18}$/.test(v)) return { ok: true, rail: 'RTGS', note: null };
-  if (/^[A-Z0-9]{6,30}$/.test(v)) return { ok: true, rail: null, note: 'Unusual length for a UTR — worth double-checking against the bank statement.' };
+  if (/^[A-Z0-9]{4,30}$/.test(v)) return { ok: true, rail: null, note: 'Unusual length for a UTR — worth double-checking against the bank statement.' };
   return { ok: false, rail: null, note: 'A UTR should be letters and digits only, with no spaces or symbols.' };
 }

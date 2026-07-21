@@ -190,6 +190,7 @@ export async function scoreLead(leadId: string): Promise<SalesResult> {
     ].join('\n');
     const res = await scoreLeadWithGemini(summary);
     if (!res) return { error: 'Could not score this lead right now.' };
+    if ('error' in res) return { error: res.error };
     await prisma.lead.update({ where: { id: leadId }, data: { score: res.score } });
     await prisma.leadActivity.create({ data: { leadId, userId: ctx.user.id, type: 'NOTE', subject: `AI lead score: ${res.score}/100`, notes: `${res.reason} — Next best action: ${res.nextAction}` } });
     revalidatePath(`/sales/${leadId}`); revalidatePath('/sales');

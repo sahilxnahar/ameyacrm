@@ -10,8 +10,17 @@ const LINE = rgb(0.85, 0.83, 0.79);
 const RUBY = rgb(0.608, 0.067, 0.118);
 
 const inr = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ascii = (s: string) => (s || '').replace(/[^\x20-\x7E]/g, ' ');
-const day = (d: Date | null) => (d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+// StandardFonts are Latin-1 only, so translate the punctuation people actually
+// paste in rather than blanking it out.
+const ascii = (s: string) =>
+  (s || '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u20B9/g, 'Rs.')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E]/g, ' ');
+const day = (d: Date | null) => (d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-');
 
 export interface PaymentReceiptData {
   number: string; kindLabel: string; direction: 'paid' | 'received';
@@ -79,9 +88,13 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   page.drawRectangle({ x: M, y: y - 46, width: W - 2 * M, height: 62, color: SAND });
   text('AMOUNT', M + 14, y + 2, 8, bold, MUTE);
   text(`Rs. ${inr.format(d.amount)}`, M + 14, y - 24, 24, bold, CHARCOAL);
+  // Amount in words has to stay on one line inside the box, so shrink to fit
+  // rather than wrapping on top of itself.
   const words = rupeesInWords(d.amount);
-  text(words.length > 74 ? words.slice(0, 74) : words, M + 14, y - 40, 8.5, font, MUTE);
-  if (words.length > 74) text(words.slice(74), M + 14, y - 40, 8.5, font, MUTE);
+  const avail = W - 2 * M - 28;
+  let wordSize = 8.5;
+  while (wordSize > 5.5 && font.widthOfTextAtSize(ascii(words), wordSize) > avail) wordSize -= 0.25;
+  text(words, M + 14, y - 40, wordSize, font, MUTE);
   right(d.mode, W - M - 14, y + 2, 11, bold, BRASS);
 
   // Bank trail — the point of the whole document
@@ -93,8 +106,8 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   const rows: Array<[string, string]> = [
     ['UTR / transaction reference', d.utr || 'Not recorded'],
     ['Value date (money moved)', day(d.paidOn ?? d.voucherDate)],
-    ['Bank', d.bankName || d.company.bankName || '—'],
-    ['Other reference', d.reference || '—'],
+    ['Bank', d.bankName || d.company.bankName || '-'],
+    ['Other reference', d.reference || '-'],
   ];
   y -= 22;
   for (const [k, v] of rows) {

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         const buf = Buffer.from(await audioRes.arrayBuffer());
         const mime = audioRes.headers.get('content-type')?.split(';')[0] || 'audio/mpeg';
         const a = await analyzeCallRecording(buf, mime);
-        if (a) {
+        if (a && !('error' in a)) {
           const detail = [
             a.summary,
             a.budget ? `Budget: ${a.budget}` : null,

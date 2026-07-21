@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { logError } from '@/lib/monitoring/log-error';
 import { getCurrentUser } from '@/lib/auth/current-user';
+import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser().catch(() => null);
     const err = new Error(String(b.message ?? 'Unknown client error').slice(0, 400));
     err.stack = String(b.stack ?? '').slice(0, 4000);
-    await logError(err, { path: b.path, userId: user?.id });
+    await logError(err, { path: b.path, userId: user?.user.id });
   } catch { /* swallow */ }
   return NextResponse.json({ ok: true });
 }
