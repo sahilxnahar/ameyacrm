@@ -142,6 +142,18 @@ export const PERMISSIONS = {
   'esg.view': 'View environmental clearance conditions and waste manifests',
   'esg.manage': 'Manage EC conditions, green credits and waste manifests',
 
+  // Buyer variations (batch 28)
+  'variations.view': 'View buyer variation orders',
+  'variations.manage': 'Raise, cost and approve buyer variations',
+
+  // People & expenses (batch 15)
+  'people.view': 'View expense claims and people records',
+  'people.manage': 'Manage expense claims and approvals',
+
+  // Association handover (batch 19)
+  'association.view': 'View maintenance charges and the association handover',
+  'association.manage': 'Manage maintenance charges and association records',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

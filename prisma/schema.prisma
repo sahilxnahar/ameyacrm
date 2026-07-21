@@ -4225,3 +4225,102 @@ model WasteManifest {
 
   @@index([projectId])
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SIX BATCHES (v14.13) — Buyer variations(28), People/expenses(15), Association
+// handover(19), Drawings transmittals(17), Marketing walk-ins(21), Commercial
+// leasing(20). String status fields (validated in the action) instead of DB
+// enums, to keep this pass lean and collision-free.
+// ═════════════════════════════════════════════════════════════════════════════
+
+model VariationOrder {
+  id          String   @id @default(cuid())
+  projectId   String?
+  bookingRef  String?
+  title       String
+  description String?
+  amount      Decimal  @default(0) @db.Decimal(16, 2)
+  status      String   @default("RAISED")
+  raisedOn    DateTime @default(now())
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status])
+}
+
+model ExpenseClaim {
+  id          String    @id @default(cuid())
+  projectId   String?
+  claimant    String
+  category    String?
+  amount      Decimal   @default(0) @db.Decimal(14, 2)
+  status      String    @default("SUBMITTED")
+  incurredOn  DateTime?
+  note        String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model MaintenanceCharge {
+  id        String    @id @default(cuid())
+  projectId String?
+  unitCode  String
+  period    String?
+  amount    Decimal   @default(0) @db.Decimal(14, 2)
+  status    String    @default("RAISED")
+  dueOn     DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([projectId, status])
+}
+
+model DrawingTransmittal {
+  id           String   @id @default(cuid())
+  projectId    String?
+  drawingRef   String
+  title        String
+  revision     String?
+  issuedTo     String
+  issuedOn     DateTime @default(now())
+  acknowledged Boolean  @default(false)
+  note         String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model WalkIn {
+  id          String   @id @default(cuid())
+  projectId   String?
+  name        String
+  phone       String?
+  source      String?
+  visitedOn   DateTime @default(now())
+  outcome     String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, visitedOn])
+}
+
+model CommercialTenancy {
+  id            String    @id @default(cuid())
+  projectId     String?
+  unitCode      String
+  tenant        String
+  areaSqft      Decimal?  @db.Decimal(12, 2)
+  monthlyRent   Decimal   @default(0) @db.Decimal(14, 2)
+  escalationPct Decimal?  @db.Decimal(6, 3)
+  startsOn      DateTime?
+  endsOn        DateTime?
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+}

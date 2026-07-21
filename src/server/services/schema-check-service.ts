@@ -38,6 +38,9 @@ const REQUIRED_TABLES = [
   // Seven-batch pass (v14.12)
   'FeasibilityModel', 'StatutoryObligation', 'GoodsReceipt', 'RiskEntry',
   'ContractRecord', 'SecurityIncident', 'Sop', 'EnvClearanceCondition',
+  // Six-batch pass (v14.13)
+  'VariationOrder', 'ExpenseClaim', 'MaintenanceCharge', 'DrawingTransmittal',
+  'WalkIn', 'CommercialTenancy',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

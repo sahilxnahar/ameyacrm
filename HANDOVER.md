@@ -1,25 +1,28 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.12 (feature batches 1,2,4,5,7,13,14,16,24 + 3,6,18,22,23,25,29 = 16 of 31; UI track advanced).**
+**Written 21 July 2026. Build v14.13 — 22 of 31 feature batches built.**
 
-> **v14.12 lands SEVEN feature batches in one pass** — all green, one production build (exit 0):
-> - **Batch 18 Feasibility** (`/feasibility`) — development appraisal: profit-on-cost, margin,
->   residual land value, scenario knobs. Engine `src/lib/feasibility/appraisal.ts`.
-> - **Batch 3 Statutory** (`/statutory`) — the statutory calendar (GST/TDS/RERA/PF-ESI/ROC).
-> - **Batch 6 Procurement** (`/procurement`) — goods-received with a three-way match engine
->   (`src/lib/procurement/three-way.ts`) flagging over-billing and short receipts.
-> - **Batch 22 Governance** (`/governance`) — risk register scored likelihood×impact
->   (`src/lib/governance/risk.ts`), worst-first.
-> - **Batch 25 Security ops** (`/security-ops`) — the security incident register.
-> - **Batch 29 Institutional memory** (`/knowledge`) — the decision log.
-> - **Batch 23 Environment & ESG** (`/esg`) — EC condition compliance.
+> **v14.13 lands SIX more batches** (all green, production build exit 0), on the generic
+> `RegisterScreen` pattern:
+> - **Batch 28 Buyer variations** (`/variations`) — raised → costed → approved → billed.
+> - **Batch 15 People/expenses** (`/expenses`) — expense claims (full payroll deferred: buy, per plan).
+> - **Batch 19 Association** (`/association`) — CAM maintenance billing per unit.
+> - **Batch 17 Drawings** (`/transmittals`) — the drawing-transmittal record (who was told what, when).
+> - **Batch 21 Marketing** (`/walk-ins`) — walk-in & site-visit capture.
+> - **Batch 20 Commercial leasing** (`/leasing`) — the rent roll.
 >
-> These share a new generic **`RegisterScreen`** (`src/components/common/register-screen.tsx`) —
-> a config-driven list+add screen, Batch 1's design-system principle applied to whole screens,
-> with each batch's typed server action passed in. Three pure engines (feasibility, three-way,
-> risk) are unit-tested. 14 new tables (`MIGRATION_v14.12_all.sql`) or the repair button.
-> Hard check: 0 type errors, 263 tests, all verifier checks (105 pages, 163 models), init SQL
-> idempotent on a fresh Postgres (791 statements), full production build of all 7 screens.
+> **Feature plan is now 22/31 built.** Remaining 9, and why each is not a quick add:
+> **8 Communications** & **11 Integrations** — gated on the Meta appeal / partner API plans;
+> **27 Site telemetry** — needs hardware (trackers, sensors, drone); **9 AI depth**, **10 Reporting
+> builder**, **26 Vendor portal**, **30 Extensibility (custom objects)**, **31 Language (i18n)** — each
+> a large, focused build (AI wiring, a query builder, vendor-facing auth, a runtime object system,
+> full localisation); **12 Platform quality** — largely already present (tests, observability, backups).
+> These need dedicated effort, not a rushed pass.
+>
+> New models this pass: VariationOrder, ExpenseClaim, MaintenanceCharge, DrawingTransmittal, WalkIn,
+> CommercialTenancy (`MIGRATION_v14.13_all.sql`, 6 tables). Hard check: 0 type errors, 263 tests,
+> all verifier checks (111 pages, 169 models), init SQL idempotent on fresh Postgres (803 stmts),
+> full production build.
 >
 > Secondary models created but not yet screened (registered in init SQL, safe): ComplianceDocExpiry,
 > ContractRecord, InsurancePolicy, AccessReview, Sop, LessonLearned, WasteManifest.
@@ -134,8 +137,8 @@ Not a product, not being commercialised — a system the company runs on.
 
 | Metric | Count |
 |---|---|
-| Database tables | 163 |
-| Screens (app pages) | 105 |
+| Database tables | 169 |
+| Screens (app pages) | 111 |
 | Server services | 45 |
 | Server action files | 71 |
 | React components | 163 |
