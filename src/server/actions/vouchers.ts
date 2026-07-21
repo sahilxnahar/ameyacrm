@@ -86,6 +86,16 @@ export async function createVoucher(input: unknown): Promise<VoucherResult> {
       },
     });
 
+    // Post it to the ledger.
+    //
+    // Deliberately after the voucher is safely saved, and deliberately unable
+    // to fail the whole action: if the chart of accounts has not been set up
+    // yet, recording a payment must still work. The voucher is the record of
+    // fact; the ledger entry is a consequence of it, and an unposted voucher
+    // can be posted later. Losing the payment because the books were not ready
+    // would be the worse of the two failures by a wide margin.
+    await postVoucherToLedger(v, ctx.user.id);
+
     await writeAudit({
       actorId: ctx.user.id, action: 'CREATE', entityType: 'Invoice', entityId: v.id,
       summary: `${meta.label} ${number} — ${d.partyName} — Rs ${amount.toLocaleString('en-IN')}`,
@@ -222,4 +232,44 @@ export async function catchUpSummaries(): Promise<{ summarised: number; indexed:
     summary: `Catch-up summaries: ${r.summarised} files`,
   });
   return { summarised: r.summarised, indexed: r.indexed, remaining: r.remaining, message: r.message };
+}
+
+/**
+ * Turn a saved voucher into a ledger entry.
+ *
+ * Never throws. Every failure is swallowed and reported through the unposted
+ * count on the ledger screen instead, so that a problem with the books can
+ * never stop somebody recording that money moved.
+ */
+async function postVoucherToLedger(
+  v: { id: string; kind: string; amount: unknown; gstAmount: unknown; mode: string; partyName: string; projectId: string | null; voucherDate: Date; number: string },
+  actorId: string,
+): Promise<void> {
+  try {
+    const { voucherLines } = await import('@/lib/ledger/posting-rules');
+    const { post } = await import('@/server/services/ledger-service');
+
+    const rule = voucherLines({
+      kind: v.kind,
+      amount: Number(v.amount),
+      gstAmount: v.gstAmount === null || v.gstAmount === undefined ? null : Number(v.gstAmount),
+      mode: v.mode,
+      projectId: v.projectId,
+      partyName: v.partyName,
+    });
+    if ('error' in rule) return;
+
+    await post({
+      entryDate: v.voucherDate,
+      narration: `${v.number} — ${rule.narration}`,
+      lines: rule.lines,
+      sourceType: 'Voucher',
+      sourceId: v.id,
+      projectId: v.projectId,
+      createdById: actorId,
+      once: true,
+    });
+  } catch {
+    /* the voucher is saved; the ledger can catch up */
+  }
 }

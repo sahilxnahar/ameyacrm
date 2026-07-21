@@ -18,10 +18,15 @@ const REQUIRED: Array<[string, string]> = [
   ['User', 'activeProjectId'],
   ['TrustedDevice', 'lastSeenAt'],
   ['MailThreadMessage', 'vendorId'],
+  ['MessageTemplate', 'departmentId'],
 ];
 const REQUIRED_TABLES = [
   'Voucher', 'MessageTemplate', 'IntegrationConnection',
   'UserOnboarding', 'MarketingAudit', 'WhatsappSession',
+  // Batch 13 — land, title and approvals
+  'LandParcel', 'ApprovalSanction', 'LitigationMatter',
+  // Batch 4 — cash flow and treasury
+  'BankAccount', 'BankStatementLine', 'LoanFacility',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

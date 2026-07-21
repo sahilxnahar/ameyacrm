@@ -22,6 +22,7 @@ export default async function TeamPage() {
         departments={departments}
         gaps={gaps}
         canEdit={can(ctx.permissions, 'admin.user.manage')}
+        canChangeRoles={ctx.user.role === 'SUPER_ADMIN'}
         meId={ctx.user.id}
       />
     </div>

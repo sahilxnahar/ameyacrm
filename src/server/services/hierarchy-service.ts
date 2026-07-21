@@ -13,6 +13,7 @@ export interface OrgPerson {
   departmentName: string | null;
   isDeptHead: boolean;
   reportCount: number;
+  extraDepartmentIds: string[];
 }
 
 export interface OrgDivision {
@@ -42,6 +43,7 @@ export async function getOrgChart(): Promise<{
         id: true, name: true, email: true, role: true, designation: true, status: true,
         managerId: true, departmentId: true,
         department: { select: { name: true } },
+        extraDepartments: { select: { departmentId: true } },
       },
     }),
     prisma.department.findMany({
@@ -65,11 +67,15 @@ export async function getOrgChart(): Promise<{
     departmentName: u.department?.name ?? null,
     isDeptHead: heads.has(u.id),
     reportCount: reportCounts.get(u.id) ?? 0,
+    extraDepartmentIds: u.extraDepartments.map((e) => e.departmentId),
   }));
 
   const departments: OrgDivision[] = depts.map((d) => ({
     id: d.id, name: d.name, color: d.color, headId: d.headId, parentId: d.parentId,
-    memberIds: people.filter((p) => p.departmentId === d.id).map((p) => p.id),
+    // Anyone whose main department this is, or who has been added to it.
+    memberIds: people
+      .filter((p) => p.departmentId === d.id || p.extraDepartmentIds.includes(d.id))
+      .map((p) => p.id),
   }));
 
   return {

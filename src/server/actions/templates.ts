@@ -29,6 +29,7 @@ const schema = z.object({
   footer: z.string().max(300).optional().or(z.literal('')),
   buttons: z.array(buttonSchema).max(3).optional(),
   description: z.string().max(500).optional().or(z.literal('')),
+  departmentId: z.string().optional().nullable().or(z.literal('')),
 });
 
 /** Create or update a template. Validation runs server-side too — the browser is not the gate. */
@@ -58,6 +59,7 @@ export async function saveTemplate(input: unknown): Promise<TemplateResult> {
       body: d.body, footer: d.footer || null,
       buttons: d.buttons?.length ? (d.buttons as unknown as object) : undefined,
       description: d.description || null,
+      departmentId: d.departmentId || null,
     };
 
     let id: string;

@@ -87,6 +87,14 @@ export const PERMISSIONS = {
   'architecture.view': 'View drawings, RFIs & issues',
   'architecture.manage': 'Manage drawings, RFIs, consultants & issues',
 
+  // Land, title & approvals (batch 13)
+  'land.view': 'View land parcels, title chains, approvals & litigation',
+  'land.manage': 'Manage parcels, title documents, approvals, liaison & litigation',
+
+  // Cash flow & treasury (batch 4)
+  'treasury.view': 'View bank position, reconciliation, cash forecast & loans',
+  'treasury.manage': 'Manage bank accounts, import statements, reconcile & record loans',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

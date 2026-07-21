@@ -1,0 +1,609 @@
+# Ameya Heights CRM — complete handover
+
+**Written 21 July 2026. Build v14.3 (batches 1, 2, 13 and 4 of 31 complete).**
+
+> **v14.3 session note (21 July 2026).** Two more batches were built to the full
+> quality bar — every one of the four checks green, and the entire init SQL
+> applied to a throwaway Postgres twice to prove it creates the schema and is
+> idempotent:
+>
+> - **Batch 13 — Land, title and approvals.** Land parcels, a title chain with
+>   automatic gap detection, JDAs, revenue/municipal records, an approvals &
+>   sanctions register with overdue/expiry health, liaison logs, a litigation
+>   register and power-of-attorney. Screen at `/land`. Pure engines in
+>   `src/lib/land/` (`title-chain.ts`, `approvals.ts`).
+> - **Batch 4 — Cash flow & treasury.** Multi-bank position, bank-statement CSV
+>   import, automatic reconciliation against voucher UTRs (surfaced for a human,
+>   never booked silently — and it writes the UTR back onto a voucher that lacked
+>   one), a company-wide 12-week rolling forecast, and loan tracking. Screen at
+>   `/treasury`. Pure engines in `src/lib/treasury/` (`reconcile.ts`,
+>   `forecast.ts`).
+>
+> Both batches were then put through an **adversarial review** which found five
+> issues (a CSV column-name collision that dropped every credit line, a forecast
+> that mixed company-wide flows with a project-scoped opening, a per-account
+> reconciliation exclusion that could match one payment twice, and two minor
+> ones). **All five are fixed and locked with regression tests.** See §15.
+>
+> The combined migration is `MIGRATION_v14.3_all.sql` (idempotent); the in-app
+> repair button applies the same DDL through the app's own connection.
+
+> **Read this first if you are a new Claude session.** This file is the whole
+> context. It exists so Sahil never has to re-explain the project. Everything
+> below is verified against the code as it stands, not recalled from memory.
+>
+> **Working rules that are not negotiable are in section 2. Read those before
+> writing any code.**
+
+---
+
+## 1. What this is
+
+An internal CRM/ERP for **Ameya Heights LLP**, a Bangalore real-estate developer.
+Not a product, not being commercialised — a system the company runs on.
+
+| | |
+|---|---|
+| **Live at** | `crm.ameyaheights.com` |
+| **Hosted on** | Vercel (Hobby plan) |
+| **Database** | Neon Postgres |
+| **Owner** | Sangvi Sahil Nahar, founder |
+| **Company email** | `hi@ameyaheights.com` · website `www.ameyaheights.com` |
+| **Projects** | **Four94** (Bangalore) and **Salavakkam** (Tamil Nadu) |
+| **Legal entity** | Ameya Heights LLP · GSTIN `29ACOFA6794K1ZG` |
+| **Tagline** | Building Spaces. Shaping Legacies. |
+| **RERA** | Registration in progress — `brand.company.reraRegistered` is `false`. Keep it false until told otherwise. |
+
+### Current size
+
+| Metric | Count |
+|---|---|
+| Database tables | 132 |
+| Screens (app pages) | 92 |
+| Server services | 41 |
+| Server action files | 67 |
+| React components | 150 |
+| Test files / tests | 17 / 195 |
+| Verifier checks | 18 |
+| Type errors | 0 |
+
+_(The page count reported by `verify.py` — 92 — counts route-group-stripped
+paths and differs slightly from a raw `page.tsx` count; both moved up together.)_
+
+---
+
+## 2. Standing rules — do not violate these
+
+These came from Sahil directly, some repeatedly. Breaking one wastes his time
+and money.
+
+1. **No Google Cloud Console.** Verbatim: *"I have a lot of issues with billing."*
+   This rules out Gemini via GCP, Google Ads API, Drive API via service account.
+   Everything Google is done through **Apps Script** instead (see §7).
+2. **No online payment gateways.** Verbatim: *"they take a fee for every payment…
+   I want to do it through my manual UTR."* All payments are recorded manually
+   with a UTR number. Never propose Razorpay, Stripe, Cashfree or similar.
+3. **Fill everything in.** Verbatim: *"Henceforth, please remember that you fill
+   everything in. I'm just gonna copy and I'm gonna paste it."* Never hand him a
+   template with blanks. Generate the finished artefact.
+4. **Password policy: minimum 8 characters, no complexity rules.** He removed
+   complexity deliberately. A test (`tests/password.test.ts`) guards this — if it
+   fails, the policy was re-added by mistake, not the other way round.
+5. **Generic sender addresses**, never personal ones.
+6. **Secrets never reach GitHub.** The verifier fails the build if it finds any.
+   Deliverables always ship as two folders: one for GitHub, one private.
+7. **He is not a developer.** Explain in plain language. Give step-by-step
+   instructions with the values already filled in.
+
+---
+
+## 3. Where the code is and how it is checked
+
+```
+scripts/verify.py          18 structural checks. Run before every delivery.
+npx tsc --noEmit           Must be 0. Type errors FAIL the build (see below).
+npx vitest run             195 tests, all must pass.
+npx prisma validate        Schema must be valid.
+```
+
+**`next.config.mjs` has `typescript: { ignoreBuildErrors: false }`.** It was `true`
+for a year and hid **236 type errors**, four of which were live runtime bugs.
+**Never set it back to true.**
+
+### The verifier (`scripts/verify.py`)
+
+Each check exists because that exact bug shipped once. Every one was proven by
+deliberately reintroducing the bug and watching it fail. Notable checks:
+
+- every permission key referenced actually exists
+- no secrets in tracked files
+- only async exports in `'use server'` files
+- client components never import `server-only` modules
+- every Prisma model exists in the init SQL (so the repair button can create it)
+- `body` must not have `overflow-x: hidden` — it breaks the sticky top bar
+- SQL is split with `splitSql()`, never a regex
+- posting rules name real, non-heading ledger accounts
+- crons legal on Vercel Hobby (one per day maximum)
+
+---
+
+## 4. The database, and the one recurring disaster
+
+### How Prisma is configured
+
+- `DATABASE_URL` — pooled (`-pooler` host), gets `pgbouncer=true&connection_limit=1`
+  appended automatically by `src/lib/db/prisma.ts`
+- `DATABASE_URL_UNPOOLED` — direct, used for DDL
+
+### The migration problem — read this, it has cost days
+
+Sahil deploys code but the database falls behind. This produces *every* symptom
+he reports: "Tasks says try again later", "can't log out", "hanging", "glitches
+everywhere". The fix is always the same: **the database is behind the code.**
+
+What is in place to handle it:
+
+1. `src/server/services/schema-check-service.ts` — a drift detector with a list
+   of required tables and columns.
+2. A **red banner** at the top of every screen when drift is detected.
+3. A **"Fix it now" button** (`src/components/layout/repair-button.tsx`) that runs
+   the migration **through the app's own connection**, so it physically cannot hit
+   the wrong Neon branch. That was the root cause of "I ran the SQL, it's not
+   really happening" — he had a separate Development and Production `DATABASE_URL`
+   in Vercel and was running SQL against one while the app used the other.
+4. `PageLoadError` component — names the missing column instead of showing
+   "Something went wrong".
+
+**When adding any model or column, you MUST append the SQL to
+`src/server/services/init-schema-sql.ts`** (base64, `INIT_SCHEMA_SQL_B64`) and add
+it to `schema-check-service.ts`. The verifier fails if you forget the first.
+
+---
+
+## 5. Every environment variable
+
+Set in **Vercel → Settings → Environment Variables**. Values are NOT in this file
+by design — this document ships inside a zip that goes to GitHub.
+
+### Required — the app will not start without these
+
+| Variable | What it is | Where to get it |
+|---|---|---|
+| `DATABASE_URL` | Neon **pooled** connection string (host contains `-pooler`) | Neon dashboard → Connection string → Pooled |
+| `DATABASE_URL_UNPOOLED` | Neon **direct** connection string | Neon dashboard → Connection string → Direct |
+| `SESSION_SECRET` | Signs session cookies and MFA tickets | Generate: `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | AES-256-GCM key for TOTP secrets, bank details | Generate: `openssl rand -hex 32` |
+
+### AI — currently working via OpenRouter
+
+| Variable | What it is | Notes |
+|---|---|---|
+| `AI_BASE_URL` | `https://openrouter.ai/api/v1` | Any OpenAI-compatible endpoint works |
+| `AI_API_KEY` | OpenRouter key | openrouter.ai → Keys |
+| `AI_API_KEYS` | Extra keys, **comma-separated** | ⚠️ Keys from the *same* OpenRouter account share one credit balance and add no runway. Only keys from **separate accounts** help. |
+| `AI_MODEL` | `google/gemini-2.5-flash` | Verified working |
+| `AI_FALLBACK_BASE_URL` | `https://api.groq.com/openai/v1` | Used first when set |
+| `AI_FALLBACK_API_KEY` | Groq key | console.groq.com |
+| `AI_FALLBACK_MODEL` | `llama-3.3-70b-versatile` | Groq is text-only, no file reading |
+| `AI_EMBED_MODEL` | Embedding model | ⚠️ **OpenRouter has no `/embeddings` endpoint.** Verified twice. |
+| `GEMINI_API_KEY` | Native Gemini | ❌ **Dead.** See §11. |
+
+### Email
+
+| Variable | Notes |
+|---|---|
+| `EMAIL_PROVIDER` | `console` \| `resend` \| `smtp` \| `ses` |
+| `EMAIL_FROM` | Generic address only |
+| `RESEND_API_KEY` | If using Resend |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_SECURE` | If using SMTP. The Gmail app password goes in `SMTP_PASS`. |
+
+### Google Apps Script connector (no Cloud Console)
+
+| Variable | Notes |
+|---|---|
+| `GAS_WEBAPP_URL` | The Apps Script deployment URL |
+| `GAS_SECRET` | Shared secret, must match `Code.gs` |
+| `INGEST_SECRET` | Guards the document ingest endpoint |
+| `GOOGLE_SHEETS_ID` / `GOOGLE_DRIVE_FOLDER_ID` | IDs from the URLs |
+
+### WhatsApp (blocked — see §11)
+
+`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`,
+`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_WEBHOOK_TOKEN`, `WHATSAPP_WEBHOOK_URL`,
+`META_APP_SECRET`
+
+### Other
+
+| Variable | Notes |
+|---|---|
+| `CRON_SECRET` | Guards `/api/cron/*` |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob, for uploads over the 4.5 MB limit |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web push |
+| `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `SESSION_TTL_HOURS`, `SESSION_IDLE_TIMEOUT_MINUTES`, `PASSWORD_EXPIRY_DAYS` | Security tuning |
+
+### ⚠️ Delete these from Vercel — outstanding task
+
+`SETUP_PASSWORD`, `SETUP_USERNAME`, `SETUP_EMAIL`, `SETUP_SECRET` — used once
+during first-run setup, now a standing risk.
+
+---
+
+## 6. Brand and design system
+
+Single source of truth: **`src/config/brand.ts`**, mirrored as CSS variables in
+`src/app/globals.css`, consumed by `tailwind.config.ts`. Change colours in one
+place only.
+
+### Palette (from the official Ameya Heights Brand Kit — nothing invented)
+
+| Name | Hex | Use |
+|---|---|---|
+| Charcoal | `#100F0D` | Dark background |
+| Ink | `#16140F` | Deep text |
+| **Brass** | **`#A07D34`** | **Primary** — buttons, links, active states |
+| Brass deep | `#8C6E2C` | Hover |
+| Brass light | `#C2A05B` | Accent, warning |
+| Sand | `#ECE7DF` | Secondary surfaces |
+| Gold dark / light | `#9A7720` / `#C9A95D` | Emblem gradients |
+| Success | `#2E7D32` | |
+| Danger (Ruby) | `#9B111E` | |
+| Info | `#1B2A4A` | |
+
+Light mode background is `40 30% 98%` (warm off-white), foreground `40 12% 8%`.
+Dark mode inverts to charcoal/sand. Radius `0.625rem`.
+
+### Fonts
+
+| Role | Font |
+|---|---|
+| Display / headings | **Cormorant Garamond** (serif) |
+| Body / UI | **Inter** |
+| Accent (sparing) | **Unbounded** |
+
+### CSS rules learned the hard way
+
+- `body { overflow-x: clip }` — **never `hidden`**. `hidden` makes body a scroll
+  container and silently disables `position: sticky`, which broke the top bar.
+  The verifier now refuses `hidden`.
+- `.flex > *, .grid > * { min-width: 0 }` — flex children default to
+  `min-width: auto` and refuse to shrink, which caused all the "text going
+  outside the box" reports and made `truncate` do nothing.
+- `touch-action: manipulation` on interactive elements — removes the 300ms tap delay.
+- The Kanban board is **read-only on `(pointer: coarse)`** — a 6px drag threshold
+  turned every tap and scroll into a drag on touch devices.
+
+---
+
+## 7. Architecture and stack
+
+| Layer | Choice | Version |
+|---|---|---|
+| Framework | Next.js App Router | 15.1.11 |
+| UI | React | 19.0.0 |
+| Language | TypeScript | 5.7.3 |
+| Styling | Tailwind | 3.4.17 |
+| ORM | Prisma | 6.3.1 |
+| Validation | Zod | 3.24.1 |
+| Tests | Vitest | 2.1.8 |
+| Auth | Custom — sessions, TOTP, WebAuthn passkeys, device approval | |
+| Files | Vercel Blob (client upload, bypasses the 4.5 MB serverless limit) | |
+| PDFs | pdf-lib, custom letterhead | |
+
+### Key patterns
+
+- **Server actions** in `src/server/actions/*.ts` — all start `'use server'`,
+  all use `ensure(permission)` then `toActionError(e)`.
+- **Services** in `src/server/services/*.ts` — `import 'server-only'`, hold the logic.
+- **Pure logic** in `src/lib/**` — no database, no env, so it can be unit tested.
+  This split is why the ledger and budget engines have real test coverage.
+- **Every outbound fetch is bounded** via `src/lib/utils/fetch-timeout.ts` (25s).
+  42 unbounded calls were fixed at once.
+- **Permissions**: `src/lib/rbac/permissions.ts`. Keys look like
+  `finance.ledger.manage`. The verifier checks every referenced key exists —
+  added after `admin.settings.manage` (real key: `admin.setting.manage`) locked
+  us out of a page.
+
+---
+
+## 8. Security posture
+
+| Feature | State |
+|---|---|
+| Passwords | bcrypt, min 8 chars, breach check, history |
+| 2FA | TOTP (`otplib`) + single-use backup codes |
+| **Passkeys** | `@simplewebauthn` v13, full register + login. Challenge in a signed 5-min cookie, no table. |
+| Emailed sign-in code | Alternative at the 2FA step, 10-min single use. Reuses `DeviceApproval` — deliberately no new table |
+| Device approval | Unknown device needs an emailed code |
+| Country restriction | Configurable allow-list |
+| Rate limiting | In the database, not memory — serverless instances each have their own memory |
+| Sessions | Revocable, listed, idle timeout |
+| Audit log | Every consequential action |
+| Encryption | AES-256-GCM for TOTP secrets |
+| Finance lock | Expenses/payments restricted to finance + named super admins |
+| Role changes | **Super admin only.** Guardrails in `src/lib/auth/role-change.ts`, 7 tests |
+
+**Passkey design note:** a passkey sign-in **skips 2FA deliberately**. It already
+proves both device and person, and cannot be phished. Demanding a code on top
+adds friction without safety.
+
+---
+
+## 9. Everything built, batch by batch
+
+### Before the batch programme (v1 → v13.2)
+
+Leads · bookings · units · payment milestones · vendors · invoices (with GST
+fields) · purchase orders · vendor bills · material requests · approvals · tasks
+with recurrence · calendar · documents with OCR and AI search · automations ·
+email sequences · WhatsApp scaffolding · marketing audits · floor plans ·
+attendance and duty rosters · snag tickets · channel partners · leases and
+tenants · drawings, revisions and RFIs · incentives · vouchers with UTR ·
+receivables · cash book · admin console · custom fields · saved views · API
+tokens · SSO scaffolding · DPDP data requests.
+
+**v13.0** — passkeys, emailed sign-in code, PageLoadError, self-repair button.
+**v13.1** — the `splitSql` fix (see §10).
+**v13.2** — multi-department membership, super-admin role changes,
+department-scoped templates, 61 automation templates, the automation explainer,
+and the **AI automation builder**.
+
+### Batch 1 — The ledger (v14.0) ✅
+
+- `Account` / `JournalEntry` / `JournalLine` models
+- **90-account chart of accounts** in `src/config/chart-of-accounts.ts`, seeded for
+  a real-estate LLP: BBMP, BESCOM, RERA fees, cement, steel, contractors, GST both
+  ways, and a **RERA designated account** ready for batch 16
+- Posting engine in `src/lib/ledger/entry.ts` — **pure, works in paise**
+- Posting rules in `src/lib/ledger/posting-rules.ts`
+- Trial balance, P&L, balance sheet, party ledgers
+- `/ledger` screen with a balance check at the top
+- Vouchers post themselves automatically
+
+**Three decisions to preserve:**
+1. **Paise, never floats.** `0.1 + 0.2 ≠ 0.3` in binary floating point. A ledger
+   built on floats drifts by paise, then rupees, then nobody trusts it.
+2. **Posted entries are never edited, only reversed.** An editable ledger cannot
+   be audited.
+3. **Receipts book as advances (`2120`), not income.** Treating a receipt as
+   income on the day it arrives is the commonest way a developer overstates profit.
+
+### Batch 2 — Budgets and cost codes (v14.1) ✅
+
+- `CostCode` / `Budget` / `BudgetLine` / `BudgetVariance` models
+- **48 cost codes** in `src/config/cost-codes.ts` — deliberately shallow, three
+  levels maximum. Every leaf carries an `accountCode` so budget-vs-actual reads
+  the ledger instead of a mapping spreadsheet
+- Variance engine in `src/lib/budget/variance.ts` — pure
+- Budgets **version rather than overwrite**
+- `/budgets` screen
+
+**Three decisions to preserve:**
+1. **Committed, incurred and paid stay three separate numbers.** By the time a
+   cost is *paid* it was decided months ago. Committed is the only one you could
+   still have acted on.
+2. **Commitment control warns, does not block.** A hard block on a construction
+   site produces order-splitting or mis-coding, both worse than an overspend.
+3. **Never guess a cost code.** POs and bills do not carry one until batch 6.
+   Unattributed spend shows as "Spent against no budgeted head". A guessed code
+   looks authoritative and silently moves money between heads.
+
+### Batch 13 — Land, title and approvals (v14.2) ✅
+
+- `LandParcel` / `TitleDocument` / `JointDevelopmentAgreement` / `RevenueRecord`
+  / `ApprovalSanction` / `LiaisonLog` / `LitigationMatter` / `PowerOfAttorney`
+- Title-chain gap detection in `src/lib/land/title-chain.ts` — **pure**. A break
+  where one link's buyer is not the next link's seller shows as a gap.
+- Approval health (overdue / expiring / expired) in `src/lib/land/approvals.ts`
+  — **pure and timezone-safe** (takes `now` as an argument; the IST-sandbox date
+  bug from §10 is designed out).
+- `/land` screen: parcels with title status, approvals with liaison logging,
+  litigation register.
+
+**Three decisions to preserve:**
+1. **A gap in the title chain is shown as a gap.** The whole value is finding it
+   before a buyer's lawyer does. Party names compare case- and space-insensitively.
+2. **`projectId` on a parcel is a plain id, not a relation.** A parcel exists
+   *before* a project — the acquisition pipeline precedes the project record.
+3. **Approval health takes the time as an argument.** No function here builds its
+   own `new Date()`; that is exactly the bug that made a test disagree with prod.
+
+### Batch 4 — Cash flow and treasury (v14.3) ✅
+
+- `BankAccount` / `BankStatementImport` / `BankStatementLine` / `LoanFacility`
+  / `LoanEvent`
+- Reconciliation in `src/lib/treasury/reconcile.ts` — **pure, integer paise**.
+  Two passes: exact UTR first (certain), then amount + direction + date
+  proximity. Also `parseStatementCsv` — forgiving of Indian bank export formats
+  and Indian-formatted numbers, and it *reports* skipped rows rather than
+  dropping them.
+- 12-week rolling forecast in `src/lib/treasury/forecast.ts` — **pure, Monday-
+  based weeks, timezone-safe**. Overdue flows fold into week 0 rather than
+  vanishing; the lowest closing point is the number that decides a payment run.
+- `/treasury` screen: bank position, reconcile (confirm/ignore each suggested
+  match), forecast, loans.
+
+**Three decisions to preserve:**
+1. **A statement is a file, not an API.** No payment gateway (rule #2). Import is
+   CSV; the UTR already on every voucher does the matching.
+2. **Nothing is booked silently.** Suggested matches are surfaced for a person to
+   confirm. On confirm, if the voucher had no UTR, the statement's reference is
+   written back onto it — closing the loop batch 4 item 22 asks for.
+3. **The forecast is company-wide, and says so.** Vendor bills carry no project
+   link, so a "project forecast" would set one project's demands against every
+   project's bills. Until bills carry a cost centre, the honest forecast is the
+   consolidated one.
+
+---
+
+## 10. Every bug found, and what it taught
+
+Ordered by how much each one mattered.
+
+| # | Bug | Why it mattered | Fix / guard |
+|---|---|---|---|
+| 1 | **`ignoreBuildErrors: true`** hid 236 type errors for a year | 4 were live bugs: a booking dropdown rendering `undefined` for every option; the crash reporter itself crashing; undefined variables | Turned off permanently, verifier check |
+| 2 | **`splitSql`** — migration split on `;\n` tore 14 `DO $$ … $$` blocks apart | "591 applied, 32 failed" — every conditional constraint failed. The repair *looked* like it worked | Proper splitter respecting dollar quotes, strings, comments. 2 tests, one reproducing the old bug |
+| 3 | **`askDocuments` had no permission filtering** | Would have leaked finance documents to anyone | `requiredPermission`/`folderId` on `DocChunk`, filtered in the query |
+| 4 | **Three live secrets committed** in `docs/google-connector/Code.gs` | Real credentials in a repo | Placeholders + separate filled copy + verifier secret scan |
+| 5 | **`toPaise('abc')` returned 0** (and earlier, `toNumber('abc')`) | Would post a payment of nothing, silently. **The same bug twice** | Regex validates the cleaned string before `Number()` |
+| 6 | **Sign out nested inside a Radix menu item** | Menu unmounted before the form submitted — roughly one tap in two did nothing | Menu item runs the action directly |
+| 7 | **Sign out wrote audit before clearing the cookie** | Audit failure aborted the whole action, session survived | Destroy session first, everything after is `.catch()` |
+| 8 | **`body { overflow-x: hidden }`** | Silently disabled `position: sticky` — the top bar came unstuck | Changed to `clip`; verifier refuses `hidden` |
+| 9 | **Flex children `min-width: auto`** | All the "text outside the box" reports; made `truncate` a no-op | `.flex > *, .grid > * { min-width: 0 }` |
+| 10 | **3 automations tested fields the engine never received** (`budgetMax`, `lostReason`, `isNri`) | They had **never once fired**. No error — they just never matched | Widened the payload; field list now *generated* from the payload |
+| 11 | **I overwrote `onboarding.ts`**, deleting `completeStep` and `dismissOnboarding` | Today checklist broke silently | Restored; a lesson about appending vs overwriting |
+| 12 | **`rupeesInWords` produced "Rupees undefined Hundred…"** above ₹1,000 crore | Wrong on printed receipts | Rewrote with recursion, verified on 4,000 random amounts |
+| 13 | **Invented Prisma fields** — `Lead.city` (real: `locality`), `Booking.bookingNumber` (real: `reference`) | Runtime crashes | Always grep the schema first |
+| 14 | **`admin.settings.manage`** — not a real key (`admin.setting.manage`) | Locked us out of the AI Health page | Verifier checks every permission key |
+| 15 | **Kanban 6px drag threshold** | Every tap and scroll became a drag on phones | Read-only on `(pointer: coarse)` |
+| 16 | **42 unbounded fetches** | A hung third party hangs the request | `fetchWithTimeout`, 25s |
+| 17 | **Client component imported a `server-only` module** | Build failure | Shared types moved to `src/config/` |
+| 18 | **`toAmount` rejected string amounts**, then broke on `"Rs. 3,50,000.00"` | Groq returns strings | Regex `[0-9][0-9,]*(?:\.[0-9]+)?` |
+| 19 | **Duplicate automation keys** (3) and a wrong field (`budget` vs `budgetMax`) — mine | Caught by the test I wrote for someone else's bug | — |
+| 20 | **`ASSIGNABLE_ROLES` const exported from a `'use server'` file** | Build error | Moved to `src/config/roles.ts` |
+
+### My own mistakes worth remembering
+
+- **I was wrong three times about the Gemini 403** before the real cause emerged.
+  My diagnostics were *hiding* Google's actual message behind a generic string.
+  Fixed to print provider errors verbatim.
+- **I claimed OpenRouter had embeddings twice.** It does not.
+- **Three model names went stale** (`text-embedding-004`,
+  `google/gemini-2.0-flash-001`, `anthropic/claude-3.5-sonnet`). Always verify
+  against the live model list.
+- **A false alarm I caused**: a regression test compared dates with
+  `toISOString()` in an IST sandbox. The code was right; the test was wrong.
+
+---
+
+## 11. Blocked on other people — not fixable in code
+
+| Blocker | Detail |
+|---|---|
+| **Gemini API** | 403 PERMISSION_DENIED. The key came from the personal account `nevi2804@gmail.com`, which Google has denied. Not a Workspace policy — his screen recording disproved that. **Unfixable in code.** AI runs on OpenRouter instead. |
+| **Meta / WhatsApp** | Business account restricted: *"Business account not allowed to advertise."* This blocks WhatsApp Cloud API, Instagram connection and Meta lead ads. Needs an appeal. All WhatsApp code is written and waiting. |
+| **Google Ads** | Requires a Cloud Console project — ruled out by rule #1. Meta does not. If only one, do Meta. |
+
+---
+
+## 12. Outstanding tasks
+
+- [ ] **Delete `SETUP_PASSWORD`, `SETUP_USERNAME`, `SETUP_EMAIL`, `SETUP_SECRET`** from Vercel
+- [ ] **Fix the IFSC** — `KKBK00008556` is 12 characters; every Indian IFSC is 11. It prints on invoices and receipts
+- [ ] Confirm `DATABASE_URL` is the **pooled** one (host contains `-pooler`)
+- [ ] Import real units, bookings and payment schedules — he deferred this: *"I'll do the content part towards the end"*
+- [ ] Create the Salavakkam project record
+- [ ] Appeal the Meta business restriction
+
+---
+
+## 13. What we are building next
+
+The full plan is in **`UPGRADE-PLAN-31-BATCHES.md`**, shipped alongside this file.
+**242 items across 31 batches**, roughly three to six months of build time.
+
+Batches 1 and 2 are done. The build order (rebuilt each time the list grew):
+
+| Order | Batch | Status |
+|---|---|---|
+| 1 | 24 — Data platform and migration | ⏳ *Highest value in the entire plan; next up* |
+| 2 | **13 — Land, title, approvals** | ✅ **Done (v14.2)** |
+| 3 | **1 — Ledger** | ✅ **Done** |
+| 4 | **2 — Budgets** | ✅ **Done** |
+| 5 | **4 — Cash flow** (bank statement import + reconciliation) | ✅ **Done (v14.3)** |
+| 6 | 5 — Programme and progress | ⏳ |
+| 7 | 14 — Quality and safety | ⏳ |
+| 8 | 16 — Capital, investors, RERA escrow | ⏳ |
+| 9 | 7 — Sales and buyer portal | ⏳ |
+| 10 | 17 — Drawings and coordination | ⏳ |
+| 11 | 28 — Buyer customisation and variations | ⏳ |
+| 12 | 3 — Statutory and tax | ⏳ |
+| 13 | 6 — Procurement | ⏳ |
+| 14 | 26 — Vendor portal | ⏳ |
+| 15 | 21 — Marketing and channel | ⏳ |
+| 16 | 15 — People and payroll | ⏳ |
+| 17 | 10 — Reporting | ⏳ |
+| 18 | 25 — Security operations | ⏳ |
+| 19 | 22 — Governance and control | ⏳ |
+| 20 | 18 — Feasibility and portfolio | ⏳ |
+| 21 | 9 — AI depth | ⏳ |
+| 22 | 29 — Institutional memory | ⏳ |
+| 23 | 12 — Platform quality | ⏳ |
+| 24 | 30 — Extensibility | ⏳ |
+| 25 | 31 — Language and accessibility | ⏳ |
+| 26 | 19 — Association handover | ⏳ |
+| 27 | 27 — Site telemetry | ⏳ *only batch with hardware cost* |
+| 28 | 20 — Commercial leasing | ⏳ |
+| 29 | 23 — Environment and ESG | ⏳ |
+| 30 | 11 — Integrations | ⏳ gated on approvals |
+| 31 | 8 — Communications | ⏳ gated on the Meta appeal |
+
+**Sahil's instruction on process:** build all batches, deliver once at the end,
+one big health check before delivery. He does not want intermediate zips.
+
+**My standing disagreement, recorded honestly:** deploying nothing for 30 batches
+means no known-good fallback. Batches 1 and 2 are independently useful and fully
+tested. I have said this twice; he has chosen otherwise, which is his call.
+
+**What I do anyway:** run `tsc`, `vitest` and `verify.py` continuously while
+building. Batch 1 found the `toPaise` bug immediately, and batches 2, 3, 4 and 16
+all sit on the ledger. Deferring checks would have meant fifteen batches on a
+broken foundation.
+
+---
+
+## 14. How to pick this up as a new session
+
+1. Read §2 (rules) and §10 (bugs). They will save you the most time.
+2. Unzip the source. `npm install`. Set the four required env vars from §5 to
+   dummy values for local checks.
+3. Run all four checks from §3 — expect 0 type errors, 161 tests, all verifier
+   checks passing.
+4. Ask Sahil which batch to build, or continue from §13.
+5. **Before writing schema:** append the SQL to `init-schema-sql.ts` and register
+   the table in `schema-check-service.ts`.
+6. **Before delivering:** run all four checks, bump the version in
+   `src/components/layout/sidebar.tsx`, package **without** `.env`, and present
+   the file.
+
+### How he communicates
+
+Short messages, often screenshots. Screenshots are the most reliable source of
+truth — the `splitSql` bug was found entirely from one showing "591 applied, 32
+failed". When he says *"same issue"*, the previous diagnosis was wrong; do not
+repeat it with more confidence. He values being told plainly when something is
+his environment rather than the code.
+
+---
+
+## 15. v14.3 review findings and fixes (for the record)
+
+Both new batches were put through an adversarial review before delivery, exactly
+because the standing instruction is to ship nothing that could break the system.
+Five issues were found and **all five were fixed and covered with a regression
+test**. Recorded here so the reasoning is not lost.
+
+| # | Severity | Bug | Fix |
+|---|---|---|---|
+| 1 | Major | **CSV column collision.** The statement-import column detector matched by substring, so the two-letter alias `cr` matched the "Des**cr**iption" header and `dr` matched "Ad**dr**ess". On a real SBI-style statement every credit (money-in) line read the description column, found no number, and was silently dropped. | Two-letter aliases now match the whole header exactly; only names ≥ 3 chars match as a substring. Regression test uses a `Date,Description,Address,Debit,Credit` header. |
+| 2 | Major | **Forecast mixed scopes.** A project-scoped forecast used a project-scoped opening balance but company-wide vendor bills (bills carry no project link), producing a confident wrong number on any project view. | The forecast is now explicitly company-wide and labelled as such. `cashForecast` no longer takes a project id. |
+| 3 | Major | **Per-account reconciliation exclusion.** A voucher already matched on account A was still offered when reconciling account B, so one payment could be reconciled twice. | The "already matched" exclusion is now global across all accounts, not per-account. |
+| 4 | Minor | A title link with no parties broke the adjacency walk, hiding a genuine chain break that spanned across it. | The walk now runs over the placeable links only; party-less links are reported separately. Regression test covers a break spanning a party-less middle link. |
+| 5 | Minor | The "12-week low" tile said "no dip" even when the opening balance was itself the (negative) low point. | Now reads "at opening" in that case. |
+
+**What was verified at delivery (v14.3):**
+
+- `npx tsc --noEmit` → **0 errors**
+- `npx vitest run` → **195 tests, all pass** (161 inherited + 34 new)
+- `python scripts/verify.py` → **all checks pass** (92 pages · 132 models)
+- `npx prisma validate` → valid
+- The **entire** `INIT_SCHEMA_SQL_B64`, split with the real `splitSql()`, applied
+  to a fresh Postgres and then applied a **second** time — 0 failures both passes
+  — proving it creates the schema and is idempotent, and `prisma migrate diff`
+  against that database showed the new tables match the schema exactly.
+
+**Still to do (unchanged priority order):** batch 24 (data platform) is next,
+then 5 (programme), 14 (quality & safety), 16 (capital & escrow), and the rest of
+§13. The four completed batches (1, 2, 13, 4) are independently useful and fully
+tested; each new batch continues to follow the two-place schema registration rule
+(`init-schema-sql.ts` **and** `schema-check-service.ts`) from §4.

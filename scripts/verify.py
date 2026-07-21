@@ -141,5 +141,25 @@ for f in glob.glob('src/**/*.ts', recursive=True):
 check('SQL is split with splitSql, not a regex', naive_sql)
 
 
+# ── Posting rules may only name accounts that exist ─────────────────────────
+# A rule pointing at a code that is not in the chart fails at post time, which
+# is to say when somebody is recording a payment — the worst possible moment
+# to discover it.
+rules_src = open('src/lib/ledger/posting-rules.ts', encoding='utf-8').read()
+coa_src = open('src/config/chart-of-accounts.ts', encoding='utf-8').read()
+coa_codes = set(re.findall(r"code: '(\d+)'", coa_src))
+group_codes = set(re.findall(r"code: '(\d+)'[^}]*isGroup: true", coa_src))
+bad_codes = []
+for m in re.finditer(r"accountCode: '(\d+)'|accountCode \|\| '(\d+)'|return mode === 'CASH' \? '(\d+)' : '(\d+)'", rules_src):
+    for code in m.groups():
+        if not code:
+            continue
+        if code not in coa_codes:
+            bad_codes.append(f'posting-rules.ts: account {code} is not in the chart of accounts')
+        elif code in group_codes:
+            bad_codes.append(f'posting-rules.ts: account {code} is a heading and cannot take postings')
+check('posting rules name real accounts', bad_codes)
+
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

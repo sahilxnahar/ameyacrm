@@ -11,6 +11,8 @@ export interface TemplateRow {
   language: string; subject: string | null; header: string | null; body: string; footer: string | null;
   buttons: Array<{ type: 'QUICK_REPLY' | 'URL'; text: string; url?: string }>;
   description: string | null; metaStatus: string | null; metaRejection: string | null; usageCount: number;
+  /** Which department sees this on their own Templates page. */
+  departmentId?: string | null;
 }
 
 const ICON: Record<string, typeof Mail> = { WHATSAPP: MessageSquare, EMAIL: Mail, SMS: Smartphone, LETTER: FileText, AD: Megaphone };
@@ -26,7 +28,13 @@ const BLANK: TemplateRow = {
   metaStatus: null, metaRejection: null, usageCount: 0,
 };
 
-export function TemplateStudio({ templates, whatsappConnected }: { templates: TemplateRow[]; whatsappConnected: boolean }) {
+export function TemplateStudio({
+  templates, departments = [], whatsappConnected,
+}: {
+  templates: TemplateRow[];
+  departments?: Array<{ id: string; name: string }>;
+  whatsappConnected: boolean;
+}) {
   const [rows, setRows] = useState(templates);
   const [draft, setDraft] = useState<TemplateRow | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -145,6 +153,22 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
                 </select>
               </label>
             </div>
+
+            <label className="block">
+              <span className="text-xs font-medium text-muted-foreground">Which department</span>
+              <select
+                value={draft.departmentId ?? ''}
+                onChange={(e) => set('departmentId', e.target.value)}
+                className="focus-ring mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Not set — only administrators will see it</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Everyone in this department sees the template on their own Templates page. Somebody in
+                two departments sees both.
+              </span>
+            </label>
 
             {draft.channel === 'WHATSAPP' && (
               <div className="grid gap-3 sm:grid-cols-2">

@@ -272,7 +272,7 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  floorPlans       FloorPlan[]        @relation("ProjectFloorPlans")
+  floorPlans       FloorPlan[]         @relation("ProjectFloorPlans")
   memberships      ProjectMembership[]
   units            Unit[]
   tasks            Task[]
@@ -290,8 +290,28 @@ model Project {
   drawings  Drawing[]
   rfis      RFI[]
   issues    IssueLog[]
+  budgets   Budget[]
 
   @@index([isActive])
+}
+
+/// Somebody who works with a department without it being their main one.
+///
+/// The main department stays on User.departmentId, because approvals, routing
+/// and every report already depend on there being exactly one. This adds the
+/// others alongside it rather than replacing it, so nothing has to be re-entered
+/// and no existing rule has to guess which department a person "really" is in.
+model DepartmentMember {
+  id           String   @id @default(cuid())
+  userId       String
+  departmentId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([departmentId])
 }
 
 model Department {
@@ -313,6 +333,8 @@ model Department {
   children Department[] @relation("DeptTree")
 
   users            User[]             @relation("UserDepartment")
+  extraMembers     DepartmentMember[]
+  templates        MessageTemplate[]
   tasks            Task[]
   materialRequests MaterialRequest[]
   folderPerms      FolderPermission[]
@@ -345,34 +367,41 @@ model User {
   mustChangePassword Boolean   @default(false)
 
   // Self-signup / access requests
-  emailVerifiedAt  DateTime?
-  verifyToken      String?   @unique
-  verifyExpiresAt  DateTime?
-  signupNote       String?
-  approvedAt       DateTime?
-  approvedById     String?
+  emailVerifiedAt DateTime?
+  verifyToken     String?   @unique
+  verifyExpiresAt DateTime?
+  signupNote      String?
+  approvedAt      DateTime?
+  approvedById    String?
 
-  departmentId String?
-  department   Department? @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  departmentId     String?
+  department       Department?        @relation("UserDepartment", fields: [departmentId], references: [id], onDelete: SetNull)
+  extraDepartments DepartmentMember[]
 
   // Reporting line. Drives who can see whose work (see lib/rbac/scope.ts).
   managerId     String?
   manager       User?   @relation("UserHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
   directReports User[]  @relation("UserHierarchy")
 
-  salesTargets    SalesTarget[]    @relation("UserTargets")
-  incentiveEntries IncentiveEntry[] @relation("UserIncentives")
-  attendance       Attendance[]     @relation("UserAttendance")
-  dutyRoster       DutyRoster[]     @relation("UserRoster")
+  salesTargets     SalesTarget[]       @relation("UserTargets")
+  incentiveEntries IncentiveEntry[]    @relation("UserIncentives")
+  attendance       Attendance[]        @relation("UserAttendance")
+  dutyRoster       DutyRoster[]        @relation("UserRoster")
   socialAccounts   UserSocialAccount[] @relation("UserSocials")
 
-  /** Personal WhatsApp number used for click-to-chat from the CRM. */
+  /**
+   * Personal WhatsApp number used for click-to-chat from the CRM.
+   */
   whatsappNumber String?
 
-  /** Personal sidebar layout: { pinned: string[], order: string[], hidden: string[] } */
+  /**
+   * Personal sidebar layout: { pinned: string[], order: string[], hidden: string[] }
+   */
   navPrefs Json?
 
-  /** The project this person is working on. Null means every project. */
+  /**
+   * The project this person is working on. Null means every project.
+   */
   activeProjectId String?
 
   // Security
@@ -543,14 +572,14 @@ model TrustedDevice {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress  String?
+  country    String?
+  userAgent  String?
+  approvedAt DateTime  @default(now())
+  revokedAt  DateTime?
 
   @@index([userId])
-  ipAddress   String?
-  country     String?
-  userAgent   String?
-  approvedAt  DateTime  @default(now())
-  revokedAt   DateTime?
 }
 
 model WebAuthnCredential {
@@ -608,8 +637,8 @@ model FileObject {
   size         Int
   checksum     String? // sha256
   ocrText      String? // extracted text for search (OCR-ready)
-  syncState  String   @default("PENDING") // PENDING | DONE | FAILED | SKIPPED
-  syncError  String?
+  syncState    String   @default("PENDING") // PENDING | DONE | FAILED | SKIPPED
+  syncError    String?
   driveUrl     String? // Google Drive copy
   uploadedById String?
   createdAt    DateTime @default(now())
@@ -627,17 +656,17 @@ model FileObject {
 }
 
 model Folder {
-  id          String           @id @default(cuid())
-  name        String
-  parentId    String?
-  projectId   String?
-  visibility  FolderVisibility @default(DEPARTMENT)
+  id            String           @id @default(cuid())
+  name          String
+  parentId      String?
+  projectId     String?
+  visibility    FolderVisibility @default(DEPARTMENT)
   driveFolderId String? // the matching folder in Google Drive
-  path        String           @default("/") // materialized path for fast subtree queries
-  createdById String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
+  path          String           @default("/") // materialized path for fast subtree queries
+  createdById   String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
 
   parent    Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
   children  Folder[] @relation("FolderTree")
@@ -747,13 +776,13 @@ model Task {
 
   // Repeats. The next occurrence is created when this one is completed, rather
   // than generated up front, so a job nobody does cannot pile up fifty copies.
-  repeatEvery  Int? // how many of the unit below
-  repeatUnit   String? // DAY, WEEK, MONTH, YEAR
-  repeatUntil  DateTime?
+  repeatEvery    Int? // how many of the unit below
+  repeatUnit     String? // DAY, WEEK, MONTH, YEAR
+  repeatUntil    DateTime?
   repeatedFromId String? // the task this one was generated from
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
   project    Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -891,37 +920,37 @@ model TaskActivity {
 // ─── Sales, Leads, NRI, Bookings, Inventory ─────────────────────────────────
 
 model Lead {
-  id           String     @id @default(cuid())
-  reference    String     @unique // LEAD-2044
-  name         String
-  email        String?
-  phone        String?
-  source       LeadSource @default(WEBSITE)
-  status       LeadStatus @default(NEW)
-  score        Int        @default(0)
-  temperature  LeadTemperature @default(WARM)
-  budgetMin    Decimal?   @db.Decimal(14, 2)
-  budgetMax    Decimal?   @db.Decimal(14, 2)
-  requirement  String?
-  projectId    String?
-  ownerId      String?
+  id               String          @id @default(cuid())
+  reference        String          @unique // LEAD-2044
+  name             String
+  email            String?
+  phone            String?
+  source           LeadSource      @default(WEBSITE)
+  status           LeadStatus      @default(NEW)
+  score            Int             @default(0)
+  temperature      LeadTemperature @default(WARM)
+  budgetMin        Decimal?        @db.Decimal(14, 2)
+  budgetMax        Decimal?        @db.Decimal(14, 2)
+  requirement      String?
+  projectId        String?
+  ownerId          String?
   // NRI-specific
-  isNri        Boolean    @default(false)
-  country      String?
-  timezone     String?
-  nextFollowUp DateTime?
-  lostReason   String?
-  locality     String? // for the lead map / heat-map
-  latitude     Float?
-  longitude    Float?
-  consentAt    DateTime? // DPDP: when this person agreed to be contacted
-  consentSource String?
+  isNri            Boolean         @default(false)
+  country          String?
+  timezone         String?
+  nextFollowUp     DateTime?
+  lostReason       String?
+  locality         String? // for the lead map / heat-map
+  latitude         Float?
+  longitude        Float?
+  consentAt        DateTime? // DPDP: when this person agreed to be contacted
+  consentSource    String?
   channelPartnerId String? // broker who owns this lead
   cpLockedUntil    DateTime? // commission-protection lock window
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime?
-  customFields Json? // admin-defined custom field values
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deletedAt        DateTime?
+  customFields     Json? // admin-defined custom field values
 
   project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
   owner      User?          @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
@@ -998,7 +1027,7 @@ model Booking {
   forfeitAmount  Decimal?      @db.Decimal(14, 2)
   refundAmount   Decimal?      @db.Decimal(14, 2)
   bookedAt       DateTime      @default(now())
-  customFields Json? // admin-defined custom field values
+  customFields   Json? // admin-defined custom field values
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -1031,13 +1060,13 @@ model PaymentMilestone {
 // ─── Billing ────────────────────────────────────────────────────────────────
 
 model Vendor {
-  id        String   @id @default(cuid())
-  name      String
-  gstin     String?
-  pan       String?
-  email     String?
-  phone     String?
-  address   String?
+  id      String  @id @default(cuid())
+  name    String
+  gstin   String?
+  pan     String?
+  email   String?
+  phone   String?
+  address String?
 
   // Bank details, kept on the vendor so a payment never needs them retyped
   // from a WhatsApp message.
@@ -1738,22 +1767,22 @@ enum AutomationTrigger {
 }
 
 model AutomationRule {
-  id          String            @id @default(cuid())
-  name        String
-  description String?
-  trigger     AutomationTrigger
-  isActive    Boolean           @default(true)
-  conditions  Json? // [{ field, op, value }]
-  matchAll    Boolean           @default(true) // true = AND, false = OR
-  actions     Json // [{ type, params }] — runs when conditions match
-  elseActions Json? // runs when they do not
-  slaMinutes  Int? // escalate if still unresolved after this long
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  trigger      AutomationTrigger
+  isActive     Boolean           @default(true)
+  conditions   Json? // [{ field, op, value }]
+  matchAll     Boolean           @default(true) // true = AND, false = OR
+  actions      Json // [{ type, params }] — runs when conditions match
+  elseActions  Json? // runs when they do not
+  slaMinutes   Int? // escalate if still unresolved after this long
   escalateToId String?
-  runCount    Int               @default(0)
-  lastRunAt   DateTime?
-  createdById String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  runCount     Int               @default(0)
+  lastRunAt    DateTime?
+  createdById  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   runs AutomationRun[]
 
@@ -1782,11 +1811,13 @@ enum ChannelPartnerStatus {
   APPROVED
   SUSPENDED
 }
+
 enum KycStatus {
   PENDING
   VERIFIED
   REJECTED
 }
+
 enum BrokerageStatus {
   PENDING
   INVOICED
@@ -1853,7 +1884,7 @@ model Customer {
   bookingId     String?
   projectId     String?
   isActive      Boolean  @default(true)
-  customFields Json? // admin-defined custom field values
+  customFields  Json? // admin-defined custom field values
   onboardedById String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1918,18 +1949,18 @@ enum SocialChannel {
 }
 
 model SocialActivity {
-  id        String        @id @default(cuid())
-  channel   SocialChannel
-  kind      String        // lead | inquiry | subscriber | comment | mention | dm | follower | review
-  name      String?
-  handle    String?
-  message   String?
-  url       String?
-  leadId    String?
-  summary   String? // one-line AI brief shown in the notification
+  id         String        @id @default(cuid())
+  channel    SocialChannel
+  kind       String // lead | inquiry | subscriber | comment | mention | dm | follower | review
+  name       String?
+  handle     String?
+  message    String?
+  url        String?
+  leadId     String?
+  summary    String? // one-line AI brief shown in the notification
   notifiedAt DateTime?
-  isRead    Boolean       @default(false)
-  createdAt DateTime      @default(now())
+  isRead     Boolean       @default(false)
+  createdAt  DateTime      @default(now())
 
   @@index([channel])
   @@index([createdAt])
@@ -2250,13 +2281,13 @@ model UserSocialAccount {
  * you like without spamming anyone — the cadence lives here, not in the cron.
  */
 model OverdueNotice {
-  id        String @id @default(cuid())
-  itemKey   String // e.g. task:clx123
-  userId    String
-  kind      String // TASK | REMINDER | APPROVAL | COLLECTION
-  title     String
-  dueAt     DateTime
-  href      String?
+  id      String   @id @default(cuid())
+  itemKey String // e.g. task:clx123
+  userId  String
+  kind    String // TASK | REMINDER | APPROVAL | COLLECTION
+  title   String
+  dueAt   DateTime
+  href    String?
 
   lastPushAt     DateTime?
   lastEmailAt    DateTime?
@@ -2286,7 +2317,7 @@ model OverdueNotice {
  * could block a deploy.
  */
 model DocChunk {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   documentId   String?
   fileObjectId String?
   title        String
@@ -2299,12 +2330,12 @@ model DocChunk {
   requiredPermission String? // e.g. finance.ledger.view for anything about money
   entityType         String? // Lead, Booking, Voucher, Invoice, Document …
   entityId           String?
-  page         Int?
-  ordinal      Int      @default(0)
-  content      String
-  embedding    Float[]
-  tokens       Int      @default(0)
-  createdAt    DateTime @default(now())
+  page               Int?
+  ordinal            Int      @default(0)
+  content            String
+  embedding          Float[]
+  tokens             Int      @default(0)
+  createdAt          DateTime @default(now())
 
   @@index([documentId])
   @@index([fileObjectId])
@@ -2335,13 +2366,15 @@ model FloorPlan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project Project    @relation("ProjectFloorPlans", fields: [projectId], references: [id], onDelete: Cascade)
+  project Project   @relation("ProjectFloorPlans", fields: [projectId], references: [id], onDelete: Cascade)
   pins    UnitPin[]
 
   @@index([projectId])
 }
 
-/** Where a unit sits on a plan, as a percentage box so it scales to any screen. */
+/**
+ * Where a unit sits on a plan, as a percentage box so it scales to any screen.
+ */
 model UnitPin {
   id          String   @id @default(cuid())
   floorPlanId String
@@ -2399,15 +2432,15 @@ enum ShiftKind {
 }
 
 model DutyRoster {
-  id        String    @id @default(cuid())
-  userId    String
-  projectId String?
-  date      DateTime // day only
-  shift     ShiftKind @default(FULL_DAY)
-  note      String?
+  id          String    @id @default(cuid())
+  userId      String
+  projectId   String?
+  date        DateTime // day only
+  shift       ShiftKind @default(FULL_DAY)
+  note        String?
   createdById String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user User @relation("UserRoster", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2613,33 +2646,33 @@ enum PayMode {
 }
 
 model Voucher {
-  id        String        @id @default(cuid())
-  number    String        @unique // CR-1001, CP-1001, MR-1001 …
-  kind      VoucherKind
-  status    VoucherStatus @default(POSTED)
-  voucherDate DateTime    @default(now())
+  id          String        @id @default(cuid())
+  number      String        @unique // CR-1001, CP-1001, MR-1001 …
+  kind        VoucherKind
+  status      VoucherStatus @default(POSTED)
+  voucherDate DateTime      @default(now())
 
   // Who it is with — free text so a one-off vendor needs no master record,
   // with optional links when the party is already in the system.
-  partyName   String
-  partyPhone  String?
-  vendorId    String?
-  customerId  String?
-  leadId      String?
+  partyName  String
+  partyPhone String?
+  vendorId   String?
+  customerId String?
+  leadId     String?
 
   projectId String?
   bookingId String?
 
-  amount     Decimal  @default(0) @db.Decimal(14, 2)
-  mode       PayMode  @default(CASH)
-  reference  String? // cheque number, challan number, bill number
-  narration  String?
+  amount    Decimal @default(0) @db.Decimal(14, 2)
+  mode      PayMode @default(CASH)
+  reference String? // cheque number, challan number, bill number
+  narration String?
 
   // Bank trail. Kept apart from `reference` so a UTR is always searchable and
   // can be checked for accidental re-entry of the same transfer.
-  utr        String?
-  paidOn     DateTime? // when the money actually moved, which may not be the voucher date
-  bankName   String?
+  utr            String?
+  paidOn         DateTime? // when the money actually moved, which may not be the voucher date
+  bankName       String?
   utrEnteredById String?
   utrEnteredAt   DateTime?
 
@@ -2658,8 +2691,8 @@ model Voucher {
   approvedAt   DateTime?
   cancelledAt  DateTime?
   cancelReason String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([kind, voucherDate])
   @@index([projectId, voucherDate])
@@ -2667,7 +2700,6 @@ model Voucher {
   @@index([partyName])
   @@index([utr])
 }
-
 
 /// A connected external account (WhatsApp, Meta, Google Ads …). Tokens are
 /// encrypted at rest; only the account name and status are ever shown.
@@ -2692,30 +2724,33 @@ model IntegrationConnection {
   @@index([status])
 }
 
-
 /// A reusable message you write once and send many times, on any channel.
 /// WhatsApp templates additionally carry Meta's approval state, because Meta
 /// must approve the wording before it can be sent to anyone who has not
 /// messaged you first.
 model MessageTemplate {
-  id          String   @id @default(cuid())
-  key         String   @unique // lowercase_snake, also the name Meta sees
-  name        String
-  channel     String // EMAIL, WHATSAPP, SMS, LETTER
-  category    String? // WhatsApp: UTILITY, MARKETING, AUTHENTICATION
-  language    String   @default("en")
-  subject     String? // email only
-  header      String? // WhatsApp header / letter title
-  body        String
-  footer      String?
-  buttons     Json? // WhatsApp quick replies and links
-  description String?
-  isActive    Boolean  @default(true)
+  id           String  @id @default(cuid())
+  /// Which department owns this template. Null means it predates the change
+  /// and is treated as unassigned — only admins see those, so nothing leaks.
+  departmentId String?
+  key          String  @unique // lowercase_snake, also the name Meta sees
+  name         String
+  channel      String // EMAIL, WHATSAPP, SMS, LETTER
+  category     String? // WhatsApp: UTILITY, MARKETING, AUTHENTICATION
+  language     String  @default("en")
+  subject      String? // email only
+  header       String? // WhatsApp header / letter title
+  body         String
+  footer       String?
+  buttons      Json? // WhatsApp quick replies and links
+  description  String?
+  isActive     Boolean @default(true)
 
   // Meta approval, only meaningful for WhatsApp
   metaStatus     String? // DRAFT, PENDING, APPROVED, REJECTED
   metaTemplateId String?
   metaRejection  String?
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   submittedAt    DateTime?
   reviewedAt     DateTime?
 
@@ -2729,16 +2764,15 @@ model MessageTemplate {
   @@index([metaStatus])
 }
 
-
 /// Tracks getting a new joiner through their first sign-in: the welcome email,
 /// the one-time link to set their own password, and the hourly nudges until
 /// they actually log in.
 model UserOnboarding {
-  id            String    @id @default(cuid())
-  userId        String    @unique
-  tokenHash     String    @unique // SHA-256 of the set-password link
-  tokenExpires  DateTime
-  tokenUsedAt   DateTime?
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  tokenHash    String    @unique // SHA-256 of the set-password link
+  tokenExpires DateTime
+  tokenUsedAt  DateTime?
 
   welcomeSentAt DateTime?
   lastRemindAt  DateTime?
@@ -2753,7 +2787,6 @@ model UserOnboarding {
 
   @@index([completedAt, lastRemindAt])
 }
-
 
 /// One WhatsApp conversation with one person, and where it has got to.
 ///
@@ -2792,7 +2825,6 @@ model WhatsappMessage {
   @@index([phone, createdAt])
 }
 
-
 /// A marketing audit of a web page — ours or a competitor's.
 model MarketingAudit {
   id        String   @id @default(cuid())
@@ -2811,4 +2843,617 @@ model MarketingAudit {
 
   @@index([kind, createdAt])
   @@index([hostname])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  The ledger  (v14.0, batch 1)
+//
+//  Every rupee that moves gets recorded twice — once as a debit, once as a
+//  credit — and the two sides must be equal. That single rule is what makes a
+//  balance sheet possible and what makes an error findable: if the trial
+//  balance does not balance, something is wrong, and you know it immediately
+//  rather than at year end.
+//
+//  Two decisions worth knowing about:
+//
+//  * A posted entry is never edited. It is reversed by an equal and opposite
+//    entry, and the reversal is visible. An editable ledger is not a ledger,
+//    it is a spreadsheet with extra steps, and it cannot be audited.
+//  * Amounts are Decimal(16,2), never Float. Floating point cannot represent
+//    ₹0.10 exactly; a ledger built on it drifts by paise and then by rupees.
+// ════════════════════════════════════════════════════════════════════════════
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+/// Which side increases this account. Set from the type; stored so a report
+/// never has to re-derive it.
+enum NormalSide {
+  DEBIT
+  CREDIT
+}
+
+model Account {
+  id       String      @id @default(cuid())
+  /// Stable code used by posting rules and by the accountant. Never reused.
+  code     String      @unique
+  name     String
+  type     AccountType
+  side     NormalSide
+  /// A heading (like "Direct costs") groups children and takes no postings
+  /// itself. Posting to a heading is how a chart of accounts turns to mush.
+  isGroup  Boolean     @default(false)
+  parentId String?
+  parent   Account?    @relation("AccountTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Account[]   @relation("AccountTree")
+
+  /// Balance carried in when the system started, so history need not be re-entered.
+  openingBalance Decimal   @default(0) @db.Decimal(16, 2)
+  openingAsOf    DateTime?
+
+  /// Ties an account to a party, so a vendor's ledger is a real account.
+  vendorId   String?
+  customerId String?
+
+  isActive    Boolean @default(true)
+  description String?
+  /// Seeded accounts cannot be deleted — posting rules point at them by code.
+  isSystem    Boolean @default(false)
+
+  lines     JournalLine[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([type, isActive])
+  @@index([parentId])
+  @@index([vendorId])
+  @@index([customerId])
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+model JournalEntry {
+  id        String        @id @default(cuid())
+  number    String        @unique // JV-000001
+  entryDate DateTime
+  status    JournalStatus @default(POSTED)
+  narration String
+
+  /// What in the system caused this entry, so a figure on a report can always
+  /// be traced back to the voucher or bill it came from.
+  sourceType String? // Voucher | Invoice | VendorBill | Booking | Manual | Opening
+  sourceId   String?
+
+  projectId String?
+  /// Cost code, for batch 2. Held now so entries posted today are usable then.
+  costCode  String?
+
+  /// Reversal is the only way to undo a posted entry, and it points both ways.
+  reversedById   String?       @unique
+  reversedBy     JournalEntry? @relation("Reversal", fields: [reversedById], references: [id], onDelete: SetNull)
+  reverses       JournalEntry? @relation("Reversal")
+  reversedAt     DateTime?
+  reversalReason String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  lines JournalLine[]
+
+  @@index([entryDate])
+  @@index([sourceType, sourceId])
+  @@index([projectId, entryDate])
+  @@index([status])
+}
+
+model JournalLine {
+  id        String @id @default(cuid())
+  entryId   String
+  accountId String
+
+  /// One of these is always zero. Storing them separately rather than as a
+  /// signed amount keeps reports readable and makes the balance check obvious.
+  debit  Decimal @default(0) @db.Decimal(16, 2)
+  credit Decimal @default(0) @db.Decimal(16, 2)
+
+  narration  String?
+  /// Denormalised so a party ledger does not need a join per line.
+  vendorId   String?
+  customerId String?
+  projectId  String?
+  costCode   String?
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([entryId])
+  @@index([accountId])
+  @@index([vendorId])
+  @@index([customerId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Budgets and cost codes  (v14.1, batch 2)
+//
+//  A budget is only useful if it can be compared with something. The something
+//  is three different numbers that people routinely confuse:
+//
+//    committed  — orders placed. The money is promised, not yet spent.
+//    incurred   — bills received. The cost exists whether or not it is paid.
+//    paid       — money actually gone.
+//
+//  Committed is the one that matters for control, because by the time a cost is
+//  incurred it is too late to decide against it. A budget report showing only
+//  what has been paid is the most reassuring and least useful of the three.
+// ════════════════════════════════════════════════════════════════════════════
+
+/// A head of cost, arranged in a tree: Structure > Concrete > Ready-mix.
+model CostCode {
+  id       String     @id @default(cuid())
+  code     String     @unique
+  name     String
+  parentId String?
+  parent   CostCode?  @relation("CostTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children CostCode[] @relation("CostTree")
+
+  /// A heading totals its children and takes no budget of its own.
+  isGroup     Boolean @default(true)
+  /// The ledger account this head normally posts to, so a budget line and a
+  /// journal line can be reconciled without anybody mapping them by hand.
+  accountCode String?
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+  isSystem    Boolean @default(false)
+
+  budgetLines BudgetLine[]
+  createdAt   DateTime     @default(now())
+
+  @@index([parentId])
+}
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+}
+
+/// One approved budget for one project. A revision supersedes its predecessor
+/// rather than overwriting it, so "what did we originally think" stays answerable.
+model Budget {
+  id        String       @id @default(cuid())
+  projectId String
+  name      String
+  version   Int          @default(1)
+  status    BudgetStatus @default(DRAFT)
+
+  supersedesId String? @unique
+  supersedes   Budget? @relation("BudgetRevision", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy Budget? @relation("BudgetRevision")
+
+  approvedById String?
+  approvedAt   DateTime?
+  note         String?
+
+  lines       BudgetLine[]
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([projectId, version])
+  @@index([projectId, status])
+}
+
+model BudgetLine {
+  id         String @id @default(cuid())
+  budgetId   String
+  costCodeId String
+
+  amount   Decimal  @default(0) @db.Decimal(16, 2)
+  /// Quantity and rate, when the budget was built that way. Kept because
+  /// "we budgeted 400 tonnes at ₹65,000" explains a variance and a lump sum does not.
+  quantity Decimal? @db.Decimal(14, 3)
+  unit     String?
+  rate     Decimal? @db.Decimal(14, 2)
+  note     String?
+
+  budget   Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  costCode CostCode @relation(fields: [costCodeId], references: [id], onDelete: Restrict)
+
+  @@unique([budgetId, costCodeId])
+  @@index([costCodeId])
+}
+
+/// Why a head moved. Required past a threshold, so the reason outlives whoever knew it.
+model BudgetVariance {
+  id             String  @id @default(cuid())
+  projectId      String
+  costCodeId     String
+  /// The variance being explained, as at the moment of writing.
+  varianceAmount Decimal @db.Decimal(16, 2)
+  variancePct    Decimal @db.Decimal(8, 2)
+  reason         String
+  action         String?
+
+  raisedById String?
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, costCodeId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Batch 13 — Land, title and the approvals maze
+// The largest genuinely uncovered area in the system, and it sits *before*
+// everything operational: a project cannot be budgeted, scheduled or sold until
+// the title is clean and the sanctions have landed. None of that lived anywhere
+// but somebody's head and a WhatsApp thread. Nothing here depends on another batch.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum LandParcelStage {
+  IDENTIFIED
+  UNDER_NEGOTIATION
+  AGREED
+  DUE_DILIGENCE
+  REGISTERED
+  DROPPED
+}
+
+/// A parcel from identified through negotiated to registered. projectId is a plain
+/// id (not a relation) so a parcel can exist before a project does — the whole
+/// point of the acquisition pipeline is that it precedes the project.
+model LandParcel {
+  id           String          @id @default(cuid())
+  projectId    String?
+  name         String
+  surveyNumber String?
+  village      String?
+  taluk        String?
+  district     String?
+  state        String          @default("Karnataka")
+  extentAcre   Decimal?        @db.Decimal(12, 4)
+  extentGuntha Decimal?        @db.Decimal(12, 3)
+  ownerName    String?
+  askingRate   Decimal?        @db.Decimal(16, 2)
+  agreedRate   Decimal?        @db.Decimal(16, 2)
+  stage        LandParcelStage @default(IDENTIFIED)
+  notes        String?
+
+  titleDocuments TitleDocument[]
+  approvals      ApprovalSanction[]
+  jdas           JointDevelopmentAgreement[]
+  revenueRecords RevenueRecord[]
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([stage])
+}
+
+enum TitleDocKind {
+  MOTHER_DEED
+  SALE_DEED
+  GIFT_DEED
+  PARTITION_DEED
+  ENCUMBRANCE_CERTIFICATE
+  KHATA
+  CONVERSION_ORDER
+  POWER_OF_ATTORNEY
+  COURT_ORDER
+  OTHER
+}
+
+/// One link in the title chain. chainOrder is oldest-first so a gap between two
+/// consecutive links is visible as a gap — the thing a buyer's lawyer finds.
+model TitleDocument {
+  id             String       @id @default(cuid())
+  parcelId       String
+  kind           TitleDocKind @default(OTHER)
+  title          String
+  chainOrder     Int          @default(0)
+  fromParty      String?
+  toParty        String?
+  documentDate   DateTime?
+  registrationNo String?
+  documentId     String?
+  verified       Boolean      @default(false)
+  notes          String?
+
+  parcel    LandParcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@index([parcelId, chainOrder])
+}
+
+enum JdaShareType {
+  REVENUE_SHARE
+  AREA_SHARE
+}
+
+model JointDevelopmentAgreement {
+  id                String       @id @default(cuid())
+  parcelId          String
+  landownerName     String
+  shareType         JdaShareType @default(AREA_SHARE)
+  developerShare    Decimal?     @db.Decimal(6, 3)
+  landownerShare    Decimal?     @db.Decimal(6, 3)
+  refundableDeposit Decimal?     @db.Decimal(16, 2)
+  signedOn          DateTime?
+  obligations       String?
+  documentId        String?
+
+  parcel    LandParcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@index([parcelId])
+}
+
+enum RevenueRecordKind {
+  KHATA
+  PATTA
+  CHITTA
+  DC_CONVERSION
+  BETTERMENT
+  PROPERTY_TAX
+  OTHER
+}
+
+model RevenueRecord {
+  id         String            @id @default(cuid())
+  parcelId   String
+  kind       RevenueRecordKind @default(OTHER)
+  reference  String?
+  authority  String?
+  paidToDate DateTime?
+  amount     Decimal?          @db.Decimal(16, 2)
+  documentId String?
+  notes      String?
+
+  parcel    LandParcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@index([parcelId, kind])
+}
+
+enum SanctionStatus {
+  NOT_STARTED
+  APPLIED
+  IN_PROCESS
+  QUERY_RAISED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+/// A sanction from any authority — BBMP, BDA, BESCOM, BWSSB, fire, lift, pollution
+/// board, airport height, TN DTCP, panchayat. parcel is optional because some
+/// approvals attach to a project rather than a specific parcel.
+model ApprovalSanction {
+  id          String         @id @default(cuid())
+  parcelId    String?
+  projectId   String?
+  authority   String
+  name        String
+  status      SanctionStatus @default(NOT_STARTED)
+  appliedOn   DateTime?
+  expectedOn  DateTime?
+  approvedOn  DateTime?
+  expiresOn   DateTime?
+  feePaid     Decimal?       @db.Decimal(16, 2)
+  currentDesk String?
+  referenceNo String?
+  documentId  String?
+  notes       String?
+
+  parcel      LandParcel?  @relation(fields: [parcelId], references: [id], onDelete: SetNull)
+  liaisonLogs LiaisonLog[]
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([parcelId])
+  @@index([projectId, status])
+  @@index([status, expectedOn])
+}
+
+/// Who chased what, with whom, since when. Not to record anything improper: to
+/// stop a file sitting for six weeks because the person chasing it was on leave.
+model LiaisonLog {
+  id         String   @id @default(cuid())
+  approvalId String
+  chasedBy   String?
+  metWith    String?
+  note       String
+  chasedOn   DateTime @default(now())
+
+  approval ApprovalSanction @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@index([approvalId, chasedOn])
+}
+
+enum LitigationStatus {
+  OPEN
+  HEARING
+  RESERVED
+  DISPOSED
+  APPEAL
+  CLOSED
+}
+
+/// Matter, court, counsel, next date, exposure. Court dates that pass unnoticed
+/// are the expensive kind.
+model LitigationMatter {
+  id          String           @id @default(cuid())
+  parcelId    String?
+  projectId   String?
+  title       String
+  court       String?
+  caseNumber  String?
+  counsel     String?
+  status      LitigationStatus @default(OPEN)
+  nextHearing DateTime?
+  exposure    Decimal?         @db.Decimal(16, 2)
+  summary     String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status])
+  @@index([status, nextHearing])
+}
+
+/// Who may sign what, until when.
+model PowerOfAttorney {
+  id         String    @id @default(cuid())
+  parcelId   String?
+  projectId  String?
+  grantor    String
+  attorney   String
+  scope      String
+  validFrom  DateTime?
+  validUntil DateTime?
+  revoked    Boolean   @default(false)
+  documentId String?
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([validUntil])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Batch 4 — Cash flow and treasury
+// Bank statement import and reconciliation is the highest value-per-day item in
+// the whole plan, and it needs no payment gateway: a statement is a file, and a
+// UTR already lives on every voucher. Multi-bank position, a rolling forecast
+// and loan tracking sit alongside it. Depends on the ledger (batch 1).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BankAccount {
+  id             String   @id @default(cuid())
+  name           String
+  bankName       String
+  accountLast4   String?
+  ifsc           String?
+  openingBalance Decimal  @default(0) @db.Decimal(16, 2)
+  projectId      String?
+  isActive       Boolean  @default(true)
+
+  imports BankStatementImport[]
+  lines   BankStatementLine[]
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model BankStatementImport {
+  id            String  @id @default(cuid())
+  bankAccountId String
+  fileName      String?
+  rowCount      Int     @default(0)
+  matchedCount  Int     @default(0)
+  skippedCount  Int     @default(0)
+  importedById  String?
+
+  account BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  lines   BankStatementLine[]
+
+  createdAt DateTime @default(now())
+
+  @@index([bankAccountId])
+}
+
+enum BankLineStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+/// One line off a bank statement. `amount` is signed — positive is money in,
+/// negative is money out — so a single column reconciles against both receipt
+/// and payment vouchers. matchedVoucherId is a plain id, not a relation, so the
+/// Voucher model is untouched by this batch.
+model BankStatementLine {
+  id               String         @id @default(cuid())
+  importId         String
+  bankAccountId    String
+  txnDate          DateTime
+  description      String
+  refNo            String?
+  amount           Decimal        @db.Decimal(16, 2)
+  balance          Decimal?       @db.Decimal(16, 2)
+  status           BankLineStatus @default(UNMATCHED)
+  matchedVoucherId String?
+  matchConfidence  String?
+
+  import  BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  account BankAccount         @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([bankAccountId, txnDate])
+  @@index([status])
+  @@index([matchedVoucherId])
+}
+
+enum LoanKind {
+  TERM_LOAN
+  OVERDRAFT
+  VENTURE_DEBT
+  PROJECT_LOAN
+  OTHER
+}
+
+model LoanFacility {
+  id               String   @id @default(cuid())
+  lender           String
+  kind             LoanKind @default(TERM_LOAN)
+  sanctionedAmount Decimal  @default(0) @db.Decimal(16, 2)
+  interestRate     Decimal? @db.Decimal(6, 3)
+  projectId        String?
+  startedOn        DateTime?
+  isActive         Boolean  @default(true)
+  notes            String?
+
+  events LoanEvent[]
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+enum LoanEventKind {
+  DRAWDOWN
+  REPAYMENT
+  INTEREST
+  FEE
+}
+
+model LoanEvent {
+  id        String        @id @default(cuid())
+  loanId    String
+  kind      LoanEventKind
+  amount    Decimal       @db.Decimal(16, 2)
+  eventDate DateTime      @default(now())
+  note      String?
+
+  loan LoanFacility @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId, eventDate])
 }

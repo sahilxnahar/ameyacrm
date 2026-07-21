@@ -145,3 +145,88 @@ export async function setUserDepartment(userId: string, departmentId: string | n
     return toActionError(err);
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Changing somebody's role
+// ════════════════════════════════════════════════════════════════════════════
+
+import { checkRoleChange, type RoleValue } from '@/lib/auth/role-change';
+import { ASSIGNABLE_ROLES } from '@/config/roles';
+export type { RoleValue };
+
+
+/**
+ * Change what somebody is allowed to do.
+ *
+ * Restricted to super admins, and hedged four ways, because a role change is
+ * the one edit that can quietly hand over the whole system — or lock everyone
+ * out of it:
+ *
+ *   1. You cannot change your own role. Otherwise a mis-click demotes the only
+ *      person who could undo it.
+ *   2. You cannot grant a role you do not hold yourself.
+ *   3. The last remaining super admin cannot be demoted. There must always be
+ *      somebody who can put things right.
+ *   4. Every change is written to the audit log with the before and after.
+ */
+export async function setUserRole(userId: string, role: string): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, role: true, deletedAt: true },
+    });
+    if (!target || target.deletedAt) return { error: 'That person was not found.' };
+    if (target.role === role) return { ok: true, id: userId, message: 'No change — they already have that role.' };
+
+    const otherSuperAdmins = await prisma.user.count({
+      where: { role: 'SUPER_ADMIN', deletedAt: null, status: 'ACTIVE', id: { not: userId } },
+    });
+
+    const verdict = checkRoleChange({
+      actorId: ctx.user.id, actorRole: ctx.user.role,
+      targetId: userId, targetRole: target.role, newRole: role, otherSuperAdmins,
+    });
+    if ('error' in verdict) return verdict;
+
+    await prisma.user.update({ where: { id: userId }, data: { role: role as never } });
+
+    await writeAudit({
+      actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId,
+      summary: `Role changed: ${target.name} — ${target.role} → ${role}`,
+    });
+    // The person should know their access changed, and when.
+    await notify({
+      userId, type: 'SYSTEM',
+      title: `Your role is now ${ASSIGNABLE_ROLES.find((r) => r.value === role)?.label ?? role}`,
+      link: '/settings/profile',
+    }).catch(() => undefined);
+
+    revalidatePath('/team');
+    revalidatePath('/admin');
+    return { ok: true, id: userId, message: `${target.name} is now ${role.replace(/_/g, ' ').toLowerCase()}.` };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+/** Set the extra departments somebody belongs to, on top of their main one. */
+export async function setUserExtraDepartments(userId: string, departmentIds: string[]): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    const { setExtraDepartments } = await import('@/server/services/department-service');
+    await setExtraDepartments(userId, departmentIds);
+    await writeAudit({
+      actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId,
+      summary: departmentIds.length
+        ? `Extra departments set (${departmentIds.length})`
+        : 'Extra departments cleared',
+    });
+    revalidatePath('/team');
+    revalidatePath('/admin');
+    return { ok: true, id: userId };
+  } catch (err) {
+    return toActionError(err);
+  }
+}

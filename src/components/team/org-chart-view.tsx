@@ -3,7 +3,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Network, Building2, AlertTriangle, ChevronRight, ChevronDown, Crown, User as UserIcon } from 'lucide-react';
-import { setUserManager, setUserDepartment } from '@/server/actions/admin';
+import { setUserManager, setUserDepartment, setUserRole, setUserExtraDepartments } from '@/server/actions/admin';
+import { ASSIGNABLE_ROLES } from '@/config/roles';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -16,16 +17,20 @@ interface Person {
   id: string; name: string; email: string; role: string; designation: string | null;
   status: string; managerId: string | null; departmentId: string | null;
   departmentName: string | null; isDeptHead: boolean; reportCount: number;
+  /** Departments they work with beyond their main one. */
+  extraDepartmentIds?: string[];
 }
 interface Division { id: string; name: string; color: string | null; headId: string | null; parentId: string | null; memberIds: string[] }
 
 export function OrgChartView({
-  people, departments, gaps, canEdit, meId,
+  people, departments, gaps, canEdit, canChangeRoles = false, meId,
 }: {
   people: Person[];
   departments: Division[];
   gaps: { noManager: number; noDepartment: number; deptNoHead: number };
   canEdit: boolean;
+  /** Only a super admin may change roles, so the control is not even rendered otherwise. */
+  canChangeRoles?: boolean;
   meId: string;
 }) {
   const router = useRouter();
@@ -56,7 +61,8 @@ export function OrgChartView({
 
   const card = (p: Person, depth: number) => (
     <PersonRow
-      key={p.id} p={p} depth={depth} canEdit={canEdit} pending={pending} isMe={p.id === meId}
+      key={p.id} p={p} depth={depth} canEdit={canEdit} canChangeRoles={canChangeRoles}
+      pending={pending} isMe={p.id === meId}
       people={people} departments={departments} run={run}
     />
   );
@@ -173,9 +179,9 @@ function Branch({ children, depth, hasChildren }: { children: React.ReactNode; d
 }
 
 function PersonRow({
-  p, depth, canEdit, pending, isMe, people, departments, run,
+  p, depth, canEdit, canChangeRoles, pending, isMe, people, departments, run,
 }: {
-  p: Person; depth: number; canEdit: boolean; pending: boolean; isMe: boolean;
+  p: Person; depth: number; canEdit: boolean; canChangeRoles: boolean; pending: boolean; isMe: boolean;
   people: Person[]; departments: Division[];
   run: (fn: () => Promise<{ ok?: true } | { error: string }>, ok: string) => void;
 }) {
@@ -216,6 +222,24 @@ function PersonRow({
             <option value="">No department</option>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.parentId ? '— ' : ''}{d.name}</option>)}
           </select>
+
+          {/*
+            * Role is deliberately the last control and only shown to a super
+            * admin. Changing it is the one edit here that can hand over the
+            * whole system, so it should not sit a mis-click away from the
+            * routine ones for everybody else.
+            */}
+          {canChangeRoles && (
+            <select
+              className={SELECT} disabled={pending || isMe} defaultValue={p.role}
+              title={isMe ? 'You cannot change your own role' : 'What this person is allowed to do'}
+              onChange={(e) => run(() => setUserRole(p.id, e.target.value), 'Role updated')}
+            >
+              {ASSIGNABLE_ROLES.map((r) => <option key={r.value} value={r.value}>Role: {r.label}</option>)}
+            </select>
+          )}
+
+          <ExtraDepartments p={p} departments={departments} pending={pending} run={run} />
         </div>
       )}
     </div>
@@ -231,5 +255,76 @@ function Gap({ label, value, hint }: { label: string; value: number; hint: strin
       </p>
       <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
     </Card>
+  );
+}
+
+/**
+ * The departments somebody works with beyond their main one.
+ *
+ * Access follows this list, so it is worth being able to see at a glance who
+ * can reach what — hence the count on the button rather than hiding it all
+ * behind a dialog.
+ */
+function ExtraDepartments({
+  p, departments, pending, run,
+}: {
+  p: Person; departments: Division[]; pending: boolean;
+  run: (fn: () => Promise<{ ok?: true } | { error: string }>, ok: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [chosen, setChosen] = React.useState<string[]>(p.extraDepartmentIds ?? []);
+  const available = departments.filter((d) => d.id !== p.departmentId);
+
+  const toggle = (id: string) =>
+    setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+
+  if (!open) {
+    return (
+      <button
+        type="button" onClick={() => setOpen(true)} disabled={pending}
+        className={SELECT}
+        title="Other departments whose templates and work this person can see"
+      >
+        {chosen.length ? `+${chosen.length} more department${chosen.length > 1 ? 's' : ''}` : 'Add departments'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="w-full rounded-md border border-border bg-muted/40 p-2">
+      <p className="mb-1.5 text-xs text-muted-foreground">
+        Also works with — they will see these departments&rsquo; templates too.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {available.map((d) => (
+          <label
+            key={d.id}
+            className={cn(
+              'cursor-pointer rounded-full border px-2 py-1 text-xs',
+              chosen.includes(d.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border',
+            )}
+          >
+            <input
+              type="checkbox" className="sr-only"
+              checked={chosen.includes(d.id)} onChange={() => toggle(d.id)}
+            />
+            {d.name}
+          </label>
+        ))}
+        {!available.length && <span className="text-xs text-muted-foreground">No other departments exist yet.</span>}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button" disabled={pending}
+          className="focus-ring rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
+          onClick={() => { run(() => setUserExtraDepartments(p.id, chosen), 'Departments updated'); setOpen(false); }}
+        >Save</button>
+        <button
+          type="button"
+          className="focus-ring rounded-md border border-input px-2.5 py-1 text-xs"
+          onClick={() => { setChosen(p.extraDepartmentIds ?? []); setOpen(false); }}
+        >Cancel</button>
+      </div>
+    </div>
   );
 }

@@ -9,6 +9,7 @@ import { notify, notifyMany } from '@/lib/notifications/notify';
 import { writeAudit } from '@/lib/audit/log';
 import { runAutomations } from '@/lib/automation/engine';
 import { ensure, getActionContext, toActionError } from './_helpers';
+import { taskPayload } from '@/lib/automation/payload';
 
 const createSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(200),
@@ -59,7 +60,7 @@ export async function createTask(input: unknown): Promise<TaskActionResult> {
       type: 'TASK_ASSIGNED', title: `New task: ${data.title}`,
       body: `${ctx.user.name} assigned you ${reference}`, link: `/tasks/${task.id}`,
     });
-    await runAutomations('TASK_CREATED', { entityType: 'Task', entityId: task.id, data: { title: task.title, priority: task.priority, status: task.status }, actorId: ctx.user.id });
+    await runAutomations('TASK_CREATED', { entityType: 'Task', entityId: task.id, data: taskPayload(task), actorId: ctx.user.id });
     revalidatePath('/tasks');
     return { ok: true, id: task.id };
   } catch (err) {
@@ -70,6 +71,8 @@ export async function createTask(input: unknown): Promise<TaskActionResult> {
 export async function moveTask(taskId: string, status: TaskStatus, position: number): Promise<TaskActionResult> {
   try {
     const ctx = await ensure('task.update');
+    const before = await prisma.task.findUnique({ where: { id: taskId }, select: { status: true } });
+    const beforeStatus = before?.status ?? null;
     const task = await prisma.task.update({
       where: { id: taskId },
       data: { status, position, completedAt: status === 'DONE' ? new Date() : null },
@@ -81,7 +84,7 @@ export async function moveTask(taskId: string, status: TaskStatus, position: num
     await notifyMany(watchers.filter((id) => id !== ctx.user.id), {
       type: 'TASK_UPDATED', title: `${task.reference} moved to ${status}`, link: `/tasks/${taskId}`,
     });
-    await runAutomations('TASK_STATUS_CHANGED', { entityType: 'Task', entityId: taskId, data: { title: task.title, status, priority: task.priority }, actorId: ctx.user.id });
+    await runAutomations('TASK_STATUS_CHANGED', { entityType: 'Task', entityId: taskId, data: taskPayload(task, { previousStatus: beforeStatus }), actorId: ctx.user.id });
 
     // A repeating task creates its successor only once it is done, so a job
     // nobody gets to cannot pile up fifty copies.
