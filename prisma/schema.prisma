@@ -4359,3 +4359,55 @@ model Feedback {
 
   @@index([createdAt])
 }
+
+model WorkRequest {
+  id           String   @id @default(cuid())
+  reference    String   @unique
+  title        String
+  detail       String?
+  priority     String   @default("NORMAL")
+  status       String   @default("RAISED")
+  fromDeptId   String?
+  toDeptId     String?
+  raisedById   String?
+  ownerId      String?
+  dueOn        DateTime?
+  entityType   String?
+  entityId     String?
+  linkedTaskId String?
+  confirmedAt  DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  events       WorkRequestEvent[]
+  comments     WorkRequestComment[]
+
+  @@index([toDeptId, status])
+  @@index([fromDeptId, status])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WorkRequestEvent {
+  id         String      @id @default(cuid())
+  requestId  String
+  request    WorkRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actorId    String?
+  fromStatus String?
+  toStatus   String
+  note       String?
+  createdAt  DateTime    @default(now())
+
+  @@index([requestId])
+}
+
+model WorkRequestComment {
+  id        String      @id @default(cuid())
+  requestId String
+  request   WorkRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String?
+  body      String
+  createdAt DateTime    @default(now())
+
+  @@index([requestId])
+}

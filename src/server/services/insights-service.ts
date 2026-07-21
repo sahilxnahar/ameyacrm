@@ -61,8 +61,11 @@ export async function getInsights(thresholdPct = 40): Promise<InsightsResult> {
   }
   anomalies.sort((a, b) => b.deviationPct - a.deviationPct);
 
-  // Lead-score distribution in fixed bands.
-  const leads = await prisma.lead.findMany({ where: { deletedAt: null }, select: { score: true }, take: 50000 });
+  // Lead-score distribution in fixed bands. Aggregated in the database (score is
+  // 0–100, so at most ~101 groups) instead of pulling every lead into memory —
+  // correct at any size, and a tiny payload.
+  const scoreGroups = await prisma.lead.groupBy({ by: ['score'], where: { deletedAt: null }, _count: { _all: true } });
+  const leadsScored = scoreGroups.reduce((s, g) => s + g._count._all, 0);
   const bands = [
     { band: '0–20', lo: 0, hi: 20 },
     { band: '21–40', lo: 21, hi: 40 },
@@ -72,8 +75,8 @@ export async function getInsights(thresholdPct = 40): Promise<InsightsResult> {
   ];
   const scoreBands: ScoreBand[] = bands.map((b) => ({
     band: b.band,
-    count: leads.filter((l) => l.score >= b.lo && l.score <= b.hi).length,
+    count: scoreGroups.filter((g) => g.score >= b.lo && g.score <= b.hi).reduce((s, g) => s + g._count._all, 0),
   }));
 
-  return { anomalies: anomalies.slice(0, 100), materialsChecked, scoreBands, leadsScored: leads.length };
+  return { anomalies: anomalies.slice(0, 100), materialsChecked, scoreBands, leadsScored };
 }

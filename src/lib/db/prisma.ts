@@ -37,14 +37,40 @@ export function isPooledConnection(): boolean {
   }
 }
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+/**
+ * Slow-query logging. Any query slower than this threshold is logged with the
+ * model and operation, so the genuinely slow ones surface instead of being
+ * guessed at. Cheap — it only wraps timing around the call it was already making.
+ */
+const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_MS ?? 800);
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function makePrisma() {
+  const base = new PrismaClient({
     datasourceUrl: connectionUrl(),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
+  return base.$extends({
+    query: {
+      async $allOperations({ model, operation, args, query }) {
+        const start = performance.now();
+        try {
+          return await query(args);
+        } finally {
+          const ms = performance.now() - start;
+          if (ms > SLOW_QUERY_MS) {
+            // eslint-disable-next-line no-console
+            console.warn(`[slow-query] ${model ?? 'raw'}.${operation} took ${Math.round(ms)}ms`);
+          }
+        }
+      },
+    },
+  });
+}
+
+type ExtendedPrisma = ReturnType<typeof makePrisma>;
+const globalForPrisma = globalThis as unknown as { prisma?: ExtendedPrisma };
+
+export const prisma: ExtendedPrisma = globalForPrisma.prisma ?? makePrisma();
 
 // Reused across invocations on the same warm instance, and across hot reloads
 // in development. Without this each reload leaks a connection.

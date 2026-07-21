@@ -1,5 +1,29 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.18 — feature + UX + first of the perf/comms run.**
+
+> **v14.18 begins the performance + internal-comms programme (P1–P7, C1–C7).** It is
+> being delivered as a series of green, fully-checked versions rather than one drop.
+> Run **`MIGRATION_v14.18_all.sql`** once (adds 3 work-request tables; the performance
+> work needs no schema change).
+> - **P1 Database performance.** Slow-query logging (queries over a threshold are logged
+>   with model + operation), the lead-score insight now aggregates **in the database**
+>   (no more pulling every lead into memory), on top of the already-comprehensive indexes
+>   (234) and pooled Neon connection.
+> - **C3 Inter-department work requests** (`/work-requests`) — the flagship: raise a request
+>   to another department, which they **accept → start → mark done**, and you **confirm** (or
+>   send back). Each request has a reference, priority, due date, an owner on the receiving
+>   side, a full event history and comments; accepting it **spawns a task** for that team, and
+>   it can link to the lead/booking/parcel it's about. Per-department inbox (to-us / raised-by-us).
+>   New permissions: `workrequest.view` / `.create` / `.manage`. New pure lifecycle engine with
+>   8 tests.
+>
+> Still to come in this programme: P2–P7 (caching, payloads, bundle, perceived speed, assets,
+> monitoring) and C1–C2, C4–C7 (messaging, channels, announcements, notifications, security,
+> integration). A few pieces (real-time chat transport, encryption-at-rest, load testing) need
+> external services and will be flagged as such. Hard check: 0 type errors, 283 tests, all
+> verifier checks (117 pages, 174 models), migration idempotent + drift-clean, build exit 0.
+
 **Written 21 July 2026. Build v14.17 — 24 of 31 feature batches + UX batches 1–16.**
 
 > **v14.17 lands UX quick-wins 11–16.** Run **`MIGRATION_v14.17_all.sql`** once (Neon) or

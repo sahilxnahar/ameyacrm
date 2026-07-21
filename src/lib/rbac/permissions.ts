@@ -155,6 +155,11 @@ export const PERMISSIONS = {
   'association.view': 'View maintenance charges and the association handover',
   'association.manage': 'Manage maintenance charges and association records',
 
+  // Inter-department work requests (C3)
+  'workrequest.view': 'View work requests to and from your department',
+  'workrequest.create': 'Raise work requests to other departments',
+  'workrequest.manage': 'Accept, progress and close work requests',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

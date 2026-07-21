@@ -45,6 +45,8 @@ const REQUIRED_TABLES = [
   'SavedReport',
   // UX-12 — in-app feedback
   'Feedback',
+  // C3 — inter-department work requests
+  'WorkRequest', 'WorkRequestEvent', 'WorkRequestComment',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }
