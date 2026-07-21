@@ -161,3 +161,11 @@ CREATE INDEX IF NOT EXISTS "Voucher_kind_voucherDate_idx"         ON "Voucher"("
 CREATE INDEX IF NOT EXISTS "Voucher_projectId_voucherDate_idx"    ON "Voucher"("projectId","voucherDate");
 CREATE INDEX IF NOT EXISTS "Voucher_status_idx"                   ON "Voucher"("status");
 CREATE INDEX IF NOT EXISTS "Voucher_partyName_idx"                ON "Voucher"("partyName");
+
+-- v10.3 — bank trail on vouchers -------------------------------------------
+ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "utr" TEXT;
+ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "paidOn" TIMESTAMP(3);
+ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
+ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "utrEnteredById" TEXT;
+ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "utrEnteredAt" TIMESTAMP(3);
+CREATE INDEX IF NOT EXISTS "Voucher_utr_idx" ON "Voucher"("utr");

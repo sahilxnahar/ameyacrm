@@ -292,3 +292,165 @@ export async function summarizeSocialActivity(input: {
     };
   } catch { return null; }
 }
+
+
+export interface ExtractedPayment {
+  partyName: string | null;
+  amount: number | null;
+  paidOn: string | null; // ISO date
+  utr: string | null;
+  mode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CARD' | null;
+  bankName: string | null;
+  narration: string | null;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+const PAYMENT_PROMPT =
+  'You are reading proof of an Indian bank payment: a bank SMS, a UPI app screenshot, a NEFT/RTGS advice, ' +
+  'a payment confirmation email or a statement line. Extract the transfer.\n' +
+  'Rules:\n' +
+  '- amount: a plain number in rupees, no commas or symbols. Ignore any available-balance figure.\n' +
+  '- utr: the UTR / RRN / transaction reference / bank reference number. Digits and capitals only, no spaces. null if absent.\n' +
+  '- paidOn: the transaction date as YYYY-MM-DD. Assume Indian day-first order for ambiguous dates.\n' +
+  '- partyName: who the money went TO (the beneficiary/payee). Not the sender, not the bank.\n' +
+  '- mode: one of CASH, BANK_TRANSFER, UPI, CHEQUE, CARD.\n' +
+  '- bankName: the bank that sent the money.\n' +
+  '- narration: a short description of what the payment was for, if stated.\n' +
+  '- confidence: high only if you can read an amount AND a reference number clearly.\n' +
+  'Use null for anything not clearly present. Never invent a UTR.';
+
+const PAYMENT_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    partyName: { type: 'STRING', nullable: true },
+    amount: { type: 'NUMBER', nullable: true },
+    paidOn: { type: 'STRING', nullable: true },
+    utr: { type: 'STRING', nullable: true },
+    mode: { type: 'STRING', nullable: true },
+    bankName: { type: 'STRING', nullable: true },
+    narration: { type: 'STRING', nullable: true },
+    confidence: { type: 'STRING' },
+  },
+  required: ['confidence'],
+} as const;
+
+/**
+ * Read a payment confirmation and pull out the UTR, amount, date and payee.
+ * Accepts pasted text or a screenshot/PDF. Returns null (never throws) on any
+ * problem so the form always stays usable by hand.
+ */
+export async function extractPaymentAdvice(
+  input: { text: string } | { buffer: Buffer; mimeType: string },
+): Promise<ExtractedPayment | null> {
+  if (!env.GEMINI_API_KEY) return null;
+
+  const parts: Array<Record<string, unknown>> = [];
+  if ('buffer' in input) {
+    if (!geminiSupports(input.mimeType) || input.buffer.length > 15 * 1024 * 1024) return null;
+    parts.push({ inline_data: { mime_type: input.mimeType, data: input.buffer.toString('base64') } });
+  } else {
+    const t = input.text.trim();
+    if (!t) return null;
+    parts.push({ text: `Payment confirmation:\n\n${t.slice(0, 6000)}` });
+  }
+  parts.push({ text: PAYMENT_PROMPT });
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: PAYMENT_SCHEMA },
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) return null;
+    const p = JSON.parse(raw) as Record<string, unknown>;
+
+    const amount = typeof p.amount === 'number' && Number.isFinite(p.amount) && p.amount > 0 ? p.amount : null;
+    const utr = typeof p.utr === 'string' ? p.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || null : null;
+    const modes = ['CASH', 'BANK_TRANSFER', 'UPI', 'CHEQUE', 'CARD'];
+    const mode = typeof p.mode === 'string' && modes.includes(p.mode.toUpperCase()) ? (p.mode.toUpperCase() as ExtractedPayment['mode']) : null;
+    const paidOn = typeof p.paidOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.paidOn) ? p.paidOn : null;
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 200) : null);
+
+    return {
+      partyName: str(p.partyName), amount, paidOn, utr, mode,
+      bankName: str(p.bankName), narration: str(p.narration),
+      confidence: p.confidence === 'high' || p.confidence === 'medium' ? p.confidence : 'low',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface AiProbe { name: string; what: string; ok: boolean; ms: number; detail: string }
+
+/**
+ * Actually call Gemini and report what came back, rather than reporting that a
+ * key exists. A configured key that is expired, out of quota or region-blocked
+ * looks identical to a working one until something is sent through it.
+ */
+export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string; probes: AiProbe[] }> {
+  const model = env.GEMINI_MODEL;
+  if (!env.GEMINI_API_KEY) {
+    return { enabled: false, model, probes: [{ name: 'API key', what: 'GEMINI_API_KEY present', ok: false, ms: 0, detail: 'No key set. Add GEMINI_API_KEY in Vercel, then redeploy.' }] };
+  }
+
+  const probes: AiProbe[] = [];
+  const timed = async (name: string, what: string, fn: () => Promise<{ ok: boolean; detail: string }>) => {
+    const t0 = Date.now();
+    try { const r = await fn(); probes.push({ name, what, ms: Date.now() - t0, ...r }); }
+    catch (e) { probes.push({ name, what, ok: false, ms: Date.now() - t0, detail: e instanceof Error ? e.message : 'Unknown error' }); }
+  };
+
+  await timed('Connection', 'Reaches Google and the key is accepted', async () => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`);
+    if (res.status === 400 || res.status === 403) return { ok: false, detail: 'Key rejected (HTTP ' + res.status + '). Generate a fresh key at aistudio.google.com.' };
+    if (!res.ok) return { ok: false, detail: `Google returned HTTP ${res.status}.` };
+    const d = (await res.json()) as { models?: Array<{ name: string }> };
+    const names = (d.models ?? []).map((m) => m.name.replace('models/', ''));
+    const has = names.some((n) => n === model || n.startsWith(model));
+    return { ok: has, detail: has ? `Key valid · ${names.length} models available` : `Key valid, but "${model}" is not in your list of ${names.length} models.` };
+  });
+
+  await timed('Writing', 'Can generate text', async () => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with exactly: ALIVE' }] }], generationConfig: { temperature: 0, maxOutputTokens: 10 } }),
+    });
+    if (res.status === 429) return { ok: false, detail: 'Rate limited or out of free quota. It should recover on its own.' };
+    if (!res.ok) return { ok: false, detail: `HTTP ${res.status} — ${(await res.text()).slice(0, 140)}` };
+    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    const t = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+    return { ok: /ALIVE/i.test(t), detail: t ? `Replied "${t.slice(0, 40)}"` : 'Empty reply.' };
+  });
+
+  await timed('Reading payments', 'Pulls a UTR and amount out of a bank message', async () => {
+    const sample = 'Dear Customer, Rs.3,50,000.00 has been debited from your Kotak A/c XX8556 on 05-01-2026 to SV ENTERPRISES via NEFT. UTR: KKBKN52026010500123456.';
+    const r = await extractPaymentAdvice({ text: sample });
+    if (!r) return { ok: false, detail: 'No usable reply came back.' };
+    const amountOk = r.amount === 350000;
+    const utrOk = r.utr === 'KKBKN52026010500123456';
+    return { ok: amountOk && utrOk, detail: amountOk && utrOk ? `Read Rs.3,50,000 and the full UTR correctly` : `Amount read as ${r.amount ?? 'nothing'}, UTR as ${r.utr ?? 'nothing'}.` };
+  });
+
+  await timed('Search index', 'Can turn text into embeddings for document search', async () => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${env.GEMINI_API_KEY}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'models/text-embedding-004', content: { parts: [{ text: 'payment voucher' }] } }),
+    });
+    if (!res.ok) return { ok: false, detail: `HTTP ${res.status}. Document Q&A will not work until this passes.` };
+    const d = (await res.json()) as { embedding?: { values?: number[] } };
+    const n = d.embedding?.values?.length ?? 0;
+    return { ok: n > 0, detail: n ? `${n}-dimension vector returned` : 'No vector returned.' };
+  });
+
+  return { enabled: true, model, probes };
+}

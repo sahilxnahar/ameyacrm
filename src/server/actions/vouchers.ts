@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import { KIND_META, VOUCHER_KINDS, PAY_MODES, type VoucherKind } from '@/config/vouchers';
+import { describeUtr } from '@/lib/money-words';
+import { extractPaymentAdvice, runAiSelfTest, isGeminiEnabled } from '@/lib/ai/gemini';
 
 export type VoucherResult = { ok: true; id?: string; number?: string; message?: string } | { error: string };
 
@@ -30,6 +32,9 @@ const schema = z.object({
   amount: z.coerce.number().min(0).default(0),
   mode: z.enum(PAY_MODES).default('CASH'),
   reference: z.string().max(80).optional().or(z.literal('')),
+  utr: z.string().max(40).optional().or(z.literal('')),
+  paidOn: z.string().optional().or(z.literal('')),
+  bankName: z.string().max(80).optional().or(z.literal('')),
   narration: z.string().max(500).optional().or(z.literal('')),
   materialName: z.string().max(160).optional().or(z.literal('')),
   quantity: z.coerce.number().min(0).optional(),
@@ -64,6 +69,11 @@ export async function createVoucher(input: unknown): Promise<VoucherResult> {
         bookingId: d.bookingId || null,
         amount, mode: d.mode,
         reference: d.reference || null,
+        utr: d.utr ? d.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null,
+        paidOn: d.paidOn ? new Date(d.paidOn) : null,
+        bankName: d.bankName || null,
+        utrEnteredById: d.utr ? ctx.user.id : null,
+        utrEnteredAt: d.utr ? new Date() : null,
         narration: d.narration || null,
         materialName: d.materialName || null,
         quantity: d.quantity ?? null,
@@ -100,4 +110,91 @@ export async function cancelVoucher(id: string, reason: string): Promise<Voucher
     revalidatePath('/cash-book');
     return { ok: true, message: `${v.number} cancelled. It stays in the book, marked cancelled.` };
   } catch (err) { return toActionError(err); }
+}
+
+
+const utrSchema = z.object({
+  id: z.string().min(1),
+  utr: z.string().min(4, 'A UTR is at least 4 characters.').max(40),
+  paidOn: z.string().optional().or(z.literal('')),
+  bankName: z.string().max(80).optional().or(z.literal('')),
+});
+
+/**
+ * Attach the bank trail to a voucher after the fact — most payments are
+ * entered when they are decided, and the UTR only exists once the transfer
+ * actually goes through.
+ */
+export async function recordUtr(input: unknown): Promise<VoucherResult> {
+  try {
+    const ctx = await ensure('billing.invoice.manage');
+    const d = utrSchema.parse(input);
+    const utr = d.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+    const shape = describeUtr(utr);
+    if (!shape.ok) return { error: shape.note ?? 'That does not look like a UTR.' };
+
+    const v = await prisma.voucher.findUnique({ where: { id: d.id }, select: { number: true, status: true } });
+    if (!v) return { error: 'That voucher no longer exists.' };
+    if (v.status === 'CANCELLED') return { error: `${v.number} is cancelled — reverse it instead of adding a UTR.` };
+
+    const clash = await prisma.voucher.findFirst({
+      where: { utr, id: { not: d.id }, status: { not: 'CANCELLED' } },
+      select: { number: true, partyName: true },
+    });
+    if (clash) return { error: `That UTR is already on ${clash.number} (${clash.partyName}). One transfer, one voucher.` };
+
+    await prisma.voucher.update({
+      where: { id: d.id },
+      data: {
+        utr,
+        paidOn: d.paidOn ? new Date(d.paidOn) : new Date(),
+        bankName: d.bankName || null,
+        utrEnteredById: ctx.user.id,
+        utrEnteredAt: new Date(),
+      },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: d.id, summary: `UTR ${utr} recorded on ${v.number}` });
+    revalidatePath('/payments');
+    revalidatePath('/cash-book');
+    return { ok: true, number: v.number, message: shape.note ?? `Recorded${shape.rail ? ` — looks like ${shape.rail}` : ''}.` };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+export type AdviceResult =
+  | { ok: true; partyName: string | null; amount: number | null; paidOn: string | null; utr: string | null; mode: string | null; bankName: string | null; narration: string | null; confidence: string; warning: string | null }
+  | { error: string };
+
+/** Read a pasted bank SMS / UPI confirmation and hand back the fields to fill in. */
+export async function readPaymentAdvice(text: string): Promise<AdviceResult> {
+  try {
+    await ensure('billing.invoice.manage');
+    if (!isGeminiEnabled()) return { error: 'The AI key is not set up yet — check Admin > AI health.' };
+    if (!text || text.trim().length < 10) return { error: 'Paste the whole bank message so there is something to read.' };
+
+    const r = await extractPaymentAdvice({ text });
+    if (!r) return { error: 'The AI could not read that. Check Admin > AI health, or type the details in by hand.' };
+    if (!r.amount && !r.utr) return { error: 'No amount or UTR could be found in that text. Is it definitely a payment confirmation?' };
+
+    let warning: string | null = null;
+    if (r.utr) {
+      const shape = describeUtr(r.utr);
+      if (shape.note) warning = shape.note;
+      const clash = await prisma.voucher.findFirst({ where: { utr: r.utr, status: { not: 'CANCELLED' } }, select: { number: true, partyName: true } });
+      if (clash) warning = `Careful — that UTR is already recorded on ${clash.number} (${clash.partyName}).`;
+    }
+    if (r.confidence === 'low' && !warning) warning = 'Read with low confidence — please check each field before saving.';
+
+    return { ok: true, ...r, warning };
+  } catch (e) {
+    return toActionError(e);
+  }
+}
+
+/** Run the live AI probes. Admin-only: it spends real quota. */
+export async function checkAiHealth() {
+  await ensure('admin.settings.manage');
+  return runAiSelfTest();
 }

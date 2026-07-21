@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
@@ -25,6 +25,7 @@ export default async function AdminPage() {
         {[
           { href: '/admin/marketplace', icon: Store, title: 'Free Extras', desc: 'Ready-made automations, templates and views' },
           { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working' },
+          { href: '/admin/ai-health', icon: Sparkles, title: 'AI Health', desc: 'Test the AI for real and see what came back' },
           { href: '/admin/import', icon: Upload, title: 'Import Data', desc: 'Paste units, bookings and leads from Excel' },
           { href: '/admin/access-requests', icon: UserPlus, title: 'Access Requests', desc: 'Approve people who signed themselves up' },
           { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },

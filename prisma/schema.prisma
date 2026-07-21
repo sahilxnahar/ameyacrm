@@ -2598,8 +2598,16 @@ model Voucher {
 
   amount     Decimal  @default(0) @db.Decimal(14, 2)
   mode       PayMode  @default(CASH)
-  reference  String? // UTR, cheque number, challan number
+  reference  String? // cheque number, challan number, bill number
   narration  String?
+
+  // Bank trail. Kept apart from `reference` so a UTR is always searchable and
+  // can be checked for accidental re-entry of the same transfer.
+  utr        String?
+  paidOn     DateTime? // when the money actually moved, which may not be the voucher date
+  bankName   String?
+  utrEnteredById String?
+  utrEnteredAt   DateTime?
 
   // Material vouchers
   materialName String?
@@ -2623,4 +2631,5 @@ model Voucher {
   @@index([projectId, voucherDate])
   @@index([status])
   @@index([partyName])
+  @@index([utr])
 }
