@@ -1,5 +1,6 @@
 import 'server-only';
 import { env } from '@/config/env';
+import { aiChat, activeProvider } from '@/lib/ai/provider';
 import { inferMimeType, fileKindLabel } from '@/lib/files/mime';
 // Re-exported so existing callers importing these from here keep working.
 export { inferMimeType, fileKindLabel };
@@ -24,8 +25,9 @@ export function explainAiFailure(status: number, body: string): string {
   return `The AI service returned an error (${status}). ${body.slice(0, 160)}`.trim();
 }
 
+/** True when ANY provider is configured — Google, or the fallback. */
 export function isGeminiEnabled(): boolean {
-  return Boolean(env.GEMINI_API_KEY);
+  return Boolean(env.GEMINI_API_KEY) || Boolean(env.AI_BASE_URL && env.AI_API_KEY);
 }
 export function geminiSupports(mimeType: string): boolean {
   return mimeType === 'application/pdf' || mimeType.startsWith('image/') || mimeType.startsWith('text/');
@@ -346,6 +348,24 @@ const PAYMENT_SCHEMA = {
 export async function extractPaymentAdvice(
   input: { text: string } | { buffer: Buffer; mimeType: string },
 ): Promise<ExtractedPayment | null> {
+  if (!isGeminiEnabled()) return null;
+
+  // Pasted text works on any provider. Screenshots need one that reads images,
+  // which today means Google.
+  if ('text' in input && activeProvider().kind === 'openai-compatible') {
+    const r = await aiChat({
+      system: PAYMENT_PROMPT + '\nReply with JSON only, no commentary.',
+      prompt: `Payment confirmation:\n\n${input.text.trim().slice(0, 6000)}`,
+      json: true, temperature: 0,
+    });
+    if (!r.ok) return null;
+    try {
+      return normalisePayment(JSON.parse(r.text.replace(/^```(?:json)?|```$/g, '').trim()) as Record<string, unknown>);
+    } catch {
+      return null;
+    }
+  }
+
   if (!env.GEMINI_API_KEY) return null;
 
   const parts: Array<Record<string, unknown>> = [];
@@ -375,8 +395,15 @@ export async function extractPaymentAdvice(
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) return null;
-    const p = JSON.parse(raw) as Record<string, unknown>;
+    return normalisePayment(JSON.parse(raw) as Record<string, unknown>);
+  } catch {
+    return null;
+  }
+}
 
+/** Tidy whatever the model returned into the shape the CRM expects. */
+function normalisePayment(p: Record<string, unknown>): ExtractedPayment {
+  {
     const amount = typeof p.amount === 'number' && Number.isFinite(p.amount) && p.amount > 0 ? p.amount : null;
     const utr = typeof p.utr === 'string' ? p.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || null : null;
     const modes = ['CASH', 'BANK_TRANSFER', 'UPI', 'CHEQUE', 'CARD'];
@@ -389,8 +416,6 @@ export async function extractPaymentAdvice(
       bankName: str(p.bankName), narration: str(p.narration),
       confidence: p.confidence === 'high' || p.confidence === 'medium' ? p.confidence : 'low',
     };
-  } catch {
-    return null;
   }
 }
 
@@ -408,12 +433,63 @@ export interface AiProbe { name: string; what: string; ok: boolean; ms: number; 
  * key exists. A configured key that is expired, out of quota or region-blocked
  * looks identical to a working one until something is sent through it.
  */
-export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string; probes: AiProbe[] }> {
-  const model = env.GEMINI_MODEL;
-  if (!env.GEMINI_API_KEY) {
-    return { enabled: false, model, probes: [{ name: 'API key', what: 'GEMINI_API_KEY present', ok: false, ms: 0, detail: 'No key set. Add GEMINI_API_KEY in Vercel, then redeploy.' }] };
+export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string; provider: string; probes: AiProbe[] }> {
+  const p = activeProvider();
+
+  if (p.kind === 'none') {
+    return {
+      enabled: false, model: '—', provider: 'not configured',
+      probes: [{
+        name: 'No provider', what: 'Somewhere for the AI to run', ok: false, ms: 0,
+        detail: 'Set either GEMINI_API_KEY, or AI_BASE_URL + AI_API_KEY + AI_MODEL for a non-Google provider. Then redeploy.',
+      }],
+    };
   }
 
+  // The fallback provider has its own, much shorter, set of checks.
+  if (p.kind === 'openai-compatible') {
+    const probes: AiProbe[] = [];
+    const t0 = Date.now();
+    const chat = await aiChat({ prompt: 'Reply with exactly: ALIVE', temperature: 0, maxTokens: 10 });
+    probes.push({
+      name: 'Writing', what: `${p.label} · ${p.model}`, ms: Date.now() - t0,
+      ok: chat.ok && /ALIVE/i.test(chat.text),
+      detail: chat.ok ? `Replied "${chat.text.slice(0, 40)}"` : chat.error,
+    });
+
+    const t1 = Date.now();
+    const sample = 'Dear Customer, Rs.3,50,000.00 has been debited from your Kotak A/c XX8556 on 05-01-2026 to SV ENTERPRISES via NEFT. UTR: KKBKN52026010500123456.';
+    const read = await extractPaymentAdvice({ text: sample });
+    probes.push({
+      name: 'Reading payments', what: 'Pulls a UTR and amount out of a bank message', ms: Date.now() - t1,
+      ok: read?.amount === 350000 && read?.utr === 'KKBKN52026010500123456',
+      detail: read ? `Read ${read.amount ?? 'nothing'} and UTR ${read.utr ?? 'nothing'}` : 'No usable reply came back.',
+    });
+
+    const t2 = Date.now();
+    if (env.AI_EMBED_MODEL) {
+      const { aiEmbed } = await import('@/lib/ai/provider');
+      const v = await aiEmbed('payment voucher');
+      probes.push({
+        name: 'Search index', what: `Embeddings via ${env.AI_EMBED_MODEL}`, ms: Date.now() - t2,
+        ok: Boolean(v?.length), detail: v?.length ? `${v.length}-dimension vector returned` : 'No vector came back.',
+      });
+    } else {
+      probes.push({
+        name: 'Search index', what: 'Embeddings for document search', ms: 0, ok: false,
+        detail: 'AI_EMBED_MODEL is not set, so Ask Documents falls back to plain keyword matching. That still works — it is just less clever.',
+      });
+    }
+
+    probes.push({
+      name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: false,
+      detail: 'This provider reads text, not PDFs or images. Bill import and document summaries need Google, and stay off until that account is unblocked.',
+    });
+
+    return { enabled: true, model: p.model, provider: p.label, probes };
+  }
+
+  const model = env.GEMINI_MODEL;
   const probes: AiProbe[] = [];
   const timed = async (name: string, what: string, fn: () => Promise<{ ok: boolean; detail: string }>) => {
     const t0 = Date.now();
@@ -499,5 +575,5 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
     return { ok: false, detail: `None of these worked: ${tried.join(', ')}. Document Q&A stays off until one does.` };
   });
 
-  return { enabled: true, model, probes };
+  return { enabled: true, model, provider: 'Google Gemini', probes };
 }

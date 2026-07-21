@@ -46,6 +46,14 @@ const schema = z.object({
   GAS_SECRET: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
+  // A second AI provider, so a refusal by one account cannot take the whole
+  // feature set down. Anything speaking the OpenAI chat-completions shape
+  // works here: OpenRouter, Groq, OpenAI, Together, Mistral, DeepInfra.
+  AI_BASE_URL: z.string().optional(),        // e.g. https://openrouter.ai/api/v1
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().optional(),           // e.g. meta-llama/llama-3.3-70b-instruct
+  AI_EMBED_MODEL: z.string().optional(),     // e.g. text-embedding-3-small
+
   // Email (pluggable): smtp | ses | resend | console
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend', 'console']).default('console'),
   EMAIL_FROM: z.string().default('Ameya Heights CRM <no-reply@ameyaheights.com>'),

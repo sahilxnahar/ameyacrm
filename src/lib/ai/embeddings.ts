@@ -17,6 +17,23 @@ let working: string | null = null;
  * still upload and still be summarised.
  */
 export async function embed(text: string, kind: 'document' | 'query' = 'document'): Promise<number[] | null> {
+  // A configured fallback provider takes precedence; it is only ever set on
+  // purpose, and Google is the thing that stopped working.
+  if (env.AI_BASE_URL && env.AI_API_KEY && env.AI_EMBED_MODEL) {
+    const base = env.AI_BASE_URL.replace(/\/$/, '');
+    try {
+      const res = await fetch(`${base}/embeddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.AI_API_KEY}` },
+        body: JSON.stringify({ model: env.AI_EMBED_MODEL, input: text.slice(0, 8000) }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { data?: Array<{ embedding?: number[] }> };
+        const v = j.data?.[0]?.embedding;
+        if (v?.length) return v;
+      }
+    } catch { /* fall through to Google */ }
+  }
   if (!env.GEMINI_API_KEY) return null;
   const clipped = text.slice(0, 8000);
   const order = working ? [working, ...MODELS.filter((m) => m !== working)] : [...MODELS];

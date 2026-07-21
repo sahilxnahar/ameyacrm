@@ -149,29 +149,18 @@ export async function askDocuments(question: string, ctx: AuthContext): Promise<
 }
 
 async function generate(question: string, context: string): Promise<string> {
-  if (!env.GEMINI_API_KEY) {
-    return 'Showing the closest passages below. Add a Gemini key to get them summarised into a direct answer.';
-  }
-  const prompt =
-    'You answer questions for a Bengaluru real-estate developer using ONLY the extracts below. ' +
-    'Quote the exact wording when it matters — clauses, amounts, dates. Cite the extract number in square brackets. ' +
-    'If the extracts do not contain the answer, say so plainly and do not guess. Be brief and direct.\n\n' +
-    `QUESTION: ${question}\n\nEXTRACTS:\n${context.slice(0, 24000)}`;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.15 } }),
-      },
-    );
-    if (!res.ok) return 'The AI service did not respond. The matching passages are below.';
-    const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    return d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') || 'No answer came back. The matching passages are below.';
-  } catch {
-    return 'The AI service could not be reached. The matching passages are below.';
-  }
+  const { aiChat } = await import('@/lib/ai/provider');
+  const r = await aiChat({
+    system:
+      'You answer questions about an Indian real-estate developer\'s own records. Use ONLY the passages given. ' +
+      'If they do not contain the answer, say so plainly rather than guessing — an invented figure or clause is worse than no answer. ' +
+      'Cite the passage number in square brackets when you use one. Keep it short.',
+    prompt: `PASSAGES:\n${context}\n\nQUESTION: ${question}`,
+    temperature: 0.2,
+    maxTokens: 700,
+  });
+  if (!r.ok) return `I could not reach the AI to answer that. ${r.error}`;
+  return r.text;
 }
 
 

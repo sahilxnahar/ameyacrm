@@ -30,7 +30,7 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
         setIndexMsg(e instanceof Error ? e.message : 'Indexing failed.');
       }
     });
-  const [result, setResult] = useState<{ enabled: boolean; model: string; probes: Probe[] } | null>(null);
+  const [result, setResult] = useState<{ enabled: boolean; model: string; provider: string; probes: Probe[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -73,8 +73,8 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
             <div className={`rounded-md p-3 text-sm ${passed === total ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300'}`}>
               <strong>{passed} of {total} checks passed.</strong>{' '}
               {passed === total
-                ? `The AI is working. Model in use: ${result.model}.`
-                : 'Look at the failures below — each one says what to do about it.'}
+                ? `The AI is working — ${result.provider}, model ${result.model}.`
+                : `Running on ${result.provider} (${result.model}). Look at the failures below — each one says what to do about it.`}
             </div>
             <ul className="divide-y rounded-md border">
               {result.probes.map((p) => (
