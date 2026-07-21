@@ -54,6 +54,11 @@ const schema = z.object({
   AI_MODEL: z.string().optional(),           // e.g. meta-llama/llama-3.3-70b-instruct
   AI_EMBED_MODEL: z.string().optional(),     // e.g. text-embedding-3-small
 
+  // WhatsApp inbound. The verify token is any string you choose; it just has
+  // to match what you type into Meta's webhook screen.
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  META_APP_SECRET: z.string().optional(),
+
   // Email (pluggable): smtp | ses | resend | console
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend', 'console']).default('console'),
   EMAIL_FROM: z.string().default('Ameya Heights CRM <no-reply@ameyaheights.com>'),

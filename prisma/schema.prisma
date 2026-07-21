@@ -2753,3 +2753,41 @@ model UserOnboarding {
 
   @@index([completedAt, lastRemindAt])
 }
+
+
+/// One WhatsApp conversation with one person, and where it has got to.
+///
+/// WhatsApp gives no session of its own — every message arrives cold — so the
+/// step someone is on has to be remembered here between messages.
+model WhatsappSession {
+  id        String   @id @default(cuid())
+  phone     String   @unique // normalised, e.g. 919845012345
+  userId    String?
+  state     String   @default("IDLE") // IDLE, CHOOSING_FOLDER, READY_FOR_FILE
+  folderId  String? // where the next file will go
+  offered   Json? // the numbered list last shown, so "2" means something
+  lastSeen  DateTime @default(now())
+  expiresAt DateTime
+  uploads   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+/// Every inbound WhatsApp message, so a lost upload can be traced.
+model WhatsappMessage {
+  id         String   @id @default(cuid())
+  externalId String   @unique // WhatsApp message id — a replay never duplicates
+  phone      String
+  userId     String?
+  kind       String // text, document, image, other
+  body       String?
+  mediaId    String?
+  filename   String?
+  handled    Boolean  @default(false)
+  outcome    String?
+  createdAt  DateTime @default(now())
+
+  @@index([phone, createdAt])
+}

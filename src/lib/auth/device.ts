@@ -76,6 +76,27 @@ export async function beginDeviceApproval(
   });
 
   const where = [city, countryName(country)].filter(Boolean).join(', ');
+  // WhatsApp first when we have a number: a code on the phone arrives faster
+  // than one in an inbox, and the phone is what the person is holding.
+  let whatsappSent = false;
+  const target = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { whatsappNumber: true, phone: true },
+  });
+  const mobile = target?.whatsappNumber || target?.phone || null;
+  if (mobile) {
+    try {
+      const { sendWhatsappText } = await import('@/server/services/whatsapp-service');
+      const r = await sendWhatsappText(
+        mobile,
+        `Your Ameya Heights CRM code is ${code}. It expires in 15 minutes. If you did not ask for it, somebody has your password — change it now.`,
+      );
+      whatsappSent = r.ok;
+    } catch {
+      whatsappSent = false;
+    }
+  }
+
   const sent = await sendEmail({
     to: [user.email],
     subject: `Your Ameya Heights CRM code: ${code}`,
@@ -100,7 +121,13 @@ export async function beginDeviceApproval(
 
   // If the code could not be sent, the person is standing at an empty code box
   // with no way forward. Say so rather than letting them guess.
-  return { token, emailed: sent.ok, error: sent.ok ? null : sent.error ?? 'The code could not be emailed.' };
+  // Either channel arriving is enough to let the person carry on.
+  const delivered = sent.ok || whatsappSent;
+  return {
+    token,
+    emailed: delivered,
+    error: delivered ? null : sent.error ?? 'The code could not be sent by email or WhatsApp.',
+  };
 }
 
 export type ApprovalResult =

@@ -12,8 +12,8 @@ export default async function DeviceCheckPage({ searchParams }: { searchParams: 
       <div>
         <h2 className="font-display text-2xl font-semibold">Confirm this device</h2>
         <p className="mt-1 text-sm">
-          We have not seen this device before, so we have emailed a six-digit code to your work address.
-          Enter it below to carry on.
+          We have not seen this device before. A six-digit code has been sent to your work email, and to your
+          WhatsApp if your number is on file. Enter it below to carry on.
         </p>
       </div>
       {sendfailed === '1' && (

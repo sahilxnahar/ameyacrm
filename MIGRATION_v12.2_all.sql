@@ -338,3 +338,38 @@ ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "repeatedFromId" TEXT;
 
 ALTER TABLE "MailThreadMessage" ADD COLUMN IF NOT EXISTS "vendorId" TEXT;
 CREATE INDEX IF NOT EXISTS "MailThreadMessage_vendorId_idx" ON "MailThreadMessage"("vendorId");
+
+-- v12.2 — WhatsApp uploads ----------------------------------------------------
+CREATE TABLE IF NOT EXISTS "WhatsappSession" (
+  "id"        TEXT NOT NULL,
+  "phone"     TEXT NOT NULL,
+  "userId"    TEXT,
+  "state"     TEXT NOT NULL DEFAULT 'IDLE',
+  "folderId"  TEXT,
+  "offered"   JSONB,
+  "lastSeen"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "uploads"   INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "WhatsappSession_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "WhatsappSession_phone_key" ON "WhatsappSession"("phone");
+CREATE INDEX IF NOT EXISTS "WhatsappSession_expiresAt_idx" ON "WhatsappSession"("expiresAt");
+
+CREATE TABLE IF NOT EXISTS "WhatsappMessage" (
+  "id"         TEXT NOT NULL,
+  "externalId" TEXT NOT NULL,
+  "phone"      TEXT NOT NULL,
+  "userId"     TEXT,
+  "kind"       TEXT NOT NULL,
+  "body"       TEXT,
+  "mediaId"    TEXT,
+  "filename"   TEXT,
+  "handled"    BOOLEAN NOT NULL DEFAULT false,
+  "outcome"    TEXT,
+  "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "WhatsappMessage_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "WhatsappMessage_externalId_key" ON "WhatsappMessage"("externalId");
+CREATE INDEX IF NOT EXISTS "WhatsappMessage_phone_createdAt_idx" ON "WhatsappMessage"("phone", "createdAt");
