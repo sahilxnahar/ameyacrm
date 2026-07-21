@@ -1,5 +1,25 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.23 — better uploads + V6 accent themes. No SQL.**
+
+> **v14.23 upgrades file upload and adds personal accent themes.**
+> - **Better uploads (your ask).** The document dropzone (`file-dropzone.tsx`) now shows a **live
+>   per-file progress bar** and an **image thumbnail**, accepts **paste-from-clipboard** (a
+>   screenshot or a copied file — "from anywhere else"), **validates size up front** (clear
+>   "too big" message instead of a silent fail), and offers **one-tap retry** on a failure.
+>   It already did desktop drag-and-drop, whole-folder upload, multi-file, and direct-to-blob
+>   uploads (no 4.5 MB limit) — those stay. This is the shared uploader, so improvements carry
+>   to wherever it's used.
+> - **V6 — accent themes.** A new **Accent** picker in the top-bar Display menu (Gold — the brand
+>   default — plus Emerald, Indigo, Teal, Rose), applied before first paint and remembered per
+>   device, alongside the text-size and density controls.
+>
+> Still to come in the visual programme: **V4** (photo/floor-plan cards, a drag kanban — wants your
+> images), **V5** (illustrations & delight moments), **V7** (the screen-by-screen polish sweep);
+> plus capability modules **#7 workflow automation** (next), **#9 BI**, **#8 HR** (#10 listing needs
+> portal APIs). Note: visual taste benefits from your eyes — say what to tune. Hard check: 0 type
+> errors, 293 tests, all verifier checks (118 pages, 175 models), build exit 0.
+
 **Written 21 July 2026. Build v14.22 — visual elevation V1–V3 (foundations). No SQL.**
 
 > **v14.22 begins the visual-elevation programme (V1–V7).** Refinements applied to the shared

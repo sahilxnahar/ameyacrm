@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Apply saved text size and density before first paint — no flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('amh:text-scale')||'m';var d=localStorage.getItem('amh:density')||'comfortable';var e=document.documentElement;e.setAttribute('data-text-scale',s);e.setAttribute('data-density',d);}catch(e){}})();`,
+            __html: `(function(){try{var s=localStorage.getItem('amh:text-scale')||'m';var d=localStorage.getItem('amh:density')||'comfortable';var a=localStorage.getItem('amh:accent')||'brass';var e=document.documentElement;e.setAttribute('data-text-scale',s);e.setAttribute('data-density',d);e.setAttribute('data-accent',a);}catch(e){}})();`,
           }}
         />
         <WebVitals />

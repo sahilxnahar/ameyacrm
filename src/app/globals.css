@@ -403,3 +403,13 @@ html[data-density='compact'] .divide-y > * { padding-top: 0.35rem; padding-botto
 @media (prefers-reduced-motion: reduce) {
   .pop-in { animation: none !important; }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   V6 — accent themes. Personal, per-device (set on <html data-accent>). Brass
+   (gold) is the brand default; these are tasteful alternatives that recolour the
+   primary/accent/ring so the workspace can feel like the person's own.
+   ──────────────────────────────────────────────────────────────────────────── */
+html[data-accent='emerald'] { --primary: 160 52% 33%; --ring: 160 52% 33%; --accent: 160 44% 45%; --brass: 160 52% 33%; --brass-deep: 160 52% 27%; --brass-light: 160 44% 46%; }
+html[data-accent='indigo']  { --primary: 234 46% 50%; --ring: 234 46% 50%; --accent: 234 40% 60%; --brass: 234 46% 50%; --brass-deep: 234 46% 42%; --brass-light: 234 40% 62%; }
+html[data-accent='rose']    { --primary: 342 56% 45%; --ring: 342 56% 45%; --accent: 342 50% 56%; --brass: 342 56% 45%; --brass-deep: 342 56% 38%; --brass-light: 342 50% 58%; }
+html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --accent: 190 50% 44%; --brass: 190 60% 32%; --brass-deep: 190 60% 26%; --brass-light: 190 50% 46%; }

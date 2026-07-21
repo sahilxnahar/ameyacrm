@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { SlidersHorizontal, Type, Rows3 } from 'lucide-react';
+import { SlidersHorizontal, Type, Rows3, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -12,26 +12,39 @@ import { cn } from '@/lib/utils/cn';
  */
 const TEXT_KEY = 'amh:text-scale';
 const DENSITY_KEY = 'amh:density';
+const ACCENT_KEY = 'amh:accent';
 const SCALES = ['s', 'm', 'l'] as const;
 type Scale = (typeof SCALES)[number];
+const ACCENTS = [
+  { key: 'brass', label: 'Gold', swatch: 'hsl(40 51% 42%)' },
+  { key: 'emerald', label: 'Emerald', swatch: 'hsl(160 52% 33%)' },
+  { key: 'indigo', label: 'Indigo', swatch: 'hsl(234 46% 50%)' },
+  { key: 'teal', label: 'Teal', swatch: 'hsl(190 60% 32%)' },
+  { key: 'rose', label: 'Rose', swatch: 'hsl(342 56% 45%)' },
+] as const;
+type Accent = (typeof ACCENTS)[number]['key'];
 
-function apply(scale: Scale, density: 'comfortable' | 'compact') {
+function apply(scale: Scale, density: 'comfortable' | 'compact', accent: Accent) {
   const el = document.documentElement;
   el.setAttribute('data-text-scale', scale);
   el.setAttribute('data-density', density);
+  el.setAttribute('data-accent', accent);
 }
 
 export function DisplaySettings() {
   const [open, setOpen] = React.useState(false);
   const [scale, setScale] = React.useState<Scale>('m');
   const [density, setDensity] = React.useState<'comfortable' | 'compact'>('comfortable');
+  const [accent, setAccent] = React.useState<Accent>('brass');
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const s = (localStorage.getItem(TEXT_KEY) as Scale) || 'm';
     const d = (localStorage.getItem(DENSITY_KEY) as 'comfortable' | 'compact') || 'comfortable';
+    const a = (localStorage.getItem(ACCENT_KEY) as Accent) || 'brass';
     setScale(SCALES.includes(s) ? s : 'm');
     setDensity(d === 'compact' ? 'compact' : 'comfortable');
+    setAccent(ACCENTS.some((x) => x.key === a) ? a : 'brass');
   }, []);
 
   React.useEffect(() => {
@@ -41,8 +54,9 @@ export function DisplaySettings() {
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
 
-  const setTextScale = (s: Scale) => { setScale(s); localStorage.setItem(TEXT_KEY, s); apply(s, density); };
-  const setDens = (d: 'comfortable' | 'compact') => { setDensity(d); localStorage.setItem(DENSITY_KEY, d); apply(scale, d); };
+  const setTextScale = (s: Scale) => { setScale(s); localStorage.setItem(TEXT_KEY, s); apply(s, density, accent); };
+  const setDens = (d: 'comfortable' | 'compact') => { setDensity(d); localStorage.setItem(DENSITY_KEY, d); apply(scale, d, accent); };
+  const setAccentColor = (a: Accent) => { setAccent(a); localStorage.setItem(ACCENT_KEY, a); apply(scale, density, a); };
 
   return (
     <div ref={ref} className="relative">
@@ -73,6 +87,15 @@ export function DisplaySettings() {
                 className={cn('rounded-md border px-2 py-1.5 text-sm', density === v ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
                 {lbl}
               </button>
+            ))}
+          </div>
+
+          <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><Palette className="h-3.5 w-3.5" /> Accent</p>
+          <div className="flex items-center gap-2">
+            {ACCENTS.map((a) => (
+              <button key={a.key} onClick={() => setAccentColor(a.key)} title={a.label} aria-label={a.label}
+                className={cn('h-6 w-6 rounded-full ring-offset-2 ring-offset-popover transition-transform hover:scale-110', accent === a.key ? 'ring-2 ring-foreground' : '')}
+                style={{ backgroundColor: a.swatch }} />
             ))}
           </div>
         </div>
