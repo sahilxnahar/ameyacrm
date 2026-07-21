@@ -1,6 +1,7 @@
 import 'server-only';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { rupeesInWords } from '@/lib/money-words';
+import { drawLetterhead } from '@/lib/pdf/letterhead';
 
 const BRASS = rgb(0.627, 0.49, 0.204);
 const CHARCOAL = rgb(0.063, 0.059, 0.051);
@@ -49,25 +50,22 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   const right = (s: string, xr: number, y: number, size = 10, f = font, color = CHARCOAL) =>
     page.drawText(ascii(s), { x: xr - f.widthOfTextAtSize(ascii(s), size), y, size, font: f, color });
 
-  page.drawRectangle({ x: 0, y: 828, width: W, height: 14, color: BRASS });
-
-  let y = 796;
-  text(d.company.name, M, y, 21, bold, CHARCOAL);
-  text(d.company.tagline, M, y - 15, 9, font, MUTE);
-  if (d.company.registeredAddress) {
-    text(d.company.registeredAddress.slice(0, 62), M, y - 28, 8, font, MUTE);
-    if (d.company.registeredAddress.length > 62) text(d.company.registeredAddress.slice(62, 124), M, y - 38, 8, font, MUTE);
-  }
-  if (d.company.gstin) text(`GSTIN: ${d.company.gstin}`, M, y - 51, 8.5, bold);
+  const { headerBottom } = drawLetterhead(page, { font, bold }, {
+    legalName: d.company.name,
+    registeredAddress: d.company.registeredAddress,
+    phone: d.company.phone,
+    email: d.company.email,
+    website: d.company.website,
+    gstin: d.company.gstin,
+  });
 
   const title = d.direction === 'paid' ? 'PAYMENT VOUCHER' : 'RECEIPT';
-  right(title, W - M, y, 17, bold, BRASS);
-  right(`# ${d.number}`, W - M, y - 20, 11, bold);
-  right(`Voucher date: ${day(d.voucherDate)}`, W - M, y - 35, 9, font, MUTE);
-  right(d.kindLabel, W - M, y - 48, 9, font, MUTE);
-
-  y -= 78;
-  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1, color: LINE });
+  let y = headerBottom - 26;
+  text(title, M, y, 15, bold, BRASS);
+  text(d.kindLabel, M, y - 14, 8.5, font, MUTE);
+  right(`# ${d.number}`, W - M, y, 12, bold);
+  right(day(d.voucherDate), W - M, y - 14, 9, font, MUTE);
+  y -= 30;
 
   if (d.status === 'CANCELLED') {
     y -= 24;
@@ -138,12 +136,8 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   page.drawLine({ start: { x: W - M - 160, y: sigY }, end: { x: W - M, y: sigY }, thickness: 0.5, color: LINE });
   right(d.direction === 'paid' ? 'Receiver / Authorised signatory' : 'For ' + d.company.name, W - M, sigY - 13, 8, font, MUTE);
 
-  // Footer
-  page.drawLine({ start: { x: M, y: 92 }, end: { x: W - M, y: 92 }, thickness: 0.5, color: LINE });
-  const contact = [d.company.phone, d.company.email, d.company.website.replace(/^https?:\/\//, '')].filter(Boolean).join('  ·  ');
-  text(contact, M, 78, 8, font, MUTE);
-  text('Computer-generated voucher from the Ameya Heights CRM. Retain with the bank statement for reconciliation.', M, 66, 7.5, font, MUTE);
-  page.drawRectangle({ x: 0, y: 0, width: W, height: 10, color: BRASS });
+  // Footer is drawn by the letterhead; this is the one line specific to a voucher.
+  text('Computer-generated voucher. Retain with the bank statement for reconciliation.', M, 96, 7, font, MUTE);
 
   return doc.save();
 }

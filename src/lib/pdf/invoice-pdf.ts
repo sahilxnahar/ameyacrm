@@ -1,5 +1,6 @@
 import 'server-only';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { drawLetterhead } from '@/lib/pdf/letterhead';
 
 // Brand colours (RGB 0..1)
 const BRASS = rgb(0.627, 0.49, 0.204);
@@ -43,23 +44,23 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
     page.drawText(ascii(s), { x: xr - w, y: yy, size, font: f, color });
   };
 
-  // Header
-  page.drawRectangle({ x: 0, y: 828, width: W, height: 14, color: BRASS });
-  text(d.company.name, M, y, 22, bold, CHARCOAL);
-  text(d.company.tagline, M, y - 16, 9, font, MUTE);
-  if (d.company.registeredAddress) {
-    const addr = d.company.registeredAddress;
-    text(addr.slice(0, 62), M, y - 28, 8, font, MUTE);
-    if (addr.length > 62) text(addr.slice(62, 124), M, y - 38, 8, font, MUTE);
-  }
-  text(d.company.website.replace('https://', '').replace('www.', ''), M, y - 50, 8, font, MUTE);
-  if (d.company.gstin) text(`GSTIN: ${d.company.gstin}`, M, y - 62, 9, bold, CHARCOAL);
-  right('TAX INVOICE', W - M, y, 18, bold, BRASS);
-  right(`# ${d.number}`, W - M, y - 20, 11, bold);
-  right(`Date: ${d.issueDate.toLocaleDateString('en-IN')}`, W - M, y - 34, 9, font, MUTE);
-  if (d.dueDate) right(`Due: ${d.dueDate.toLocaleDateString('en-IN')}`, W - M, y - 46, 9, font, MUTE);
+  // Header — the shared letterhead, drawn from the company record.
+  const { headerBottom } = drawLetterhead(page, { font, bold }, {
+    legalName: d.company.name,
+    registeredAddress: d.company.registeredAddress,
+    phone: d.company.phone,
+    email: d.company.email,
+    website: d.company.website,
+    gstin: d.company.gstin,
+  }, { compact: true });
 
-  y -= 92;
+  y = headerBottom - 24;
+  text('TAX INVOICE', M, y, 15, bold, BRASS);
+  right(`# ${d.number}`, W - M, y, 12, bold);
+  right(`Date: ${d.issueDate.toLocaleDateString('en-IN')}`, W - M, y - 14, 8.5, font, MUTE);
+  if (d.dueDate) right(`Due: ${d.dueDate.toLocaleDateString('en-IN')}`, W - M, y - 25, 8.5, font, MUTE);
+
+  y -= 34;
   page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1, color: LINE });
   y -= 24;
 
@@ -122,11 +123,10 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
     bank.forEach((line, i) => text(line, M, boxY - 13 - i * 11, 8, font, CHARCOAL));
   }
 
-  // Footer
-  if (d.company.siteAddress) text(`Site: ${d.company.siteName ? d.company.siteName + ' — ' : ''}${d.company.siteAddress}`.slice(0, 110), M, 72, 7, font, MUTE);
-  text(d.company.reraNote, M, 60, 8, font, MUTE);
-  text(`Status: ${d.status}`, M, 48, 8, font, MUTE);
-  page.drawRectangle({ x: 0, y: 0, width: W, height: 10, color: BRASS });
+  // Footer — contact details come from the letterhead; these two lines are
+  // specific to an invoice.
+  if (d.company.siteAddress) text(`Site: ${d.company.siteName ? d.company.siteName + ' - ' : ''}${d.company.siteAddress}`.slice(0, 110), M, 108, 7, font, MUTE);
+  text(`${d.company.reraNote}   ·   Status: ${d.status}`, M, 98, 7, font, MUTE);
 
   return doc.save();
 }
