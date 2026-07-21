@@ -1,6 +1,28 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.13 — 22 of 31 feature batches built.**
+**Written 21 July 2026. Build v14.14 — 24 of 31 feature batches built.**
+
+> **v14.14 lands TWO more batches** (all green, production build exit 0):
+> - **Batch 10 Reporting builder** (`/report-builder`) — pick a whitelisted source, a field to
+>   group by and a metric (count / sum / average); see the chart and table, then save the
+>   definition (private or shared) to run again. Closed by design: only listed sources and fields
+>   are offered, validated in both the action and the service, so a report can never reach a field
+>   it was not granted. New permission `report.build`; new table `SavedReport`.
+> - **Batch 9 AI depth** (`/insights`) — two statistical checks that need no live model (so they
+>   cannot fail on a missing key): **cost anomalies** (a bill 40%+ above the running rate for the
+>   same material is flagged, per-material so mixing materials never skews it) and the
+>   **lead-score distribution**. Pure engines (`src/lib/reports/aggregate.ts`,
+>   `src/lib/ai/anomaly.ts`), 12 new tests.
+>
+> **Feature plan is now 24/31 built.** Remaining 7: **8 Communications** & **11 Integrations**
+> (gated on the Meta appeal / partner API plans); **27 Site telemetry** (needs hardware);
+> **26 Vendor portal**, **30 Extensibility (custom objects)**, **31 Language (i18n)** — each a
+> large, focused build; **12 Platform quality** — largely already present (tests, observability,
+> backups). These need dedicated effort, not a rushed pass.
+>
+> New model this pass: SavedReport (`MIGRATION_v14.14_all.sql`, 1 table — Batch 9 needs no schema
+> change). Hard check: 0 type errors, 275 tests, all verifier checks (113 pages, 170 models),
+> init SQL idempotent on Postgres, full production build (exit 0).
 
 > **v14.13 lands SIX more batches** (all green, production build exit 0), on the generic
 > `RegisterScreen` pattern:

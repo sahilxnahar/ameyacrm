@@ -92,6 +92,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Forecast', href: '/forecast', icon: TrendingUp, permission: 'report.view' },
       { label: 'Map', href: '/map', icon: MapPin, permission: 'lead.view' },
       { label: 'Reports', href: '/reports', icon: BarChart3, permission: 'report.view' },
+      { label: 'Report Builder', href: '/report-builder', icon: BarChart3, permission: 'report.view' },
+      { label: 'Insights', href: '/insights', icon: Sparkles, permission: 'report.view' },
       { label: 'Analytics', href: '/analytics', icon: LineChart, permission: 'report.view' },
     ],
   },

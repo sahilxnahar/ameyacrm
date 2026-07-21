@@ -61,6 +61,7 @@ export const PERMISSIONS = {
   // Reports
   'report.view': 'View reports',
   'report.export': 'Export reports (Excel/CSV/PDF)',
+  'report.build': 'Build and save custom reports',
 
   // Administration
   'admin.user.view': 'View users',

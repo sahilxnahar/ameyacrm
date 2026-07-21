@@ -4324,3 +4324,26 @@ model CommercialTenancy {
 
   @@index([status])
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Batch 10 — Reporting: saved report definitions (the report builder). The
+// engine is pure and runs over a whitelisted set of sources; only the saved
+// definition is persisted. Batch 9 (AI insights) needs no new table — it
+// computes over existing vouchers and leads.
+// ═════════════════════════════════════════════════════════════════════════════
+
+model SavedReport {
+  id        String   @id @default(cuid())
+  name      String
+  source    String
+  groupBy   String
+  metric    String   @default("count")
+  valueKey  String?
+  shared    Boolean  @default(false)
+  ownerId   String?
+  createdById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
