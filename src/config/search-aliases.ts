@@ -52,6 +52,7 @@ export const SEARCH_ALIASES: Record<string, string[]> = {
   '/field': ['attendance', 'site', 'labour', 'workers on site'],
   '/site-photos': ['photo', 'photos', 'site picture', 'progress photo'],
   '/voice-note': ['voice', 'dictate', 'speak', 'record note'],
+  '/assistant': ['ai', 'chatbot', 'copilot', 'help me write', 'draft', 'ask ai'],
   '/glossary': ['meaning', 'definition', 'what does', 'jargon', 'term'],
   '/settings': ['profile', 'preferences', 'password', 'account'],
   '/admin': ['users', 'roles', 'add user', 'permissions', 'settings'],

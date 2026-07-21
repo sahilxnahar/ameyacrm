@@ -1,5 +1,25 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.21 — AI Assistant (capability #1). No SQL.**
+
+> **v14.21 adds the AI Assistant** (`/assistant`, in My Day) — capability #1 from the new-
+> capabilities menu. It's a chat helper for drafting buyer/broker messages, explaining screens
+> and terms, summarising pasted text and thinking through next steps.
+> - It rides the **existing AI provider and key rotation** (primary `AI_API_KEY`, spares in
+>   `AI_API_KEYS`, then the `AI_FALLBACK_*` provider) — so backup keys added in Vercel apply
+>   here automatically.
+> - **Graceful degradation (I2):** if no AI key is configured it says so plainly and points at
+>   the env var, instead of erroring — the page still opens.
+> - It has no live database access by design (v1); it helps with drafting/explaining/summarising.
+>   A data-aware, tool-using copilot is a later depth.
+>
+> **On the map + keys question:** the Map (`/map`) runs on MapLibre + OpenStreetMap + Nominatim
+> geocoding — **no API key**, so it is unrelated to any "OpenRoute" key. Backup keys for
+> **OpenRouter** (the AI provider) go in a **new** Vercel var `AI_API_KEYS` (comma-separated);
+> the existing `AI_API_KEY` stays untouched.
+>
+> Hard check: 0 type errors, 293 tests, all verifier checks (118 pages, 175 models), build exit 0.
+
 **Written 21 July 2026. Build v14.20 — coexistence batches I4–I5 (of I1–I7).**
 
 > **v14.20 adds universal record linking and the one access context.** Run

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.20';
+export const APP_VERSION = 'v14.21';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.21',
+    date: '21 Jul 2026',
+    highlights: [
+      'New AI Assistant — draft messages, explain terms, summarise and think through next steps.',
+      'It uses your AI provider and its backup keys, and says so plainly if no key is set yet.',
+    ],
+  },
   {
     version: 'v14.20',
     date: '21 Jul 2026',
