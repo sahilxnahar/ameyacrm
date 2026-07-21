@@ -1,10 +1,12 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v11.0_
+_Last updated: 21 July 2026 · current build v11.2_
 
 ---
 
 ## 1. Waiting on you — do these first
+
+- **Set the pooled connection string, or the CRM stays slow.** In Neon, copy the connection string whose host contains `-pooler`, set it as `DATABASE_URL` in Vercel, and keep the direct one as `DATABASE_URL_UNPOOLED`. Then open Admin → Performance: it measures the round trip and tells you whether it worked.
 
 - **Create a Meta app for WhatsApp, or no message will ever send.** Admin → Connected Accounts → WhatsApp → "Set it up" lists the five steps. Until `META_APP_ID` and `META_APP_SECRET` are in Vercel there is no Connect button, and until a template is approved by Meta the CRM cannot message anyone first.
 
@@ -20,7 +22,7 @@ _Last updated: 21 July 2026 · current build v11.0_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v11.0** — run `MIGRATION_v11.0_all.sql` in Neon, sync `ameya-heights-crm-v11.0.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v11.2** — run `MIGRATION_v11.2_all.sql` in Neon, sync `ameya-heights-crm-v11.2.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |
@@ -97,6 +99,9 @@ the Apps Script connector, Vercel, Neon, and your brand kit.
 ---
 
 ## 5. Known problems
+
+- **The hourly invite reminders send up to 73 emails over three days.** That is what "every hour" means, and it is a real risk of your domain being marked as spam — which would break every CRM email, not just these. To soften it, change `everyHours: 1` in `src/server/services/onboarding-service.ts` to `4`.
+
 
 - **A stale extracted copy of the project sits in `CRM/ameya-heights-crm/`.** It is many versions old. If you ever sync *that* folder to GitHub you will deploy an ancient build. Always extract the newest zip fresh, or delete that folder.
 

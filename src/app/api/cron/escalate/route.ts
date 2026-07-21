@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { env } from '@/config/env';
 import { runOverdueEscalation } from '@/server/services/escalation-service';
+import { runOnboardingReminders } from '@/server/services/onboarding-service';
 import { runSequences } from '@/server/services/sequence-service';
 import { processPending } from '@/server/services/file-sync-service';
 import { pruneRateLimits } from '@/lib/security/rate-limit';
@@ -10,7 +11,8 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /**
- * Hourly overdue escalation.
+ * Hourly housekeeping: overdue escalation, sequences, file processing and
+ * the reminders that chase new joiners who have not signed in yet.
  *
  * Vercel Hobby only permits ONE cron per day, so this endpoint is not in
  * vercel.json — it is meant to be called every hour by an outside scheduler.
@@ -36,8 +38,10 @@ export async function GET(req: NextRequest) {
     try { sequences = await runSequences(); } catch { sequences = 'failed'; }
     let files: unknown = 'skipped';
     try { files = await processPending(); } catch { files = 'failed'; }
+    let onboarding: unknown = 'skipped';
+    try { onboarding = await runOnboardingReminders(); } catch { onboarding = 'failed'; }
     try { await pruneRateLimits(); } catch { /* housekeeping only */ }
-    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result, sequences, files });
+    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result, sequences, files, onboarding });
   } catch (err) {
     await logError(err, { path: '/api/cron/escalate' });
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'failed' }, { status: 500 });

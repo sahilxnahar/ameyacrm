@@ -9,8 +9,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // The app talks to Neon's pooled endpoint; migrations and DDL need the direct
+  // one, because pgbouncer cannot run them. Both point at the same database.
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
@@ -2716,4 +2719,29 @@ model MessageTemplate {
 
   @@index([channel, isActive])
   @@index([metaStatus])
+}
+
+
+/// Tracks getting a new joiner through their first sign-in: the welcome email,
+/// the one-time link to set their own password, and the hourly nudges until
+/// they actually log in.
+model UserOnboarding {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  tokenHash     String    @unique // SHA-256 of the set-password link
+  tokenExpires  DateTime
+  tokenUsedAt   DateTime?
+
+  welcomeSentAt DateTime?
+  lastRemindAt  DateTime?
+  remindCount   Int       @default(0)
+  completedAt   DateTime? // they signed in — stop everything
+  stoppedReason String? // "signed in", "gave up after 3 days", "stopped by an admin"
+  lastError     String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([completedAt, lastRemindAt])
 }

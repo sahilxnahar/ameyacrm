@@ -1,7 +1,7 @@
 {
   "name": "Ameya Heights CRM",
   "short_name": "Ameya CRM",
-  "description": "Internal CRM & ERP for Ameya Heights LLP \u2014 Building Spaces. Shaping Legacies.",
+  "description": "Internal CRM & ERP for Ameya Heights LLP — Building Spaces. Shaping Legacies.",
   "id": "/",
   "lang": "en",
   "dir": "ltr",
@@ -11,9 +11,9 @@
   "display_override": [
     "standalone"
   ],
-  "orientation": "portrait-primary",
-  "background_color": "#123F9E",
-  "theme_color": "#123F9E",
+  "orientation": "any",
+  "background_color": "#FBFAF8",
+  "theme_color": "#ECE7DF",
   "categories": [
     "business",
     "productivity"
@@ -67,20 +67,24 @@
   ],
   "shortcuts": [
     {
-      "name": "New Task",
+      "name": "My day",
+      "short_name": "Today",
+      "url": "/dashboard"
+    },
+    {
+      "name": "New task",
+      "short_name": "New task",
       "url": "/tasks?new=1"
     },
     {
-      "name": "My Tasks",
-      "url": "/tasks"
+      "name": "Payments made",
+      "short_name": "Payments",
+      "url": "/payments"
     },
     {
-      "name": "Leads",
-      "url": "/sales"
-    },
-    {
-      "name": "Material Request",
-      "url": "/material-requests?new=1"
+      "name": "Documents",
+      "short_name": "Docs",
+      "url": "/documents"
     }
   ]
 }

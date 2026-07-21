@@ -84,6 +84,37 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+    /* Stops iOS enlarging text in landscape, which reflowed whole tables. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Momentum scrolling, and no rubber-band bounce revealing white behind. */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+  }
+
+  /* Native-feeling touch: no 300ms delay, no grey flash, no accidental
+     text selection when tapping a row twice. */
+  a, button, [role='button'], summary, label, select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  a:active, button:active, [role='button']:active {
+    /* The press has to be visible or a slow page feels like a dead app. */
+    opacity: 0.72;
+  }
+  @media (hover: hover) {
+    a:active, button:active, [role='button']:active { opacity: 1; }
+  }
+
+  /* Anything the finger must hit is at least 44px, per Apple's guidance. */
+  @media (pointer: coarse) {
+    button, [role='button'], a[href], select, summary {
+      min-height: 40px;
+    }
+    input, select, textarea {
+      /* Under 16px iOS zooms the whole page when the field is focused. */
+      font-size: max(16px, 1rem);
+    }
   }
   h1, h2, h3, .font-display { font-family: var(--font-display), 'Cormorant Garamond', Georgia, serif; }
   /* Custom scrollbar — premium, minimal */
@@ -246,5 +277,37 @@
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+
+@layer utilities {
+  /* Respect the notch and the home indicator on every edge. */
+  .safe-top { padding-top: env(safe-area-inset-top); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-x { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+
+  /* Horizontally scrolling rows that snap, the way native lists behave. */
+  .snap-row {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .snap-row::-webkit-scrollbar { display: none; }
+  .snap-row > * { scroll-snap-align: start; }
+
+  /* Skeleton shimmer used while a page loads. */
+  .shimmer {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%, hsl(var(--secondary)) 37%, hsl(var(--muted)) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer { animation: none; }
   }
 }

@@ -307,3 +307,25 @@ INSERT INTO "MessageTemplate" ("id","key","name","channel","category","language"
   'Swipe up for a walkthrough of our latest homes in Bangalore.',
   NOW(),NOW())
 ON CONFLICT ("key") DO NOTHING;
+
+-- v11.2 — getting new joiners signed in ---------------------------------------
+CREATE TABLE IF NOT EXISTS "UserOnboarding" (
+  "id"            TEXT NOT NULL,
+  "userId"        TEXT NOT NULL,
+  "tokenHash"     TEXT NOT NULL,
+  "tokenExpires"  TIMESTAMP(3) NOT NULL,
+  "tokenUsedAt"   TIMESTAMP(3),
+  "welcomeSentAt" TIMESTAMP(3),
+  "lastRemindAt"  TIMESTAMP(3),
+  "remindCount"   INTEGER NOT NULL DEFAULT 0,
+  "completedAt"   TIMESTAMP(3),
+  "stoppedReason" TEXT,
+  "lastError"     TEXT,
+  "createdById"   TEXT,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "UserOnboarding_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "UserOnboarding_userId_key" ON "UserOnboarding"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "UserOnboarding_tokenHash_key" ON "UserOnboarding"("tokenHash");
+CREATE INDEX IF NOT EXISTS "UserOnboarding_completedAt_lastRemindAt_idx" ON "UserOnboarding"("completedAt", "lastRemindAt");

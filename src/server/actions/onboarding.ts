@@ -1,44 +1,78 @@
 'use server';
-import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
+import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
+import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
-import { ONBOARDING } from '@/config/onboarding';
+import { resolveSetupToken, completeOnboarding, beginOnboarding } from '@/server/services/onboarding-service';
 
-export async function completeStep(stepKey: string): Promise<{ ok: true } | { error: string }> {
+export type SetupResult = { ok: true; username: string } | { error: string };
+
+const schema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(8, 'Use at least 8 characters.'),
+  confirm: z.string(),
+});
+
+/** A new joiner sets their own password from the emailed link. No sign-in required. */
+export async function setPasswordFromInvite(input: unknown): Promise<SetupResult> {
   try {
-    const ctx = await ensure('dashboard.view');
-    await prisma.onboardingStep.upsert({
-      where: { userId_stepKey: { userId: ctx.user.id, stepKey } },
-      update: { completedAt: new Date() },
-      create: { userId: ctx.user.id, stepKey, completedAt: new Date() },
+    const d = schema.parse(input);
+    if (d.password !== d.confirm) return { error: 'The two passwords do not match.' };
+
+    const errs = validatePasswordStrength(d.password);
+    if (errs.length) return { error: errs.join(', ') };
+
+    const who = await resolveSetupToken(d.token);
+    if (!who) return { error: 'That link has expired or has already been used. Ask an administrator to send a new one.' };
+
+    await prisma.user.update({
+      where: { id: who.userId },
+      data: {
+        passwordHash: await hashPassword(d.password),
+        mustChangePassword: false,
+        passwordChangedAt: new Date(),
+        status: 'ACTIVE',
+      },
     });
-    revalidatePath('/today');
-    revalidatePath('/dashboard');
-    return { ok: true };
-  } catch (err) { return toActionError(err); }
+    await completeOnboarding(who.userId);
+    await writeAudit({ actorId: who.userId, action: 'UPDATE', entityType: 'User', entityId: who.userId, summary: 'Set their own password from the invite link' });
+    return { ok: true, username: who.username };
+  } catch (e) {
+    return toActionError(e);
+  }
 }
 
-export async function reopenStep(stepKey: string): Promise<{ ok: true } | { error: string }> {
+export type ResendResult = { ok: true; message: string } | { error: string };
+
+/** Send the welcome email again, with a fresh link. */
+export async function resendInvite(userId: string): Promise<ResendResult> {
   try {
-    const ctx = await ensure('dashboard.view');
-    await prisma.onboardingStep.updateMany({ where: { userId: ctx.user.id, stepKey }, data: { completedAt: null } });
-    revalidatePath('/today');
-    return { ok: true };
-  } catch (err) { return toActionError(err); }
+    const ctx = await ensure('admin.user.manage');
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, lastLoginAt: true } });
+    if (!user) return { error: 'That person no longer exists.' };
+    if (user.lastLoginAt) return { error: `${user.name} has already signed in — there is nothing to resend.` };
+
+    const r = await beginOnboarding(userId, ctx.user.id);
+    if (!r.ok) return { error: r.error ?? 'The email could not be sent.' };
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: `Resent the invite to ${user.email}` });
+    return { ok: true, message: `Sent again to ${user.email}. Hourly reminders restart from now.` };
+  } catch (e) {
+    return toActionError(e);
+  }
 }
 
-/** Dismiss the whole thing — some people just want it gone. */
-export async function dismissOnboarding(): Promise<{ ok: true } | { error: string }> {
+/** Stop chasing someone without disabling their account. */
+export async function stopInviteReminders(userId: string): Promise<ResendResult> {
   try {
-    const ctx = await ensure('dashboard.view');
-    for (const s of ONBOARDING) {
-      await prisma.onboardingStep.upsert({
-        where: { userId_stepKey: { userId: ctx.user.id, stepKey: s.key } },
-        update: { completedAt: new Date() },
-        create: { userId: ctx.user.id, stepKey: s.key, completedAt: new Date() },
-      });
-    }
-    revalidatePath('/today');
-    return { ok: true };
-  } catch (err) { return toActionError(err); }
+    const ctx = await ensure('admin.user.manage');
+    await prisma.userOnboarding.updateMany({
+      where: { userId, completedAt: null },
+      data: { completedAt: new Date(), stoppedReason: 'stopped by an admin' },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: 'Stopped the invite reminders' });
+    return { ok: true, message: 'Reminders stopped. They can still sign in normally.' };
+  } catch (e) {
+    return toActionError(e);
+  }
 }

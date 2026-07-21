@@ -9,7 +9,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
 import { ensure, toActionError } from './_helpers';
 
-export type AdminResult = { ok: true; id: string } | { error: string };
+export type AdminResult = { ok: true; id: string; message?: string } | { error: string };
 
 const userSchema = z.object({
   name: z.string().min(2).max(160),
@@ -48,8 +48,19 @@ export async function createUser(input: unknown): Promise<AdminResult> {
     });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'User', entityId: user.id, summary: `Created user ${d.username} (${d.role})` });
     await notify({ userId: user.id, type: 'SYSTEM', title: 'Welcome to Ameya Heights CRM', body: 'Please set a new password on first login.', link: '/settings/security' });
+
+    // Tell them the account exists. Until this, a new joiner had no way of
+    // knowing unless somebody remembered to message them.
+    const { beginOnboarding } = await import('@/server/services/onboarding-service');
+    const invited = await beginOnboarding(user.id, ctx.user.id);
+
     revalidatePath('/admin');
-    return { ok: true, id: user.id };
+    return {
+      ok: true, id: user.id,
+      message: invited.ok
+        ? `${d.name} has been emailed a link to set their own password. Reminders go hourly until they sign in.`
+        : `User created, but the welcome email failed: ${invited.error ?? 'unknown error'}. Check Admin > Integrations.`,
+    };
   } catch (err) {
     return toActionError(err);
   }

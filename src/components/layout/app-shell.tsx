@@ -4,6 +4,7 @@ import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { CommandPalette } from './command-palette';
 import { MobileNav } from './mobile-nav';
+import { NavProgress } from './nav-progress';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
 
@@ -40,6 +41,9 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      <React.Suspense fallback={null}>
+        <NavProgress />
+      </React.Suspense>
       <Sidebar
         allowed={allowed}
         isSuperAdmin={isSuperAdmin}

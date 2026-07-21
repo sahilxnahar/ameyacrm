@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles, Landmark, Link2, MessageSquare } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
-import { can } from '@/lib/rbac/can';
-import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { AdminView } from '@/components/admin/admin-view';
+import { AdminConsole } from '@/components/admin/admin-console';
+import { PendingInvites } from '@/components/admin/pending-invites';
 
 export const metadata: Metadata = { title: 'Admin' };
 
@@ -19,46 +17,42 @@ export default async function AdminPage() {
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { users: true } }, head: { select: { name: true } } } }),
   ]);
+
+  // Anyone invited who has still not signed in. Shown first because it is the
+  // one thing on this page that needs chasing rather than configuring.
+  const invites = await prisma.userOnboarding
+    .findMany({
+      where: { completedAt: null },
+      orderBy: { createdAt: 'asc' },
+      take: 50,
+      select: { userId: true, createdAt: true, remindCount: true, welcomeSentAt: true, lastError: true, tokenExpires: true },
+    })
+    .catch(() => []);
+  const inviteUsers = invites.length
+    ? await prisma.user.findMany({
+        where: { id: { in: invites.map((i) => i.userId) }, deletedAt: null, lastLoginAt: null },
+        select: { id: true, name: true, email: true, username: true },
+      })
+    : [];
+  const byId = new Map(inviteUsers.map((u) => [u.id, u]));
+  const pendingInvites = invites
+    .filter((i) => byId.has(i.userId))
+    .map((i) => ({
+      userId: i.userId,
+      name: byId.get(i.userId)!.name,
+      email: byId.get(i.userId)!.email,
+      username: byId.get(i.userId)!.username,
+      invitedAt: i.createdAt.toISOString(),
+      reminders: i.remindCount,
+      welcomeSent: Boolean(i.welcomeSentAt),
+      linkExpired: i.tokenExpires < new Date(),
+      lastError: i.lastError,
+    }));
   return (
     <div>
-      <PageHeader title="Administration" description="Users, departments, roles and system configuration." />
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { href: '/admin/marketplace', icon: Store, title: 'Free Extras', desc: 'Ready-made automations, templates and views' },
-          { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working' },
-          { href: '/admin/connections', icon: Link2, title: 'Connected Accounts', desc: 'WhatsApp, Meta, Google Ads — connect by logging in' },
-          { href: '/admin/ai-health', icon: Sparkles, title: 'AI Health', desc: 'Test the AI for real and see what came back' },
-          { href: '/admin/finance-access', icon: Landmark, title: 'Finance Access', desc: 'Who may see expenses, payments and the cash book', permission: 'finance.access.manage' },
-          { href: '/admin/import', icon: Upload, title: 'Import Data', desc: 'Paste units, bookings and leads from Excel' },
-          { href: '/admin/access-requests', icon: UserPlus, title: 'Access Requests', desc: 'Approve people who signed themselves up' },
-          { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },
-          { href: '/admin/permissions', icon: ShieldCheck, title: 'Roles & Permissions', desc: 'Toggle what each role can do' },
-          { href: '/admin/templates', icon: Mail, title: 'System Emails', desc: 'The built-in emails the CRM sends automatically' },
-          { href: '/admin/message-templates', icon: MessageSquare, title: 'Templates', desc: 'WhatsApp, email, SMS and letters you write yourself' },
-          { href: '/admin/company', icon: Building2, title: 'Company Details', desc: 'GST, bank, addresses for invoices' },
-          { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours' },
-          { href: '/admin/automations', icon: Zap, title: 'Automations', desc: 'Rules, assignment, follow-ups' },
-          { href: '/admin/sso', icon: KeyRound, title: 'Single Sign-On', desc: 'Sign in with Google Workspace' },
-          { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA & login rules' },
-          { href: '/admin/security-center', icon: ShieldAlert, title: 'Security Center', desc: 'Logins, sessions, backup' },
-          { href: '/admin/collections', icon: Percent, title: 'Collections & Tax', desc: 'Interest rate, default GST' },
-          { href: '/admin/fields', icon: SlidersHorizontal, title: 'Custom Fields', desc: 'Add your own fields to any record' },
-          { href: '/admin/customisation', icon: Type, title: 'Words & Stages', desc: 'Rename things, configure the pipeline' },
-          { href: '/admin/api-tokens', icon: KeyRound, title: 'API Tokens', desc: 'Programmatic access' },
-          { href: '/admin/privacy', icon: ShieldCheck, title: 'Privacy & DPDP', desc: 'Consent, retention, data requests' },
-          { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often' },
-          { href: '/admin/mobile-app', icon: Smartphone, title: 'Mobile App & Reminders', desc: 'APK link, push coverage, overdue chasing' },
-        ]
-          .filter((c) => !('permission' in c) || can(ctx.permissions, c.permission as string))
-          .map((c) => (
-          <Link key={c.href} href={c.href}>
-            <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><c.icon className="h-5 w-5" /></div>
-              <div><p className="text-sm font-medium">{c.title}</p><p className="text-xs text-muted-foreground">{c.desc}</p></div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <PageHeader title="Administration" description="Everything that configures the CRM, in one place. Search rather than hunt." />
+      <PendingInvites invites={pendingInvites} />
+      <AdminConsole allowed={ctx.permissions.isSuperAdmin ? ['*'] : [...ctx.permissions.keys]} />
       <AdminView
         users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled, managerId: u.managerId ?? null }))}
         departments={departments.map((d) => ({ id: d.id, name: d.name, users: d._count.users, head: d.head?.name ?? null, active: d.isActive }))}
