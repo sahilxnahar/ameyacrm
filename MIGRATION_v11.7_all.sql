@@ -329,3 +329,12 @@ CREATE TABLE IF NOT EXISTS "UserOnboarding" (
 CREATE UNIQUE INDEX IF NOT EXISTS "UserOnboarding_userId_key" ON "UserOnboarding"("userId");
 CREATE UNIQUE INDEX IF NOT EXISTS "UserOnboarding_tokenHash_key" ON "UserOnboarding"("tokenHash");
 CREATE INDEX IF NOT EXISTS "UserOnboarding_completedAt_lastRemindAt_idx" ON "UserOnboarding"("completedAt", "lastRemindAt");
+
+-- v11.6 — recurring tasks, vendor email, site photos ---------------------------
+ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "repeatEvery" INTEGER;
+ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "repeatUnit" TEXT;
+ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "repeatUntil" TIMESTAMP(3);
+ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "repeatedFromId" TEXT;
+
+ALTER TABLE "MailThreadMessage" ADD COLUMN IF NOT EXISTS "vendorId" TEXT;
+CREATE INDEX IF NOT EXISTS "MailThreadMessage_vendorId_idx" ON "MailThreadMessage"("vendorId");

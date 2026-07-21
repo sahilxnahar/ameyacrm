@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -52,6 +52,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Inventory', href: '/inventory', icon: Building2, permission: 'booking.view' },
       { label: 'Floor Plans', href: '/floor-plans', icon: LayoutGrid, permission: 'booking.view' },
       { label: 'Site Visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
+      { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create' },
       { label: 'Voice Note', href: '/voice-note', icon: Mic, permission: 'task.create' },
       { label: 'Channel Partners', href: '/partners', icon: Handshake, permission: 'booking.view' },
       { label: 'Buyers & Portal', href: '/customers', icon: UserRound, permission: 'booking.view' },

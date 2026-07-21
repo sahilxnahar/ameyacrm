@@ -66,12 +66,14 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       // A device nobody has approved does not get a session, password or not.
       const known = await isKnownDevice(result.user.id);
       if (policy.deviceApproval && !known) {
-        const token = await beginDeviceApproval(result.user);
+        const approval = await beginDeviceApproval(result.user);
         await writeAudit({
           actorId: result.user.id, action: 'LOGIN_FAILED',
-          summary: `Device approval required — code emailed (${countryName(country)})`,
+          summary: approval.emailed
+            ? `Device approval required — code emailed (${countryName(country)})`
+            : `Device approval required but the email FAILED to send: ${approval.error}`,
         });
-        redirect(`/device-check?t=${token}`);
+        redirect(`/device-check?t=${approval.token}${approval.emailed ? '' : '&sendfailed=1'}`);
       }
 
       await createSession(result.user.id);

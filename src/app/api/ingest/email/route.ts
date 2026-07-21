@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }
 
   const list = payload.messages ?? [];
-  let stored = 0, skipped = 0, replies = 0;
+  let stored = 0, skipped = 0, replies = 0, vendorMail = 0;
 
   for (const m of list.slice(0, 100)) {
     const externalId = String(m.messageId ?? '').slice(0, 200);
@@ -46,7 +46,10 @@ export async function POST(req: NextRequest) {
     if (!counterparty) { skipped++; continue; }
 
     const party = await matchParty(counterparty);
-    if (!party.leadId && !party.customerId) { skipped++; continue; }   // not someone we know
+    // Vendors count too. Previously anything that was not already a lead or a
+    // buyer was thrown away, which meant every supplier quote and every
+    // approval from an authority was silently discarded.
+    if (!party.leadId && !party.customerId && !party.vendorId) { skipped++; continue; }
 
     const subject = m.subject ? String(m.subject).slice(0, 300) : null;
     const body = stripQuoted(String(m.body ?? '')).slice(0, 8000);
@@ -60,10 +63,25 @@ export async function POST(req: NextRequest) {
         toAddresses: to,
         subject, bodyText: body, snippet: body.slice(0, 200),
         sentAt: m.date ? new Date(String(m.date)) : new Date(),
-        leadId: party.leadId, customerId: party.customerId,
+        leadId: party.leadId, customerId: party.customerId, vendorId: party.vendorId,
       },
     });
     stored++;
+
+    if (!outbound && party.vendorId) {
+      vendorMail++;
+      const admins = await prisma.user.findMany({
+        where: { status: 'ACTIVE', deletedAt: null, role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+        select: { id: true },
+        take: 10,
+      });
+      await notifyMany(admins.map((a) => a.id), {
+        type: 'SYSTEM',
+        title: `${party.vendorName ?? 'A vendor'} emailed`,
+        body: subject ?? 'New message',
+        link: '/billing',
+      });
+    }
 
     if (!outbound && party.leadId) {
       replies++;
@@ -90,5 +108,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, stored, replies, skipped });
+  return NextResponse.json({ ok: true, stored, replies, skipped, vendorMail });
 }

@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { nextDueDate, type RepeatUnit } from '@/lib/tasks/recurrence';
 import { revalidatePath } from 'next/cache';
 import type { TaskStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
@@ -19,9 +20,13 @@ const createSchema = z.object({
   dueDate: z.string().optional().nullable(),
   estimateMins: z.coerce.number().int().positive().optional().nullable(),
   assigneeIds: z.array(z.string()).default([]),
+  // Repeats. Left empty for a one-off, which is most tasks.
+  repeatEvery: z.coerce.number().int().min(1).max(365).optional().nullable(),
+  repeatUnit: z.enum(['DAY', 'WEEK', 'MONTH', 'YEAR']).optional().nullable(),
+  repeatUntil: z.string().optional().nullable(),
 });
 
-export type TaskActionResult = { ok: true; id: string } | { error: string };
+export type TaskActionResult = { ok: true; id: string; message?: string } | { error: string };
 
 export async function createTask(input: unknown): Promise<TaskActionResult> {
   try {
@@ -40,6 +45,9 @@ export async function createTask(input: unknown): Promise<TaskActionResult> {
         projectId: data.projectId || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         estimateMins: data.estimateMins || null,
+        repeatEvery: data.repeatEvery || null,
+        repeatUnit: data.repeatEvery ? data.repeatUnit ?? 'MONTH' : null,
+        repeatUntil: data.repeatUntil ? new Date(data.repeatUntil) : null,
         createdById: ctx.user.id,
         assignees: { create: data.assigneeIds.map((userId) => ({ userId })) },
         activities: { create: { actorId: ctx.user.id, action: 'created' } },
@@ -74,8 +82,16 @@ export async function moveTask(taskId: string, status: TaskStatus, position: num
       type: 'TASK_UPDATED', title: `${task.reference} moved to ${status}`, link: `/tasks/${taskId}`,
     });
     await runAutomations('TASK_STATUS_CHANGED', { entityType: 'Task', entityId: taskId, data: { title: task.title, status, priority: task.priority }, actorId: ctx.user.id });
+
+    // A repeating task creates its successor only once it is done, so a job
+    // nobody gets to cannot pile up fifty copies.
+    let repeated: string | null = null;
+    if (status === 'DONE' && task.repeatEvery && task.repeatUnit) {
+      repeated = await spawnNextOccurrence(task.id, ctx.user.id);
+    }
+
     revalidatePath('/tasks');
-    return { ok: true, id: taskId };
+    return { ok: true, id: taskId, message: repeated ? `Next one is due ${repeated}.` : undefined };
   } catch (err) {
     return toActionError(err);
   }
@@ -214,4 +230,52 @@ export async function logTaskTime(taskId: string, minutes: number): Promise<Task
     revalidatePath(`/tasks/${taskId}`);
     return { ok: true, id: task.id };
   } catch (err) { return toActionError(err); }
+}
+
+
+/**
+ * Create the next occurrence of a repeating task.
+ *
+ * Copies the wording, priority, project and the people, but not the comments
+ * or the time already logged — those belong to the occurrence that happened.
+ */
+async function spawnNextOccurrence(taskId: string, actorId: string): Promise<string | null> {
+  const prev = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { assignees: { select: { userId: true } } },
+  });
+  if (!prev?.repeatEvery || !prev.repeatUnit) return null;
+
+  const base = prev.dueDate ?? new Date();
+  const due = nextDueDate(base, prev.repeatEvery, prev.repeatUnit as RepeatUnit);
+  if (prev.repeatUntil && due > prev.repeatUntil) return null;
+
+  const reference = await nextReference('TSK');
+  await prisma.task.create({
+    data: {
+      reference,
+      title: prev.title,
+      description: prev.description,
+      priority: prev.priority,
+      status: 'TODO',
+      departmentId: prev.departmentId,
+      projectId: prev.projectId,
+      dueDate: due,
+      estimateMins: prev.estimateMins,
+      repeatEvery: prev.repeatEvery,
+      repeatUnit: prev.repeatUnit,
+      repeatUntil: prev.repeatUntil,
+      repeatedFromId: prev.id,
+      createdById: prev.createdById,
+      assignees: { create: prev.assignees.map((a) => ({ userId: a.userId })) },
+      activities: { create: { actorId, action: 'created' } },
+    },
+  });
+  await notifyMany(prev.assignees.map((a) => a.userId).filter((id) => id !== actorId), {
+    type: 'TASK_ASSIGNED',
+    title: `Repeats: ${prev.title}`,
+    body: `Next one is due ${due.toLocaleDateString('en-IN')}`,
+    link: '/tasks',
+  });
+  return due.toLocaleDateString('en-IN');
 }

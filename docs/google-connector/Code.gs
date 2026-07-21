@@ -1,4 +1,12 @@
 /**
+ * SECURITY — read before editing.
+ *
+ * The three keys below are blank on purpose. This file is committed to the
+ * repository, so a real key written here is a key published to anyone who can
+ * read the repo. Paste the real values into the Apps Script editor only; they
+ * live in that project, never in git.
+ */
+/**
  * ══════════════════════════════════════════════════════════════════════════
  *  AMEYA HEIGHTS CRM — Google connector
  *  v9.1 · one-click setup. Everything is filled in already.
@@ -26,13 +34,13 @@
  */
 
 // ── Settings — all filled in ────────────────────────────────────────────────
-var SECRET     = '3b6b3f81ab2515276cbd09b6e15c2592464ae364';
+var SECRET     = 'PASTE_GAS_SECRET_HERE';     // must match GAS_SECRET in Vercel
 var FOLDER_ID  = '1zkJogniKQSdLFksHIr0wQuCdECJoEQIy';
 var SHEET_ID   = '1iO_jlkiX6Jhq8zWyhcRwcDDZDPpOEenQPv-WaFP5hmk';
 
 var CRM_URL    = 'https://crm.ameyaheights.com';
-var CRON_KEY   = '71066c12b37ebc8b7c847648994e409f39c2ae25';
-var INGEST_KEY = 'ab89b3bd3f28246e5c28f67d30ff0702b7732032';
+var CRON_KEY   = 'PASTE_CRON_SECRET_HERE';    // must match CRON_SECRET in Vercel
+var INGEST_KEY = 'PASTE_INGEST_SECRET_HERE';  // must match INGEST_SECRET in Vercel
 
 // Every address that counts as "us", so replies and sent mail are told apart
 // correctly. The script reads the mailbox of whoever owns it (Sahil), but the

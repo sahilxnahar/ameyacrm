@@ -99,5 +99,23 @@ check('every permission key exists', bad_perms)
 cfg = open('next.config.mjs').read()
 check('type errors fail the build', ['ignoreBuildErrors: true'] if 'ignoreBuildErrors: true' in cfg else [])
 
+# ------------------------------------------------------------------ secrets
+# A live key written into a tracked file is a key published to anyone who can
+# read the repository. Caught three in the Apps Script connector.
+secret_hits = []
+for f in glob.glob('**/*.gs', recursive=True) + glob.glob('**/*.ts', recursive=True) + glob.glob('**/*.tsx', recursive=True) + glob.glob('**/*.md', recursive=True):
+    if 'node_modules' in f or '.next' in f:
+        continue
+    try:
+        body = open(f, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        continue
+    for m in re.finditer(r"['\"]([0-9a-f]{32,}|AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9]{20,})['\"]", body):
+        val = m.group(1)
+        if val.count('0') == len(val) or 'EXAMPLE' in body[max(0, m.start()-40):m.start()].upper():
+            continue
+        secret_hits.append(f'{f}: {val[:8]}…')
+check('no secrets in tracked files', secret_hits[:5])
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

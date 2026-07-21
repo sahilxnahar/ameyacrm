@@ -34,7 +34,7 @@ export function TasksView({
         <Button size="sm" onClick={() => setNewOpen(true)}><Plus className="h-4 w-4" /> New task</Button>
       </div>
 
-      {view === 'board' ? <TaskBoard tasks={tasks} /> : <TaskList tasks={tasks} />}
+      {view === 'board' ? <TaskBoard tasks={tasks} /> : <TaskList tasks={tasks} people={users.map((u) => ({ id: u.id, name: u.name }))} />}
 
       <NewTaskDialog
         open={newOpen}

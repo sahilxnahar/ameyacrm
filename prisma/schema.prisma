@@ -744,6 +744,13 @@ model Task {
   actualMins   Int?
   position     Int        @default(0) // Kanban ordering within a status column
   completedAt  DateTime?
+
+  // Repeats. The next occurrence is created when this one is completed, rather
+  // than generated up front, so a job nobody does cannot pile up fifty copies.
+  repeatEvery  Int? // how many of the unit below
+  repeatUnit   String? // DAY, WEEK, MONTH, YEAR
+  repeatUntil  DateTime?
+  repeatedFromId String? // the task this one was generated from
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
@@ -2449,6 +2456,7 @@ model MailThreadMessage {
 
   leadId     String?
   customerId String?
+  vendorId   String? // a supplier, contractor or authority we deal with
   userId     String? // whoever here sent it
 
   trackToken String?   @unique // open-tracking pixel

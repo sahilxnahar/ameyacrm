@@ -17,12 +17,23 @@ export interface SecurityPolicy {
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 
+/**
+ * The defaults are the strict ones that were actually asked for: everyone on
+ * two-factor after a week's grace, sign-in from India only, and a emailed code
+ * the first time a new device is used.
+ *
+ * None of these can lock the last administrator out:
+ *   · the country check never refuses when the country is unknown, and any
+ *     individual can be given `allowForeignAccess` for travel;
+ *   · the grace period means nobody is stopped on day one;
+ *   · every one of these is a switch in Admin > Security Policy.
+ */
 export const DEFAULT_POLICY: SecurityPolicy = {
-  require2FA: false,
-  require2FAForAdmins: false,
+  require2FA: true,
+  require2FAForAdmins: true,
   graceDays: 7,
-  deviceApproval: false,
-  geoRestrict: false,
+  deviceApproval: true,
+  geoRestrict: true,
   allowedCountries: ['IN'],
   breachCheck: true,
   stepUp: true,

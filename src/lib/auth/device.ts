@@ -46,7 +46,9 @@ export async function isKnownDevice(userId: string): Promise<boolean> {
  * five attempts — so the challenge cannot be brute-forced even by someone who
  * already has the password.
  */
-export async function beginDeviceApproval(user: { id: string; name: string; email: string }): Promise<string> {
+export async function beginDeviceApproval(
+  user: { id: string; name: string; email: string },
+): Promise<{ token: string; emailed: boolean; error: string | null }> {
   const h = await headers();
   const ua = h.get('user-agent');
   const fwd = h.get('x-forwarded-for');
@@ -74,7 +76,7 @@ export async function beginDeviceApproval(user: { id: string; name: string; emai
   });
 
   const where = [city, countryName(country)].filter(Boolean).join(', ');
-  await sendEmail({
+  const sent = await sendEmail({
     to: [user.email],
     subject: `Your Ameya Heights CRM code: ${code}`,
     text: [
@@ -96,7 +98,9 @@ export async function beginDeviceApproval(user: { id: string; name: string; emai
     ].filter(Boolean).join('\n'),
   });
 
-  return token;
+  // If the code could not be sent, the person is standing at an empty code box
+  // with no way forward. Say so rather than letting them guess.
+  return { token, emailed: sent.ok, error: sent.ok ? null : sent.error ?? 'The code could not be emailed.' };
 }
 
 export type ApprovalResult =

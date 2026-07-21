@@ -1,10 +1,12 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v11.4_
+_Last updated: 21 July 2026 · current build v11.7_
 
 ---
 
 ## 1. Waiting on you — do these first
+
+- **Rotate the three connector keys — they were committed to the repository.** `GAS_SECRET`, `CRON_SECRET` and `INGEST_SECRET` were written into `docs/google-connector/Code.gs`, which is in git. If that repo is public they are public. Generate three new values, update them in Vercel, and paste them into the Apps Script editor (the committed file now holds placeholders only).
 
 - **Fix the IFSC — it is printing on invoices going to buyers.** `KKBK00008556` is 12 characters; every Indian IFSC is 11. A transfer sent to it will be rejected. Admin → Company Details now shows this in red at the top. While you are there, add the company phone number.
 
@@ -25,7 +27,7 @@ _Last updated: 21 July 2026 · current build v11.4_
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v11.4** — run `MIGRATION_v11.4_all.sql` in Neon, sync `ameya-heights-crm-v11.4.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v11.7** — run `MIGRATION_v11.7_all.sql` in Neon, sync `ameya-heights-crm-v11.7.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |
