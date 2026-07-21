@@ -1,19 +1,19 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.10 (feature batches 1,2,13,4,24,5,14,16 done + batch 7 engines; UI track advanced).**
+**Written 21 July 2026. Build v14.11 (feature batches 1,2,13,4,24,5,14,16 + 7 core done; UI track advanced).**
 
-> **v14.10.** UI track: added a searchable **Combobox** (`src/components/ui/combobox.tsx`,
-> Radix Popover + cmdk) for Batch 7-style forms. Feature track: started **Batch 7
-> (Sales & buyer portal)** with its three pure calculation engines — the parts the
-> app lacked — each fully unit-tested:
-> - `src/lib/sales/pricing.ts` — unit pricing (base + floor rise + PLC + view premium
->   − discount) with a discount-approval matrix.
-> - `src/lib/sales/interest.ts` — simple interest on delayed buyer payments, with grace.
-> - `src/lib/sales/commission.ts` — slab-based broker commission with TDS and milestone splits.
+> **v14.11 completes Batch 7's pricing & commission core into a full feature.** A
+> `/pricing` screen: per-unit pricing computed live from base rate + floor rise +
+> PLC + view premium − discount (with the discount-approval matrix enforcing a
+> role's limit at save time), and broker commission worked out on a slab with TDS
+> and tracked pending → approved → paid. Models `UnitPricing` + `CommissionPayout`
+> (`MIGRATION_v14.11_all.sql`, 2 tables). Built on the pure engines in
+> `src/lib/sales/` and — dogfooding Batch 1 — the shared `StatTile`/`Field`/
+> `Combobox` primitives. Hard check: 0 type errors, 255 tests, all verifier checks,
+> full production build (exit 0), init SQL idempotent on a fresh Postgres.
 >
-> These are the reusable cores; the Batch 7 models, screens and demand/dunning flow
-> wire onto them next. **No schema change in v14.10 — nothing to migrate.** Hard check:
-> 0 type errors, 255 tests, all verifier checks, full production build of all routes (exit 0).
+> Remaining in Batch 7: the full buyer-portal self-service (dues/receipts/progress),
+> automated demand generation & dunning, and cancellation/transfer refund flows.
 >
 > **UI/performance track status:** the additive surface is done or enhanced (design-system
 > primitives + gallery, command-palette record search, lucide bundle optimization, Web Vitals,
@@ -122,8 +122,8 @@ Not a product, not being commercialised — a system the company runs on.
 
 | Metric | Count |
 |---|---|
-| Database tables | 147 |
-| Screens (app pages) | 97 |
+| Database tables | 149 |
+| Screens (app pages) | 98 |
 | Server services | 45 |
 | Server action files | 71 |
 | React components | 163 |

@@ -110,6 +110,10 @@ export const PERMISSIONS = {
   'capital.view': 'View the capital stack, investors, RERA escrow & loan covenants',
   'capital.manage': 'Manage investors, capital stack, escrow movements & covenants',
 
+  // Sales pricing & commission (batch 7)
+  'pricing.view': 'View unit pricing and broker commissions',
+  'pricing.manage': 'Set unit pricing and record broker commissions',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

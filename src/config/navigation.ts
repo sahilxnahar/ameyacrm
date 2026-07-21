@@ -50,6 +50,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Sales & Leads', href: '/sales', icon: Users2, permission: 'lead.view' },
       { label: 'Email Sequences', href: '/sequences', icon: MailPlus, permission: 'lead.view' },
       { label: 'Inventory', href: '/inventory', icon: Building2, permission: 'booking.view' },
+      { label: 'Pricing & Commissions', href: '/pricing', icon: BadgeIndianRupee, permission: 'pricing.view' },
       { label: 'Floor Plans', href: '/floor-plans', icon: LayoutGrid, permission: 'booking.view' },
       { label: 'Site Visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
       { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create' },

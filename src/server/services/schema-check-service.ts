@@ -33,6 +33,8 @@ const REQUIRED_TABLES = [
   'Inspection', 'NonConformance', 'SafetyRecord', 'WorkPermit',
   // Batch 16 — capital, investors & RERA escrow
   'Investor', 'EscrowMovement', 'LoanCovenant',
+  // Batch 7 — sales pricing & commission
+  'UnitPricing', 'CommissionPayout',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }
