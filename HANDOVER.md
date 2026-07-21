@@ -1,5 +1,28 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.19 — coexistence batches I1–I3 (of I1–I7).**
+
+> **v14.19 makes the systems talk to each other and fail gracefully. No SQL to run.**
+> - **I1/11 — Event backbone.** A typed internal publish/subscribe bus (`src/lib/events/bus.ts`):
+>   an action `emit()`s that something happened; any subsystem subscribes. A handler that throws
+>   is caught and logged — it can never break the action or the other handlers, and `emit` never
+>   throws. 5 tests cover isolation, unsubscribe and no-op dispatch.
+> - **I2/12 — Graceful degradation ("help, don't break").** `safely()` / `fireAndForget()` /
+>   `withTimeout()` wrappers (`src/lib/resilience/safely.ts`) so a helper failing degrades to a
+>   fallback instead of crashing the caller; a **capability registry** (`capabilities.ts`) so a
+>   feature checks "is AI / WhatsApp / email configured?" and adapts rather than erroring; and a
+>   **SectionBoundary** (a section-level error boundary with retry) so one broken widget never
+>   takes down a whole page.
+> - **I3/13 — Unified notifications (first connection).** Event-bus subscribers
+>   (`src/lib/events/subscribers.ts`) now feed the existing Notification system: **raising a work
+>   request notifies the receiving department**, and **advancing one notifies the person who raised
+>   it** — all fire-and-forget, so a notification hiccup can never fail the request.
+>
+> Still to come: I4/14 (universal record linking), I5/15 (one access context — the safety rail),
+> I6/16 (cross-system automations), I7/17 (integration health dashboard + end-to-end tests) — then
+> the pending 31-plan items. Hard check: 0 type errors, 288 tests, all verifier checks (117 pages,
+> 174 models), production build exit 0. No migration.
+
 **Written 21 July 2026. Build v14.18 — feature + UX + first of the perf/comms run.**
 
 > **v14.18 begins the performance + internal-comms programme (P1–P7, C1–C7).** It is

@@ -6,6 +6,9 @@ import { writeAudit } from '@/lib/audit/log';
 import { ensure, getActionContext, toActionError } from './_helpers';
 import { canTransition, isTerminal, type WRSide, type WRStatus } from '@/lib/workrequests/lifecycle';
 import { userDeptIds } from '@/server/services/workrequest-service';
+import { emit } from '@/lib/events/bus';
+import { fireAndForget } from '@/lib/resilience/safely';
+import '@/lib/events/subscribers'; // registers the notification subscribers
 
 export type WRResult = { ok: true; message: string; id?: string } | { error: string };
 
@@ -43,13 +46,16 @@ export async function raiseWorkRequest(v: Record<string, string>): Promise<WRRes
     };
     let created;
     try {
-      created = await prisma.workRequest.create({ data, select: { id: true } });
+      created = await prisma.workRequest.create({ data, select: { id: true, reference: true } });
     } catch {
       // Extremely unlikely reference clash — retry once with a random suffix.
-      created = await prisma.workRequest.create({ data: { ...data, reference: `${reference}-${Math.floor(Math.random() * 900 + 100)}` }, select: { id: true } });
+      created = await prisma.workRequest.create({ data: { ...data, reference: `${reference}-${Math.floor(Math.random() * 900 + 100)}` }, select: { id: true, reference: true } });
     }
     await prisma.workRequestEvent.create({ data: { requestId: created.id, actorId: ctx.user.id, toStatus: 'RAISED' } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'WorkRequest', entityId: created.id, summary: `Raised "${title}"` });
+    // Announce it — the receiving department gets notified. Fire-and-forget so a
+    // notification hiccup can never fail the request itself.
+    fireAndForget(() => emit({ type: 'workrequest.raised', requestId: created.id, reference: created.reference, title, toDeptId, actorId: ctx.user.id }), 'emit workrequest.raised');
     revalidatePath('/work-requests');
     return { ok: true, message: 'Request raised.', id: created.id };
   } catch (e) { return toActionError(e); }
@@ -59,7 +65,7 @@ export async function raiseWorkRequest(v: Record<string, string>): Promise<WRRes
 export async function advanceWorkRequest(id: string, toStatus: string, note?: string): Promise<WRResult> {
   try {
     const ctx = await ensure('workrequest.view');
-    const wr = await prisma.workRequest.findUnique({ where: { id }, select: { id: true, status: true, fromDeptId: true, toDeptId: true, raisedById: true, title: true, detail: true, dueOn: true, linkedTaskId: true } });
+    const wr = await prisma.workRequest.findUnique({ where: { id }, select: { id: true, reference: true, status: true, fromDeptId: true, toDeptId: true, raisedById: true, title: true, detail: true, dueOn: true, linkedTaskId: true } });
     if (!wr) return { error: 'That request no longer exists.' };
     if (isTerminal(wr.status as WRStatus)) return { error: 'This request is already closed.' };
 
@@ -101,6 +107,8 @@ export async function advanceWorkRequest(id: string, toStatus: string, note?: st
     await prisma.workRequest.update({ where: { id }, data: patch });
     await prisma.workRequestEvent.create({ data: { requestId: id, actorId: ctx.user.id, fromStatus: wr.status, toStatus, note: (note ?? '').trim() || null } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'WorkRequest', entityId: id, summary: `${wr.status} → ${toStatus}` });
+    // Announce the move — the person who raised it is notified where it now stands.
+    fireAndForget(() => emit({ type: 'workrequest.advanced', requestId: id, reference: wr.reference, title: wr.title, toStatus, raiserId: wr.raisedById, actorId: ctx.user.id }), 'emit workrequest.advanced');
     revalidatePath('/work-requests');
     revalidatePath(`/work-requests/${id}`);
     return { ok: true, message: 'Updated.' };
