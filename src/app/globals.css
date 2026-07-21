@@ -388,3 +388,18 @@ html[data-text-scale='l'] { font-size: 18px; }
 html[data-density='compact'] table td,
 html[data-density='compact'] table th { padding-top: 0.3rem; padding-bottom: 0.3rem; }
 html[data-density='compact'] .divide-y > * { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   V1 — premium elevation. A softer, layered card shadow than a flat one, so
+   surfaces read as considered. Kept subtle; dark mode leans on depth not glow.
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .card-surface { box-shadow: 0 1px 2px rgb(16 15 13 / 0.05), 0 6px 18px -8px rgb(16 15 13 / 0.10); }
+  .dark .card-surface { box-shadow: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 22px -10px rgb(0 0 0 / 0.45); }
+  /* V2 — a gentle count-up / rise for freshly shown numbers and tiles. */
+  @keyframes amh-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+  .pop-in { animation: amh-pop 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop-in { animation: none !important; }
+}

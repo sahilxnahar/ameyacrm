@@ -1,5 +1,27 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.22 — visual elevation V1–V3 (foundations). No SQL.**
+
+> **v14.22 begins the visual-elevation programme (V1–V7).** Refinements applied to the shared
+> design-system components, so **every screen lifts at once** — done conservatively (no layout
+> changes) and green.
+> - **V1 — premium visual language.** A softer, layered card elevation (`.card-surface`) replaces
+>   the flat shadow on `Card` and `StatTile`; a new `interactive` prop on `Card` adds a hover-lift
+>   for clickable cards.
+> - **V2 — motion & micro-interactions.** All buttons now have **press feedback** (a subtle scale
+>   on click) and smoother transitions; a `pop-in` entrance utility. Everything honours the
+>   reduced-motion setting already in place.
+> - **V3 — beautiful data (foundations).** New `<AnimatedNumber>` (KPIs count up on appear) and
+>   `<Sparkline>` (a tiny pure-SVG trend line); `StatTile` gains optional `spark` and `trend`
+>   props. Demonstrated live on the Insights KPIs.
+>
+> This is a deliberately safe first pass — the mechanisms and shared-component polish. The
+> broader V-work (V4 image-rich cards & kanban, V5 illustrations & delight, V6 personalisation/
+> themes, V7 the screen-by-screen sweep) and the new capability modules (#7 workflow automation —
+> next, as it rides the event bus; then #9 BI, #8 HR; #10 listing needs portal APIs) continue as
+> further green versions. Note: visual *taste* benefits from your eyes — tell me what to dial up or
+> down. Hard check: 0 type errors, 293 tests, all verifier checks (118 pages, 175 models), build exit 0.
+
 **Written 21 July 2026. Build v14.21 — AI Assistant (capability #1). No SQL.**
 
 > **v14.21 adds the AI Assistant** (`/assistant`, in My Day) — capability #1 from the new-

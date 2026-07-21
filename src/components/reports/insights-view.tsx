@@ -2,6 +2,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { StatTile } from '@/components/ui/stat-tile';
+import { AnimatedNumber } from '@/components/ui/animated-number';
 import { Badge } from '@/components/ui/badge';
 import type { InsightsResult } from '@/server/services/insights-service';
 
@@ -12,10 +13,10 @@ export function InsightsView({ data }: { data: InsightsResult }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Cost anomalies" value={String(data.anomalies.length)} tone={data.anomalies.length > 0 ? 'bad' : 'good'} />
-        <StatTile label="Materials checked" value={String(data.materialsChecked)} />
-        <StatTile label="Leads scored" value={String(data.leadsScored)} />
-        <StatTile label="Score bands" value={String(data.scoreBands.length)} />
+        <StatTile label="Cost anomalies" value={<AnimatedNumber value={data.anomalies.length} />} tone={data.anomalies.length > 0 ? 'bad' : 'good'} />
+        <StatTile label="Materials checked" value={<AnimatedNumber value={data.materialsChecked} />} />
+        <StatTile label="Leads scored" value={<AnimatedNumber value={data.leadsScored} />} spark={data.scoreBands.map((b) => b.count)} />
+        <StatTile label="Score bands" value={<AnimatedNumber value={data.scoreBands.length} />} />
       </div>
 
       <Card className="p-4">
