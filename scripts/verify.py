@@ -129,5 +129,17 @@ sticky_hits = [
 check('sticky positioning survives the overflow rules', sticky_hits)
 
 
+# ── SQL must never be split with a naive regex ──────────────────────────────
+# `sql.split(/;/)` tears `DO $$ … $$` blocks apart and Postgres rejects every
+# fragment — 32 statements of the migration failed exactly this way. Use
+# splitSql(), which respects dollar quotes, strings and comments.
+naive_sql = []
+for f in glob.glob('src/**/*.ts', recursive=True):
+    body = open(f, encoding='utf-8', errors='ignore').read()
+    if re.search(r"\.split\(/;", body) and 'split-sql.ts' not in f and 'tests/' not in f:
+        naive_sql.append(f'{f}: splits SQL on a bare semicolon — use splitSql()')
+check('SQL is split with splitSql, not a regex', naive_sql)
+
+
 print(f"\n  {len(pages)} pages · {len(re.findall(r'^model ', s, re.M))} models · {'ALL CHECKS PASSED' if not fail else str(fail) + ' FAILURE(S)'}")
 sys.exit(1 if fail else 0)

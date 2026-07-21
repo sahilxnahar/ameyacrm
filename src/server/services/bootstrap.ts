@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { PERMISSIONS, ALL_PERMISSION_KEYS, moduleOf } from '@/lib/rbac/permissions';
 import { ROLE_DEFAULTS, expandRolePermissions } from '@/lib/rbac/roles';
 import { INIT_SCHEMA_SQL_B64 } from './init-schema-sql';
+import { splitSql } from '@/lib/db/split-sql';
 
 const DEPARTMENTS = [
   'Architecture', 'Billing', 'Management', 'Marketing', 'Sales', 'NRI', 'Lease',
@@ -41,15 +42,7 @@ export async function ensureSchema(): Promise<boolean> {
     if (rows?.[0]?.t) return false; // schema already present
 
     const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
-    const statements = sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean);
-    for (const raw of statements) {
-      const stmt = raw
-        .split('\n')
-        .filter((l) => !l.trim().startsWith('--'))
-        .join('\n')
-        .replace(/;\s*$/, '')
-        .trim();
-      if (!stmt) continue;
+    for (const stmt of splitSql(sql)) {
       try {
         await client.$executeRawUnsafe(stmt);
       } catch {
@@ -154,16 +147,8 @@ export async function repairSchema(): Promise<RepairResult> {
     database = who?.[0]?.db ?? 'unknown';
 
     const sql = Buffer.from(INIT_SCHEMA_SQL_B64, 'base64').toString('utf8');
-    const statements = sql.split(/;\s*\n/).map((x) => x.trim()).filter(Boolean);
 
-    for (const raw of statements) {
-      const stmt = raw
-        .split('\n')
-        .filter((l) => !l.trim().startsWith('--'))
-        .join('\n')
-        .replace(/;\s*$/, '')
-        .trim();
-      if (!stmt) continue;
+    for (const stmt of splitSql(sql)) {
       try {
         await client.$executeRawUnsafe(stmt);
         ran++;
@@ -172,7 +157,10 @@ export async function repairSchema(): Promise<RepairResult> {
         // "already exists" is the expected outcome for most of these.
         if (/already exists|duplicate/i.test(msg)) { ran++; continue; }
         failed++;
-        if (errors.length < 5) errors.push(`${stmt.slice(0, 60)}… → ${msg.slice(0, 160)}`);
+        // One distinct message per kind of failure. Twenty copies of the same
+        // error tells you nothing that one copy does not.
+        const line = `${stmt.slice(0, 50).replace(/\s+/g, ' ')}… → ${msg.slice(0, 140)}`;
+        if (errors.length < 6 && !errors.some((e) => e.slice(-60) === line.slice(-60))) errors.push(line);
       }
     }
     return { ran, failed, database, usedDirect, errors };

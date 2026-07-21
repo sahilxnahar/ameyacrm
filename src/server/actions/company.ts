@@ -74,10 +74,13 @@ export async function repairDatabase(): Promise<RepairActionResult> {
     });
 
     if (r.failed > 0) {
+      // Show every distinct problem, not just the first. When only the first
+      // was reported, fixing it simply revealed the next one, one deploy at a
+      // time.
       return {
         error:
-          `${r.ran} applied, but ${r.failed} failed on database "${r.database}". ` +
-          `First problem: ${r.errors[0] ?? 'unknown'}`,
+          `${r.ran} applied, ${r.failed} failed on database "${r.database}". ` +
+          r.errors.map((e, i) => `(${i + 1}) ${e}`).join('  '),
       };
     }
     return {
