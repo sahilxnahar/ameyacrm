@@ -79,39 +79,66 @@ export function nameSimilarity(a: string, b: string): number {
   return 1 - dist / Math.max(x.length, y.length);
 }
 
+/** Name comparison is O(n²); above this many records it is skipped rather than
+ *  hang the request. The HIGH-confidence phone/email matches, which are what
+ *  matter most, are found by bucketing in O(n) and always run. */
+const NAME_PASS_CAP = 1500;
+
 /**
- * Compare every pair once. A shared phone or email is a HIGH-confidence match;
- * a very close name (≥ 0.88 similarity) with no phone that positively
+ * Find likely-duplicate records, fast enough to run inside a page render.
+ *
+ * Each record is normalised once. Exact phone and email matches are found by
+ * bucketing — O(n), not O(n²) — because those are certain and cheap. The
+ * fuzzy-name pass is the only quadratic step, so it runs only on reasonably
+ * sized sets and never re-normalises inside the loop. A shared phone or email is
+ * HIGH confidence; a very close name (≥ threshold) with no phone that positively
  * contradicts it is MEDIUM. Output is capped and ordered strongest-first.
  */
 export function findDuplicates(records: DedupeRecord[], nameThreshold = 0.88, limit = 200): DuplicatePair[] {
+  const norm = records.map((r) => ({ r, phone: normPhone(r.phone), email: normEmail(r.email), name: normName(r.name) }));
   const pairs: DuplicatePair[] = [];
-  for (let i = 0; i < records.length; i++) {
-    for (let j = i + 1; j < records.length; j++) {
-      const a = records[i]!;
-      const b = records[j]!;
-      const aPhone = normPhone(a.phone), bPhone = normPhone(b.phone);
-      const aEmail = normEmail(a.email), bEmail = normEmail(b.email);
+  const seen = new Set<string>();
+  const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const add = (a: DedupeRecord, b: DedupeRecord, reason: string, confidence: Confidence) => {
+    const k = key(a.id, b.id);
+    if (seen.has(k)) return;
+    seen.add(k);
+    pairs.push({ aId: a.id, bId: b.id, aLabel: a.name, bLabel: b.name, reason, confidence });
+  };
 
-      let confidence: Confidence | null = null;
-      let reason = '';
-      if (aPhone && aPhone === bPhone) { confidence = 'HIGH'; reason = 'same phone number'; }
-      else if (aEmail && aEmail === bEmail) { confidence = 'HIGH'; reason = 'same email'; }
-      else {
-        const sim = nameSimilarity(a.name, b.name);
-        // A close name is only a candidate if the phones do not actively disagree.
-        const phonesConflict = aPhone && bPhone && aPhone !== bPhone;
-        if (sim >= nameThreshold && !phonesConflict) {
-          confidence = 'MEDIUM';
-          reason = `near-identical name (${Math.round(sim * 100)}%)`;
-        }
+  // HIGH: bucket by exact phone, then exact email. O(n).
+  const bucketBy = (field: 'phone' | 'email', reason: string) => {
+    const map = new Map<string, typeof norm>();
+    for (const n of norm) {
+      const v = n[field];
+      if (!v) continue;
+      const g = map.get(v);
+      if (g) g.push(n); else map.set(v, [n]);
+    }
+    for (const group of map.values()) {
+      if (group.length < 2) continue;
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) add(group[i]!.r, group[j]!.r, reason, 'HIGH');
       }
+    }
+  };
+  bucketBy('phone', 'same phone number');
+  bucketBy('email', 'same email');
 
-      if (confidence) {
-        pairs.push({ aId: a.id, bId: b.id, aLabel: a.name, bLabel: b.name, reason, confidence });
+  // MEDIUM: fuzzy name, only when the set is small enough, never re-normalising.
+  if (norm.length <= NAME_PASS_CAP) {
+    for (let i = 0; i < norm.length; i++) {
+      for (let j = i + 1; j < norm.length; j++) {
+        const A = norm[i]!, B = norm[j]!;
+        if (seen.has(key(A.r.id, B.r.id))) continue;
+        if (A.phone && B.phone && A.phone !== B.phone) continue; // phones actively disagree
+        if (!A.name || !B.name) continue;
+        const sim = A.name === B.name ? 1 : 1 - levenshtein(A.name, B.name) / Math.max(A.name.length, B.name.length);
+        if (sim >= nameThreshold) add(A.r, B.r, `near-identical name (${Math.round(sim * 100)}%)`, 'MEDIUM');
       }
     }
   }
+
   pairs.sort((p, q) => (p.confidence === q.confidence ? 0 : p.confidence === 'HIGH' ? -1 : 1));
   return pairs.slice(0, limit);
 }

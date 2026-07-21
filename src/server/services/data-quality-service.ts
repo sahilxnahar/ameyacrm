@@ -13,7 +13,11 @@ import { DATA_DICTIONARY, requiredFields, type EntityDoc } from '@/config/data-d
  * not part of this batch.
  */
 
-const byKey = (k: string): EntityDoc => DATA_DICTIONARY.find((e) => e.key === k)!;
+const byKey = (k: string): EntityDoc => {
+  const e = DATA_DICTIONARY.find((entity) => entity.key === k);
+  if (!e) throw new Error(`Unknown data-quality entity "${k}".`);
+  return e;
+};
 
 const CHECKS: Record<string, ConsistencyCheck[]> = {
   lead: [phoneCheck, emailCheck],

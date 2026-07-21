@@ -1,6 +1,31 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.7 (batches 1, 2, 13, 4, 24, 5, 14 and 16 of 31 complete).**
+**Written 21 July 2026. Build v14.8 (batches 1, 2, 13, 4, 24, 5, 14, 16 done; UI/perf track started).**
+
+> **v14.8 starts the 19-batch UI/performance/platform track** (planned in
+> `UPGRADE-PLAN-UI-PERFORMANCE-19-BATCHES.md`). This build lays the foundation and
+> the safe, app-wide platform wins; the heavy cross-cutting batches (component
+> migration across 97 screens, React Compiler, PPR, WCAG audit, real-time,
+> offline) are a dedicated fresh-session effort from here.
+>
+> - **Batch 1 (design system), foundation:** the shared kit in `src/components/ui/`
+>   gains `StatTile`/`StatTileRow`, `Field`/`FormGrid`, `Select` and the `Chip`
+>   row — the components every recent screen had hand-rolled inline and let drift.
+>   A living gallery at `/admin/components` documents the set. New screens should
+>   build from these, not re-declare a local `Tile`/`inputCls`.
+> - **Batch 18 (platform), slices:** an in-shell error boundary
+>   (`src/app/(app)/error.tsx`) that keeps the sidebar when one screen throws and
+>   reuses the drift-aware repair hint, plus a feature-flags module
+>   (`src/lib/flags/flags.ts`, driven by the `FEATURE_FLAGS` env var — ship dark,
+>   enable without a redeploy).
+> - Much of **Batch 2** (perceived performance) already existed — `loading.tsx`,
+>   `PageSkeleton`, `shimmer`, `animate-in`, and top-level error/global-error
+>   boundaries were all present.
+> - **No schema change in v14.8 — nothing to migrate.** A hard check ran clean:
+>   0 type errors, 243 tests, all verifier checks, a full production build of all
+>   97 routes, the init SQL applied idempotently to a fresh Postgres, and an
+>   adversarial review that found no correctness bugs (a dedupe scalability risk
+>   and two minor items were fixed).
 
 > **v14.7 adds Batch 16 — capital, investors & RERA escrow.** A `/capital` screen:
 > the capital stack (equity/debt/buyer-advance with cost), an investor register
@@ -102,11 +127,11 @@ Not a product, not being commercialised — a system the company runs on.
 | Metric | Count |
 |---|---|
 | Database tables | 147 |
-| Screens (app pages) | 96 |
+| Screens (app pages) | 97 |
 | Server services | 45 |
 | Server action files | 71 |
-| React components | 154 |
-| Test files / tests | 22 / 239 |
+| React components | 159 |
+| Test files / tests | 23 / 243 |
 | Verifier checks | 18 |
 | Type errors | 0 |
 

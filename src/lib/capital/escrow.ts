@@ -103,9 +103,11 @@ export interface CovenantStatus extends CovenantInput {
 }
 
 export function covenantStatus(c: CovenantInput): CovenantStatus {
-  const headroom = c.direction === 'MIN' ? c.current - c.threshold : c.threshold - c.current;
+  // Round first, then derive breached/near-breach from the same rounded number
+  // the UI shows, so a headroom that displays as 0 is never quietly "breached".
+  const headroom = Math.round((c.direction === 'MIN' ? c.current - c.threshold : c.threshold - c.current) * 10000) / 10000;
   const breached = headroom < 0;
   const band = Math.abs(c.threshold) * 0.05;
   const nearBreach = !breached && headroom <= band;
-  return { ...c, breached, headroom: Math.round(headroom * 10000) / 10000, nearBreach };
+  return { ...c, breached, headroom, nearBreach };
 }
