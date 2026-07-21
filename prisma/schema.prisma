@@ -2269,6 +2269,14 @@ model DocChunk {
   fileObjectId String?
   title        String
   source       String? // human label shown next to an answer
+
+  // Access travels with the passage. Without these the AI answers from records
+  // the asker could never open — a side door around folder locks and the
+  // finance restriction.
+  folderId           String? // inherit the folder's lock
+  requiredPermission String? // e.g. finance.ledger.view for anything about money
+  entityType         String? // Lead, Booking, Voucher, Invoice, Document …
+  entityId           String?
   page         Int?
   ordinal      Int      @default(0)
   content      String
@@ -2278,6 +2286,9 @@ model DocChunk {
 
   @@index([documentId])
   @@index([fileObjectId])
+  @@index([folderId])
+  @@index([requiredPermission])
+  @@index([entityType, entityId])
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2632,4 +2643,28 @@ model Voucher {
   @@index([status])
   @@index([partyName])
   @@index([utr])
+}
+
+
+/// A connected external account (WhatsApp, Meta, Google Ads …). Tokens are
+/// encrypted at rest; only the account name and status are ever shown.
+model IntegrationConnection {
+  id            String    @id @default(cuid())
+  provider      String    @unique // whatsapp, meta_business, facebook_page, google_ads, facebook_ads
+  status        String    @default("DISCONNECTED") // CONNECTED, DISCONNECTED, EXPIRED, ERROR
+  accountName   String?
+  accountId     String?
+  accessToken   String? // encrypted
+  refreshToken  String? // encrypted
+  expiresAt     DateTime?
+  scopes        String?
+  meta          Json?
+  lastCheckedAt DateTime?
+  lastError     String?
+  connectedById String?
+  connectedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
 }

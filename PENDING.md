@@ -1,17 +1,22 @@
 # Ameya Heights CRM — what's pending
 _Ask me "what do I have pending?" any time and I'll read this back._
-_Last updated: 21 July 2026 · current build v10.4_
+_Last updated: 21 July 2026 · current build v10.6_
 
 ---
 
 ## 1. Waiting on you — do these first
+
+- **Run Admin → AI Health → Index everything** once after deploying, so the AI can see leads, bookings, invoices, tasks and payments — not just files.
+- **See ROADMAP.md** for what to build next, in order.
+
+- **Appoint the finance team** — Admin → Finance Access. Until you tick people, only Super Admins can see expenses and payments.
 
 - **Run the AI self-test** — Admin → AI Health → "Run the check". Four live probes against Google. Tells you whether the AI actually works, not just whether a key is present.
 - **Backfill the UTRs** — Payments Made → "Missing UTR only". Paste each bank SMS and let the AI fill it in.
 
 | # | What | Why it matters |
 |---|---|---|
-| 1 | **Deploy v10.4** — run `MIGRATION_v10.4_all.sql` in Neon, sync `ameya-heights-crm-v10.4.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
+| 1 | **Deploy v10.6** — run `MIGRATION_v10.6_all.sql` in Neon, sync `ameya-heights-crm-v10.6.zip`, Create Deployment | Expense import, UTR tracking, receipts and AI health are all waiting |
 | 2 | **Retest the menu customiser** — sidebar → Customise this menu | Controls were clipped off the edge; now on their own row |
 | 3 | **Retest Billing → Import bill (AI)** with your PDF | Was refusing valid PDFs; now infers the type and reports the real reason |
 | 4 | **Import your data** — Admin → Import Data | The system is still essentially empty. Units, then bookings, then payment schedules, then leads |

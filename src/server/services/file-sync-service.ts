@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getObjectStream } from '@/lib/storage/storage';
 import { summarizeFile } from '@/lib/ai/gemini';
 import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
-import { indexText } from '@/server/services/docqa-service';
+import { indexText, folderForFile } from '@/server/services/docqa-service';
 
 /** The CRM folder path for a document, so Drive can mirror the same tree. */
 async function folderPathFor(fileId: string): Promise<string[]> {
@@ -44,7 +44,7 @@ export async function processFile(fileId: string): Promise<{ ok: boolean; detail
         await prisma.fileObject.update({ where: { id: file.id }, data: { ocrText: summary } });
         notes.push('summarised');
         // Make it answerable straight away rather than waiting for a manual reindex.
-        await indexText({ fileObjectId: file.id, title: file.originalName, source: 'Document library', text: summary })
+        await indexText({ fileObjectId: file.id, title: file.originalName, source: 'Document library', text: summary, folderId: await folderForFile(file.id) })
           .then((n) => n > 0 && notes.push('indexed'))
           .catch(() => undefined);
       }

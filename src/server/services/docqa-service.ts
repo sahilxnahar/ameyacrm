@@ -2,6 +2,10 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { embed, cosine, chunkText } from '@/lib/ai/embeddings';
+import { can } from '@/lib/rbac/can';
+import { ALL_PERMISSION_KEYS } from '@/lib/rbac/permissions';
+import { lockedFolderIds } from '@/server/services/folder-access-service';
+import type { AuthContext } from '@/lib/auth/current-user';
 
 export interface Source { title: string; snippet: string; documentId: string | null; fileObjectId: string | null; score: number }
 export interface Answer { answer: string; sources: Source[]; searched: number }
@@ -13,13 +17,22 @@ export async function indexText(opts: {
   title: string;
   source?: string | null;
   text: string;
+  folderId?: string | null;
+  requiredPermission?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
 }): Promise<number> {
   const chunks = chunkText(opts.text);
   if (!chunks.length) return 0;
 
-  await prisma.docChunk.deleteMany({
-    where: opts.documentId ? { documentId: opts.documentId } : { fileObjectId: opts.fileObjectId ?? '' },
-  });
+  const scope = opts.documentId
+    ? { documentId: opts.documentId }
+    : opts.fileObjectId
+      ? { fileObjectId: opts.fileObjectId }
+      : opts.entityType && opts.entityId
+        ? { entityType: opts.entityType, entityId: opts.entityId }
+        : null;
+  if (scope) await prisma.docChunk.deleteMany({ where: scope });
 
   let stored = 0;
   for (let i = 0; i < Math.min(chunks.length, 60); i++) {
@@ -31,6 +44,10 @@ export async function indexText(opts: {
         fileObjectId: opts.fileObjectId ?? null,
         title: opts.title.slice(0, 200),
         source: opts.source ?? null,
+        folderId: opts.folderId ?? null,
+        requiredPermission: opts.requiredPermission ?? null,
+        entityType: opts.entityType ?? null,
+        entityId: opts.entityId ?? null,
         ordinal: i,
         content: chunks[i],
         embedding: vec,
@@ -48,11 +65,25 @@ export async function indexText(opts: {
  * answer says so — a confident invention about a penalty clause would be worse
  * than no answer at all.
  */
-export async function askDocuments(question: string): Promise<Answer> {
+export async function askDocuments(question: string, ctx: AuthContext): Promise<Answer> {
   const q = question.trim();
   if (!q) return { answer: 'Ask a question about your documents.', sources: [], searched: 0 };
 
   const qvec = await embed(q, 'query');
+
+  // Everything is indexed, but each person is answered only from what they
+  // could open themselves. Two filters, applied in the query rather than after
+  // ranking so a restricted passage never even reaches the model.
+  const locked = await lockedFolderIds(ctx);
+  const permissionFilter = {
+    OR: [
+      { requiredPermission: null },
+      { requiredPermission: { in: ALL_PERMISSION_KEYS.filter((k) => can(ctx.permissions, k)) } },
+    ],
+  };
+  const allowed = locked.length
+    ? { AND: [permissionFilter, { OR: [{ folderId: null }, { folderId: { notIn: locked } }] }] }
+    : permissionFilter;
 
   // Narrow before scoring. Loading every embedding meant pulling roughly 25MB
   // into memory for a single question; a keyword pass first cuts the candidate
@@ -60,7 +91,7 @@ export async function askDocuments(question: string): Promise<Answer> {
   const words = [...new Set(q.toLowerCase().split(/\W+/).filter((w) => w.length > 3))].slice(0, 8);
   let chunks = words.length
     ? await prisma.docChunk.findMany({
-        where: { OR: words.map((w) => ({ content: { contains: w, mode: 'insensitive' as const } })) },
+        where: { AND: [allowed, { OR: words.map((w) => ({ content: { contains: w, mode: 'insensitive' as const } })) }] },
         select: { id: true, title: true, content: true, documentId: true, fileObjectId: true, embedding: true, source: true },
         take: 400,
       })
@@ -70,13 +101,17 @@ export async function askDocuments(question: string): Promise<Answer> {
   // unusually phrased question still finds something.
   if (chunks.length < 5) {
     chunks = await prisma.docChunk.findMany({
+      where: allowed,
       select: { id: true, title: true, content: true, documentId: true, fileObjectId: true, embedding: true, source: true },
       orderBy: { createdAt: 'desc' },
       take: 600,
     });
   }
   if (!chunks.length) {
-    return { answer: 'No documents have been indexed yet. Open Documents and press "Index for search".', sources: [], searched: 0 };
+    return {
+      answer: 'There is nothing indexed that you have access to. If you expected results here, ask a Super Admin to run Admin > AI Health > Index everything.',
+      sources: [], searched: 0,
+    };
   }
 
   let ranked: Array<{ c: (typeof chunks)[number]; score: number }>;
@@ -135,4 +170,18 @@ async function generate(question: string, context: string): Promise<string> {
   } catch {
     return 'The AI service could not be reached. The matching passages are below.';
   }
+}
+
+
+/**
+ * Which folder a stored file lives in, so its passages inherit the folder's
+ * lock. Without this the AI would quote a restricted contract to anyone.
+ */
+export async function folderForFile(fileObjectId: string): Promise<string | null> {
+  const v = await prisma.documentVersion.findFirst({
+    where: { fileId: fileObjectId },
+    orderBy: { version: 'desc' },
+    select: { document: { select: { folderId: true } } },
+  });
+  return v?.document?.folderId ?? null;
 }

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: 'Cash book' };
 export const dynamic = 'force-dynamic';
 
 export default async function CashBookPage({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
-  const ctx = await requirePermission('billing.view');
+  const ctx = await requirePermission('finance.ledger.view');
   const { m } = await searchParams;
   const base = m ? new Date(`${m}-01T00:00:00`) : new Date();
   const from = startOfMonth(base);

@@ -176,7 +176,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.4</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.6</p>
         </div>
       </aside>
     </>

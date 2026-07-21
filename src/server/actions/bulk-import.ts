@@ -49,7 +49,9 @@ export async function runImport(
   dryRun: boolean,
 ): Promise<ImportResult> {
   try {
-    const ctx = await ensure('admin.setting.manage');
+    // Expenses land in the cash book, so importing them needs the ledger
+    // permission on top of the usual import rights.
+    const ctx = await ensure(kind === 'expenses' ? 'finance.ledger.manage' : 'admin.setting.manage');
     if (!rows.length) return { error: 'Nothing to import — paste some rows first.' };
     if (rows.length > 2000) return { error: 'Please import at most 2000 rows at a time.' };
 

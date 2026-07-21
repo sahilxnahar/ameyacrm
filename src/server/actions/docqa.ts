@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { revalidatePath } from 'next/cache';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
-import { indexText, askDocuments, type Answer } from '@/server/services/docqa-service';
+import { indexText, askDocuments, type Answer, folderForFile } from '@/server/services/docqa-service';
 import { env } from '@/config/env';
 
 export type QaResult = { ok: true; data: Answer } | { error: string };
@@ -11,8 +11,8 @@ export type IndexResult = { ok: true; documents: number; chunks: number; message
 
 export async function ask(question: string): Promise<QaResult> {
   try {
-    await ensure('document.view');
-    const data = await askDocuments(question);
+    const ctx = await ensure('document.view');
+    const data = await askDocuments(question, ctx);
     return { ok: true, data };
   } catch (err) { return toActionError(err); }
 }
@@ -36,6 +36,7 @@ export async function indexAllDocuments(): Promise<IndexResult> {
         title: f.originalName,
         source: 'Document library',
         text: f.ocrText ?? '',
+        folderId: await folderForFile(f.id),
       });
       if (n > 0) { docs++; chunks += n; }
     }

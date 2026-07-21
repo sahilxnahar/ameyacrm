@@ -40,6 +40,13 @@ export const PERMISSIONS = {
   'billing.bill.manage': 'Create / edit vendor bills',
   'billing.approve': 'Approve billing documents',
 
+  // Finance ledger — expenses, payments made, cash book. Deliberately held by
+  // nobody in the role defaults: it is granted person by person in
+  // Admin > Finance Access, and Super Admins have it via '*'.
+  'finance.ledger.view': 'See expenses, payments made and the cash book',
+  'finance.ledger.manage': 'Record and cancel payments, and enter UTRs',
+  'finance.access.manage': 'Appoint who may see the money',
+
   // Material requests & email
   'material.view': 'View material requests',
   'material.create': 'Raise material requests',

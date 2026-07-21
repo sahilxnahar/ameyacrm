@@ -1,12 +1,35 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CheckCircle2, XCircle, Loader2, Play, AlertTriangle } from 'lucide-react';
-import { checkAiHealth } from '@/server/actions/vouchers';
+import { CheckCircle2, XCircle, Loader2, Play, AlertTriangle, Database, Lock } from 'lucide-react';
+import { checkAiHealth, reindexEverything } from '@/server/actions/vouchers';
 
 interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string }
 
-export function AiHealthView({ indexed, summarised, docs }: { indexed: number; summarised: number; docs: number }) {
+interface Coverage { key: string; label: string; permission: string | null; note: string | null; passages: number; records: number }
+
+export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed: number; summarised: number; docs: number; coverage: Coverage[] }) {
+  const [cov, setCov] = useState(coverage);
+  const [indexing, startIndex] = useTransition();
+  const [indexMsg, setIndexMsg] = useState<string | null>(null);
+
+  const runIndex = () =>
+    startIndex(async () => {
+      setIndexMsg(null);
+      try {
+        const { reports } = await reindexEverything();
+        const total = reports.reduce((n, r) => n + r.indexed, 0);
+        const failed = reports.filter((r) => r.error);
+        setIndexMsg(
+          failed.length
+            ? `Indexed ${total} records, but ${failed.map((f) => f.label).join(', ')} failed.`
+            : `Indexed ${total} records across ${reports.length} sources. Reload to see the new counts.`,
+        );
+        setCov((c) => c.map((x) => { const r = reports.find((y) => y.source === x.key); return r && r.indexed ? { ...x, records: r.indexed } : x; }));
+      } catch (e) {
+        setIndexMsg(e instanceof Error ? e.message : 'Indexing failed.');
+      }
+    });
   const [result, setResult] = useState<{ enabled: boolean; model: string; probes: Probe[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -94,12 +117,51 @@ export function AiHealthView({ indexed, summarised, docs }: { indexed: number; s
       </div>
 
       <div className="card-elevated p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg">What the AI can see</h2>
+            <p className="text-sm text-muted-foreground">
+              Everything is indexed once. Each person is then answered only from the rows they are allowed to open.
+            </p>
+          </div>
+          <button
+            type="button" onClick={runIndex} disabled={indexing}
+            className="focus-ring inline-flex items-center gap-2 rounded-md border bg-background px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-60"
+          >
+            {indexing ? <><Loader2 className="h-4 w-4 animate-spin" />Indexing…</> : <><Database className="h-4 w-4" />Index everything</>}
+          </button>
+        </div>
+        {indexMsg && <p className="mt-3 rounded-md bg-muted p-3 text-sm">{indexMsg}</p>}
+        <ul className="mt-4 divide-y rounded-md border">
+          {cov.map((c) => (
+            <li key={c.key} className="flex flex-wrap items-center gap-3 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{c.label}</p>
+                <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  {c.permission ? (
+                    <><Lock className="h-3 w-3" />Only people with <code className="rounded bg-muted px-1">{c.permission}</code></>
+                  ) : (
+                    'Everyone, subject to folder locks'
+                  )}
+                  {c.note ? ` · ${c.note}` : ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold tabular-nums">{c.records}</p>
+                <p className="text-xs text-muted-foreground">{c.passages} passages</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="card-elevated p-5">
         <h2 className="font-display text-lg">Where the AI is used</h2>
         <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
           <li><strong className="text-foreground">Payments</strong> — reads a bank SMS and fills in the UTR, amount and date.</li>
           <li><strong className="text-foreground">Billing</strong> — reads a supplier bill into an invoice.</li>
           <li><strong className="text-foreground">Documents</strong> — summarises every file you upload.</li>
-          <li><strong className="text-foreground">Ask Documents</strong> — answers questions from your own files.</li>
+          <li><strong className="text-foreground">Ask Documents</strong> — answers from files, leads, bookings, invoices, tasks and (for finance) payments.</li>
           <li><strong className="text-foreground">Leads</strong> — scores a lead and suggests the next step.</li>
           <li><strong className="text-foreground">Voice notes</strong> — turns a site recording into a task.</li>
         </ul>

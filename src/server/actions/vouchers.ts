@@ -7,6 +7,7 @@ import { ensure, toActionError } from '@/server/actions/_helpers';
 import { KIND_META, VOUCHER_KINDS, PAY_MODES, type VoucherKind } from '@/config/vouchers';
 import { describeUtr } from '@/lib/money-words';
 import { extractPaymentAdvice, runAiSelfTest, isGeminiEnabled } from '@/lib/ai/gemini';
+import { AI_SOURCES, reindexSource, type IndexReport } from '@/server/services/ai-index-service';
 
 export type VoucherResult = { ok: true; id?: string; number?: string; message?: string } | { error: string };
 
@@ -45,7 +46,7 @@ const schema = z.object({
 
 export async function createVoucher(input: unknown): Promise<VoucherResult> {
   try {
-    const ctx = await ensure('billing.invoice.manage');
+    const ctx = await ensure('finance.ledger.manage');
     const d = schema.parse(input);
     const meta = KIND_META[d.kind];
 
@@ -100,7 +101,7 @@ export async function createVoucher(input: unknown): Promise<VoucherResult> {
  */
 export async function cancelVoucher(id: string, reason: string): Promise<VoucherResult> {
   try {
-    const ctx = await ensure('billing.invoice.manage');
+    const ctx = await ensure('finance.ledger.manage');
     const v = await prisma.voucher.update({
       where: { id },
       data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason.slice(0, 300) || 'No reason given' },
@@ -127,7 +128,7 @@ const utrSchema = z.object({
  */
 export async function recordUtr(input: unknown): Promise<VoucherResult> {
   try {
-    const ctx = await ensure('billing.invoice.manage');
+    const ctx = await ensure('finance.ledger.manage');
     const d = utrSchema.parse(input);
     const utr = d.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
@@ -170,7 +171,7 @@ export type AdviceResult =
 /** Read a pasted bank SMS / UPI confirmation and hand back the fields to fill in. */
 export async function readPaymentAdvice(text: string): Promise<AdviceResult> {
   try {
-    await ensure('billing.invoice.manage');
+    await ensure('finance.ledger.manage');
     if (!isGeminiEnabled()) return { error: 'The AI key is not set up yet — check Admin > AI health.' };
     if (!text || text.trim().length < 10) return { error: 'Paste the whole bank message so there is something to read.' };
 
@@ -197,4 +198,16 @@ export async function readPaymentAdvice(text: string): Promise<AdviceResult> {
 export async function checkAiHealth() {
   await ensure('admin.setting.manage');
   return runAiSelfTest();
+}
+
+/** Re-index every source the AI can learn from. Super Admin only: it costs quota. */
+export async function reindexEverything(): Promise<{ reports: IndexReport[] }> {
+  const ctx = await ensure('admin.setting.manage');
+  const reports: IndexReport[] = [];
+  for (const s of AI_SOURCES) reports.push(await reindexSource(s.key));
+  await writeAudit({
+    actorId: ctx.user.id, action: 'UPDATE', entityType: 'System',
+    summary: `AI re-index: ${reports.reduce((n, r) => n + r.indexed, 0)} records`,
+  });
+  return { reports };
 }

@@ -9,7 +9,11 @@ import { ALL_PERMISSION_KEYS, type PermissionKey } from './permissions';
 export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
   SUPER_ADMIN: ['*'],
   ADMIN: [
-    'dashboard.view', 'task.*', 'lead.*', 'booking.*', 'document.*', 'billing.*',
+    'dashboard.view', 'task.*', 'lead.*', 'booking.*', 'document.*',
+    // Deliberately NOT 'billing.*' — that wildcard would sweep in the finance
+    // ledger keys. Expenses and payments are appointed, never inherited.
+    'billing.view', 'billing.invoice.manage', 'billing.po.manage',
+    'billing.bill.manage', 'billing.approve',
     'material.*', 'email.*', 'calendar.*', 'report.*',
     'admin.user.*', 'admin.department.manage', 'admin.role.manage',
     'admin.project.manage', 'admin.setting.manage', 'admin.notification.manage',

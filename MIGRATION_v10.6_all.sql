@@ -169,3 +169,58 @@ ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
 ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "utrEnteredById" TEXT;
 ALTER TABLE "Voucher" ADD COLUMN IF NOT EXISTS "utrEnteredAt" TIMESTAMP(3);
 CREATE INDEX IF NOT EXISTS "Voucher_utr_idx" ON "Voucher"("utr");
+
+-- v10.5 — finance ledger is appointed, never inherited ------------------------
+-- Three new permission keys. Deliberately granted to NOBODY here: Super Admins
+-- get them implicitly, and everyone else is appointed in Admin > Finance Access.
+INSERT INTO "Permission" ("id", "key", "module", "description", "createdAt") VALUES
+  ('perm_fin_ledger_view',   'finance.ledger.view',   'finance', 'See expenses, payments made and the cash book', NOW()),
+  ('perm_fin_ledger_manage', 'finance.ledger.manage', 'finance', 'Record and cancel payments, and enter UTRs',    NOW()),
+  ('perm_fin_access_manage', 'finance.access.manage', 'finance', 'Appoint who may see the money',                 NOW())
+ON CONFLICT ("key") DO NOTHING;
+
+-- Belt and braces: if any role was previously granted these keys by an earlier
+-- experiment, take them away. Access must come from an explicit appointment.
+DELETE FROM "RolePermission"
+ WHERE "permissionId" IN (SELECT "id" FROM "Permission" WHERE "key" LIKE 'finance.ledger.%');
+
+-- Show who can currently see the money (Super Admins are implicit and will not
+-- be listed). A fresh install correctly returns no rows.
+SELECT u."name", u."email", p."key"
+  FROM "UserPermission" up
+  JOIN "User" u ON u."id" = up."userId"
+  JOIN "Permission" p ON p."id" = up."permissionId"
+ WHERE p."key" LIKE 'finance.ledger.%' AND up."effect" = 'ALLOW'
+ ORDER BY u."name";
+
+-- v10.6 — AI sees everything, answers per person ------------------------------
+ALTER TABLE "DocChunk" ADD COLUMN IF NOT EXISTS "folderId" TEXT;
+ALTER TABLE "DocChunk" ADD COLUMN IF NOT EXISTS "requiredPermission" TEXT;
+ALTER TABLE "DocChunk" ADD COLUMN IF NOT EXISTS "entityType" TEXT;
+ALTER TABLE "DocChunk" ADD COLUMN IF NOT EXISTS "entityId" TEXT;
+CREATE INDEX IF NOT EXISTS "DocChunk_folderId_idx" ON "DocChunk"("folderId");
+CREATE INDEX IF NOT EXISTS "DocChunk_requiredPermission_idx" ON "DocChunk"("requiredPermission");
+CREATE INDEX IF NOT EXISTS "DocChunk_entityType_entityId_idx" ON "DocChunk"("entityType", "entityId");
+
+-- v10.6 — connected external accounts (WhatsApp, Meta, Google Ads) -------------
+CREATE TABLE IF NOT EXISTS "IntegrationConnection" (
+  "id"            TEXT NOT NULL,
+  "provider"      TEXT NOT NULL,
+  "status"        TEXT NOT NULL DEFAULT 'DISCONNECTED',
+  "accountName"   TEXT,
+  "accountId"     TEXT,
+  "accessToken"   TEXT,
+  "refreshToken"  TEXT,
+  "expiresAt"     TIMESTAMP(3),
+  "scopes"        TEXT,
+  "meta"          JSONB,
+  "lastCheckedAt" TIMESTAMP(3),
+  "lastError"     TEXT,
+  "connectedById" TEXT,
+  "connectedAt"   TIMESTAMP(3),
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "IntegrationConnection_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "IntegrationConnection_provider_key" ON "IntegrationConnection"("provider");
+CREATE INDEX IF NOT EXISTS "IntegrationConnection_status_idx" ON "IntegrationConnection"("status");

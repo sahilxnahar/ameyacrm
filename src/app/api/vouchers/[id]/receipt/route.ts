@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await getCurrentUser();
   if (!ctx) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (!can(ctx.permissions, 'billing.view')) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!can(ctx.permissions, 'finance.ledger.view')) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { id } = await params;
   const v = await prisma.voucher.findUnique({ where: { id } });

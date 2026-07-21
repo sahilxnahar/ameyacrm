@@ -13,7 +13,7 @@ const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 export async function GET(req: NextRequest) {
   const ctx = await getCurrentUser();
   if (!ctx) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (!can(ctx.permissions, 'billing.view')) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (!can(ctx.permissions, 'finance.ledger.view')) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const m = req.nextUrl.searchParams.get('m');
   const base = m ? new Date(`${m}-01T00:00:00`) : new Date();

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Payments made' };
 export const dynamic = 'force-dynamic';
 
 export default async function PaymentsPage() {
-  const ctx = await requirePermission('billing.view');
+  const ctx = await requirePermission('finance.ledger.view');
   const active = await getActiveProject(ctx.user.id);
   const scope = strictProjectScope(active.id);
 

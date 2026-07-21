@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles } from 'lucide-react';
+import { ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound, UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles, Landmark, Link2 } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/current-user';
+import { can } from '@/lib/rbac/can';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
@@ -10,7 +11,7 @@ import { AdminView } from '@/components/admin/admin-view';
 export const metadata: Metadata = { title: 'Admin' };
 
 export default async function AdminPage() {
-  await requirePermission('admin.user.view');
+  const ctx = await requirePermission('admin.user.view');
   const [users, departments] = await Promise.all([
     prisma.user.findMany({
       where: { deletedAt: null }, orderBy: { createdAt: 'desc' },
@@ -25,7 +26,9 @@ export default async function AdminPage() {
         {[
           { href: '/admin/marketplace', icon: Store, title: 'Free Extras', desc: 'Ready-made automations, templates and views' },
           { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working' },
+          { href: '/admin/connections', icon: Link2, title: 'Connected Accounts', desc: 'WhatsApp, Meta, Google Ads — connect by logging in' },
           { href: '/admin/ai-health', icon: Sparkles, title: 'AI Health', desc: 'Test the AI for real and see what came back' },
+          { href: '/admin/finance-access', icon: Landmark, title: 'Finance Access', desc: 'Who may see expenses, payments and the cash book', permission: 'finance.access.manage' },
           { href: '/admin/import', icon: Upload, title: 'Import Data', desc: 'Paste units, bookings and leads from Excel' },
           { href: '/admin/access-requests', icon: UserPlus, title: 'Access Requests', desc: 'Approve people who signed themselves up' },
           { href: '/admin/departments', icon: Network, title: 'Departments', desc: 'Divisions, teams and who heads each' },
@@ -44,7 +47,9 @@ export default async function AdminPage() {
           { href: '/admin/privacy', icon: ShieldCheck, title: 'Privacy & DPDP', desc: 'Consent, retention, data requests' },
           { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often' },
           { href: '/admin/mobile-app', icon: Smartphone, title: 'Mobile App & Reminders', desc: 'APK link, push coverage, overdue chasing' },
-        ].map((c) => (
+        ]
+          .filter((c) => !('permission' in c) || can(ctx.permissions, c.permission as string))
+          .map((c) => (
           <Link key={c.href} href={c.href}>
             <Card className="flex items-center gap-3 p-4 transition-colors hover:border-primary hover:bg-secondary/40">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><c.icon className="h-5 w-5" /></div>
