@@ -3907,3 +3907,321 @@ model CommissionPayout {
   @@index([channelPartnerId])
   @@index([status])
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SEVEN BATCHES (v14.12) — Feasibility, Statutory, Procurement, Governance,
+// Security ops, Institutional memory, Environment & ESG. All projectId / owner
+// references are plain ids (no relations) so existing models are untouched.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Batch 18 — Development appraisal & feasibility ───────────────────────────
+model FeasibilityModel {
+  id                String   @id @default(cuid())
+  projectId         String?
+  name              String
+  landCost          Decimal  @default(0) @db.Decimal(18, 2)
+  constructionCost  Decimal  @default(0) @db.Decimal(18, 2)
+  financeCost       Decimal  @default(0) @db.Decimal(18, 2)
+  otherCost         Decimal  @default(0) @db.Decimal(18, 2)
+  saleableAreaSqft  Decimal  @default(0) @db.Decimal(14, 2)
+  salePricePerSqft  Decimal  @default(0) @db.Decimal(12, 2)
+  targetReturnPct   Decimal? @db.Decimal(6, 3)
+  salePriceDeltaPct Decimal  @default(0) @db.Decimal(6, 3)
+  costDeltaPct      Decimal  @default(0) @db.Decimal(6, 3)
+  notes             String?
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+// ── Batch 3 — Statutory, tax & compliance ───────────────────────────────────
+enum ObligationKind {
+  GST
+  TDS
+  RERA
+  PF_ESI
+  PROFESSIONAL_TAX
+  INCOME_TAX
+  ROC
+  OTHER
+}
+
+enum ObligationFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  ANNUAL
+  ONE_TIME
+}
+
+enum ObligationStatus {
+  UPCOMING
+  DUE
+  FILED
+  OVERDUE
+}
+
+model StatutoryObligation {
+  id        String              @id @default(cuid())
+  projectId String?
+  title     String
+  kind      ObligationKind      @default(OTHER)
+  authority String?
+  frequency ObligationFrequency @default(MONTHLY)
+  owner     String?
+  nextDue   DateTime?
+  lastFiled DateTime?
+  status    ObligationStatus    @default(UPCOMING)
+  note      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status])
+  @@index([nextDue])
+}
+
+model ComplianceDocExpiry {
+  id         String    @id @default(cuid())
+  projectId  String?
+  title      String
+  category   String?
+  reference  String?
+  expiresOn  DateTime?
+  owner      String?
+  renewed    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([expiresOn])
+}
+
+// ── Batch 6 — Procurement: goods received & three-way match ─────────────────
+model GoodsReceipt {
+  id           String   @id @default(cuid())
+  projectId    String?
+  grnNumber    String?
+  vendorName   String
+  materialName String
+  poReference  String?
+  unit         String?
+  orderedQty   Decimal  @default(0) @db.Decimal(14, 3)
+  receivedQty  Decimal  @default(0) @db.Decimal(14, 3)
+  billedQty    Decimal  @default(0) @db.Decimal(14, 3)
+  rate         Decimal? @db.Decimal(14, 2)
+  note         String?
+  receivedOn   DateTime @default(now())
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// ── Batch 22 — Governance, risk & control ───────────────────────────────────
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATING
+  MONITORED
+  CLOSED
+}
+
+model RiskEntry {
+  id         String     @id @default(cuid())
+  projectId  String?
+  title      String
+  category   String?
+  likelihood RiskLevel  @default(MEDIUM)
+  impact     RiskLevel  @default(MEDIUM)
+  owner      String?
+  mitigation String?
+  status     RiskStatus @default(OPEN)
+  reviewOn   DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status])
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  TERMINATED
+}
+
+model ContractRecord {
+  id           String         @id @default(cuid())
+  projectId    String?
+  title        String
+  counterparty String
+  kind         String?
+  value        Decimal?       @db.Decimal(18, 2)
+  startsOn     DateTime?
+  endsOn       DateTime?
+  renewalOn    DateTime?
+  obligations  String?
+  status       ContractStatus @default(ACTIVE)
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([renewalOn])
+}
+
+model InsurancePolicy {
+  id        String    @id @default(cuid())
+  projectId String?
+  name      String
+  insurer   String
+  policyNo  String?
+  cover     Decimal?  @db.Decimal(18, 2)
+  premium   Decimal?  @db.Decimal(16, 2)
+  expiresOn DateTime?
+  claims    String?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresOn])
+}
+
+// ── Batch 25 — Security operations ──────────────────────────────────────────
+enum SecOpsSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SecIncidentStatus {
+  OPEN
+  INVESTIGATING
+  CONTAINED
+  RESOLVED
+}
+
+model SecurityIncident {
+  id         String            @id @default(cuid())
+  title      String
+  severity   SecOpsSeverity    @default(MEDIUM)
+  kind       String?
+  detectedOn DateTime          @default(now())
+  status     SecIncidentStatus @default(OPEN)
+  rootCause  String?
+  resolvedOn DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+model AccessReview {
+  id          String    @id @default(cuid())
+  subject     String
+  scope       String?
+  reviewer    String?
+  dueOn       DateTime?
+  completedOn DateTime?
+  findings    String?
+  createdAt   DateTime  @default(now())
+
+  @@index([dueOn])
+}
+
+// ── Batch 29 — Institutional memory ─────────────────────────────────────────
+enum SopStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+model Sop {
+  id          String    @id @default(cuid())
+  title       String
+  department  String?
+  version     Int       @default(1)
+  ownerId     String?
+  content     String?
+  effectiveOn DateTime?
+  status      SopStatus @default(DRAFT)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model DecisionLog {
+  id        String   @id @default(cuid())
+  projectId String?
+  title     String
+  decidedOn DateTime @default(now())
+  decidedBy String?
+  context   String?
+  decision  String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model LessonLearned {
+  id             String   @id @default(cuid())
+  projectId      String?
+  title          String
+  category       String?
+  situation      String?
+  recommendation String
+  capturedOn     DateTime @default(now())
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// ── Batch 23 — Environment & ESG ────────────────────────────────────────────
+enum EnvCondStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLIED
+  BREACHED
+}
+
+model EnvClearanceCondition {
+  id        String        @id @default(cuid())
+  projectId String?
+  condition String
+  authority String?
+  evidence  String?
+  dueOn     DateTime?
+  status    EnvCondStatus @default(PENDING)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status])
+}
+
+model WasteManifest {
+  id         String    @id @default(cuid())
+  projectId  String?
+  manifestNo String?
+  wasteType  String
+  quantity   Decimal   @default(0) @db.Decimal(14, 3)
+  unit       String?
+  disposedTo String?
+  disposedOn DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId])
+}

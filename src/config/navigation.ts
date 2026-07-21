@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -79,6 +79,9 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Architecture', href: '/architecture', icon: PencilRuler, permission: 'architecture.view' },
       { label: 'Programme', href: '/programme', icon: GanttChartSquare, permission: 'programme.view' },
       { label: 'Quality & Safety', href: '/quality', icon: ClipboardCheck, permission: 'quality.view' },
+      { label: 'Procurement (GRN)', href: '/procurement', icon: Package, permission: 'procurement.view' },
+      { label: 'Feasibility', href: '/feasibility', icon: LineChart, permission: 'feasibility.view' },
+      { label: 'Environment & ESG', href: '/esg', icon: Leaf, permission: 'esg.view' },
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view' },
       { label: 'Forecast', href: '/forecast', icon: TrendingUp, permission: 'report.view' },
       { label: 'Map', href: '/map', icon: MapPin, permission: 'lead.view' },
@@ -91,6 +94,10 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { label: 'Admin', href: '/admin', icon: Shield, permission: 'admin.user.view' },
       { label: 'Data Quality', href: '/data-quality', icon: Sparkles, permission: 'data.view' },
+      { label: 'Statutory Calendar', href: '/statutory', icon: Scale, permission: 'statutory.view' },
+      { label: 'Governance & Risk', href: '/governance', icon: ShieldCheck, permission: 'governance.view' },
+      { label: 'Security Operations', href: '/security-ops', icon: KeyRound, permission: 'secops.view' },
+      { label: 'Decision Log', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view' },
       { label: 'Settings', href: '/settings', icon: Settings },
     ],

@@ -114,6 +114,34 @@ export const PERMISSIONS = {
   'pricing.view': 'View unit pricing and broker commissions',
   'pricing.manage': 'Set unit pricing and record broker commissions',
 
+  // Feasibility & portfolio (batch 18)
+  'feasibility.view': 'View development appraisals and scenarios',
+  'feasibility.manage': 'Create and edit feasibility models',
+
+  // Statutory, tax & compliance (batch 3)
+  'statutory.view': 'View the statutory calendar and document expiry',
+  'statutory.manage': 'Manage statutory obligations and compliance documents',
+
+  // Procurement (batch 6)
+  'procurement.view': 'View goods receipts and three-way match',
+  'procurement.manage': 'Record goods received and reconcile against orders and bills',
+
+  // Governance, risk & control (batch 22)
+  'governance.view': 'View the risk register, contracts and insurance',
+  'governance.manage': 'Manage risks, contracts and insurance policies',
+
+  // Security operations (batch 25)
+  'secops.view': 'View security incidents and access reviews',
+  'secops.manage': 'Manage security incidents and access reviews',
+
+  // Institutional memory (batch 29)
+  'knowledge.view': 'View SOPs, decisions and lessons learned',
+  'knowledge.manage': 'Manage SOPs, the decision log and lessons learned',
+
+  // Environment & ESG (batch 23)
+  'esg.view': 'View environmental clearance conditions and waste manifests',
+  'esg.manage': 'Manage EC conditions, green credits and waste manifests',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

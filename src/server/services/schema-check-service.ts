@@ -35,6 +35,9 @@ const REQUIRED_TABLES = [
   'Investor', 'EscrowMovement', 'LoanCovenant',
   // Batch 7 — sales pricing & commission
   'UnitPricing', 'CommissionPayout',
+  // Seven-batch pass (v14.12)
+  'FeasibilityModel', 'StatutoryObligation', 'GoodsReceipt', 'RiskEntry',
+  'ContractRecord', 'SecurityIncident', 'Sop', 'EnvClearanceCondition',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

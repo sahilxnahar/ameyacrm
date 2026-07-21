@@ -1,16 +1,28 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.11 (feature batches 1,2,13,4,24,5,14,16 + 7 core done; UI track advanced).**
+**Written 21 July 2026. Build v14.12 (feature batches 1,2,4,5,7,13,14,16,24 + 3,6,18,22,23,25,29 = 16 of 31; UI track advanced).**
 
-> **v14.11 completes Batch 7's pricing & commission core into a full feature.** A
-> `/pricing` screen: per-unit pricing computed live from base rate + floor rise +
-> PLC + view premium − discount (with the discount-approval matrix enforcing a
-> role's limit at save time), and broker commission worked out on a slab with TDS
-> and tracked pending → approved → paid. Models `UnitPricing` + `CommissionPayout`
-> (`MIGRATION_v14.11_all.sql`, 2 tables). Built on the pure engines in
-> `src/lib/sales/` and — dogfooding Batch 1 — the shared `StatTile`/`Field`/
-> `Combobox` primitives. Hard check: 0 type errors, 255 tests, all verifier checks,
-> full production build (exit 0), init SQL idempotent on a fresh Postgres.
+> **v14.12 lands SEVEN feature batches in one pass** — all green, one production build (exit 0):
+> - **Batch 18 Feasibility** (`/feasibility`) — development appraisal: profit-on-cost, margin,
+>   residual land value, scenario knobs. Engine `src/lib/feasibility/appraisal.ts`.
+> - **Batch 3 Statutory** (`/statutory`) — the statutory calendar (GST/TDS/RERA/PF-ESI/ROC).
+> - **Batch 6 Procurement** (`/procurement`) — goods-received with a three-way match engine
+>   (`src/lib/procurement/three-way.ts`) flagging over-billing and short receipts.
+> - **Batch 22 Governance** (`/governance`) — risk register scored likelihood×impact
+>   (`src/lib/governance/risk.ts`), worst-first.
+> - **Batch 25 Security ops** (`/security-ops`) — the security incident register.
+> - **Batch 29 Institutional memory** (`/knowledge`) — the decision log.
+> - **Batch 23 Environment & ESG** (`/esg`) — EC condition compliance.
+>
+> These share a new generic **`RegisterScreen`** (`src/components/common/register-screen.tsx`) —
+> a config-driven list+add screen, Batch 1's design-system principle applied to whole screens,
+> with each batch's typed server action passed in. Three pure engines (feasibility, three-way,
+> risk) are unit-tested. 14 new tables (`MIGRATION_v14.12_all.sql`) or the repair button.
+> Hard check: 0 type errors, 263 tests, all verifier checks (105 pages, 163 models), init SQL
+> idempotent on a fresh Postgres (791 statements), full production build of all 7 screens.
+>
+> Secondary models created but not yet screened (registered in init SQL, safe): ComplianceDocExpiry,
+> ContractRecord, InsurancePolicy, AccessReview, Sop, LessonLearned, WasteManifest.
 >
 > Remaining in Batch 7: the full buyer-portal self-service (dues/receipts/progress),
 > automated demand generation & dunning, and cancellation/transfer refund flows.
@@ -122,8 +134,8 @@ Not a product, not being commercialised — a system the company runs on.
 
 | Metric | Count |
 |---|---|
-| Database tables | 149 |
-| Screens (app pages) | 98 |
+| Database tables | 163 |
+| Screens (app pages) | 105 |
 | Server services | 45 |
 | Server action files | 71 |
 | React components | 163 |
