@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Cormorant_Garamond, Inter, Unbounded } from 'next/font/google';
 import { brand } from '@/config/brand';
 import { Providers } from '@/components/providers';
+import { WebVitals } from '@/components/perf/web-vitals';
 import './globals.css';
 
 const display = Cormorant_Garamond({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-display' });
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${body.variable} ${accent.variable}`}>
       <body className="font-sans">
+        <WebVitals />
         <Providers>{children}</Providers>
       </body>
     </html>

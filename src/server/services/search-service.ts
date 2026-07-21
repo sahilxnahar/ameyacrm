@@ -20,6 +20,15 @@ export async function globalSearch(q: string): Promise<SearchHit[]> {
     prisma.channelPartner.findMany({ where: { OR: [{ firmName: like }, { code: like }, { contactName: like }] }, take: 6, select: { id: true, firmName: true, code: true } }),
   ]);
 
+  // The modules added in the v14.x batches — so search covers the whole app, not
+  // just the entities that existed when it was first written.
+  const [parcels, approvals, activities, investors] = await Promise.all([
+    prisma.landParcel.findMany({ where: { OR: [{ name: like }, { surveyNumber: like }, { ownerName: like }] }, take: 6, select: { id: true, name: true, surveyNumber: true } }),
+    prisma.approvalSanction.findMany({ where: { OR: [{ name: like }, { authority: like }, { referenceNo: like }] }, take: 6, select: { id: true, name: true, authority: true } }),
+    prisma.programmeActivity.findMany({ where: { OR: [{ name: like }, { wbsCode: like }] }, take: 6, select: { id: true, name: true, wbsCode: true } }),
+    prisma.investor.findMany({ where: { OR: [{ name: like }, { contact: like }] }, take: 6, select: { id: true, name: true } }),
+  ]);
+
   return [
     ...tasks.map((t): SearchHit => ({ type: 'Task', id: t.id, title: t.title, subtitle: `${t.reference} · ${t.status}`, href: `/tasks/${t.id}` })),
     ...leads.map((l): SearchHit => ({ type: 'Lead', id: l.id, title: l.name, subtitle: `${l.reference} · ${l.status}`, href: `/sales/${l.id}` })),
@@ -29,5 +38,9 @@ export async function globalSearch(q: string): Promise<SearchHit[]> {
     ...units.map((u): SearchHit => ({ type: 'Unit', id: u.id, title: u.code, subtitle: u.project?.name ?? '', href: `/inventory` })),
     ...customers.map((c): SearchHit => ({ type: 'Buyer', id: c.id, title: c.name, subtitle: 'Customer portal', href: `/customers` })),
     ...partners.map((pp): SearchHit => ({ type: 'Channel Partner', id: pp.id, title: pp.firmName, subtitle: pp.code, href: `/partners` })),
+    ...parcels.map((p): SearchHit => ({ type: 'Land Parcel', id: p.id, title: p.name, subtitle: p.surveyNumber ?? 'Land & Approvals', href: `/land` })),
+    ...approvals.map((a): SearchHit => ({ type: 'Approval', id: a.id, title: a.name, subtitle: a.authority, href: `/land` })),
+    ...activities.map((a): SearchHit => ({ type: 'Activity', id: a.id, title: a.name, subtitle: a.wbsCode ?? 'Programme', href: `/programme` })),
+    ...investors.map((i): SearchHit => ({ type: 'Investor', id: i.id, title: i.name, subtitle: 'Capital & Escrow', href: `/capital` })),
   ];
 }

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { CommandPalette } from './command-palette';
+import { ShortcutsHelp } from './shortcuts-help';
 import { MobileNav } from './mobile-nav';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
@@ -77,6 +78,14 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Batch 12 (a11y): the first focusable element lets a keyboard or
+          screen-reader user jump straight past the sidebar to the page content. */}
+      <a
+        href="#main"
+        className="focus-ring sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <React.Suspense fallback={null}>
         <NavProgress />
       </React.Suspense>
@@ -90,10 +99,11 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
       </div>
       <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
+      <ShortcutsHelp />
     </div>
   );
 }

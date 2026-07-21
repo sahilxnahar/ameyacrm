@@ -33,7 +33,14 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: false },
   poweredByHeader: false,
   output: 'standalone',
-  experimental: { serverActions: { bodySizeLimit: '10mb' } },
+  experimental: {
+    serverActions: { bodySizeLimit: '10mb' },
+    // Batch 4 (bundle): tree-shake barrel imports so a screen that uses six
+    // lucide icons does not pull the whole icon set into its bundle. Built-in
+    // and safe — Next rewrites `import { X } from 'lucide-react'` to per-icon
+    // imports at build time.
+    optimizePackageImports: ['lucide-react'],
+  },
   images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

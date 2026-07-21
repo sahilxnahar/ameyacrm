@@ -1,31 +1,32 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.8 (batches 1, 2, 13, 4, 24, 5, 14, 16 done; UI/perf track started).**
+**Written 21 July 2026. Build v14.9 (feature batches 1,2,13,4,24,5,14,16 done; UI/perf track advanced).**
 
-> **v14.8 starts the 19-batch UI/performance/platform track** (planned in
-> `UPGRADE-PLAN-UI-PERFORMANCE-19-BATCHES.md`). This build lays the foundation and
-> the safe, app-wide platform wins; the heavy cross-cutting batches (component
-> migration across 97 screens, React Compiler, PPR, WCAG audit, real-time,
-> offline) are a dedicated fresh-session effort from here.
+> **v14.9 continues the 19-batch UI/performance track.** Working through it revealed
+> the app already had much of the plan built (command palette, global search,
+> `/admin/performance`, `/admin/errors`, `loading.tsx`/skeletons, error & global-error
+> boundaries, `next/font`, reduced-motion CSS, offline outbox, mobile nav, recharts).
+> So this pass added the genuinely-missing, additive, non-breaking pieces and left
+> the deep cross-cutting refactors (97-screen component migration, React Compiler,
+> PPR, full WCAG audit, real-time push, offline sync engine) as dedicated future work.
 >
-> - **Batch 1 (design system), foundation:** the shared kit in `src/components/ui/`
->   gains `StatTile`/`StatTileRow`, `Field`/`FormGrid`, `Select` and the `Chip`
->   row — the components every recent screen had hand-rolled inline and let drift.
->   A living gallery at `/admin/components` documents the set. New screens should
->   build from these, not re-declare a local `Tile`/`inputCls`.
-> - **Batch 18 (platform), slices:** an in-shell error boundary
->   (`src/app/(app)/error.tsx`) that keeps the sidebar when one screen throws and
->   reuses the drift-aware repair hint, plus a feature-flags module
->   (`src/lib/flags/flags.ts`, driven by the `FEATURE_FLAGS` env var — ship dark,
->   enable without a redeploy).
-> - Much of **Batch 2** (perceived performance) already existed — `loading.tsx`,
->   `PageSkeleton`, `shimmer`, `animate-in`, and top-level error/global-error
->   boundaries were all present.
-> - **No schema change in v14.8 — nothing to migrate.** A hard check ran clean:
->   0 type errors, 243 tests, all verifier checks, a full production build of all
->   97 routes, the init SQL applied idempotently to a fresh Postgres, and an
->   adversarial review that found no correctness bugs (a dedupe scalability risk
->   and two minor items were fixed).
+> Added this pass, all green and production-building:
+> - **Batch 6 + 17:** the `⌘K` command palette now searches *records* live
+>   (debounced, stale-guarded), and `globalSearch` was extended to the new modules
+>   (land parcels, approvals, programme activities, investors).
+> - **Batch 4:** `optimizePackageImports: ['lucide-react']` in next.config — tree-shakes
+>   the icon barrel so every screen ships fewer bytes.
+> - **Batch 13:** real-user Core Web Vitals capture (`src/components/perf/web-vitals.tsx`
+>   → `/api/vitals`, logged, no table).
+> - **Batch 12:** a skip-to-content link and `id="main"` for keyboard/screen-reader users.
+> - **Batch 16:** a `?` keyboard-shortcuts help sheet.
+> - **Batch 1 (from v14.8):** shared `StatTile`/`Field`/`Select`/`Chip` primitives +
+>   `/admin/components` gallery. **Batch 18 (v14.8):** in-shell error boundary + feature flags.
+>
+> **No schema change since v14.7 — nothing to migrate for v14.8 or v14.9.** Hard check:
+> 0 type errors, 243 tests, all verifier checks, and a full production build of every
+> route (exit 0). An adversarial review of the earlier batches found no correctness
+> bugs (one dedupe scalability risk + two minor items fixed).
 
 > **v14.7 adds Batch 16 — capital, investors & RERA escrow.** A `/capital` screen:
 > the capital stack (equity/debt/buyer-advance with cost), an investor register
@@ -130,7 +131,7 @@ Not a product, not being commercialised — a system the company runs on.
 | Screens (app pages) | 97 |
 | Server services | 45 |
 | Server action files | 71 |
-| React components | 159 |
+| React components | 162 |
 | Test files / tests | 23 / 243 |
 | Verifier checks | 18 |
 | Type errors | 0 |
