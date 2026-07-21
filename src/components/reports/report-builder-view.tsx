@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select';
 import { Field, FormGrid } from '@/components/ui/field';
 import { StatTile } from '@/components/ui/stat-tile';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmButton } from '@/components/ui/confirm-button';
 
 interface SavedRow { id: string; name: string; source: string; groupBy: string; metric: string; valueKey: string | null; shared: boolean; mine: boolean }
 
@@ -174,7 +175,7 @@ export function ReportBuilderView({ saved, canBuild }: { saved: SavedRow[]; canB
                     <div className="truncate text-xs text-muted-foreground">{r.source} · {r.groupBy} · {r.metric}{r.shared ? ' · shared' : ''}</div>
                   </button>
                   {canBuild && r.mine && (
-                    <Button size="sm" variant="ghost" onClick={() => remove(r.id)} disabled={pending}>Delete</Button>
+                    <ConfirmButton onConfirm={() => remove(r.id)} disabled={pending} className="px-2 py-1 text-muted-foreground hover:text-destructive" title="Delete this saved report">Delete</ConfirmButton>
                   )}
                 </li>
               ))}

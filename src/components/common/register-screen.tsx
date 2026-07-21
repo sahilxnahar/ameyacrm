@@ -2,7 +2,8 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Loader2, Plus, X, ChevronRight, ChevronDown, Inbox } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { StatTile, StatTileRow } from '@/components/ui/stat-tile';
 import { Field, FormGrid } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -158,20 +159,46 @@ export function RegisterScreen<R extends { id: string }>({
       {msg && <p className={cn('text-sm', msg.bad ? 'text-destructive' : 'text-emerald-600')}>{msg.text}</p>}
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{emptyText}</div>
+        <EmptyState
+          icon={Inbox}
+          title="Nothing here yet"
+          body={emptyText}
+          {...(canManage ? { actionLabel: addLabel, onAction: () => setOpen(true) } : {})}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{columns.map((c, i) => <th key={i} className={cn('p-2', c.className)}>{c.label}</th>)}</tr></thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-t border-border">
-                  {columns.map((c, i) => <td key={i} className={cn('p-2', c.className)}>{c.render(row)}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop / tablet: a table. */}
+          <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{columns.map((c, i) => <th key={i} className={cn('p-2', c.className)}>{c.label}</th>)}</tr></thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-t border-border">
+                    {columns.map((c, i) => <td key={i} className={cn('p-2', c.className)}>{c.render(row)}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Phone: the same rows as stacked cards, so nothing scrolls sideways
+              off the screen. The first column is the card's heading. */}
+          <div className="space-y-2 sm:hidden">
+            {rows.map((row) => (
+              <div key={row.id} className="rounded-lg border border-border p-3">
+                <div className="mb-1 font-medium">{columns[0]?.render(row)}</div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {columns.slice(1).map((c, i) => (
+                    <div key={i} className="flex flex-col">
+                      <dt className="text-muted-foreground">{c.label}</dt>
+                      <dd>{c.render(row)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -1,5 +1,30 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.16 — 24 of 31 feature batches + UX batches 1–10.**
+
+> **v14.16 lands UX batches 6–10** (no schema change — **no SQL to run**). Much of the
+> foundation already existed (mobile bottom nav, nav progress bar, dark-mode toggle,
+> skip-to-content, keyboard shortcuts, offline outbox, friendly error messages), so this
+> release fills the genuine gaps:
+> - **UX-6 Search.** A synonyms layer (`search-aliases.ts`) so plain words — "invoice",
+>   "emi", "khata", "escrow", "who owns the land" — route to the right screen in the
+>   command palette, on top of the label/blurb matching added in v14.15.
+> - **UX-7 Visual consistency.** One shared `StatusBadge` with a single colour language
+>   (green = good, amber = attention, red = problem, grey = neutral), applied across the
+>   operations registers; plus a **Density** control (Comfortable/Compact).
+> - **UX-8 Mobile.** The shared register now renders as **stacked cards on phones** instead
+>   of a sideways-scrolling table — upgrading dozens of screens at once. (Bottom nav, swipe,
+>   safe-area and 56px targets already existed.)
+> - **UX-9 Trust.** A reusable **ConfirmButton** two-step guard on destructive actions
+>   (applied to report delete). (Nav progress, success toasts and plain error messages
+>   already existed.)
+> - **UX-10 Accessibility & personalisation.** A **Text size** control (Small/Default/Large)
+>   and the Density control, applied before first paint (no flash) and remembered per device,
+>   in a new Display menu in the top bar. (Dark mode, skip-link, focus states already existed.)
+>
+> Hard check: 0 type errors, 275 tests, all verifier checks (114 pages, 170 models), production
+> build exit 0. No migration. UX quick-wins 11–16 follow in v14.17.
+
 **Written 21 July 2026. Build v14.15 — 24 of 31 feature batches + UX batches 1–5.**
 
 > **v14.15 is a user-experience release** (no schema change, so **no SQL to run** —

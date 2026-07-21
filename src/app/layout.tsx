@@ -32,6 +32,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${body.variable} ${accent.variable}`}>
       <body className="font-sans">
+        {/* Apply saved text size and density before first paint — no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('amh:text-scale')||'m';var d=localStorage.getItem('amh:density')||'comfortable';var e=document.documentElement;e.setAttribute('data-text-scale',s);e.setAttribute('data-density',d);}catch(e){}})();`,
+          }}
+        />
         <WebVitals />
         <Providers>{children}</Providers>
       </body>

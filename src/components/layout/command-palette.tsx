@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
 import { Loader2, CornerDownLeft } from 'lucide-react';
 import { NAVIGATION } from '@/config/navigation';
+import { SEARCH_ALIASES } from '@/config/search-aliases';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { searchRecords, type CommandHit } from '@/server/actions/search';
 
@@ -58,9 +59,10 @@ export function CommandPalette({
   const canSee = (perm?: string) => !perm || isSuperAdmin || allowed.has(perm);
 
   const term = q.trim().toLowerCase();
+  const aliasHit = (href: string) => (SEARCH_ALIASES[href] ?? []).some((a) => a.includes(term) || term.includes(a));
   const navGroups = NAVIGATION.map((group) => ({
     label: group.label,
-    items: group.items.filter((i) => canSee(i.permission) && (!term || i.label.toLowerCase().includes(term) || (i.blurb ?? '').toLowerCase().includes(term))),
+    items: group.items.filter((i) => canSee(i.permission) && (!term || i.label.toLowerCase().includes(term) || (i.blurb ?? '').toLowerCase().includes(term) || aliasHit(i.href))),
   })).filter((g) => g.items.length > 0);
 
   return (

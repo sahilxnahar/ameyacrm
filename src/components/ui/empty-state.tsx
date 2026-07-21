@@ -7,15 +7,19 @@ import { cn } from '@/lib/utils/cn';
  * offer the next step — "No data" tells a new user nothing.
  */
 export function EmptyState({
-  icon: Icon, title, body, actionLabel, actionHref, className,
+  icon: Icon, title, body, actionLabel, actionHref, onAction, className,
 }: {
   icon?: LucideIcon;
   title: string;
   body?: string;
   actionLabel?: string;
+  /** A link target for the action. Use this OR `onAction`. */
   actionHref?: string;
+  /** A click handler for the action (e.g. open an add form in place). */
+  onAction?: () => void;
   className?: string;
 }) {
+  const actionCls = 'mt-4 inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground';
   return (
     <div className={cn('rounded-lg border border-dashed p-10 text-center', className)}>
       {Icon && (
@@ -25,10 +29,11 @@ export function EmptyState({
       )}
       <p className="font-medium">{title}</p>
       {body && <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{body}</p>}
-      {actionLabel && actionHref && (
-        <Link href={actionHref} className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
-          {actionLabel}
-        </Link>
+      {actionLabel && actionHref && !onAction && (
+        <Link href={actionHref} className={actionCls}>{actionLabel}</Link>
+      )}
+      {actionLabel && onAction && (
+        <button type="button" onClick={onAction} className={actionCls}>{actionLabel}</button>
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 import { Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './theme-toggle';
+import { DisplaySettings } from './display-settings';
 import { UserMenu } from './user-menu';
 import { NotificationsBell } from './notifications-bell';
 import type { ShellUser } from './app-shell';
@@ -36,6 +37,7 @@ export function Topbar({
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <NotificationsBell />
+        <div className="hidden sm:block"><DisplaySettings /></div>
         <ThemeToggle />
         <UserMenu user={user} />
       </div>

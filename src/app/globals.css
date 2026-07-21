@@ -373,3 +373,18 @@
     touch-action: manipulation;
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Personal display: text size (accessibility) and density  (v14.16)
+   Applied as attributes on <html> by display-settings, read here. Set before
+   first paint by an inline script in the root layout, so there is no flash.
+   ──────────────────────────────────────────────────────────────────────────── */
+html[data-text-scale='s'] { font-size: 14px; }
+html[data-text-scale='m'] { font-size: 16px; }
+html[data-text-scale='l'] { font-size: 18px; }
+
+/* Compact density trims the vertical breathing room in tables and list rows,
+   so power users can see more at once without touching the code of each screen. */
+html[data-density='compact'] table td,
+html[data-density='compact'] table th { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+html[data-density='compact'] .divide-y > * { padding-top: 0.35rem; padding-bottom: 0.35rem; }
