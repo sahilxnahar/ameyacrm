@@ -394,6 +394,13 @@ export async function extractPaymentAdvice(
   }
 }
 
+/**
+ * Embedding models, newest first. Google retires these periodically —
+ * text-embedding-004 started returning 404 on keys created in newer projects —
+ * so the code tries each in turn rather than trusting one name.
+ */
+export const EMBEDDING_MODELS = ['gemini-embedding-001', 'text-embedding-004', 'embedding-001'] as const;
+
 export interface AiProbe { name: string; what: string; ok: boolean; ms: number; detail: string }
 
 /**
@@ -444,9 +451,17 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with exactly: ALIVE' }] }], generationConfig: { temperature: 0, maxOutputTokens: 10 } }),
     });
-    if (res.status === 429) return { ok: false, detail: 'Rate limited or out of free quota. It should recover on its own.' };
-    if (res.status === 403) return { ok: false, detail: 'Blocked at the project level — see the Connection check above for the fix.' };
-    if (!res.ok) return { ok: false, detail: `HTTP ${res.status} — ${(await res.text()).slice(0, 140)}` };
+    if (!res.ok) {
+      // Show exactly what Google said. A generic "blocked at the project level"
+      // hid the one sentence that explains which project and why.
+      const raw = await res.text().catch(() => '');
+      let reason = raw.slice(0, 300);
+      try {
+        const j = JSON.parse(raw) as { error?: { message?: string; status?: string } };
+        if (j.error?.message) reason = `${j.error.status ?? res.status}: ${j.error.message}`;
+      } catch { /* not JSON — the raw text is the best we have */ }
+      return { ok: false, detail: `Google refused it — ${reason}` };
+    }
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const t = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
     return { ok: /ALIVE/i.test(t), detail: t ? `Replied "${t.slice(0, 40)}"` : 'Empty reply.' };
@@ -462,14 +477,26 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
   });
 
   await timed('Search index', 'Can turn text into embeddings for document search', async () => {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${env.GEMINI_API_KEY}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'models/text-embedding-004', content: { parts: [{ text: 'payment voucher' }] } }),
-    });
-    if (!res.ok) return { ok: false, detail: `HTTP ${res.status}. Document Q&A will not work until this passes.` };
-    const d = (await res.json()) as { embedding?: { values?: number[] } };
-    const n = d.embedding?.values?.length ?? 0;
-    return { ok: n > 0, detail: n ? `${n}-dimension vector returned` : 'No vector returned.' };
+    // Google renames embedding models over time, so try the known names in
+    // order rather than hard-coding one that may have been retired.
+    const tried: string[] = [];
+    for (const name of EMBEDDING_MODELS) {
+      tried.push(name);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${name}:embedContent?key=${env.GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: `models/${name}`, content: { parts: [{ text: 'payment voucher' }] } }),
+      });
+      if (res.ok) {
+        const d = (await res.json()) as { embedding?: { values?: number[] } };
+        const n = d.embedding?.values?.length ?? 0;
+        if (n > 0) return { ok: true, detail: `${n}-dimension vector from ${name}` };
+      }
+      if (res.status === 403) {
+        const raw = await res.text().catch(() => '');
+        return { ok: false, detail: `Google refused it — ${raw.slice(0, 220)}` };
+      }
+    }
+    return { ok: false, detail: `None of these worked: ${tried.join(', ')}. Document Q&A stays off until one does.` };
   });
 
   return { enabled: true, model, probes };

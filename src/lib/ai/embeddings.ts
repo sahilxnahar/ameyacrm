@@ -1,7 +1,15 @@
 import 'server-only';
 import { env } from '@/config/env';
 
-const MODEL = 'text-embedding-004';
+/**
+ * Embedding models, newest first.
+ *
+ * Google retires these. text-embedding-004 began returning 404 on keys created
+ * in newer projects, which silently stopped every document being indexed — so
+ * the first name that works is remembered rather than one being assumed.
+ */
+const MODELS = ['gemini-embedding-001', 'text-embedding-004', 'embedding-001'] as const;
+let working: string | null = null;
 
 /**
  * Gemini embeddings via the AI Studio key — free, no Cloud Console, no billing.
@@ -11,22 +19,32 @@ const MODEL = 'text-embedding-004';
 export async function embed(text: string, kind: 'document' | 'query' = 'document'): Promise<number[] | null> {
   if (!env.GEMINI_API_KEY) return null;
   const clipped = text.slice(0, 8000);
+  const order = working ? [working, ...MODELS.filter((m) => m !== working)] : [...MODELS];
+
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:embedContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: `models/${MODEL}`,
-          content: { parts: [{ text: clipped }] },
-          taskType: kind === 'query' ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
-        }),
-      },
-    );
-    if (!res.ok) return null;
-    const d = (await res.json()) as { embedding?: { values?: number[] } };
-    return d.embedding?.values ?? null;
+    for (const model of order) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: `models/${model}`,
+            content: { parts: [{ text: clipped }] },
+            taskType: kind === 'query' ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT',
+          }),
+        },
+      );
+      if (res.ok) {
+        const d = (await res.json()) as { embedding?: { values?: number[] } };
+        const values = d.embedding?.values ?? null;
+        if (values?.length) { working = model; return values; }
+      }
+      // 404 means this name is gone — try the next. Anything else is a real
+      // failure (no key, no quota, blocked project) and retrying will not help.
+      if (res.status !== 404) return null;
+    }
+    return null;
   } catch {
     return null;
   }
