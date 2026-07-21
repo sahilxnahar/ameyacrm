@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CheckCircle2, XCircle, Loader2, Play, AlertTriangle, Database, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, MinusCircle, Loader2, Play, AlertTriangle, Database, Lock } from 'lucide-react';
 import { checkAiHealth, reindexEverything } from '@/server/actions/vouchers';
 
-interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string }
+interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string; note?: boolean }
 
 interface Coverage { key: string; label: string; permission: string | null; note: string | null; passages: number; records: number }
 
@@ -41,8 +41,12 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
       catch (e) { setError(e instanceof Error ? e.message : 'The check itself failed to run.'); }
     });
 
-  const passed = result?.probes.filter((p) => p.ok).length ?? 0;
-  const total = result?.probes.length ?? 0;
+  // Known limitations of the chosen provider are not failures, and counting
+  // them as such made a working setup look broken.
+  const real = result?.probes.filter((p) => !p.note) ?? [];
+  const passed = real.filter((p) => p.ok).length;
+  const total = real.length;
+  const notes = result?.probes.filter((p) => p.note).length ?? 0;
 
   return (
     <div className="space-y-5">
@@ -71,7 +75,7 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
         {result && (
           <div className="mt-5 space-y-3">
             <div className={`rounded-md p-3 text-sm ${passed === total ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300'}`}>
-              <strong>{passed} of {total} checks passed.</strong>{' '}
+              <strong>{passed} of {total} checks passed{notes ? `, ${notes} not available on this provider` : ''}.</strong>{' '}
               {passed === total
                 ? `The AI is working — ${result.provider}, model ${result.model}.`
                 : `Running on ${result.provider} (${result.model}). Look at the failures below — each one says what to do about it.`}
@@ -81,11 +85,13 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
                 <li key={p.name} className="flex items-start gap-3 p-3">
                   {p.ok
                     ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                    : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />}
+                    : p.note
+                      ? <MinusCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{p.name}</p>
                     <p className="text-sm text-muted-foreground">{p.what}</p>
-                    <p className={`mt-1 text-sm ${p.ok ? '' : 'text-destructive'}`}>{p.detail}</p>
+                    <p className={`mt-1 text-sm ${p.ok ? '' : p.note ? 'text-muted-foreground' : 'text-destructive'}`}>{p.detail}</p>
                   </div>
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{p.ms} ms</span>
                 </li>
@@ -106,7 +112,7 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Summarised by AI</dt>
             <dd className="text-2xl font-semibold tabular-nums">{summarised}</dd>
-            {docs > 0 && summarised === 0 && <p className="mt-1 text-xs text-amber-700 dark:text-amber-500">Nothing summarised yet — a sign the key is not reaching Google.</p>}
+            {docs > 0 && summarised === 0 && <p className="mt-1 text-xs text-amber-700 dark:text-amber-500">Nothing summarised yet. File summaries need a provider that reads PDFs and images.</p>}
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Passages searchable</dt>

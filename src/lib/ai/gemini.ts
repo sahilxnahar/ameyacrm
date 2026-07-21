@@ -401,10 +401,28 @@ export async function extractPaymentAdvice(
   }
 }
 
+/**
+ * Read an amount out of whatever the model returned.
+ *
+ * Gemini reliably answers with a JSON number. Open models often answer with a
+ * string — "350000", "3,50,000.00", even "Rs. 3,50,000" — and insisting on a
+ * number silently threw all of those away.
+ */
+function toAmount(raw: unknown): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0 ? raw : null;
+  if (typeof raw !== 'string') return null;
+  // Pull out the first number-shaped run. Stripping non-digits wholesale broke
+  // on "Rs. 3,50,000" — the dot in "Rs." became part of the number.
+  const m = raw.match(/[0-9][0-9,]*(?:\.[0-9]+)?/);
+  if (!m) return null;
+  const n = Number(m[0].replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 /** Tidy whatever the model returned into the shape the CRM expects. */
 function normalisePayment(p: Record<string, unknown>): ExtractedPayment {
   {
-    const amount = typeof p.amount === 'number' && Number.isFinite(p.amount) && p.amount > 0 ? p.amount : null;
+    const amount = toAmount(p.amount);
     const utr = typeof p.utr === 'string' ? p.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || null : null;
     const modes = ['CASH', 'BANK_TRANSFER', 'UPI', 'CHEQUE', 'CARD'];
     const mode = typeof p.mode === 'string' && modes.includes(p.mode.toUpperCase()) ? (p.mode.toUpperCase() as ExtractedPayment['mode']) : null;
@@ -426,7 +444,15 @@ function normalisePayment(p: Record<string, unknown>): ExtractedPayment {
  */
 export const EMBEDDING_MODELS = ['gemini-embedding-001', 'text-embedding-004', 'embedding-001'] as const;
 
-export interface AiProbe { name: string; what: string; ok: boolean; ms: number; detail: string }
+export interface AiProbe {
+  name: string;
+  what: string;
+  ok: boolean;
+  ms: number;
+  detail: string;
+  /** A known limitation of the chosen provider, not something broken. */
+  note?: boolean;
+}
 
 /**
  * Actually call Gemini and report what came back, rather than reporting that a
@@ -476,14 +502,14 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
       });
     } else {
       probes.push({
-        name: 'Search index', what: 'Embeddings for document search', ms: 0, ok: false,
-        detail: 'AI_EMBED_MODEL is not set, so Ask Documents falls back to plain keyword matching. That still works — it is just less clever.',
+        name: 'Search index', what: 'Embeddings for document search', ms: 0, ok: false, note: true,
+        detail: 'AI_EMBED_MODEL is not set, so Ask Documents falls back to plain keyword matching. That still works — it is just less clever. Groq offers no embeddings; OpenRouter or OpenAI do, if you want the cleverer version.',
       });
     }
 
     probes.push({
-      name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: false,
-      detail: 'This provider reads text, not PDFs or images. Bill import and document summaries need Google, and stay off until that account is unblocked.',
+      name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: false, note: true,
+      detail: 'This provider reads text, not PDFs or images. Bill import and document summaries need Google, and stay off until that account is unblocked. Nothing is broken — this provider simply does not do it.',
     });
 
     return { enabled: true, model: p.model, provider: p.label, probes };
