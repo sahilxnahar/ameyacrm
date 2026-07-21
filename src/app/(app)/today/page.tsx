@@ -9,6 +9,9 @@ import { prisma } from '@/lib/db/prisma';
 import { can } from '@/lib/rbac/can';
 import { ONBOARDING } from '@/config/onboarding';
 import { OnboardingChecklist } from '@/components/onboarding/onboarding-checklist';
+import { WelcomeWizard } from '@/components/onboarding/welcome-wizard';
+import { QuickActions, type QuickAction } from '@/components/today/quick-actions';
+import { UserPlus, ClipboardCheck, FolderPlus, Package } from 'lucide-react';
 
 export const metadata: Metadata = { title: "Today's priorities" };
 
@@ -53,9 +56,28 @@ export default async function TodayPage() {
     where: { userId: ctx.user.id, completedAt: { not: null } },
     select: { stepKey: true },
   });
+  const doneKeys = doneRows.map((d) => d.stepKey);
+  // Show the welcome wizard only to a genuinely new person: nothing done yet and
+  // the hidden `welcome` step not ticked. Existing users never see it.
+  const showWelcome = doneKeys.length === 0;
+
+  // The launchpad row — only the actions this person is allowed to start.
+  const quickActions: QuickAction[] = [
+    { perm: 'lead.create', label: 'New lead', href: '/sales', icon: UserPlus },
+    { perm: 'lead.create', label: 'Log a site visit', href: '/site-visit', icon: ClipboardCheck },
+    { perm: 'task.create', label: 'Add a task', href: '/tasks', icon: CheckSquare },
+    { perm: 'finance.ledger.manage', label: 'Record a payment', href: '/payments', icon: Wallet },
+    { perm: 'document.create', label: 'Upload a document', href: '/documents', icon: FolderPlus },
+    { perm: 'material.create', label: 'Request materials', href: '/material-requests', icon: Package },
+  ]
+    .filter((a) => can(ctx.permissions, a.perm))
+    .map(({ label, href, icon }) => ({ label, href, icon }));
+
   return (
     <div className="max-w-md">
-      <OnboardingChecklist steps={steps} doneKeys={doneRows.map((d) => d.stepKey)} />
+      {showWelcome && <WelcomeWizard name={user.name} />}
+      <OnboardingChecklist steps={steps} doneKeys={doneKeys} />
+      <QuickActions actions={quickActions} />
       <PageHeader title="Today's priorities" description={items.length ? `${counts.overdue} overdue · ${counts.today} due today` : 'Your day, in one column.'} />
       {items.length === 0 ? (
         <Card className="p-10 text-center">

@@ -12,6 +12,6 @@ export function ExpensesRegister({ canManage, projects, projectId, rows }: { can
     onCreate={(v) => createExpense({ ...v, projectId: projectId ?? '' })}
     tiles={[{ label: 'Claims', value: String(rows.length) }, { label: 'Pending', value: String(pending), tone: pending > 0 ? 'bad' : 'default' }, { label: 'Total', value: inr(rows.reduce((s, r) => s + r.amount, 0)) }]}
     columns={[{ label: 'Claimant', render: (r) => r.claimant }, { label: 'Category', render: (r) => r.category ?? '—' }, { label: 'Amount', render: (r) => inr(r.amount) }, { label: 'Incurred', render: (r) => fmt(r.incurredOn) }, { label: 'Status', render: (r) => r.status.toLowerCase() }]}
-    fields={[{ name: 'claimant', label: 'Claimant', required: true }, { name: 'category', label: 'Category', placeholder: 'travel, site, office…' }, { name: 'amount', label: 'Amount (₹)', type: 'number' }, { name: 'incurredOn', label: 'Incurred on', type: 'date' }, { name: 'status', label: 'Status', type: 'select', options: ST.map((v) => ({ value: v, label: v.toLowerCase() })) }, { name: 'note', label: 'Note' }]}
+    fields={[{ name: 'claimant', label: 'Claimant', required: true }, { name: 'category', label: 'Category', placeholder: 'travel, site, office…' }, { name: 'amount', label: 'Amount', type: 'currency' }, { name: 'incurredOn', label: 'Incurred on', type: 'date' }, { name: 'status', label: 'Status', type: 'select', options: ST.map((v) => ({ value: v, label: v.toLowerCase() })) }, { name: 'note', label: 'Note', advanced: true }]}
   />;
 }

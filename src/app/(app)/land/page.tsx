@@ -43,7 +43,7 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Land & Approvals" description="Parcels, title, sanctions and litigation." />
+        <PageHeader title="Land & Approvals" helpTermId="title-chain" description="Parcels, title, sanctions and litigation." />
         <PageLoadError error={e} />
       </div>
     );

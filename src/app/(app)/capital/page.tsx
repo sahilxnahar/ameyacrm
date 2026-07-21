@@ -32,7 +32,7 @@ export default async function CapitalPage({ searchParams }: { searchParams: Prom
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Capital & Escrow" description="Capital stack, investors, RERA escrow and covenants." />
+        <PageHeader title="Capital & Escrow" helpTermId="escrow" description="Capital stack, investors, RERA escrow and covenants." />
         <PageLoadError error={e} />
       </div>
     );

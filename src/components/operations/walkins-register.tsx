@@ -9,6 +9,6 @@ export function WalkInsRegister({ canManage, projects, projectId, rows }: { canM
     onCreate={(v) => createWalkIn({ ...v, projectId: projectId ?? '' })}
     tiles={[{ label: 'Walk-ins', value: String(rows.length) }, { label: 'This project', value: String(rows.length) }]}
     columns={[{ label: 'Name', render: (r) => r.name }, { label: 'Phone', render: (r) => r.phone ?? '—' }, { label: 'Source', render: (r) => r.source ?? '—' }, { label: 'Visited', render: (r) => fmt(r.visitedOn) }, { label: 'Outcome', render: (r) => r.outcome ?? '—' }]}
-    fields={[{ name: 'name', label: 'Name', required: true }, { name: 'phone', label: 'Phone' }, { name: 'source', label: 'Source', placeholder: 'hoarding, portal, referral…' }, { name: 'outcome', label: 'Outcome', placeholder: 'interested, booked, walked…' }]}
+    fields={[{ name: 'name', label: 'Name', required: true }, { name: 'phone', label: 'Phone', type: 'tel' }, { name: 'source', label: 'Source', placeholder: 'hoarding, portal, referral…', advanced: true }, { name: 'outcome', label: 'Outcome', placeholder: 'interested, booked, walked…', advanced: true }]}
   />;
 }

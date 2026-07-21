@@ -1,13 +1,14 @@
-export interface NavPrefs { pinned: string[]; order: string[]; hidden: string[] }
+/** `collapsed` holds the labels of groups the person has folded shut. */
+export interface NavPrefs { pinned: string[]; order: string[]; hidden: string[]; collapsed: string[] }
 
-export const EMPTY_PREFS: NavPrefs = { pinned: [], order: [], hidden: [] };
+export const EMPTY_PREFS: NavPrefs = { pinned: [], order: [], hidden: [], collapsed: [] };
 
 /** Read whatever is stored on the user, tolerating older or malformed shapes. */
 export function readPrefs(raw: unknown): NavPrefs {
   if (!raw || typeof raw !== 'object') return EMPTY_PREFS;
   const o = raw as Partial<Record<keyof NavPrefs, unknown>>;
   const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
-  return { pinned: arr(o.pinned), order: arr(o.order), hidden: arr(o.hidden) };
+  return { pinned: arr(o.pinned), order: arr(o.order), hidden: arr(o.hidden), collapsed: arr(o.collapsed) };
 }
 
 /**

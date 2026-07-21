@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { StatTile, StatTileRow } from '@/components/ui/stat-tile';
 import { Field, FormGrid } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -19,12 +19,14 @@ export interface RegisterColumn<R> {
 export interface RegisterField {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'textarea';
+  type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'tel' | 'currency';
   options?: Array<{ value: string; label: string }>;
   required?: boolean;
   hint?: string;
   placeholder?: string;
   defaultValue?: string;
+  /** Tuck this field under "More details" — keeps the everyday form short. */
+  advanced?: boolean;
 }
 export interface RegisterTile { label: string; value: string; sub?: string; tone?: 'default' | 'bad' | 'good' }
 
@@ -56,6 +58,31 @@ export function RegisterScreen<R extends { id: string }>({
   const [msg, setMsg] = useState<{ bad: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+
+  const baseFields = fields.filter((f) => !f.advanced);
+  const advFields = fields.filter((f) => f.advanced);
+
+  const renderField = (f: RegisterField) => (
+    <Field key={f.name} label={f.label} required={f.required} hint={f.hint}>
+      {f.type === 'select' ? (
+        <Select name={f.name} defaultValue={f.defaultValue ?? f.options?.[0]?.value ?? ''}>
+          {(f.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
+      ) : f.type === 'textarea' ? (
+        <textarea name={f.name} placeholder={f.placeholder} defaultValue={f.defaultValue} className="focus-ring mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" rows={2} />
+      ) : f.type === 'tel' ? (
+        <Input name={f.name} type="tel" inputMode="tel" autoComplete="tel" placeholder={f.placeholder ?? '10-digit mobile'} defaultValue={f.defaultValue} />
+      ) : f.type === 'currency' ? (
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+          <Input name={f.name} type="number" inputMode="decimal" step="any" min="0" placeholder={f.placeholder ?? '0'} defaultValue={f.defaultValue} className="pl-7" />
+        </div>
+      ) : (
+        <Input name={f.name} type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'} placeholder={f.placeholder} defaultValue={f.defaultValue} step={f.type === 'number' ? 'any' : undefined} />
+      )}
+    </Field>
+  );
 
   return (
     <div className="space-y-4">
@@ -82,29 +109,49 @@ export function RegisterScreen<R extends { id: string }>({
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
             const values: Record<string, string> = {};
-            for (const f of fields) values[f.name] = String(fd.get(f.name) ?? '');
+            for (const f of fields) values[f.name] = String(fd.get(f.name) ?? '').trim();
+
+            // Friendly validation before we hit the server: name the first
+            // empty required field in plain words instead of a browser popup.
+            const missing = fields.find((f) => f.required && !values[f.name]);
+            if (missing) {
+              setMsg({ bad: true, text: `Please fill in “${missing.label}”.` });
+              if (missing.advanced) setShowMore(true);
+              const el = e.currentTarget.elements.namedItem(missing.name);
+              if (el instanceof HTMLElement) el.focus();
+              return;
+            }
+            setMsg(null);
             start(async () => {
               const r = await onCreate(values);
               setMsg('error' in r ? { bad: true, text: r.error } : { bad: false, text: r.message });
-              if (!('error' in r)) { setOpen(false); router.refresh(); }
+              if (!('error' in r)) { setOpen(false); setShowMore(false); router.refresh(); }
             });
           }}
         >
           <FormGrid cols={3}>
-            {fields.map((f) => (
-              <Field key={f.name} label={f.label} required={f.required} hint={f.hint}>
-                {f.type === 'select' ? (
-                  <Select name={f.name} defaultValue={f.defaultValue ?? f.options?.[0]?.value ?? ''}>
-                    {(f.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </Select>
-                ) : f.type === 'textarea' ? (
-                  <textarea name={f.name} required={f.required} placeholder={f.placeholder} className="focus-ring mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" rows={2} />
-                ) : (
-                  <Input name={f.name} type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'} required={f.required} placeholder={f.placeholder} defaultValue={f.defaultValue} step={f.type === 'number' ? 'any' : undefined} />
-                )}
-              </Field>
-            ))}
+            {baseFields.map(renderField)}
           </FormGrid>
+
+          {advFields.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowMore((v) => !v)}
+                className="mt-3 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                aria-expanded={showMore}
+              >
+                {showMore ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                {showMore ? 'Fewer details' : `More details (${advFields.length})`}
+              </button>
+              {/* Kept mounted (just hidden) so anything typed here is still
+                  submitted even when the section is folded. */}
+              <div className={cn('mt-3', !showMore && 'hidden')}>
+                <FormGrid cols={3}>{advFields.map(renderField)}</FormGrid>
+              </div>
+            </>
+          )}
+
           <div className="mt-3"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button></div>
         </form>
       )}

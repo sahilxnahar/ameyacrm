@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check } from 'lucide-react';
+import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check, ChevronRight } from 'lucide-react';
 import { NAVIGATION } from '@/config/navigation';
-import { saveNavPrefs, resetNavPrefs } from '@/server/actions/nav-prefs';
+import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
 import { applyOrder, type NavPrefs } from '@/lib/nav/prefs';
+import { RecentNav } from './recent-nav';
 import { BrandLogo } from './brand-logo';
 import { cn } from '@/lib/utils/cn';
 
@@ -35,6 +36,18 @@ export function Sidebar({
   const canSee = (perm?: string) => !perm || isSuperAdmin || allowed.has(perm);
   const allItems = NAVIGATION.flatMap((g) => g.items).filter((i) => canSee(i.permission));
   const byHref = new Map(allItems.map((i) => [i.href, i]));
+
+  // Which groups are folded shut. Seeded from the saved prefs; toggling records
+  // it (fire-and-forget) so it is remembered next time without a page reload.
+  const [collapsed, setCollapsed] = React.useState<string[]>(navPrefs.collapsed ?? []);
+  React.useEffect(() => setCollapsed(navPrefs.collapsed ?? []), [navPrefs.collapsed]);
+  const toggleGroup = (label: string) => {
+    setCollapsed((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
+      void saveNavCollapsed(next);
+      return next;
+    });
+  };
 
   const pinned = prefs.pinned.map((h) => byHref.get(h)).filter(Boolean) as typeof allItems;
 
@@ -75,7 +88,8 @@ export function Sidebar({
   const reset = () =>
     start(async () => {
       await resetNavPrefs();
-      setPrefs({ pinned: [], order: [], hidden: [] });
+      setPrefs({ pinned: [], order: [], hidden: [], collapsed: [] });
+      setCollapsed([]);
       toast.success('Back to the standard menu');
       router.refresh();
     });
@@ -92,6 +106,7 @@ export function Sidebar({
           <Link
             href={item.href}
             onClick={customising ? (e) => e.preventDefault() : onClose}
+            title={item.blurb}
             className={cn(
               'flex min-h-[40px] flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors active:bg-secondary',
               active ? 'bg-primary/10 font-semibold' : 'gold-solid hover:bg-primary/5',
@@ -149,6 +164,8 @@ export function Sidebar({
             </div>
           )}
 
+          {!customising && <RecentNav items={allItems.map((i) => ({ href: i.href, label: i.label, icon: i.icon }))} onNavigate={onClose} />}
+
           {NAVIGATION.map((group) => {
             const raw = group.items.filter((i) => canSee(i.permission));
             if (raw.length === 0) return null;
@@ -158,12 +175,30 @@ export function Sidebar({
             const items = applyOrder(raw, prefs, { keepHidden: customising });
             if (items.length === 0) return null;
             const groupHrefs = applyOrder(raw, prefs, { keepHidden: customising }).map((i) => i.href);
+            // Groups fold shut only in normal use; while customising everything
+            // stays open so you can reorder and un-hide.
+            const isCollapsed = !customising && collapsed.includes(group.label);
+            // Keep a group open if the page you are on lives inside it, so the
+            // active item is never hidden behind a folded header.
+            const hasActive = items.some((i) => pathname === i.href || pathname.startsWith(i.href + '/'));
+            const showItems = !isCollapsed || hasActive;
             return (
               <div key={group.label}>
-                <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>
+                {customising ? (
+                  <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{group.label}</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.label)}
+                    aria-expanded={showItems}
+                    className="mb-2 flex w-full items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]"
+                    title={isCollapsed ? 'Open this section' : 'Fold this section'}
+                  >
+                    <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
+                    {group.label}
+                  </button>
+                )}
+                {showItems && <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>}
               </div>
             );
           })}
@@ -187,7 +222,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v14.14</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v14.15</p>
         </div>
       </aside>
     </>

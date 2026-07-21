@@ -12,6 +12,6 @@ export function VariationsRegister({ canManage, projects, projectId, rows }: { c
     onCreate={(v) => createVariation({ ...v, projectId: projectId ?? '' })}
     tiles={[{ label: 'Variations', value: String(rows.length) }, { label: 'Open', value: String(open), tone: open > 0 ? 'bad' : 'default' }, { label: 'Value', value: inr(rows.reduce((s, r) => s + r.amount, 0)) }]}
     columns={[{ label: 'Variation', render: (r) => r.title }, { label: 'Booking', render: (r) => r.bookingRef ?? '—' }, { label: 'Amount', render: (r) => inr(r.amount) }, { label: 'Status', render: (r) => r.status.toLowerCase() }, { label: 'Raised', render: (r) => fmt(r.raisedOn) }]}
-    fields={[{ name: 'title', label: 'Variation', required: true }, { name: 'bookingRef', label: 'Booking ref' }, { name: 'amount', label: 'Amount (₹)', type: 'number' }, { name: 'status', label: 'Status', type: 'select', options: ST.map((v) => ({ value: v, label: v.toLowerCase() })) }, { name: 'description', label: 'Description', type: 'textarea' }]}
+    fields={[{ name: 'title', label: 'Variation', required: true }, { name: 'bookingRef', label: 'Booking ref' }, { name: 'amount', label: 'Amount', type: 'currency' }, { name: 'status', label: 'Status', type: 'select', options: ST.map((v) => ({ value: v, label: v.toLowerCase() })) }, { name: 'description', label: 'Description', type: 'textarea', advanced: true }]}
   />;
 }

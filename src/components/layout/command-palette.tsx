@@ -60,7 +60,7 @@ export function CommandPalette({
   const term = q.trim().toLowerCase();
   const navGroups = NAVIGATION.map((group) => ({
     label: group.label,
-    items: group.items.filter((i) => canSee(i.permission) && (!term || i.label.toLowerCase().includes(term))),
+    items: group.items.filter((i) => canSee(i.permission) && (!term || i.label.toLowerCase().includes(term) || (i.blurb ?? '').toLowerCase().includes(term))),
   })).filter((g) => g.items.length > 0);
 
   return (
@@ -99,8 +99,11 @@ export function CommandPalette({
                       onSelect={() => go(item.href)}
                       className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-foreground aria-selected:bg-secondary"
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      {item.label}
+                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate">{item.label}</span>
+                        {item.blurb && <span className="truncate text-[11px] text-muted-foreground">{item.blurb}</span>}
+                      </span>
                     </Command.Item>
                   );
                 })}

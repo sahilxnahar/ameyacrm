@@ -1,5 +1,35 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.15 — 24 of 31 feature batches + UX batches 1–5.**
+
+> **v14.15 is a user-experience release** (no schema change, so **no SQL to run** —
+> just deploy). It lands the first 5 of the 10 UX/UI batches:
+> - **UX-1 Navigation & findability.** The 40-item menu is regrouped into task-shaped,
+>   plain-language sections (My Day, Sales & Leads, Inventory & Bookings, Marketing,
+>   Money, Build & Site, Land/Lease/Legal, Documents, Insights, Team & Admin). Groups
+>   now **fold shut** (remembered per user in the existing `navPrefs` JSON) and there is
+>   a **Recent** strip. Pinning/reorder/hide already existed and still work.
+> - **UX-2 Plain language & help.** Every menu item carries a one-line plain-English
+>   `blurb` (shown in the sidebar tooltip and the command palette, and searchable there).
+>   New **Glossary** page (`/glossary`) — ~34 terms (escrow, UTR, GRN, three-way match…) —
+>   and a reusable `<HelpTip>` "?" that links to it, wired into the jargon-heavy headers
+>   (Procurement, Capital & Escrow, Land).
+> - **UX-3 Onboarding.** A role-based **welcome wizard** on first run (pick what you do →
+>   jump to the right screen), shown once to genuinely new users, on top of the existing
+>   getting-started checklist.
+> - **UX-4 Home launchpad.** Today's Priorities gains a permission-gated **Quick actions**
+>   row (New lead, Log a site visit, Add a task, Record a payment, Upload a document,
+>   Request materials) so common jobs are one tap, not a menu hunt.
+> - **UX-5 Guided forms.** The shared `RegisterScreen` (used by dozens of screens) gains
+>   **progressive disclosure** ("More details" hides advanced fields), **phone** and **₹ currency**
+>   input helpers, and **friendly inline validation** that names the empty field in plain
+>   words. Applied across the operations registers (walk-ins, variations, expenses,
+>   association, leasing).
+>
+> UX batches 6–10 (search/natural-language, visual consistency, mobile-first, error
+> recovery, accessibility) are the next block. Hard check: 0 type errors, 275 tests, all
+> verifier checks (114 pages, 170 models), production build exit 0. No migration.
+
 **Written 21 July 2026. Build v14.14 — 24 of 31 feature batches built.**
 
 > **v14.14 lands TWO more batches** (all green, production build exit 0):
