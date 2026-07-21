@@ -17,7 +17,7 @@ export default async function AutomationsPage() {
   ]);
   return (
     <div>
-      <PageHeader title="Automations" description="Trigger → conditions → actions. Auto-assign, notify, follow up, escalate." />
+      <PageHeader title="Automations" description="Trigger → conditions → actions. Start from a template below, edit it, then switch it on." />
       <StarterAutomationsPanel existingNames={rules.map((r) => r.name)} />
       <AutomationView
         users={users}

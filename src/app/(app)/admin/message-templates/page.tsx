@@ -26,8 +26,8 @@ export default async function MessageTemplatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Templates"
-        description="Write a message once and reuse it everywhere — WhatsApp, email, SMS or a letter on your letterhead."
+        title="Message & ad templates"
+        description="Templates you write once and reuse — WhatsApp, email, SMS, letters on your letterhead, and ad copy for Google and Meta. Every one of these is a starting point: edit the wording freely."
       />
       <TemplateStudio templates={templates} whatsappConnected={whatsapp?.status === 'CONNECTED'} />
     </div>

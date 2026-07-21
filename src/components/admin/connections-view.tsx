@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CheckCircle2, AlertTriangle, ExternalLink, Loader2, Plug, ChevronDown, KeyRound } from 'lucide-react';
-import { disconnectProvider } from '@/server/actions/connections';
+import { CheckCircle2, AlertTriangle, ExternalLink, Loader2, Plug, ChevronDown, KeyRound, Send } from 'lucide-react';
+import { disconnectProvider, sendWhatsappTest } from '@/server/actions/connections';
 
 export interface ProviderRow {
   key: string; name: string; what: string; group: string;
@@ -25,6 +25,7 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
     flashOk ? { kind: 'ok', text: flashOk } : flashError ? { kind: 'err', text: flashError } : null,
   );
   const [busy, setBusy] = useState<string | null>(null);
+  const [testTo, setTestTo] = useState('');
   const [, start] = useTransition();
 
   const groups = [...new Set(providers.map((p) => p.group))];
@@ -48,9 +49,10 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
       <div className="card-elevated flex items-start gap-3 p-4 text-sm text-muted-foreground">
         <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <p>
-          None of these vendors allow a pure &ldquo;just log in&rdquo; connection. Each needs an app registered once, and two values
-          added to Vercel. After that, connecting and reconnecting really is one click — for you and for anyone who replaces you.
-          Tokens are encrypted before they touch the database.
+          <strong className="text-foreground">There is no Connect button until you register an app with the vendor.</strong>{' '}
+          None of these allow a pure &ldquo;just log in&rdquo; connection — each needs an app created once and two values added to
+          Vercel. Press <em>Set it up</em> on any row for the exact steps. After that, connecting and reconnecting really is one
+          click, for you and for whoever replaces you. Tokens are encrypted before they touch the database.
         </p>
       </div>
 
@@ -88,7 +90,12 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
                         <Plug className="h-4 w-4" />Connect
                       </a>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Add credentials first</span>
+                      <button
+                        type="button" onClick={() => setOpen(isOpen ? null : p.key)}
+                        className="focus-ring rounded-md border border-amber-400/60 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400"
+                      >
+                        Set it up
+                      </button>
                     )}
                     <button
                       type="button" onClick={() => setOpen(isOpen ? null : p.key)}
@@ -99,6 +106,29 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
                   </div>
                 </div>
 
+                {p.key === 'whatsapp' && p.status === 'CONNECTED' && (
+                  <div className="flex flex-wrap items-center gap-2 border-t bg-muted/30 p-3">
+                    <span className="text-sm text-muted-foreground">Prove it works:</span>
+                    <input
+                      value={testTo} onChange={(e) => setTestTo(e.target.value)}
+                      placeholder="98450 12345" inputMode="tel"
+                      className="focus-ring w-40 rounded-md border bg-background px-2 py-1.5 text-sm"
+                    />
+                    <button
+                      type="button" disabled={busy === 'test'}
+                      onClick={() => start(async () => {
+                        setBusy('test');
+                        const r = await sendWhatsappTest(testTo);
+                        setBusy(null);
+                        setMsg('error' in r ? { kind: 'err', text: r.error } : { kind: 'ok', text: r.message });
+                      })}
+                      className="focus-ring inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+                    >
+                      {busy === 'test' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send a test
+                    </button>
+                  </div>
+                )}
+
                 {isOpen && (
                   <div className="space-y-3 border-t bg-muted/30 p-4 text-sm">
                     <div>
@@ -107,6 +137,16 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
                         {p.prerequisites.map((r) => <li key={r}>{r}</li>)}
                       </ul>
                     </div>
+                    {!p.hasCredentials && (
+                      <ol className="list-decimal space-y-1 rounded-md border border-amber-400/40 bg-amber-50/60 p-3 pl-7 text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
+                        <li>Go to <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="underline">developers.facebook.com/apps</a> {p.key === 'google_ads' ? '(for Google Ads: console.cloud.google.com instead)' : ''} and create an app.</li>
+                        <li>Copy its App ID and App Secret.</li>
+                        <li>In Vercel → Settings → Environment Variables, add <code className="rounded bg-background px-1">{p.clientIdEnv}</code> and <code className="rounded bg-background px-1">{p.clientSecretEnv}</code>.</li>
+                        <li>Add this redirect URL to the app: <code className="break-all rounded bg-background px-1">{typeof window !== 'undefined' ? window.location.origin : ''}/api/integrations/{p.key}/callback</code></li>
+                        <li>Redeploy. The Connect button appears here.</li>
+                      </ol>
+                    )}
+
                     <div>
                       <p className="font-medium">Set these in Vercel</p>
                       <p className="mt-1 font-mono text-xs text-muted-foreground">{p.clientIdEnv}<br />{p.clientSecretEnv}</p>

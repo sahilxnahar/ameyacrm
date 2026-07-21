@@ -59,6 +59,30 @@ export const CHANNELS = [
   { key: 'EMAIL', label: 'Email', hint: 'No approval needed. Good for statements, letters and anything long.' },
   { key: 'SMS', label: 'SMS', hint: 'No approval here, but your SMS gateway will need DLT registration in India.' },
   { key: 'LETTER', label: 'Letter / PDF', hint: 'Rendered on your letterhead and downloadable. For demand notices and allotments.' },
+  { key: 'AD', label: 'Ad copy', hint: 'Headlines and body for Google and Meta ads, checked against each platform\'s character limits.' },
+] as const;
+
+/**
+ * Ad platforms and their hard limits. Google and Meta silently truncate copy
+ * that runs long, so a headline written at 40 characters quietly becomes a
+ * sentence that stops mid-word in the live ad.
+ */
+export const AD_PLATFORMS = [
+  {
+    key: 'GOOGLE_SEARCH', label: 'Google Search',
+    hint: 'Three headlines of 30 characters and two descriptions of 90.',
+    headlineMax: 30, bodyMax: 90,
+  },
+  {
+    key: 'META_FEED', label: 'Facebook / Instagram feed',
+    hint: 'Headline 40 characters. Primary text is cut at about 125 on mobile.',
+    headlineMax: 40, bodyMax: 125,
+  },
+  {
+    key: 'META_STORY', label: 'Instagram story / reel',
+    hint: 'Very little room — 40 characters of headline, one short line of body.',
+    headlineMax: 40, bodyMax: 90,
+  },
 ] as const;
 
 export const WA_CATEGORIES = [

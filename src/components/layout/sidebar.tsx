@@ -132,8 +132,8 @@ export function Sidebar({
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="app-drawer-head flex items-center justify-between border-b px-5">
-          <BrandLogo />
+        <div className="app-drawer-head flex items-center justify-between border-b px-4 py-3">
+          <BrandLogo onClick={onClose} />
           <button className="lg:hidden" onClick={onClose} aria-label="Close menu">
             <X className="h-5 w-5" />
           </button>
@@ -187,7 +187,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v10.8</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v11.0</p>
         </div>
       </aside>
     </>

@@ -28,9 +28,9 @@ export function StarterAutomationsPanel({ existingNames }: { existingNames: stri
       >
         <Sparkles className="h-5 w-5 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium">Start from a ready-made automation</p>
+          <p className="font-medium">Automation templates</p>
           <p className="text-sm text-muted-foreground">
-            {STARTER_AUTOMATIONS.length} written for you across {STARTER_DEPARTMENTS.length} departments. Three are marked to start with.
+            {STARTER_AUTOMATIONS.length} ready-made templates across {STARTER_DEPARTMENTS.length} departments. Add one, edit it to suit you, then switch it on. Three are marked to start with.
           </p>
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -62,6 +62,7 @@ export function StarterAutomationsPanel({ existingNames }: { existingNames: stri
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                           {a.name}
+                          <span className="rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Template</span>
                           {a.startHere && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"><Star className="h-2.5 w-2.5" />start here</span>}
                           {have && <span className="text-xs font-normal text-muted-foreground">— already added</span>}
                         </p>

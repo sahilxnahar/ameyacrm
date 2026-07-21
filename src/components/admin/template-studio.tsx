@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { MessageSquare, Mail, Smartphone, FileText, Plus, Trash2, Send, Loader2, AlertTriangle, Info, Copy, Check } from 'lucide-react';
+import { MessageSquare, Mail, Smartphone, FileText, Megaphone, Plus, Trash2, Send, Loader2, AlertTriangle, Info, Copy, Check } from 'lucide-react';
 import { saveTemplate, deleteTemplate, submitToMeta } from '@/server/actions/templates';
 import { validate, preview, smsSegments, type Issue } from '@/lib/templates/engine';
-import { MERGE_FIELDS, CHANNELS, WA_CATEGORIES } from '@/config/merge-fields';
+import { MERGE_FIELDS, CHANNELS, WA_CATEGORIES, AD_PLATFORMS } from '@/config/merge-fields';
 
 export interface TemplateRow {
   id: string; key: string; name: string; channel: string; category: string | null;
@@ -13,7 +13,7 @@ export interface TemplateRow {
   description: string | null; metaStatus: string | null; metaRejection: string | null; usageCount: number;
 }
 
-const ICON: Record<string, typeof Mail> = { WHATSAPP: MessageSquare, EMAIL: Mail, SMS: Smartphone, LETTER: FileText };
+const ICON: Record<string, typeof Mail> = { WHATSAPP: MessageSquare, EMAIL: Mail, SMS: Smartphone, LETTER: FileText, AD: Megaphone };
 const META_BADGE: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
   PENDING: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-500',
@@ -70,6 +70,7 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
 
   const grouped = CHANNELS.map((c) => ({ ...c, items: rows.filter((r) => r.channel === c.key) }));
   const seg = draft?.channel === 'SMS' ? smsSegments(draft.body) : null;
+  const adLimit = draft?.channel === 'AD' ? AD_PLATFORMS.find((p) => p.key === draft.category) : null;
 
   return (
     <div className="space-y-5">
@@ -112,6 +113,7 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-medium">{t.name}</p>
+                            <span className="rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Template</span>
                             {t.metaStatus && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${META_BADGE[t.metaStatus] ?? META_BADGE.DRAFT}`}>{t.metaStatus === 'DRAFT' ? 'Not submitted' : t.metaStatus.toLowerCase()}</span>}
                           </div>
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.body}</p>
@@ -160,6 +162,17 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
               </div>
             )}
 
+            {draft.channel === 'AD' && (
+              <label className="block">
+                <span className="text-xs font-medium text-muted-foreground">Which platform</span>
+                <select value={draft.category ?? ''} onChange={(e) => set('category', e.target.value)} className="focus-ring mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="">Choose one…</option>
+                  {AD_PLATFORMS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                </select>
+                <span className="mt-1 block text-xs text-muted-foreground">{AD_PLATFORMS.find((p) => p.key === draft.category)?.hint}</span>
+              </label>
+            )}
+
             {draft.channel === 'EMAIL' && (
               <label className="block">
                 <span className="text-xs font-medium text-muted-foreground">Subject</span>
@@ -167,9 +180,12 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
               </label>
             )}
 
-            {(draft.channel === 'WHATSAPP' || draft.channel === 'LETTER') && (
+            {(draft.channel === 'WHATSAPP' || draft.channel === 'LETTER' || draft.channel === 'AD') && (
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">{draft.channel === 'LETTER' ? 'Letter title' : 'Header (optional)'}</span>
+                <span className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                  <span>{draft.channel === 'LETTER' ? 'Letter title' : draft.channel === 'AD' ? 'Headline' : 'Header (optional)'}</span>
+                  {draft.channel === 'AD' && adLimit && <span className="tabular-nums">{(draft.header ?? '').length} / {adLimit.headlineMax}</span>}
+                </span>
                 <input value={draft.header ?? ''} onChange={(e) => set('header', e.target.value)} maxLength={draft.channel === 'WHATSAPP' ? 60 : 200} className="focus-ring mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" />
               </label>
             )}
@@ -177,12 +193,12 @@ export function TemplateStudio({ templates, whatsappConnected }: { templates: Te
             <label className="block">
               <span className="flex items-center justify-between text-xs font-medium text-muted-foreground">
                 <span>Message</span>
-                <span className="tabular-nums">{draft.body.length}{draft.channel === 'WHATSAPP' ? ' / 1024' : ''}{seg ? ` · ${seg.segments} SMS` : ''}</span>
+                <span className="tabular-nums">{draft.body.length}{draft.channel === 'WHATSAPP' ? ' / 1024' : ''}{adLimit ? ` / ${adLimit.bodyMax}` : ''}{seg ? ` · ${seg.segments} SMS` : ''}</span>
               </span>
               <textarea value={draft.body} onChange={(e) => set('body', e.target.value)} rows={8} placeholder="Hello {{buyer.firstName}}, an instalment of Rs {{payment.amount}} is due on {{payment.dueDate}}. Please ignore if already paid." className="focus-ring mt-1 w-full rounded-md border bg-background p-3 text-sm" />
             </label>
 
-            {draft.channel !== 'LETTER' && (
+            {draft.channel !== 'LETTER' && draft.channel !== 'AD' && (
               <label className="block">
                 <span className="text-xs font-medium text-muted-foreground">Footer (optional)</span>
                 <input value={draft.footer ?? ''} onChange={(e) => set('footer', e.target.value)} maxLength={draft.channel === 'WHATSAPP' ? 60 : 200} placeholder="Ameya Heights LLP" className="focus-ring mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm" />

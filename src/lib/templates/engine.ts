@@ -1,4 +1,4 @@
-import { MERGE_TOKENS, SAMPLE_VALUES } from '@/config/merge-fields';
+import { MERGE_TOKENS, SAMPLE_VALUES, AD_PLATFORMS } from '@/config/merge-fields';
 
 export interface TemplateInput {
   key: string;
@@ -101,6 +101,30 @@ export function validate(t: TemplateInput): Issue[] {
       }
       if (b.text.length > 25) {
         issues.push({ level: 'error', field: 'buttons', message: `Button text "${b.text}" is over Meta's 25-character limit.` });
+      }
+    }
+  }
+
+  if (t.channel === 'AD') {
+    const platform = AD_PLATFORMS.find((p) => p.key === t.category);
+    if (!platform) {
+      issues.push({ level: 'error', field: 'category', message: 'Pick which platform this ad is for — the limits are different on each.' });
+    } else {
+      const headline = render(t.header ?? '', SAMPLE_VALUES);
+      const bodyText = render(body, SAMPLE_VALUES);
+      if (!headline.trim()) {
+        issues.push({ level: 'error', field: 'header', message: 'An ad needs a headline.' });
+      } else if (headline.length > platform.headlineMax) {
+        issues.push({ level: 'error', field: 'header', message: `The headline is ${headline.length} characters once filled in. ${platform.label} cuts it at ${platform.headlineMax}.` });
+      }
+      if (bodyText.length > platform.bodyMax) {
+        issues.push({ level: 'warning', field: 'body', message: `The body runs to ${bodyText.length} characters. ${platform.label} shows about ${platform.bodyMax} before trimming.` });
+      }
+      if (/!{2,}|[A-Z]{6,}/.test(bodyText)) {
+        issues.push({ level: 'warning', field: 'body', message: 'Shouting in capitals or repeated exclamation marks get ads disapproved on both platforms.' });
+      }
+      if (/\b(guaranteed|assured returns?|best price|no\.? ?1|cheapest)\b/i.test(bodyText + headline)) {
+        issues.push({ level: 'warning', field: 'body', message: 'Claims like "guaranteed" or "assured returns" are restricted for property and finance advertising in India.' });
       }
     }
   }

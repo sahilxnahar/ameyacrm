@@ -6,8 +6,14 @@ import { notify } from '@/lib/notifications/notify';
 import { sendEmail } from '@/lib/email/email';
 import { getWorkItems } from '@/server/services/workload-service';
 
-/** How often each channel may fire for the same overdue item. */
-export const CADENCE = { pushHours: 1, emailHours: 6, whatsappHours: 6 };
+/**
+ * How often each channel may fire for the same overdue item.
+ *
+ * Email is every two hours: often enough that overdue work cannot be quietly
+ * ignored for a day, and still spaced enough that it does not become noise
+ * people filter away. Push stays hourly, WhatsApp every six.
+ */
+export const CADENCE = { pushHours: 1, emailHours: 2, whatsappHours: 6 };
 
 export interface EscalationResult {
   overdue: number;
@@ -25,7 +31,7 @@ function due(last: Date | null | undefined, hours: number, now: Date): boolean {
 
 /**
  * Find everything past its date, then nudge the person who owns it — hourly by
- * push, every six hours by email. Safe to call as often as you like: the
+ * push, every two hours by email. Safe to call as often as you like: the
  * cadence is enforced per item from the timestamps, not from how often this
  * runs. Anything no longer overdue is closed off and stops nagging.
  */
@@ -81,7 +87,7 @@ export async function runOverdueEscalation(now = new Date()): Promise<Escalation
       res.pushed++;
     }
 
-    // Every six hours: email.
+    // Every two hours: email.
     if (due(notice.lastEmailAt, CADENCE.emailHours, now)) {
       const sent = await sendEmail({
         to: [user.email],
@@ -129,6 +135,17 @@ export async function runOverdueEscalation(now = new Date()): Promise<Escalation
  * message is offered as a one-tap link instead.
  */
 export async function sendWhatsapp(to: string, message: string): Promise<boolean> {
+  // Preferred path: the connected WhatsApp Business account.
+  try {
+    const { sendWhatsappText, getWhatsappConnection } = await import('@/server/services/whatsapp-service');
+    if (await getWhatsappConnection()) {
+      const r = await sendWhatsappText(to, message);
+      if (r.ok) return true;
+    }
+  } catch {
+    // fall through to a gateway if one is configured
+  }
+
   const url = process.env.WHATSAPP_WEBHOOK_URL;
   if (!url) return false;
   try {

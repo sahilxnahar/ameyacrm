@@ -285,3 +285,25 @@ ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankName" TEXT;
 ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "bankBranch" TEXT;
 ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "upiId" TEXT;
 ALTER TABLE "Vendor" ADD COLUMN IF NOT EXISTS "paymentNotes" TEXT;
+
+-- v10.9 — ad copy templates ---------------------------------------------------
+-- Written inside each platform's real character limits. Edit the wording, but
+-- keep the headline short: Google cuts at 30 characters, Meta at 40.
+INSERT INTO "MessageTemplate" ("id","key","name","channel","category","language","header","body","createdAt","updatedAt") VALUES
+ ('tpl_ad_g_launch','ad_google_launch','Google Search — project launch','AD','GOOGLE_SEARCH','en',
+  '3BHK Homes in Bangalore',
+  'Spacious 3BHK residences at {{project.name}}. Ready to visit this weekend. Book a site visit today.',
+  NOW(),NOW()),
+ ('tpl_ad_g_nri','ad_google_nri','Google Search — NRI buyers','AD','GOOGLE_SEARCH','en',
+  'Bangalore Homes for NRIs',
+  'Full support for NRI buyers at {{project.name}}. Documentation and finance handled.',
+  NOW(),NOW()),
+ ('tpl_ad_meta_feed','ad_meta_feed','Meta feed — site visit','AD','META_FEED','en',
+  'Visit {{project.name}} this weekend',
+  'Thoughtfully planned homes in Bangalore by {{company.name}}. Message us to arrange a site visit.',
+  NOW(),NOW()),
+ ('tpl_ad_meta_story','ad_meta_story','Instagram story — walkthrough','AD','META_STORY','en',
+  'See inside {{project.name}}',
+  'Swipe up for a walkthrough of our latest homes in Bangalore.',
+  NOW(),NOW())
+ON CONFLICT ("key") DO NOTHING;

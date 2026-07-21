@@ -58,19 +58,35 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     const tok = JSON.parse(text) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
     if (!tok.access_token) return back(req, `${p.name} returned no access token.`);
 
+    // A token alone cannot send anything. WhatsApp needs the business account
+    // and the phone number to send from, so look them up now rather than
+    // failing later with an unhelpful error.
+    let meta: Record<string, unknown> | undefined;
+    let accountName: string | null = null;
+    let lookupWarning: string | null = null;
+    if (provider === 'whatsapp') {
+      const { discoverWabaDetails } = await import('@/server/services/whatsapp-service');
+      const d = await discoverWabaDetails(tok.access_token);
+      meta = { wabaId: d.wabaId, phoneNumberId: d.phoneNumberId, displayNumber: d.displayNumber };
+      accountName = d.displayNumber ? `${d.businessName ?? 'WhatsApp'} · ${d.displayNumber}` : d.businessName;
+      lookupWarning = d.error;
+    }
+
     await prisma.integrationConnection.upsert({
       where: { provider },
       update: {
         status: 'CONNECTED',
+        accountName, meta: meta as never, lastError: lookupWarning,
         accessToken: encrypt(tok.access_token),
         refreshToken: tok.refresh_token ? encrypt(tok.refresh_token) : null,
         expiresAt: tok.expires_in ? new Date(Date.now() + tok.expires_in * 1000) : null,
         scopes: tok.scope ?? p.scopes.join(' '),
-        lastError: null, lastCheckedAt: new Date(),
+        lastCheckedAt: new Date(),
         connectedById: ctx.user.id, connectedAt: new Date(),
       },
       create: {
         provider, status: 'CONNECTED',
+        accountName, meta: meta as never, lastError: lookupWarning,
         accessToken: encrypt(tok.access_token),
         refreshToken: tok.refresh_token ? encrypt(tok.refresh_token) : null,
         expiresAt: tok.expires_in ? new Date(Date.now() + tok.expires_in * 1000) : null,
@@ -83,7 +99,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       actorId: ctx.user.id, action: 'UPDATE', entityType: 'Integration', entityId: provider,
       summary: `Connected ${p.name}`,
     });
-    return back(req, `${p.name} is connected.`, true);
+    if (lookupWarning) return back(req, `${p.name} is connected, but it cannot send yet: ${lookupWarning}`);
+    return back(req, `${p.name} is connected${accountName ? ` — ${accountName}` : ''}.`, true);
   } catch (e) {
     return back(req, e instanceof Error ? e.message : 'The connection failed.');
   }
