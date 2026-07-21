@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { decrypt } from '@/lib/utils/crypto';
 import { tokensIn, render } from '@/lib/templates/engine';
 
@@ -50,20 +51,20 @@ export async function getWhatsappConnection(): Promise<WaConnection | null> {
 export async function discoverWabaDetails(token: string): Promise<{ wabaId: string | null; phoneNumberId: string | null; displayNumber: string | null; businessName: string | null; error: string | null }> {
   const empty = { wabaId: null, phoneNumberId: null, displayNumber: null, businessName: null };
   try {
-    const bizRes = await fetch(`${GRAPH}/me/businesses?fields=id,name&access_token=${encodeURIComponent(token)}`);
+    const bizRes = await fetchWithTimeout(`${GRAPH}/me/businesses?fields=id,name&access_token=${encodeURIComponent(token)}`);
     if (!bizRes.ok) return { ...empty, error: `Could not read your Meta businesses (HTTP ${bizRes.status}).` };
     const biz = (await bizRes.json()) as { data?: Array<{ id: string; name: string }> };
     const business = biz.data?.[0];
     if (!business) return { ...empty, error: 'That account is not an admin of any Meta Business.' };
 
-    const wabaRes = await fetch(`${GRAPH}/${business.id}/owned_whatsapp_business_accounts?access_token=${encodeURIComponent(token)}`);
+    const wabaRes = await fetchWithTimeout(`${GRAPH}/${business.id}/owned_whatsapp_business_accounts?access_token=${encodeURIComponent(token)}`);
     const waba = wabaRes.ok ? ((await wabaRes.json()) as { data?: Array<{ id: string }> }) : { data: [] };
     const wabaId = waba.data?.[0]?.id ?? null;
     if (!wabaId) {
       return { ...empty, businessName: business.name, error: 'No WhatsApp Business Account is attached to that Meta Business yet. Add WhatsApp in Meta Business Manager first.' };
     }
 
-    const numRes = await fetch(`${GRAPH}/${wabaId}/phone_numbers?access_token=${encodeURIComponent(token)}`);
+    const numRes = await fetchWithTimeout(`${GRAPH}/${wabaId}/phone_numbers?access_token=${encodeURIComponent(token)}`);
     const nums = numRes.ok ? ((await numRes.json()) as { data?: Array<{ id: string; display_phone_number: string }> }) : { data: [] };
     const first = nums.data?.[0];
     if (!first) {
@@ -131,7 +132,7 @@ export async function sendWhatsappTemplate(
   };
 
   try {
-    const res = await fetch(`${GRAPH}/${conn.phoneNumberId}/messages`, {
+    const res = await fetchWithTimeout(`${GRAPH}/${conn.phoneNumberId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${conn.token}` },
       body: JSON.stringify(body),
@@ -162,7 +163,7 @@ export async function sendWhatsappText(to: string, message: string): Promise<Sen
   if (!number) return { ok: false, error: `"${to}" is not a usable phone number.` };
 
   try {
-    const res = await fetch(`${GRAPH}/${conn.phoneNumberId}/messages`, {
+    const res = await fetchWithTimeout(`${GRAPH}/${conn.phoneNumberId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${conn.token}` },
       body: JSON.stringify({ messaging_product: 'whatsapp', to: number, type: 'text', text: { body: message.slice(0, 4000) } }),

@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -129,7 +130,7 @@ export async function submitToMeta(id: string): Promise<SubmitResult> {
       };
     }
 
-    const res = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/message_templates`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/v21.0/${wabaId}/message_templates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${decrypt(conn.accessToken)}` },
       body: JSON.stringify(payload),

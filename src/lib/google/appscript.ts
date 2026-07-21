@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { env } from '@/config/env';
 
 /**
@@ -15,7 +16,7 @@ const MAX_BYTES = 8 * 1024 * 1024; // Apps Script payload ceiling (base64 inflat
 async function call<T>(payload: Record<string, unknown>): Promise<T | { error: string }> {
   if (!isAppsScriptConfigured()) return { error: 'Google connector not set up. Add GAS_WEBAPP_URL and GAS_SECRET in Vercel.' };
   try {
-    const res = await fetch(env.GAS_WEBAPP_URL!, {
+    const res = await fetchWithTimeout(env.GAS_WEBAPP_URL!, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'follow',
       body: JSON.stringify({ secret: env.GAS_SECRET, ...payload }),
     });

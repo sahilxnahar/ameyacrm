@@ -2791,3 +2791,24 @@ model WhatsappMessage {
 
   @@index([phone, createdAt])
 }
+
+
+/// A marketing audit of a web page — ours or a competitor's.
+model MarketingAudit {
+  id        String   @id @default(cuid())
+  kind      String // LANDING, SEO, AEO, COMPETITORS, ADS
+  url       String
+  hostname  String
+  score     Int? // 0-100, null when the kind does not score
+  summary   String?
+  findings  Json? // [{ severity, title, detail, fix }]
+  output    Json? // generated ad copy, competitor table, whatever the kind produces
+  signals   Json? // what was read off the page, so a re-run can be compared
+  model     String?
+  error     String?
+  runById   String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([hostname])
+}

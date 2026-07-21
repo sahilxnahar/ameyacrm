@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import nodemailer from 'nodemailer';
 import { env } from '@/config/env';
 
@@ -17,7 +18,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; e
 
       case 'resend': {
         if (!env.RESEND_API_KEY) return { ok: false, error: 'RESEND_API_KEY missing' };
-        const res = await fetch('https://api.resend.com/emails', {
+        const res = await fetchWithTimeout('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ from: env.EMAIL_FROM, to: payload.to, cc: payload.cc, subject: payload.subject, text: payload.text, html: payload.html }),

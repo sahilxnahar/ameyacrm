@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { createHash } from 'node:crypto';
 
 /**
@@ -18,7 +19,7 @@ export async function timesBreached(password: string): Promise<number> {
     const prefix = hash.slice(0, 5);
     const suffix = hash.slice(5);
 
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    const res = await fetchWithTimeout(`https://api.pwnedpasswords.com/range/${prefix}`, {
       headers: { 'Add-Padding': 'true', 'User-Agent': 'AmeyaHeightsCRM' },
       signal: AbortSignal.timeout(4000),
     });

@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { createSign } from 'crypto';
 import { env } from '@/config/env';
 
@@ -22,7 +23,7 @@ function buildJwt(scope: string): string {
 export async function getGoogleAccessToken(scope: string = GOOGLE_SCOPES): Promise<string | null> {
   if (!hasGoogleServiceAccount()) return null;
   try {
-    const res = await fetch('https://oauth2.googleapis.com/token', {
+    const res = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: buildJwt(scope) }),
     });

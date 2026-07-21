@@ -1,5 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { prisma } from '@/lib/db/prisma';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 
@@ -13,7 +14,7 @@ export type GeoResult = { ok: true; found?: number } | { error: string };
 async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'AmeyaHeightsCRM/1.0 (crm@ameyaheights.com)' } });
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AmeyaHeightsCRM/1.0 (crm@ameyaheights.com)' } });
     if (!res.ok) return null;
     const j = (await res.json()) as Array<{ lat: string; lon: string }>;
     if (!j.length) return null;

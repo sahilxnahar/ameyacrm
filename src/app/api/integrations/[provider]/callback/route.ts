@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/current-user';
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       client_id: clientId, client_secret: clientSecret,
       redirect_uri: redirectUri, code, grant_type: 'authorization_code',
     });
-    const res = await fetch(p.tokenUrl, {
+    const res = await fetchWithTimeout(p.tokenUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
       body,

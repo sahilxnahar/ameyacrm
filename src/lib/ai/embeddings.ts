@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { env } from '@/config/env';
 
 /**
@@ -22,7 +23,7 @@ export async function embed(text: string, kind: 'document' | 'query' = 'document
   if (env.AI_BASE_URL && env.AI_API_KEY && env.AI_EMBED_MODEL) {
     const base = env.AI_BASE_URL.replace(/\/$/, '');
     try {
-      const res = await fetch(`${base}/embeddings`, {
+      const res = await fetchWithTimeout(`${base}/embeddings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.AI_API_KEY}` },
         body: JSON.stringify({ model: env.AI_EMBED_MODEL, input: text.slice(0, 8000) }),
@@ -40,7 +41,7 @@ export async function embed(text: string, kind: 'document' | 'query' = 'document
 
   try {
     for (const model of order) {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${env.GEMINI_API_KEY}`,
         {
           method: 'POST',

@@ -51,8 +51,18 @@ const schema = z.object({
   // works here: OpenRouter, Groq, OpenAI, Together, Mistral, DeepInfra.
   AI_BASE_URL: z.string().optional(),        // e.g. https://openrouter.ai/api/v1
   AI_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().optional(),           // e.g. meta-llama/llama-3.3-70b-instruct
+  AI_MODEL: z.string().optional(),           // e.g. google/gemini-2.5-flash
   AI_EMBED_MODEL: z.string().optional(),     // e.g. text-embedding-3-small
+
+  // Spare keys for the SAME provider, comma separated. When one runs out of
+  // credit or hits its rate limit, the next is tried automatically.
+  AI_API_KEYS: z.string().optional(),
+
+  // A whole second provider, used only when every key above has failed.
+  // Typically Groq, whose free tier keeps things alive when credits run dry.
+  AI_FALLBACK_BASE_URL: z.string().optional(),
+  AI_FALLBACK_API_KEY: z.string().optional(),
+  AI_FALLBACK_MODEL: z.string().optional(),
 
   // WhatsApp inbound. The verify token is any string you choose; it just has
   // to match what you type into Meta's webhook screen.

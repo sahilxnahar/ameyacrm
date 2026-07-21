@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { addDays, startOfDay, differenceInHours, formatDistanceToNowStrict } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -149,7 +150,7 @@ export async function sendWhatsapp(to: string, message: string): Promise<boolean
   const url = process.env.WHATSAPP_WEBHOOK_URL;
   if (!url) return false;
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 'use server';
 import { prisma } from '@/lib/db/prisma';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { revalidatePath } from 'next/cache';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
@@ -90,7 +91,7 @@ export async function draftReply(input: { leadId: string; channel: 'email' | 'wh
       `What this reply must do: ${input.intent}`,
     ].filter(Boolean).join('\n');
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.5 } }) },
     );

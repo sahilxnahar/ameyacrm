@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { env } from '@/config/env';
 import { getGoogleAccessToken } from './auth';
 import { isAppsScriptConfigured, gasSheet } from './appscript';
@@ -20,14 +21,14 @@ export async function writeSheet(tabName: string, header: string[], rows: (strin
   const auth = { Authorization: `Bearer ${token}` };
   // Create the tab if it doesn't exist (ignore "already exists").
   try {
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
+    await fetchWithTimeout(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
       method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tabName } } }] }),
     });
   } catch { /* tab probably exists */ }
   try {
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(tabName)}:clear`, { method: 'POST', headers: auth });
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(`${tabName}!A1`)}?valueInputOption=RAW`, {
+    await fetchWithTimeout(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(tabName)}:clear`, { method: 'POST', headers: auth });
+    const res = await fetchWithTimeout(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(`${tabName}!A1`)}?valueInputOption=RAW`, {
       method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' },
       body: JSON.stringify({ values: [header, ...rows] }),
     });

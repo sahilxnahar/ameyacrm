@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { analyzeCallRecording } from '@/lib/ai/gemini';
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
   let analysed = false;
   if (recordingUrl) {
     try {
-      const audioRes = await fetch(recordingUrl);
+      const audioRes = await fetchWithTimeout(recordingUrl);
       if (audioRes.ok) {
         const buf = Buffer.from(await audioRes.arrayBuffer());
         const mime = audioRes.headers.get('content-type')?.split(';')[0] || 'audio/mpeg';

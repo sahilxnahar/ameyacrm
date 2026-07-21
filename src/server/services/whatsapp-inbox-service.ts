@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { decrypt } from '@/lib/utils/crypto';
@@ -130,7 +131,7 @@ async function storeFile(ctx: AuthContext, folderId: string, msg: Incoming): Pro
 
   try {
     // WhatsApp hands over a URL first, then the bytes — both need the token.
-    const metaRes = await fetch(`${GRAPH}/${msg.mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const metaRes = await fetchWithTimeout(`${GRAPH}/${msg.mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
     if (!metaRes.ok) return { ok: false, message: 'I could not fetch that file from WhatsApp. Please send it again.' };
     const meta = (await metaRes.json()) as { url?: string; mime_type?: string; file_size?: number };
     if (!meta.url) return { ok: false, message: 'WhatsApp did not give me a link to the file.' };
@@ -138,7 +139,7 @@ async function storeFile(ctx: AuthContext, folderId: string, msg: Incoming): Pro
       return { ok: false, message: 'That file is over 25 MB. Please upload it from the CRM on a computer instead.' };
     }
 
-    const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+    const fileRes = await fetchWithTimeout(meta.url, { headers: { Authorization: `Bearer ${token}` } });
     if (!fileRes.ok) return { ok: false, message: 'The download from WhatsApp failed. Please try once more.' };
     const buffer = Buffer.from(await fileRes.arrayBuffer());
 

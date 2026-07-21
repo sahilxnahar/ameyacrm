@@ -373,3 +373,23 @@ CREATE TABLE IF NOT EXISTS "WhatsappMessage" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "WhatsappMessage_externalId_key" ON "WhatsappMessage"("externalId");
 CREATE INDEX IF NOT EXISTS "WhatsappMessage_phone_createdAt_idx" ON "WhatsappMessage"("phone", "createdAt");
+
+-- v12.7 — website audits ------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "MarketingAudit" (
+  "id"        TEXT NOT NULL,
+  "kind"      TEXT NOT NULL,
+  "url"       TEXT NOT NULL,
+  "hostname"  TEXT NOT NULL,
+  "score"     INTEGER,
+  "summary"   TEXT,
+  "findings"  JSONB,
+  "output"    JSONB,
+  "signals"   JSONB,
+  "model"     TEXT,
+  "error"     TEXT,
+  "runById"   TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "MarketingAudit_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "MarketingAudit_kind_createdAt_idx" ON "MarketingAudit"("kind", "createdAt");
+CREATE INDEX IF NOT EXISTS "MarketingAudit_hostname_idx" ON "MarketingAudit"("hostname");

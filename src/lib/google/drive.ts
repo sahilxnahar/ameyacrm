@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { env } from '@/config/env';
 import { getGoogleAccessToken, hasGoogleServiceAccount } from './auth';
 import { isAppsScriptConfigured, gasUpload, gasPing } from './appscript';
@@ -33,7 +34,7 @@ export async function uploadToDrive(name: string, mimeType: string, body: Buffer
     Buffer.from(`\r\n--${boundary}--`),
   ]);
   try {
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink', {
+    const res = await fetchWithTimeout('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
       body: new Uint8Array(payload),
@@ -62,7 +63,7 @@ export async function checkDrive(): Promise<{ ok: true; folder: string } | { err
   const token = await getGoogleAccessToken();
   if (!token) return { error: 'Google authentication failed — check the service-account email and private key.' };
   try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${env.GOOGLE_DRIVE_FOLDER_ID}?supportsAllDrives=true&fields=id,name,driveId`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetchWithTimeout(`https://www.googleapis.com/drive/v3/files/${env.GOOGLE_DRIVE_FOLDER_ID}?supportsAllDrives=true&fields=id,name,driveId`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return { error: `Folder not accessible (${res.status}). Share it with ${env.GOOGLE_SERVICE_ACCOUNT_EMAIL} as Editor / Content manager.` };
     const j = (await res.json()) as { name?: string };
     return { ok: true, folder: j.name ?? 'folder' };

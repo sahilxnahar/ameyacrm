@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -56,7 +57,7 @@ export async function putObject(key: string, body: Buffer, contentType: string):
 
 export async function getObjectStream(key: string): Promise<{ body: Buffer }> {
   if (env.STORAGE_PROVIDER === 'blob' || isBlobUrl(key)) {
-    const res = await fetch(key);
+    const res = await fetchWithTimeout(key);
     return { body: Buffer.from(await res.arrayBuffer()) };
   }
   if (env.STORAGE_PROVIDER === 'local') return { body: await fs.readFile(path.join(LOCAL_DIR, key)) };

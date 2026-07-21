@@ -1,3 +1,4 @@
+import { SchemaWarning } from '@/components/layout/schema-warning';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/current-user';
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       activeProjectId={active.id}
       activeProjectName={active.name}
     >
+      <SchemaWarning />
       {children}
     </AppShell>
   );

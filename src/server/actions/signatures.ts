@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { randomBytes } from 'node:crypto';
 import { addDays } from 'date-fns';
 import { revalidatePath } from 'next/cache';
@@ -90,7 +91,7 @@ export async function submitSignature(token: string, signatureDataUrl: string, t
 
     let signedFileUrl: string | null = null;
     try {
-      const src = await fetch(sr.fileUrl);
+      const src = await fetchWithTimeout(sr.fileUrl);
       if (src.ok) {
         const pdf = await PDFDocument.load(await src.arrayBuffer());
         const base64 = signatureDataUrl.split(',')[1];

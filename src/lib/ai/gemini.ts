@@ -1,4 +1,5 @@
 import 'server-only';
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { env } from '@/config/env';
 import { aiChat, activeProvider } from '@/lib/ai/provider';
 import { inferMimeType, fileKindLabel } from '@/lib/files/mime';
@@ -65,7 +66,7 @@ export async function summarizeFile(buffer: Buffer, mimeType: string, filename: 
     generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
   };
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
     );
@@ -130,19 +131,12 @@ export async function extractInvoiceData(
   }
   if (buffer.length > 15 * 1024 * 1024) return { error: 'That file is over 15MB, which is more than the reader accepts.' };
   const prompt = billPrompt(filename);
-  const unusedPrompt =
-    `Extract the billing / invoice data from the attached file "${filename}". Return the vendor or company name (clientName), ` +
-    `their GST number (clientGstin), the invoice number, the invoice/purchase date as YYYY-MM-DD, and every line item ` +
-    `(description, quantity, unit price as "rate", GST rate percent as "gstRate", and line total as "amount"). ` +
-    `Also return subTotal (before GST), totalGst, and total (grand total including GST). Use null for anything not present. ` +
-    `All monetary/numeric values must be plain numbers with no currency symbols or commas.`;
-  void unusedPrompt;
   const body = {
     contents: [{ parts: [{ inline_data: { mime_type: type, data: buffer.toString('base64') } }, { text: prompt }] }],
     generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: BILL_SCHEMA },
   };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
@@ -151,18 +145,8 @@ export async function extractInvoiceData(
     const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
     if (!raw) return { error: 'The AI read the file but found no billing data in it. Is this actually an invoice?' };
-    const j = JSON.parse(raw) as Record<string, unknown>;
-    const items = Array.isArray(j.items) ? (j.items as Record<string, unknown>[]).map((it) => ({
-      description: String(it.description ?? '').slice(0, 200) || 'Item',
-      quantity: numOr(it.quantity, 1), rate: numOr(it.rate), gstRate: numOr(it.gstRate, 18), amount: numOr(it.amount),
-    })) : [];
-    return {
-      clientName: String(j.clientName ?? '').slice(0, 160) || 'Unknown vendor',
-      clientGstin: j.clientGstin ? String(j.clientGstin).slice(0, 30) : null,
-      invoiceNumber: j.invoiceNumber ? String(j.invoiceNumber).slice(0, 60) : null,
-      invoiceDate: j.invoiceDate ? String(j.invoiceDate).slice(0, 10) : null,
-      items, subTotal: j.subTotal == null ? null : numOr(j.subTotal), totalGst: j.totalGst == null ? null : numOr(j.totalGst), total: j.total == null ? null : numOr(j.total),
-    };
+    // Same tidying as the OpenRouter path, so the two cannot drift apart.
+    return normaliseBill(JSON.parse(raw) as Record<string, unknown>);
   } catch {
     return null;
   }
@@ -211,7 +195,7 @@ export async function scoreLeadWithGemini(leadSummary: string): Promise<LeadScor
     `an integer "score" 0-100 for likelihood to book, a one-sentence "reason", and the single best "nextAction" for the rep. Be decisive.\n\nLEAD:\n` + leadSummary;
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, responseMimeType: 'application/json', responseSchema: LEAD_SCORE_SCHEMA } };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       return { error: `The AI service refused the request (${res.status}). ${detail.slice(0, 160)}`.trim() };
@@ -249,7 +233,7 @@ export async function analyzeCallRecording(audio: Buffer, mimeType: string): Pro
     generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: CALL_SCHEMA },
   };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       return { error: explainAiFailure(res.status, detail) };
@@ -284,7 +268,7 @@ export async function generateBriefing(signals: string): Promise<Briefing | null
     'each starting with a verb. Be direct and brief. No preamble.\n\nSIGNALS:\n' + signals;
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.35, responseMimeType: 'application/json', responseSchema: BRIEF_SCHEMA } };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) return null;
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
@@ -312,7 +296,7 @@ export async function transcribeSiteNote(audio: Buffer, mimeType: string): Promi
     '(LOW, MEDIUM, HIGH or URGENT) based on urgency expressed.';
   const body = { contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: audio.toString('base64') } }, { text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: VOICE_SCHEMA } };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) return null;
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
@@ -351,7 +335,7 @@ export async function summarizeSocialActivity(input: {
     JSON.stringify(input).slice(0, 4000);
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: SOCIAL_SCHEMA } };
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!res.ok) return null;
     const d = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const raw = d.candidates?.[0]?.content?.parts?.map((p) => p.text).filter(Boolean).join('') ?? '';
@@ -447,7 +431,7 @@ export async function extractPaymentAdvice(
   parts.push({ text: PAYMENT_PROMPT });
 
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         method: 'POST',
@@ -542,6 +526,20 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
   // The fallback provider has its own, much shorter, set of checks.
   if (p.kind === 'openai-compatible') {
     const probes: AiProbe[] = [];
+    const { keyPool, fallbackProvider } = await import('@/lib/ai/provider');
+    const pool = keyPool();
+    const spare = fallbackProvider();
+    probes.push({
+      name: 'Keys available', what: 'How much runway before the AI stops', ms: 0,
+      ok: pool.length > 0,
+      note: pool.length > 1 || Boolean(spare),
+      detail:
+        `${pool.length} key${pool.length === 1 ? '' : 's'} for ${p.label}` +
+        (spare ? `, plus a backup provider` : '') +
+        (pool.length === 1 && !spare
+          ? '. One key means one point of failure — add AI_API_KEYS with a second key, or a backup provider, and it keeps working when this one runs dry.'
+          : '. When one runs out of credit or hits its rate limit, the next is tried automatically.'),
+    });
     const t0 = Date.now();
     const chat = await aiChat({ prompt: 'Reply with exactly: ALIVE', temperature: 0, maxTokens: 10 });
     probes.push({
@@ -598,7 +596,7 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
   };
 
   await timed('Connection', 'Reaches Google and the key is accepted', async () => {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`);
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`);
     if (res.status === 403) {
       const body = await res.text().catch(() => '');
       if (/PERMISSION_DENIED|denied access/i.test(body)) {
@@ -623,7 +621,7 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
   });
 
   await timed('Writing', 'Can generate text', async () => {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+    const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with exactly: ALIVE' }] }], generationConfig: { temperature: 0, maxOutputTokens: 10 } }),
     });
@@ -658,7 +656,7 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
     const tried: string[] = [];
     for (const name of EMBEDDING_MODELS) {
       tried.push(name);
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${name}:embedContent?key=${env.GEMINI_API_KEY}`, {
+      const res = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${name}:embedContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: `models/${name}`, content: { parts: [{ text: 'payment voucher' }] } }),
       });

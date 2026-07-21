@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
+
 /**
  * A small outbox for work typed with no signal.
  *
@@ -81,7 +83,7 @@ export async function flush(): Promise<{ sent: number; failed: number; left: num
     // Give up after a day of trying rather than retrying for ever.
     if (item.attempts > 24) continue;
     try {
-      const res = await fetch(item.endpoint, {
+      const res = await fetchWithTimeout(item.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item.payload),
