@@ -26,13 +26,15 @@ export interface ProviderInfo {
 export function activeProvider(): ProviderInfo {
   if (env.AI_BASE_URL && env.AI_API_KEY) {
     const host = (() => { try { return new URL(env.AI_BASE_URL!).hostname; } catch { return env.AI_BASE_URL!; } })();
+    // OpenRouter parses PDFs and images for ANY model it serves, using its own
+    // file-parser. Groq and most other gateways do not, so this is claimed only
+    // where it is actually true.
+    const supportsFiles = /openrouter\.ai/i.test(env.AI_BASE_URL ?? '');
     return {
       kind: 'openai-compatible',
       label: host.replace(/^api\./, ''),
       model: env.AI_MODEL ?? 'not set',
-      // Most hosted models behind these gateways read images; almost none read
-      // PDFs directly. Claimed conservatively so nothing promises too much.
-      multimodal: false,
+      multimodal: supportsFiles,
       embeddings: Boolean(env.AI_EMBED_MODEL),
     };
   }
@@ -166,4 +168,76 @@ export async function aiEmbed(text: string, kind: 'document' | 'query' = 'docume
     return embed(clipped, kind);
   }
   return null;
+}
+
+
+export interface Attachment { buffer: Buffer; mimeType: string; filename: string }
+
+/**
+ * Ask about a file — a bill, a scan, a photo.
+ *
+ * OpenRouter accepts PDFs and images for any model it serves: images as
+ * data URLs, PDFs through its file-parser. The `cloudflare-ai` engine is free
+ * and converts a PDF to markdown, which is all the CRM needs — `mistral-ocr`
+ * is better for photographed documents but is charged per page.
+ */
+export async function aiReadFile(
+  file: Attachment,
+  prompt: string,
+  opts: { system?: string; json?: boolean; maxTokens?: number } = {},
+): Promise<ChatResult> {
+  const p = activeProvider();
+  if (p.kind !== 'openai-compatible' || !p.multimodal) {
+    return { ok: false, error: `${p.label} reads text only. Reading files needs OpenRouter or Google.` };
+  }
+
+  const base = (env.AI_BASE_URL ?? '').replace(/\/$/, '');
+  const dataUrl = `data:${file.mimeType};base64,${file.buffer.toString('base64')}`;
+  const isPdf = file.mimeType === 'application/pdf';
+
+  const content: Array<Record<string, unknown>> = [{ type: 'text', text: prompt }];
+  content.push(
+    isPdf
+      ? { type: 'file', file: { filename: file.filename, file_data: dataUrl } }
+      : { type: 'image_url', image_url: { url: dataUrl } },
+  );
+
+  const messages: Array<Record<string, unknown>> = [];
+  if (opts.system) messages.push({ role: 'system', content: opts.system });
+  messages.push({ role: 'user', content });
+
+  try {
+    const res = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.AI_API_KEY}`,
+        'HTTP-Referer': env.APP_URL,
+        'X-Title': 'Ameya Heights CRM',
+      },
+      body: JSON.stringify({
+        model: env.AI_MODEL,
+        messages,
+        temperature: 0,
+        max_tokens: opts.maxTokens ?? 1200,
+        ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+        // Free engine. Costs nothing and handles a normal digital PDF well.
+        ...(isPdf ? { plugins: [{ id: 'file-parser', pdf: { engine: 'cloudflare-ai' } }] } : {}),
+      }),
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      let reason = raw.slice(0, 250);
+      try {
+        const j = JSON.parse(raw) as { error?: { message?: string } };
+        if (j.error?.message) reason = j.error.message;
+      } catch { /* raw text is the best we have */ }
+      return { ok: false, error: `${p.label} refused it (HTTP ${res.status}) — ${reason}` };
+    }
+    const j = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }> };
+    const text = j.choices?.[0]?.message?.content?.trim() ?? '';
+    return text ? { ok: true, text } : { ok: false, error: 'The provider read the file but said nothing.' };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'The request failed.' };
+  }
 }

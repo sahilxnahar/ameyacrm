@@ -37,8 +37,24 @@ export function geminiSupports(mimeType: string): boolean {
 
 /** Summarize a file with Gemini (multimodal). Returns null (never throws) on any problem. */
 export async function summarizeFile(buffer: Buffer, mimeType: string, filename: string): Promise<string | null> {
-  if (!env.GEMINI_API_KEY || !geminiSupports(mimeType)) return null;
   if (buffer.length > 15 * 1024 * 1024) return null;
+  const type = inferMimeType(mimeType, filename);
+
+  // OpenRouter parses PDFs and images for any model, so summaries work there
+  // too — this used to be Google-only.
+  if (activeProvider().multimodal && activeProvider().kind === 'openai-compatible') {
+    const { aiReadFile } = await import('@/lib/ai/provider');
+    const r = await aiReadFile(
+      { buffer, mimeType: type, filename },
+      `Analyse "${filename}" for a real-estate CRM and reply with:\n` +
+      `1) A 2-4 sentence summary — what it is, key parties, amounts and dates, and why it matters.\n` +
+      `2) A line "Key details:" then 3-6 short bullets of the most important data.\nBe concise and factual.`,
+      { maxTokens: 600 },
+    );
+    return r.ok ? r.text : null;
+  }
+
+  if (!env.GEMINI_API_KEY || !geminiSupports(type)) return null;
   const prompt =
     `You are a document assistant for a real-estate CRM (Ameya Heights). Analyse the attached file "${filename}" and reply with:\n` +
     `1) A 2-4 sentence summary — what it is, key parties / amounts / dates, and why it matters.\n` +
@@ -90,18 +106,37 @@ const numOr = (v: unknown, d = 0) => { const n = typeof v === 'number' ? v : par
 export async function extractInvoiceData(
   buffer: Buffer, mimeType: string, filename: string,
 ): Promise<ExtractedBill | { error: string } | null> {
-  if (!env.GEMINI_API_KEY) return { error: 'No Gemini key is configured, so files cannot be read.' };
   const type = inferMimeType(mimeType, filename);
+
+  if (activeProvider().multimodal && activeProvider().kind === 'openai-compatible') {
+    const { aiReadFile } = await import('@/lib/ai/provider');
+    const r = await aiReadFile(
+      { buffer, mimeType: type, filename },
+      billPrompt(filename) + '\n\nReply with JSON only, matching that shape exactly. No commentary.',
+      { json: true, maxTokens: 1200 },
+    );
+    if (!r.ok) return { error: r.error };
+    try {
+      const parsed = JSON.parse(r.text.replace(/^```(?:json)?|```$/g, '').trim()) as Record<string, unknown>;
+      return normaliseBill(parsed);
+    } catch {
+      return { error: 'The AI read the file but its reply was not usable. Try a clearer copy.' };
+    }
+  }
+
+  if (!env.GEMINI_API_KEY) return { error: 'No AI provider is configured, so files cannot be read.' };
   if (!geminiSupports(type)) {
     return { error: `"${filename}" is a ${type || 'file type we could not identify'}. Only PDFs, images and text files can be read.` };
   }
   if (buffer.length > 15 * 1024 * 1024) return { error: 'That file is over 15MB, which is more than the reader accepts.' };
-  const prompt =
+  const prompt = billPrompt(filename);
+  const unusedPrompt =
     `Extract the billing / invoice data from the attached file "${filename}". Return the vendor or company name (clientName), ` +
     `their GST number (clientGstin), the invoice number, the invoice/purchase date as YYYY-MM-DD, and every line item ` +
     `(description, quantity, unit price as "rate", GST rate percent as "gstRate", and line total as "amount"). ` +
     `Also return subTotal (before GST), totalGst, and total (grand total including GST). Use null for anything not present. ` +
     `All monetary/numeric values must be plain numbers with no currency symbols or commas.`;
+  void unusedPrompt;
   const body = {
     contents: [{ parts: [{ inline_data: { mime_type: type, data: buffer.toString('base64') } }, { text: prompt }] }],
     generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: BILL_SCHEMA },
@@ -131,6 +166,38 @@ export async function extractInvoiceData(
   } catch {
     return null;
   }
+}
+
+/** One wording for both providers, so results stay comparable. */
+function billPrompt(filename: string): string {
+  return (
+    `Extract the billing / invoice data from the attached file "${filename}". Return the vendor or company name (clientName), ` +
+    `their GST number (clientGstin), the invoice number, the invoice/purchase date as YYYY-MM-DD, and every line item ` +
+    `(description, quantity, unit price as "rate", GST rate percent as "gstRate", and line total as "amount"). ` +
+    `Also return subTotal (before GST), totalGst, and total (grand total including GST). Use null for anything not present. ` +
+    `All monetary values must be plain numbers with no currency symbols or commas.`
+  );
+}
+
+/** Tidy a bill however the model phrased it. */
+function normaliseBill(j: Record<string, unknown>): ExtractedBill {
+  const items = Array.isArray(j.items)
+    ? (j.items as Record<string, unknown>[]).map((it) => ({
+        description: String(it.description ?? '').slice(0, 200) || 'Item',
+        quantity: numOr(it.quantity, 1), rate: numOr(it.rate),
+        gstRate: numOr(it.gstRate, 18), amount: numOr(it.amount),
+      }))
+    : [];
+  return {
+    clientName: String(j.clientName ?? '').slice(0, 160) || 'Unknown vendor',
+    clientGstin: j.clientGstin ? String(j.clientGstin).slice(0, 30) : null,
+    invoiceNumber: j.invoiceNumber ? String(j.invoiceNumber).slice(0, 60) : null,
+    invoiceDate: j.invoiceDate ? String(j.invoiceDate).slice(0, 10) : null,
+    items,
+    subTotal: j.subTotal == null ? null : numOr(j.subTotal),
+    totalGst: j.totalGst == null ? null : numOr(j.totalGst),
+    total: j.total == null ? null : numOr(j.total),
+  };
 }
 
 export interface LeadScore { score: number; reason: string; nextAction: string }
@@ -503,14 +570,21 @@ export async function runAiSelfTest(): Promise<{ enabled: boolean; model: string
     } else {
       probes.push({
         name: 'Search index', what: 'Embeddings for document search', ms: 0, ok: false, note: true,
-        detail: 'AI_EMBED_MODEL is not set, so Ask Documents falls back to plain keyword matching. That still works — it is just less clever. Groq offers no embeddings; OpenRouter or OpenAI do, if you want the cleverer version.',
+        detail: 'No embeddings model is set, so Ask Documents falls back to keyword matching. That still works — it is just less clever about synonyms. Neither Groq nor OpenRouter offers embeddings; only a direct OpenAI key would add this.',
       });
     }
 
-    probes.push({
-      name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: false, note: true,
-      detail: 'This provider reads text, not PDFs or images. Bill import and document summaries need Google, and stay off until that account is unblocked. Nothing is broken — this provider simply does not do it.',
-    });
+    if (p.multimodal) {
+      probes.push({
+        name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: true,
+        detail: `${p.label} parses PDFs and images for any model, using the free cloudflare-ai engine. Bill import and document summaries work.`,
+      });
+    } else {
+      probes.push({
+        name: 'Reading files', what: 'Bills, scans and photos', ms: 0, ok: false, note: true,
+        detail: `${p.label} reads text only. Bill import and document summaries need OpenRouter or Google. Nothing is broken — this provider simply does not do it.`,
+      });
+    }
 
     return { enabled: true, model: p.model, provider: p.label, probes };
   }
