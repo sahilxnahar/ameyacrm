@@ -37,6 +37,41 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  // Swipe from the left edge to open the menu, and swipe left to close it.
+  // Only from the very edge, so it never fights a horizontally scrolling table.
+  React.useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      startX = t.clientX;
+      startY = t.clientY;
+      tracking = mobileOpen || startX < 24;
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      // Mostly horizontal, and a real distance — not a stray thumb.
+      if (dy > 60 || Math.abs(dx) < 60) return;
+      if (dx > 0 && !mobileOpen) setMobileOpen(true);
+      if (dx < 0 && mobileOpen) setMobileOpen(false);
+    };
+
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchend', onEnd);
+    };
+  }, [mobileOpen]);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const allowed = React.useMemo(() => new Set(permissionKeys), [permissionKeys]);
 

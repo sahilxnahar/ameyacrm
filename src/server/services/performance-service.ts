@@ -94,7 +94,27 @@ export async function measurePerformance(): Promise<{
     region = null;
   }
 
+  // Does the database actually have what this build expects? A missing column
+  // shows up to a person as an unexplained failure on an unrelated screen.
+  const drift: string[] = [];
+  for (const [table, column] of [
+    ['Task', 'repeatEvery'], ['Voucher', 'utr'], ['Vendor', 'bankIfsc'],
+    ['DocChunk', 'requiredPermission'], ['MailThreadMessage', 'vendorId'],
+  ] as Array<[string, string]>) {
+    const rows = await prisma.$queryRawUnsafe<Array<{ n: bigint }>>(
+      `SELECT COUNT(*)::bigint AS n FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
+      table, column,
+    ).catch(() => [{ n: BigInt(1) }]);
+    if (Number(rows?.[0]?.n ?? 1) === 0) drift.push(`${table}.${column}`);
+  }
+
   const advice: string[] = [];
+  if (drift.length) {
+    advice.push(
+      `The database is behind the code: ${drift.join(', ')} ${drift.length === 1 ? 'is' : 'are'} missing. ` +
+      'Anything touching those tables will fail with an unhelpful error until you run the MIGRATION SQL for this version in Neon. Do this first.',
+    );
+  }
   const pooled = isPooledConnection();
   if (!pooled) {
     advice.push(

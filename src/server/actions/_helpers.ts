@@ -35,6 +35,20 @@ export function toActionError(err: unknown): { error: string } {
     }).join('  •  ');
     return { error: msg || 'Please check the form and try again.' };
   }
-  if (err instanceof Error) return { error: err.message };
+  if (err instanceof Error) {
+    // The commonest real cause of a mystery failure is code that is newer than
+    // the database. Say that outright instead of "please try again", which
+    // sends people round in circles.
+    const m = err.message;
+    if (/column .* does not exist|Unknown argument|does not exist in the current database|relation ".*" does not exist/i.test(m)) {
+      const col = m.match(/column [`"]?([\w.]+)[`"]?/i)?.[1];
+      return {
+        error:
+          `The database is missing ${col ? `"${col}"` : 'something this version needs'}. ` +
+          'The code has been deployed but the migration has not been run yet — open Neon and run the MIGRATION SQL for this version, then reload.',
+      };
+    }
+    return { error: m };
+  }
   return { error: 'Something went wrong. Please try again.' };
 }

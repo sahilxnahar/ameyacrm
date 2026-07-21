@@ -69,7 +69,14 @@ function Column({ id, tasks }: { id: Col; tasks: BoardTask[] }) {
 export function TaskBoard({ tasks: initial }: { tasks: BoardTask[] }) {
   const [tasks, setTasks] = React.useState(initial);
   React.useEffect(() => setTasks(initial), [initial]);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  // On a phone a 6px drag threshold turns every tap and every scroll into a
+  // drag, so the board is read-only on touch: tap a card to open it. Dragging
+  // stays available wherever there is a real pointer.
+  const [canDrag, setCanDrag] = React.useState(true);
+  React.useEffect(() => {
+    setCanDrag(window.matchMedia('(pointer: fine)').matches);
+  }, []);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const onDragEnd = async (e: DragEndEvent) => {
     const taskId = String(e.active.id);
@@ -90,7 +97,7 @@ export function TaskBoard({ tasks: initial }: { tasks: BoardTask[] }) {
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext sensors={canDrag ? sensors : []} onDragEnd={onDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map((c) => <Column key={c} id={c} tasks={tasks.filter((t) => t.status === c)} />)}
       </div>
