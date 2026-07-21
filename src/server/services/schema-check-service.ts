@@ -27,6 +27,12 @@ const REQUIRED_TABLES = [
   'LandParcel', 'ApprovalSanction', 'LitigationMatter',
   // Batch 4 — cash flow and treasury
   'BankAccount', 'BankStatementLine', 'LoanFacility',
+  // Batch 5 — programme and progress
+  'ProgrammeActivity', 'ActivityDependency', 'DelayEntry',
+  // Batch 14 — quality and safety
+  'Inspection', 'NonConformance', 'SafetyRecord', 'WorkPermit',
+  // Batch 16 — capital, investors & RERA escrow
+  'Investor', 'EscrowMovement', 'LoanCovenant',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

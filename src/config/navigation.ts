@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -67,6 +67,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Ledger', href: '/ledger', icon: BookOpen, permission: 'finance.ledger.view' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view' },
       { label: 'Cash Flow & Treasury', href: '/treasury', icon: Banknote, permission: 'treasury.view' },
+      { label: 'Capital & Escrow', href: '/capital', icon: PiggyBank, permission: 'capital.view' },
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view' },
       { label: 'Money Owed To Us', href: '/receivables', icon: HandCoins, permission: 'billing.view' },
       { label: 'Payment Requests', href: '/payment-requests', icon: IndianRupee, permission: 'billing.view' },
@@ -75,6 +76,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Website Audit', href: '/marketing/audit', icon: Gauge, permission: 'marketing.view' },
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view' },
       { label: 'Architecture', href: '/architecture', icon: PencilRuler, permission: 'architecture.view' },
+      { label: 'Programme', href: '/programme', icon: GanttChartSquare, permission: 'programme.view' },
+      { label: 'Quality & Safety', href: '/quality', icon: ClipboardCheck, permission: 'quality.view' },
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view' },
       { label: 'Forecast', href: '/forecast', icon: TrendingUp, permission: 'report.view' },
       { label: 'Map', href: '/map', icon: MapPin, permission: 'lead.view' },
@@ -86,6 +89,7 @@ export const NAVIGATION: NavGroup[] = [
     label: 'Administration',
     items: [
       { label: 'Admin', href: '/admin', icon: Shield, permission: 'admin.user.view' },
+      { label: 'Data Quality', href: '/data-quality', icon: Sparkles, permission: 'data.view' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view' },
       { label: 'Settings', href: '/settings', icon: Settings },
     ],

@@ -1,6 +1,49 @@
 # Ameya Heights CRM — complete handover
 
-**Written 21 July 2026. Build v14.3 (batches 1, 2, 13 and 4 of 31 complete).**
+**Written 21 July 2026. Build v14.7 (batches 1, 2, 13, 4, 24, 5, 14 and 16 of 31 complete).**
+
+> **v14.7 adds Batch 16 — capital, investors & RERA escrow.** A `/capital` screen:
+> the capital stack (equity/debt/buyer-advance with cost), an investor register
+> (commitment → drawdown → distribution, units allotted), **RERA escrow control**
+> that ring-fences 70% of buyer receipts and refuses a withdrawal beyond the
+> certified-progress entitlement (enforced in the action, not left to memory),
+> and loan-covenant monitoring with a near-breach warning. Pure engine in
+> `src/lib/capital/escrow.ts`. Migration: `MIGRATION_v14.7_all.sql` (5 tables).
+> The distribution waterfall and investor portal (items 113–114) are deferred
+> until an investor actually asks, as the plan advises.
+
+> **v14.6 adds Batch 14 — quality & safety.** A `/quality` screen: inspections
+> with **hold points** (an activity cannot be certified complete past a failed or
+> unpassed hold point — the gate that makes batch 5's progress numbers honest),
+> a non-conformance register (raised → assigned → rectified → verified → closed),
+> a safety register (incidents, near-misses, toolbox talks, with days-since-last-
+> incident), and time-bound permits to work. Pure engine in
+> `src/lib/quality/holdpoints.ts` (gating, safety roll-up, permit expiry).
+> Migration: `MIGRATION_v14.6_all.sql` (5 tables), or the repair button. Warranties
+> and the O&M/as-built pack (items 96–97) are deferred to a later pass.
+
+> **v14.5 adds Batch 5 — construction programme & progress.** A `/programme`
+> screen with a real schedule: a **critical-path engine** (`src/lib/programme/
+> schedule.ts`, pure — forward/backward pass, float, cycle detection) that marks
+> the activities where a lost day is lost off the whole project; a Gantt view;
+> measured, dated progress; **earned value** (SPI/CPI, the honest "are we on
+> track"); a bill of quantities; and a delay register. Migration:
+> `MIGRATION_v14.5_all.sql` (5 tables), or the repair button. The CPM engine was
+> stress-tested against chains, parallel float, lag, diamonds, disconnected
+> nodes and cycles.
+
+> **v14.4 adds Batch 24 — the data platform (read-only slice).** A `/data-quality`
+> screen: completeness-and-consistency scoring of leads, vendors and buyers
+> (worst records first, as a worklist), likely-duplicate detection across those
+> records, and a full data dictionary documenting every field. Pure engines in
+> `src/lib/dataquality/` (`score.ts`, `dedupe.ts`); dictionary in
+> `src/config/data-dictionary.ts`. **This batch changes no tables — there is no
+> migration to run for v14.4.** The destructive parts of batch 24 (a merge that
+> reassigns foreign keys, import staging/rollback, a separate reporting store)
+> are deliberately deferred: they are write paths that need their own care, and
+> the historical-data import still waits on the real data Sahil is entering. A
+> review found and fixed a scoring flaw (a malformed required field used to score
+> *higher* than a blank one); it now scores lower, as intended.
 
 > **v14.3 session note (21 July 2026).** Two more batches were built to the full
 > quality bar — every one of the four checks green, and the entire init SQL
@@ -58,16 +101,16 @@ Not a product, not being commercialised — a system the company runs on.
 
 | Metric | Count |
 |---|---|
-| Database tables | 132 |
-| Screens (app pages) | 92 |
-| Server services | 41 |
-| Server action files | 67 |
-| React components | 150 |
-| Test files / tests | 17 / 195 |
+| Database tables | 147 |
+| Screens (app pages) | 96 |
+| Server services | 45 |
+| Server action files | 71 |
+| React components | 154 |
+| Test files / tests | 22 / 239 |
 | Verifier checks | 18 |
 | Type errors | 0 |
 
-_(The page count reported by `verify.py` — 92 — counts route-group-stripped
+_(The page count reported by `verify.py` — 94 — counts route-group-stripped
 paths and differs slightly from a raw `page.tsx` count; both moved up together.)_
 
 ---
@@ -102,7 +145,7 @@ and money.
 ```
 scripts/verify.py          18 structural checks. Run before every delivery.
 npx tsc --noEmit           Must be 0. Type errors FAIL the build (see below).
-npx vitest run             195 tests, all must pass.
+npx vitest run             215 tests, all must pass.
 npx prisma validate        Schema must be valid.
 ```
 
@@ -506,11 +549,14 @@ Batches 1 and 2 are done. The build order (rebuilt each time the list grew):
 
 | Order | Batch | Status |
 |---|---|---|
-| 1 | 24 — Data platform and migration | ⏳ *Highest value in the entire plan; next up* |
+| 1 | **24 — Data platform** (read-only slice: quality, dedupe, dictionary) | ✅ **Done (v14.4)**; merge/import-rollback/reporting-store + historical import still to do |
 | 2 | **13 — Land, title, approvals** | ✅ **Done (v14.2)** |
 | 3 | **1 — Ledger** | ✅ **Done** |
 | 4 | **2 — Budgets** | ✅ **Done** |
 | 5 | **4 — Cash flow** (bank statement import + reconciliation) | ✅ **Done (v14.3)** |
+| 6 | **5 — Programme** (critical path, EV, delays) | ✅ **Done (v14.5)** |
+| 7 | **14 — Quality & safety** (hold points, NCR, permits) | ✅ **Done (v14.6)** |
+| 8 | **16 — Capital & escrow** (RERA escrow, investors, covenants) | ✅ **Done (v14.7)** |
 | 6 | 5 — Programme and progress | ⏳ |
 | 7 | 14 — Quality and safety | ⏳ |
 | 8 | 16 — Capital, investors, RERA escrow | ⏳ |

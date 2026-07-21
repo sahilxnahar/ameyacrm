@@ -95,6 +95,21 @@ export const PERMISSIONS = {
   'treasury.view': 'View bank position, reconciliation, cash forecast & loans',
   'treasury.manage': 'Manage bank accounts, import statements, reconcile & record loans',
 
+  // Data quality & dictionary (batch 24)
+  'data.view': 'View data-quality scores, duplicate candidates & the data dictionary',
+
+  // Programme & progress (batch 5)
+  'programme.view': 'View the construction programme, progress, earned value & delays',
+  'programme.manage': 'Manage activities, dependencies, progress, BOQ & the delay register',
+
+  // Quality & safety (batch 14)
+  'quality.view': 'View inspections, hold points, non-conformances, safety & permits',
+  'quality.manage': 'Manage inspections, NCRs, safety records & work permits',
+
+  // Capital, investors & escrow (batch 16)
+  'capital.view': 'View the capital stack, investors, RERA escrow & loan covenants',
+  'capital.manage': 'Manage investors, capital stack, escrow movements & covenants',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
