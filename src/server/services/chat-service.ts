@@ -10,7 +10,8 @@ export interface ConversationSummary {
   lastAt: Date | null;
   unread: number;
 }
-export interface ChatMessageRow { id: string; senderId: string | null; senderName: string; body: string; createdAt: Date; mine: boolean }
+export interface ChatAttachmentRow { id: string; url: string; name: string; mimeType: string | null }
+export interface ChatMessageRow { id: string; senderId: string | null; senderName: string; body: string; createdAt: Date; mine: boolean; attachments: ChatAttachmentRow[] }
 
 /** Everyone you can message — active users with a username, minus yourself. */
 export async function userDirectory(excludeUserId: string): Promise<DirectoryUser[]> {
@@ -73,7 +74,7 @@ export async function isMember(conversationId: string, userId: string): Promise<
 
 /** The messages of a conversation (membership must already be checked). */
 export async function getMessages(conversationId: string, userId: string): Promise<ChatMessageRow[]> {
-  const messages = await prisma.chatMessage.findMany({ where: { conversationId }, orderBy: { createdAt: 'asc' }, take: 500 });
+  const messages = await prisma.chatMessage.findMany({ where: { conversationId }, orderBy: { createdAt: 'asc' }, take: 500, include: { attachments: true } });
   const senderIds = [...new Set(messages.map((m) => m.senderId).filter((x): x is string => Boolean(x)))];
   const names = senderIds.length
     ? new Map((await prisma.user.findMany({ where: { id: { in: senderIds } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]))
@@ -85,5 +86,6 @@ export async function getMessages(conversationId: string, userId: string): Promi
     body: m.body,
     createdAt: m.createdAt,
     mine: m.senderId === userId,
+    attachments: m.attachments.map((a) => ({ id: a.id, url: a.url, name: a.name, mimeType: a.mimeType })),
   }));
 }

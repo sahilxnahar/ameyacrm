@@ -1,7 +1,9 @@
 'use client';
 import * as React from 'react';
-import { SlidersHorizontal, Type, Rows3, Palette } from 'lucide-react';
+import { SlidersHorizontal, Type, Rows3, Palette, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useT } from '@/components/i18n/language-provider';
+import { LANGS } from '@/lib/i18n';
 
 /**
  * Personal display controls: text size (an accessibility need — some people
@@ -36,6 +38,7 @@ export function DisplaySettings() {
   const [scale, setScale] = React.useState<Scale>('m');
   const [density, setDensity] = React.useState<'comfortable' | 'compact'>('comfortable');
   const [accent, setAccent] = React.useState<Accent>('brass');
+  const { lang, setLang } = useT();
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -98,6 +101,17 @@ export function DisplaySettings() {
                 style={{ backgroundColor: a.swatch }} />
             ))}
           </div>
+
+          <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><Languages className="h-3.5 w-3.5" /> Language</p>
+          <div className="grid grid-cols-2 gap-1">
+            {LANGS.map((l) => (
+              <button key={l.code} onClick={() => setLang(l.code)}
+                className={cn('rounded-md border px-2 py-1.5 text-sm', lang === l.code ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">Menus and common labels translate; full coverage is rolling out.</p>
         </div>
       )}
     </div>

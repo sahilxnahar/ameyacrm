@@ -2,7 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, Pencil } from 'lucide-react';
+import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, Pencil, Paperclip, FileText } from 'lucide-react';
+import { upload } from '@vercel/blob/client';
 import { sendMessage, startDirectConversation, fetchMessages, setMyUsername, markConversationRead } from '@/server/actions/chat';
 import type { ConversationSummary, DirectoryUser, ChatMessageRow } from '@/server/services/chat-service';
 import { segmentMessage } from '@/lib/chat/mentions';
@@ -44,8 +45,11 @@ export function ChatView({
   const [picker, setPicker] = React.useState(false);
   const [dirQuery, setDirQuery] = React.useState('');
   const [editingName, setEditingName] = React.useState(false);
+  const [files, setFiles] = React.useState<{ url: string; name: string; mimeType: string; preview?: string }[]>([]);
+  const [uploading, setUploading] = React.useState(false);
   const endRef = React.useRef<HTMLDivElement>(null);
   const taRef = React.useRef<HTMLTextAreaElement>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => setMessages(activeMessages), [activeMessages, activeId]);
   React.useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -62,14 +66,29 @@ export function ChatView({
 
   const open = (id: string) => router.push(`/chat?c=${id}`);
 
+  // Upload files (a screenshot of a forwarded email, a PDF, anything) to blob so
+  // they can ride along with a message.
+  const uploadFiles = async (list: File[]) => {
+    const ok: typeof files = [];
+    setUploading(true);
+    for (const f of list.slice(0, 5)) {
+      try {
+        const blob = await upload(f.name, f, { access: 'public', handleUploadUrl: '/api/upload' });
+        ok.push({ url: blob.url, name: f.name, mimeType: f.type || 'application/octet-stream', preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined });
+      } catch { toast.error(`Could not attach ${f.name}`); }
+    }
+    setUploading(false);
+    if (ok.length) setFiles((prev) => [...prev, ...ok]);
+  };
+
   const send = () => {
     const text = input.trim();
-    if (!text || !activeId || pending) return;
-    setInput('');
-    // optimistic
-    setMessages((prev) => [...prev, { id: `tmp-${prev.length}`, senderId: me.id, senderName: me.name, body: text, createdAt: new Date(), mine: true }]);
+    if ((!text && files.length === 0) || !activeId || pending || uploading) return;
+    const sending = files;
+    setInput(''); setFiles([]);
+    setMessages((prev) => [...prev, { id: `tmp-${prev.length}`, senderId: me.id, senderName: me.name, body: text, createdAt: new Date(), mine: true, attachments: sending.map((f, i) => ({ id: `t${i}`, url: f.url, name: f.name, mimeType: f.mimeType })) }]);
     start(async () => {
-      const r = await sendMessage(activeId, text);
+      const r = await sendMessage(activeId, text, sending.map((f) => ({ url: f.url, name: f.name, mimeType: f.mimeType })));
       if ('error' in r) { toast.error(r.error); return; }
       const fresh = await fetchMessages(activeId);
       if ('ok' in fresh && fresh.ok) setMessages(fresh.messages);
@@ -144,8 +163,16 @@ export function ChatView({
               {messages.map((m) => (
                 <div key={m.id} className={cn('flex flex-col', m.mine ? 'items-end' : 'items-start')}>
                   {!m.mine && <span className="mb-0.5 text-[11px] text-muted-foreground">{m.senderName}</span>}
-                  <div className={cn('max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm', m.mine ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
-                    <MessageBody body={m.body} meHandle={me.username} />
+                  <div className={cn('max-w-[80%] space-y-2 rounded-2xl px-3 py-2 text-sm', m.mine ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
+                    {m.body && <div className="whitespace-pre-wrap"><MessageBody body={m.body} meHandle={me.username} /></div>}
+                    {m.attachments.map((a) => (
+                      a.mimeType?.startsWith('image/') ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <a key={a.id} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name} className="max-h-56 rounded-lg" /></a>
+                      ) : (
+                        <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className={cn('flex items-center gap-1.5 rounded-md px-2 py-1 text-xs underline', m.mine ? 'bg-primary-foreground/15' : 'bg-background')}><FileText className="h-3.5 w-3.5" /> {a.name}</a>
+                      )
+                    ))}
                   </div>
                   <span className="mt-0.5 text-[10px] text-muted-foreground">{formatDateTime(m.createdAt)}</span>
                 </div>
@@ -162,17 +189,33 @@ export function ChatView({
                   ))}
                 </div>
               )}
+              {files.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {files.map((f, i) => (
+                    <span key={i} className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
+                      {f.preview ? <img src={f.preview} alt="" className="h-5 w-5 rounded object-cover" /> : <FileText className="h-3.5 w-3.5" />}
+                      <span className="max-w-[8rem] truncate">{f.name}</span>
+                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-end gap-2">
+                <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { void uploadFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+                <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Attach a file or a screenshot of an email" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-secondary disabled:opacity-50">
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                </button>
                 <textarea
                   ref={taRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onPaste={(e) => { const f = Array.from(e.clipboardData?.files ?? []); if (f.length) { e.preventDefault(); void uploadFiles(f); } }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && suggestions.length === 0) { e.preventDefault(); send(); } }}
                   rows={1}
-                  placeholder="Message… use @username to tag someone"
+                  placeholder="Message, @tag someone, or paste a screenshot of an email"
                   className="focus-ring max-h-32 min-h-[40px] flex-1 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
-                <button onClick={send} disabled={pending || !input.trim()} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground disabled:opacity-50">
+                <button onClick={send} disabled={pending || uploading || (!input.trim() && files.length === 0)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground disabled:opacity-50">
                   {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </div>

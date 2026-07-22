@@ -46,15 +46,25 @@ export async function startDirectConversation(otherUserId: string): Promise<Chat
   } catch (e) { return toActionError(e); }
 }
 
-/** Send a message. Anyone @mentioned is notified. Membership is checked server-side. */
-export async function sendMessage(conversationId: string, body: string): Promise<ChatResult> {
+export interface OutgoingAttachment { url: string; name: string; mimeType?: string | null }
+
+/** Send a message, optionally with attachments (e.g. a screenshot of a forwarded
+ * email). Anyone @mentioned is notified. Membership is checked server-side. */
+export async function sendMessage(conversationId: string, body: string, attachments: OutgoingAttachment[] = []): Promise<ChatResult> {
   try {
     const ctx = await getActionContext();
     const me = ctx.user.id;
-    const text = z.string().trim().min(1, 'Type a message.').max(4000).parse(body);
+    const text = (body ?? '').trim().slice(0, 4000);
+    const files = (attachments ?? []).filter((a) => a && typeof a.url === 'string' && a.url.startsWith('http')).slice(0, 10);
+    if (!text && files.length === 0) return { error: 'Type a message or attach something.' };
     if (!(await isMember(conversationId, me))) return { error: 'You are not part of this conversation.' };
 
-    await prisma.chatMessage.create({ data: { conversationId, senderId: me, body: text } });
+    await prisma.chatMessage.create({
+      data: {
+        conversationId, senderId: me, body: text,
+        attachments: files.length ? { create: files.map((f) => ({ url: f.url, name: f.name.slice(0, 200), mimeType: f.mimeType ?? null })) } : undefined,
+      },
+    });
     await prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
     await prisma.conversationMember.update({ where: { conversationId_userId: { conversationId, userId: me } }, data: { lastReadAt: new Date() } });
 

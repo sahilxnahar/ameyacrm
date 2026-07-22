@@ -54,7 +54,7 @@ const REQUIRED_TABLES = [
   // 31-plan #27 — site telemetry
   'TelemetryDevice', 'SiteReading',
   // Internal chat / direct messaging
-  'Conversation', 'ConversationMember', 'ChatMessage',
+  'Conversation', 'ConversationMember', 'ChatMessage', 'ChatAttachment',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

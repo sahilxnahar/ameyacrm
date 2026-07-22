@@ -10,6 +10,7 @@ import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/
 import { applyOrder, type NavPrefs } from '@/lib/nav/prefs';
 import { RecentNav } from './recent-nav';
 import { BrandLogo } from './brand-logo';
+import { useT } from '@/components/i18n/language-provider';
 import { cn } from '@/lib/utils/cn';
 
 export function Sidebar({
@@ -27,6 +28,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useT();
   const [pending, start] = React.useTransition();
   const [customising, setCustomising] = React.useState(false);
   const [prefs, setPrefs] = React.useState<NavPrefs>(navPrefs);
@@ -185,7 +187,7 @@ export function Sidebar({
             return (
               <div key={group.label}>
                 {customising ? (
-                  <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{group.label}</p>
+                  <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{t(group.label)}</p>
                 ) : (
                   <button
                     type="button"
@@ -195,7 +197,7 @@ export function Sidebar({
                     title={isCollapsed ? 'Open this section' : 'Fold this section'}
                   >
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
-                    {group.label}
+                    {t(group.label)}
                   </button>
                 )}
                 {showItems && <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>}
@@ -222,7 +224,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3" /> Customise this menu
             </button>
           )}
-          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v14.26</p>
+          <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">Ameya Heights CRM · v14.27</p>
         </div>
       </aside>
     </>

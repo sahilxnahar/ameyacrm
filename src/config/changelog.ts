@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.26';
+export const APP_VERSION = 'v14.27';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.27',
+    date: '22 Jul 2026',
+    highlights: [
+      'Forward an email into a chat: paste a screenshot or attach a file to any message.',
+      'Language: switch to हिन्दी from the Display menu — menus and common labels translate (more rolling out).',
+    ],
+  },
   {
     version: 'v14.26',
     date: '22 Jul 2026',

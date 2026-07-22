@@ -1,5 +1,25 @@
 # Ameya Heights CRM — complete handover
 
+**Written 22 July 2026. Build v14.27 — Email-into-chat + localisation foundation (31).**
+
+> **v14.27 adds Gmail-forwarding into chat and the localisation foundation.** Run
+> **`MIGRATION_v14.27_all.sql`** once (adds 1 table, `ChatAttachment`).
+> - **Forward / screenshot an email into a thread.** A chat message can now carry **attachments**:
+>   click the paperclip or **paste a screenshot** (of a forwarded email, a bill, anything) straight
+>   into the composer — it uploads to blob storage and appears inline (images as thumbnails, other
+>   files as links). The forwarded email's *text* is just pasted as the message. Conversations stay
+>   membership-checked, so it's internal and secure. (A true inbound-email address that people forward
+>   to is a separate integration — this covers the paste/screenshot path fully.)
+> - **31 Localisation — the foundation.** A dictionary + pure `t()` with **English→Hindi** and an
+>   **English fallback** (so nothing is ever blank), a `LanguageProvider` / `useT()` hook, and a
+>   **Language switcher** in the Display menu (English · हिन्दी). The menu section headers and common
+>   labels translate today; **full coverage rolls out incrementally** (this is the honest scope — the
+>   infrastructure is in, strings get translated over time). 5 new tests.
+>
+> **Still queued:** the broader app-type / de-jargon polish, a true inbound-email forwarding address,
+> and **30 (custom objects)**. Hard check: 0 type errors, 309 tests, all verifier checks (121 pages,
+> 182 models), migration idempotent + drift-clean, build exit 0.
+
 **Written 22 July 2026. Build v14.26 — Internal chat / direct messaging.**
 
 > **v14.26 adds internal Messages** — chat people by name or @username instead of internal email.
