@@ -90,6 +90,55 @@ export function toWaNumber(raw: string): string | null {
 
 export type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
+/** True when a self-hosted OpenWA gateway is configured — it takes precedence. */
+export function openWaConfigured(): boolean {
+  return Boolean(env.OPENWA_API_URL && env.OPENWA_API_URL.trim());
+}
+
+/**
+ * Send a plain WhatsApp message through a self-hosted OpenWA gateway.
+ *
+ * OpenWA drives a real WhatsApp Web session, so — unlike Meta's Cloud API — it
+ * sends free-form text to anyone with no template approval and no 24-hour
+ * window. The trade-off is that it's unofficial: your gateway (and the phone/
+ * Docker behind it) must be online, and it must be reachable on a public URL.
+ */
+export async function sendViaOpenWA(to: string, message: string): Promise<SendResult> {
+  const root = env.OPENWA_API_URL?.trim().replace(/\/+$/, '');
+  if (!root) return { ok: false, error: 'OpenWA is not configured (OPENWA_API_URL).' };
+  const session = env.OPENWA_SESSION_ID?.trim();
+  if (!session) return { ok: false, error: 'OpenWA session id is not set (OPENWA_SESSION_ID).' };
+  const number = toWaNumber(to);
+  if (!number) return { ok: false, error: `"${to}" is not a phone number WhatsApp will accept.` };
+
+  // The server's REST base is "/api"; add it if the URL doesn't already include it.
+  const apiBase = /\/api$/.test(root) ? root : `${root}/api`;
+  const url = `${apiBase}/sessions/${encodeURIComponent(session)}/messages/send-text`;
+
+  try {
+    const res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(env.OPENWA_API_KEY ? { 'X-API-Key': env.OPENWA_API_KEY } : {}),
+      },
+      body: JSON.stringify({ chatId: `${number}@c.us`, text: message.slice(0, 4000) }),
+    });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, error: `OpenWA refused it (HTTP ${res.status}): ${text.slice(0, 200)}` };
+    // Treat any 2xx without an explicit failure as sent, and pull out an id if present.
+    let id = 'sent';
+    try {
+      const j = JSON.parse(text) as { success?: boolean; error?: string; data?: { id?: string; messageId?: string }; id?: string };
+      if (j.success === false || j.error) return { ok: false, error: `OpenWA error: ${j.error ?? 'send failed'}` };
+      id = j.data?.id ?? j.data?.messageId ?? j.id ?? 'sent';
+    } catch { /* non-JSON 2xx — still a success */ }
+    return { ok: true, id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'OpenWA send failed.' };
+  }
+}
+
 /**
  * Send an approved template.
  *
@@ -102,6 +151,22 @@ export async function sendWhatsappTemplate(
   templateKey: string,
   values: Record<string, string>,
 ): Promise<SendResult> {
+  const tpl = await prisma.messageTemplate.findUnique({ where: { key: templateKey } });
+  if (!tpl) return { ok: false, error: `No template named "${templateKey}".` };
+  if (tpl.channel !== 'WHATSAPP') return { ok: false, error: `"${templateKey}" is not a WhatsApp template.` };
+
+  // OpenWA path: render the template to plain text and send it directly — no
+  // Meta template approval needed. This is the whole point of a self-hosted
+  // gateway, so it takes precedence when configured.
+  if (openWaConfigured()) {
+    const body = render(tpl.body, values);
+    const r = await sendViaOpenWA(to, body);
+    if (r.ok) {
+      await prisma.messageTemplate.update({ where: { id: tpl.id }, data: { usageCount: { increment: 1 }, lastUsedAt: new Date() } }).catch(() => undefined);
+    }
+    return r;
+  }
+
   const conn = await getWhatsappConnection();
   if (!conn) return { ok: false, error: 'WhatsApp is not connected. Admin > Connected Accounts.' };
   if (!conn.phoneNumberId) return { ok: false, error: 'No sending number is registered on the WhatsApp account yet.' };
@@ -109,9 +174,6 @@ export async function sendWhatsappTemplate(
   const number = toWaNumber(to);
   if (!number) return { ok: false, error: `"${to}" is not a phone number WhatsApp will accept.` };
 
-  const tpl = await prisma.messageTemplate.findUnique({ where: { key: templateKey } });
-  if (!tpl) return { ok: false, error: `No template named "${templateKey}".` };
-  if (tpl.channel !== 'WHATSAPP') return { ok: false, error: `"${templateKey}" is not a WhatsApp template.` };
   if (tpl.metaStatus !== 'APPROVED') {
     return { ok: false, error: `"${tpl.name}" is ${tpl.metaStatus === 'PENDING' ? 'still being reviewed by Meta' : 'not approved by Meta yet'}, so it cannot be sent.` };
   }
@@ -156,6 +218,9 @@ export async function sendWhatsappTemplate(
  * templates instead.
  */
 export async function sendWhatsappText(to: string, message: string): Promise<SendResult> {
+  // A self-hosted OpenWA gateway sends free-form text with no 24-hour limit.
+  if (openWaConfigured()) return sendViaOpenWA(to, message);
+
   const conn = await getWhatsappConnection();
   if (!conn) return { ok: false, error: 'WhatsApp is not connected.' };
   if (!conn.phoneNumberId) return { ok: false, error: 'No sending number registered.' };

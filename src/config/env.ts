@@ -89,6 +89,18 @@ const schema = z.object({
   // WhatsApp sending gateway (optional). Any endpoint accepting { to, message }.
   WHATSAPP_WEBHOOK_URL: z.string().optional(),
   WHATSAPP_WEBHOOK_TOKEN: z.string().optional(),
+
+  // OpenWA — a self-hosted, unofficial WhatsApp gateway. Set the PUBLIC base url
+  // of your OpenWA server, its X-API-Key, and the session id, and the CRM sends
+  // plain WhatsApp messages through it (no Meta approval, no template review, no
+  // 24-hour window). The URL must be reachable from the internet — localhost
+  // won't work, since the CRM runs in the cloud.
+  //   OPENWA_API_URL     e.g. https://your-openwa.example.com   (root; /api is added)
+  //   OPENWA_API_KEY     your owa_... key (sent as the X-API-Key header)
+  //   OPENWA_SESSION_ID  the session id shown in your OpenWA dashboard
+  OPENWA_API_URL: z.string().optional(),
+  OPENWA_API_KEY: z.string().optional(),
+  OPENWA_SESSION_ID: z.string().optional(),
   AWS_SES_REGION: z.string().optional(),
 
   // Web Push (VAPID). Generate with: npx web-push generate-vapid-keys

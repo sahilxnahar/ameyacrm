@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.38';
+export const APP_VERSION = 'v14.41';
 
 export interface Release {
   version: string;
@@ -13,6 +13,29 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.41',
+    date: '22 Jul 2026',
+    highlights: [
+      'WhatsApp via your own OpenWA gateway, now matched to the self-hosted OpenWA API (X-API-Key + session id): the CRM sends real WhatsApp reminders and broadcasts with no Meta approval and no 24-hour window.',
+      'Set three values (URL, key, session id) and every WhatsApp reminder/broadcast routes through it; System Health shows WhatsApp connected.',
+    ],
+  },
+  {
+    version: 'v14.40',
+    date: '22 Jul 2026',
+    highlights: [
+      'WhatsApp via your own OpenWA gateway: point the CRM at a self-hosted OpenWA and it sends real WhatsApp reminders and broadcasts — no Meta approval, no template review, no 24-hour window.',
+      'Automatic: once OpenWA is set, every WhatsApp reminder and broadcast goes through it, and System Health shows WhatsApp as connected.',
+    ],
+  },
+  {
+    version: 'v14.39',
+    date: '22 Jul 2026',
+    highlights: [
+      'A path bar at the top of every screen (like Google Drive) shows exactly where you are — and each part is clickable, so going back a step is one tap.',
+    ],
+  },
   {
     version: 'v14.38',
     date: '22 Jul 2026',

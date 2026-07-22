@@ -96,9 +96,13 @@ export async function getIntegrations(): Promise<Integration[]> {
     {
       key: 'whatsapp', name: 'WhatsApp sending', category: 'Communications',
       what: 'Automatic WhatsApp reminders and broadcasts.',
-      health: process.env.WHATSAPP_WEBHOOK_URL ? 'live' : 'off',
-      detail: process.env.WHATSAPP_WEBHOOK_URL ? 'Gateway configured' : 'Manual only — one-tap links work today',
-      needs: 'Paid — Meta Cloud API, AiSensy, WATI or Twilio',
+      health: (process.env.OPENWA_API_URL || process.env.WHATSAPP_WEBHOOK_URL || process.env.WHATSAPP_TOKEN) ? 'live' : 'off',
+      detail: process.env.OPENWA_API_URL
+        ? 'OpenWA gateway connected — free-form messages, no Meta approval'
+        : process.env.WHATSAPP_WEBHOOK_URL || process.env.WHATSAPP_TOKEN
+          ? 'Gateway configured'
+          : 'Manual only — one-tap links work today',
+      needs: 'Self-hosted OpenWA (free), or Meta Cloud API / AiSensy / WATI / Twilio',
       setupHref: '/admin/mobile-app',
     },
     {

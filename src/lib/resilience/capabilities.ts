@@ -12,7 +12,7 @@ function has(...vars: string[]): boolean {
 
 const CHECKS: Record<Capability, () => boolean> = {
   ai: () => has('GEMINI_API_KEY', 'GOOGLE_AI_API_KEY', 'OPENAI_API_KEY'),
-  whatsapp: () => has('WHATSAPP_TOKEN', 'META_WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID'),
+  whatsapp: () => has('WHATSAPP_TOKEN', 'META_WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID', 'OPENWA_API_URL'),
   email: () => has('RESEND_API_KEY', 'SMTP_HOST', 'SMTP_URL', 'EMAIL_SERVER'),
   sms: () => has('TWILIO_AUTH_TOKEN', 'SMS_API_KEY'),
   maps: () => has('NEXT_PUBLIC_MAPS_KEY', 'GOOGLE_MAPS_API_KEY', 'MAPBOX_TOKEN'),
