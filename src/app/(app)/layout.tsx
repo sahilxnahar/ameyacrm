@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell
-      user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl, role: user.role, designation: user.designation }}
+      user={{ id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl, role: user.role, designation: user.designation }}
       permissionKeys={[...permissions.keys]}
       isSuperAdmin={permissions.isSuperAdmin}
       navPrefs={navPrefs}

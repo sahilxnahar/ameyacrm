@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { tallyUnread } from '@/lib/chat/unread';
 
 export interface DirectoryUser { id: string; name: string; username: string; avatarUrl: string | null }
 export interface ConversationSummary {
@@ -57,13 +58,7 @@ export async function listConversations(userId: string): Promise<ConversationSum
       })
     : [];
   const lastReadByConv = new Map(memberships.map((m) => [m.conversation.id, m.lastReadAt] as const));
-  const unreadByConv = new Map<string, number>();
-  for (const msg of unreadCandidates) {
-    const lastRead = lastReadByConv.get(msg.conversationId);
-    if (!lastRead || msg.createdAt > lastRead) {
-      unreadByConv.set(msg.conversationId, (unreadByConv.get(msg.conversationId) ?? 0) + 1);
-    }
-  }
+  const unreadByConv = tallyUnread(unreadCandidates, lastReadByConv);
 
   const rows = memberships.map((m) => {
     const c = m.conversation;

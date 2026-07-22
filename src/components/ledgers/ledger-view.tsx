@@ -33,7 +33,15 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
     start(async () => {
       const r = await importVendorPayments(csv);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success(`Imported ${r.created} payments · ${r.vendorsCreated} new payees${r.skipped ? ` · ${r.skipped} skipped` : ''}`);
+      const parts = [`Imported ${r.created ?? 0} payment${r.created === 1 ? '' : 's'}`];
+      if (r.vendorsCreated) parts.push(`${r.vendorsCreated} new payee${r.vendorsCreated === 1 ? '' : 's'}`);
+      if (r.skipped) parts.push(`${r.skipped} skipped`);
+      if (r.failed) parts.push(`${r.failed} failed`);
+      toast.success(parts.join(' · '));
+      // Show the first few row-level problems so bad rows aren't silently dropped.
+      if (r.issues && r.issues.length > 0) {
+        toast(`Some rows need a look:\n${r.issues.slice(0, 4).join('\n')}${r.issues.length > 4 ? `\n…and ${r.issues.length - 4} more` : ''}`, { duration: 10000 });
+      }
       setImportOpen(false); setText(''); router.refresh();
     });
   };

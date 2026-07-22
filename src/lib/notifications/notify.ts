@@ -3,6 +3,7 @@ import webpush from 'web-push';
 import type { NotificationType } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { publish } from '@/lib/realtime/realtime';
 
 let vapidReady = false;
 function ensureVapid(): boolean {
@@ -52,6 +53,9 @@ async function channelEnabled(userId: string, type: NotificationType, channel: '
 export async function notify({ userId, type, title, body, link }: NotifyInput): Promise<void> {
   if (await channelEnabled(userId, type, 'IN_APP')) {
     await prisma.notification.create({ data: { userId, type, title, body, link } });
+    // Nudge this person's open tabs to refresh the bell instantly (no-op unless
+    // a realtime service is configured).
+    void publish(`user:${userId}`, 'notification', {});
   }
 
   if (ensureVapid() && (await channelEnabled(userId, type, 'PUSH')) && !(await quietSuppressed(userId))) {

@@ -4,7 +4,7 @@
  * it" — instead of calling something that isn't there and erroring. One honest
  * source of truth for "is this switched on".
  */
-export type Capability = 'ai' | 'whatsapp' | 'email' | 'sms' | 'maps' | 'storage';
+export type Capability = 'ai' | 'whatsapp' | 'email' | 'sms' | 'maps' | 'storage' | 'realtime';
 
 function has(...vars: string[]): boolean {
   return vars.some((v) => Boolean(process.env[v] && process.env[v]!.trim()));
@@ -17,6 +17,7 @@ const CHECKS: Record<Capability, () => boolean> = {
   sms: () => has('TWILIO_AUTH_TOKEN', 'SMS_API_KEY'),
   maps: () => has('NEXT_PUBLIC_MAPS_KEY', 'GOOGLE_MAPS_API_KEY', 'MAPBOX_TOKEN'),
   storage: () => has('BLOB_READ_WRITE_TOKEN', 'S3_BUCKET', 'AWS_S3_BUCKET'),
+  realtime: () => has('REALTIME_PUBLISH_URL', 'NEXT_PUBLIC_REALTIME_SSE_URL'),
 };
 
 /** True when the named capability has the configuration it needs to work. */

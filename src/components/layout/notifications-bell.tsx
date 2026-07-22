@@ -8,10 +8,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { timeAgo } from '@/lib/utils/format';
 import { useVisiblePoll } from '@/lib/hooks/use-visible-poll';
+import { useRealtimeChannel, realtimeEnabled } from '@/lib/realtime/use-realtime';
 
 interface Notif { id: string; title: string; body: string | null; link: string | null; readAt: string | null; createdAt: string }
 
-export function NotificationsBell() {
+export function NotificationsBell({ userId }: { userId?: string }) {
   const [items, setItems] = React.useState<Notif[]>([]);
   const [unread, setUnread] = React.useState(0);
 
@@ -25,9 +26,13 @@ export function NotificationsBell() {
     } catch { /* offline — ignore */ }
   }, []);
 
-  // Poll once a minute while the tab is open; pause entirely when it's in the
-  // background, and refresh the instant it comes back to the foreground.
-  useVisiblePoll(load, 60_000);
+  // Instant refresh when a realtime service is configured — the moment a new
+  // notification is created for this person. Inert (no connection) when it isn't.
+  useRealtimeChannel(userId ? `user:${userId}` : null, load);
+
+  // Poll as the safety net while the tab is open; pause entirely in the
+  // background, and refresh on return. Slows to a heartbeat when realtime is on.
+  useVisiblePoll(load, realtimeEnabled() ? 120_000 : 60_000);
 
   const markAll = async () => {
     await fetch('/api/notifications', { method: 'POST' }).catch(() => {});
@@ -80,6 +85,10 @@ export function NotificationsBell() {
             ))}
           </ul>
         )}
+        <DropdownMenuSeparator />
+        <Link href="/notifications" className="block px-3 py-2 text-center text-xs font-medium text-primary hover:underline">
+          See all in the inbox
+        </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   );

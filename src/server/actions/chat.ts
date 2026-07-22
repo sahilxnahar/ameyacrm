@@ -8,6 +8,7 @@ import { notifyUsers } from '@/lib/notify/notify';
 import { fireAndForget } from '@/lib/resilience/safely';
 import { isMember, getMessages, type ChatMessageRow } from '@/server/services/chat-service';
 import { checkRate } from '@/lib/security/rate-limit';
+import { publish } from '@/lib/realtime/realtime';
 
 export type ChatResult = { ok: true; conversationId?: string } | { error: string };
 
@@ -72,6 +73,10 @@ export async function sendMessage(conversationId: string, body: string, attachme
     });
     await prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
     await prisma.conversationMember.update({ where: { conversationId_userId: { conversationId, userId: me } }, data: { lastReadAt: new Date() } });
+
+    // Nudge anyone watching this conversation to refresh instantly (if a realtime
+    // service is configured; otherwise this is a no-op and polling covers it).
+    fireAndForget(() => publish(`conversation:${conversationId}`, 'message', {}), 'realtime chat message');
 
     // Notify anyone tagged with @username who is a real, active person.
     const handles = new Set(parseMentions(text));

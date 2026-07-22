@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.33';
+export const APP_VERSION = 'v14.38';
 
 export interface Release {
   version: string;
@@ -13,6 +13,47 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.38',
+    date: '22 Jul 2026',
+    highlights: [
+      'Real-time ready: chat and notifications can now update instantly the moment something happens, instead of checking every few seconds.',
+      'It switches on by adding one small realtime service (see REALTIME-SETUP.md) — until then everything works exactly as before, just via gentle polling.',
+      'Fully safe: polling stays as a backup, and a realtime hiccup can never slow down or break sending a message or raising an alert.',
+    ],
+  },
+  {
+    version: 'v14.37',
+    date: '22 Jul 2026',
+    highlights: [
+      'Under the hood: added automated tests that lock in the recent fixes — unread-message counting, robust payment-import rules, and background-tab polling — so a future change can’t quietly break them.',
+    ],
+  },
+  {
+    version: 'v14.36',
+    date: '22 Jul 2026',
+    highlights: [
+      'Safer payment imports: a bad row is now reported with the row number and reason instead of being silently dropped, and one broken row no longer stops the whole import — the good rows still go in.',
+      'Clearer import summary: imported, new payees, skipped and failed are counted separately.',
+      'Cleaner merges: merging two payees now moves every reference (payments, bills, POs, emails, ledger entries) and removes the duplicate in a single all-or-nothing step, so a merge can never leave things half-done.',
+    ],
+  },
+  {
+    version: 'v14.35',
+    date: '22 Jul 2026',
+    highlights: [
+      'New Notifications inbox (My Day → Notifications): every alert in one place — filter by All/Unread or by type, click to jump to the exact record, and mark read.',
+      'One signal you can trust: chat @mentions and cross-department alerts now respect your notification preferences and quiet-hours, and can push — just like every other alert.',
+      'The bell now has a “See all in the inbox” link.',
+    ],
+  },
+  {
+    version: 'v14.34',
+    date: '22 Jul 2026',
+    highlights: [
+      'Smoother screens: Messages, Vendor Ledgers, Site Telemetry, Work Requests and the Assistant now show a tidy loading placeholder while they open — matching the rest of the app instead of flashing blank.',
+    ],
+  },
   {
     version: 'v14.33',
     date: '22 Jul 2026',

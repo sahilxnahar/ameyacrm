@@ -1,6 +1,7 @@
 import 'server-only';
 import type { NotificationType } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
+import { notifyMany } from '@/lib/notifications/notify';
 
 export interface NotifyInput {
   type?: NotificationType;
@@ -10,23 +11,25 @@ export interface NotifyInput {
 }
 
 /**
- * Create in-app notifications for a set of people. Guarded: notifying is a
- * *helper* to the action that triggered it, so if it fails it must never break
- * that action — it logs and moves on. De-duplicates the recipient list and
- * skips an empty one.
+ * Create notifications for a set of people. Guarded: notifying is a *helper* to
+ * the action that triggered it, so if it fails it must never break that action —
+ * it logs and moves on. De-duplicates the recipient list and skips an empty one.
+ *
+ * H4 — one inbox: this now delegates to the single notification pipeline
+ * (`lib/notifications/notify`) so notifications from the event backbone and chat
+ * mentions honour each person's per-type preferences, quiet-hours / DND, and
+ * fan out to web-push — exactly like every other notification in the app. Before
+ * this, these two callers wrote straight to the table and bypassed all of that.
  */
 export async function notifyUsers(userIds: Array<string | null | undefined>, input: NotifyInput): Promise<void> {
   try {
     const ids = [...new Set(userIds.filter((x): x is string => Boolean(x)))];
     if (ids.length === 0) return;
-    await prisma.notification.createMany({
-      data: ids.map((userId) => ({
-        userId,
-        type: input.type ?? 'SYSTEM',
-        title: input.title,
-        body: input.body ?? null,
-        link: input.link ?? null,
-      })),
+    await notifyMany(ids, {
+      type: input.type ?? 'SYSTEM',
+      title: input.title,
+      body: input.body ?? undefined,
+      link: input.link ?? undefined,
     });
   } catch (err) {
     // eslint-disable-next-line no-console

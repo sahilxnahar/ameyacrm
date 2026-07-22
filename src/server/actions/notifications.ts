@@ -20,6 +20,26 @@ export async function saveNotificationPreference(type: NotificationType, channel
   } catch (err) { return toActionError(err); }
 }
 
+/** Mark one of your notifications read. Scoped to you, so you can't touch anyone else's. */
+export async function markNotificationRead(id: string): Promise<NotifResult> {
+  try {
+    const ctx = await getActionContext();
+    await prisma.notification.updateMany({ where: { id, userId: ctx.user.id, readAt: null }, data: { readAt: new Date() } });
+    revalidatePath('/notifications');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Mark all of your unread notifications read. */
+export async function markAllNotificationsRead(): Promise<NotifResult> {
+  try {
+    const ctx = await getActionContext();
+    await prisma.notification.updateMany({ where: { userId: ctx.user.id, readAt: null }, data: { readAt: new Date() } });
+    revalidatePath('/notifications');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}
+
 const settingsSchema = z.object({
   dnd: z.boolean().default(false),
   quietStart: z.string().optional(), // "HH:MM"

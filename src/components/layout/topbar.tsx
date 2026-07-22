@@ -40,7 +40,7 @@ export function Topbar({
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
-        <NotificationsBell />
+        <NotificationsBell userId={user.id} />
         <div className="hidden sm:block"><DisplaySettings /></div>
         <ThemeToggle />
         <UserMenu user={user} />

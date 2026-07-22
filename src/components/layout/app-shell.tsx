@@ -13,6 +13,7 @@ import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
 
 export interface ShellUser {
+  id: string;
   name: string;
   email: string;
   avatarUrl: string | null;

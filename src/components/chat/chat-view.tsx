@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
 import { timeAgo, formatDateTime } from '@/lib/utils/format';
 import { useVisiblePoll } from '@/lib/hooks/use-visible-poll';
+import { useRealtimeChannel, realtimeEnabled } from '@/lib/realtime/use-realtime';
 
 function MessageBody({ body, meHandle }: { body: string; meHandle: string | null }) {
   return (
@@ -58,13 +59,19 @@ export function ChatView({
   // Mark the open conversation read once when it changes.
   React.useEffect(() => { if (activeId) void markConversationRead(activeId); }, [activeId]);
 
-  // Poll for new messages while a conversation is open — but only while the tab
-  // is visible, so a chat left open in a background tab stops polling until you
-  // come back to it (no socket server needed).
-  useVisiblePoll(() => {
+  const refreshMessages = React.useCallback(() => {
     if (!activeId) return;
     void fetchMessages(activeId).then((r) => { if ('ok' in r && r.ok) setMessages(r.messages); });
-  }, 6000, [activeId]);
+  }, [activeId]);
+
+  // Instant updates when a realtime service is configured: refresh the moment
+  // someone posts to this conversation. Inert (no connection) when it isn't.
+  useRealtimeChannel(activeId ? `conversation:${activeId}` : null, refreshMessages);
+
+  // Poll as the safety net — only while the tab is visible. When realtime is on,
+  // this drops to a slow heartbeat (30s) instead of every 6s, since realtime
+  // carries the immediacy.
+  useVisiblePoll(refreshMessages, realtimeEnabled() ? 30000 : 6000, [activeId]);
 
   const open = (id: string) => router.push(`/chat?c=${id}`);
 

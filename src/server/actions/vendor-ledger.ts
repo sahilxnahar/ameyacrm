@@ -4,29 +4,25 @@ import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 import { parseTable } from '@/lib/import/parse';
+import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
 
-export type LedgerActionResult = { ok: true; created?: number; vendorsCreated?: number; skipped?: number } | { error: string };
+export type LedgerActionResult =
+  | {
+      ok: true;
+      created?: number;
+      vendorsCreated?: number;
+      skipped?: number;
+      duplicates?: number;
+      blanks?: number;
+      badAmounts?: number;
+      failed?: number;
+      /** Up to a handful of plain-language notes on rows that need a look. */
+      issues?: string[];
+    }
+  | { error: string };
 
 const opt = (s: string) => { const t = (s ?? '').trim(); return t === '' ? null : t; };
 
-function parseAmount(s: string): number {
-  const n = Number((s ?? '').replace(/[₹,\s]/g, '').replace(/[^0-9.\-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
-}
-function toDate(s: string): Date | null {
-  const v = (s ?? '').trim();
-  if (!v) return null;
-  // dd/mm/yyyy or dd-mm-yyyy → ISO
-  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(v);
-  if (m) {
-    const [, d, mo, y] = m;
-    const yr = y!.length === 2 ? `20${y}` : y;
-    const dt = new Date(Number(yr), Number(mo) - 1, Number(d));
-    return isNaN(dt.getTime()) ? null : dt;
-  }
-  const dt = new Date(v);
-  return isNaN(dt.getTime()) ? null : dt;
-}
 function findCol(headers: string[], ...names: string[]): number {
   const lower = headers.map((h) => h.toLowerCase().trim());
   for (const n of names) { const i = lower.findIndex((h) => h.includes(n)); if (i >= 0) return i; }
@@ -60,38 +56,53 @@ export async function importVendorPayments(text: string): Promise<LedgerActionRe
     let seq = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
     if (!Number.isFinite(seq)) seq = 1000;
 
-    let created = 0, vendorsCreated = 0, skipped = 0;
+    let created = 0, vendorsCreated = 0, duplicates = 0, blanks = 0, badAmounts = 0, failed = 0;
+    const issues: string[] = [];
+    const note = (msg: string) => { if (issues.length < 8) issues.push(msg); };
+
+    // The header is row 1, so the first data row a person sees is row 2.
+    let rowNum = 1;
     for (const row of table.rows) {
-      const name = (row[H.name] ?? '').trim();
-      const amount = parseAmount(row[H.amount] ?? '');
-      if (!name || !(amount > 0)) { skipped++; continue; }
-      const key = name.toLowerCase();
-      let vendorId = vByName.get(key);
-      if (!vendorId) {
-        const v = await prisma.vendor.create({ data: { name }, select: { id: true } });
-        vendorId = v.id; vByName.set(key, vendorId); vendorsCreated++;
+      rowNum++;
+      // Each row is isolated: a single bad row is reported and skipped, never
+      // aborting the whole import and losing the good rows before it.
+      try {
+        const cls = classifyPaymentRow(row[H.name] ?? '', row[H.amount] ?? '');
+        if (cls.kind === 'blank') { blanks++; continue; }
+        if (cls.kind === 'badAmount') { badAmounts++; note(`Row ${rowNum}: “${cls.name}” has no valid amount${cls.raw ? ` (“${cls.raw}”)` : ''} — skipped.`); continue; }
+        const { name, amount } = cls;
+
+        const key = name.toLowerCase();
+        let vendorId = vByName.get(key);
+        if (!vendorId) {
+          const v = await prisma.vendor.create({ data: { name }, select: { id: true } });
+          vendorId = v.id; vByName.set(key, vendorId); vendorsCreated++;
+        }
+        const reference = H.ref >= 0 ? opt(row[H.ref] ?? '') : null;
+        const date = H.date >= 0 ? parsePaymentDate(row[H.date] ?? '') : null;
+        const dupe = await prisma.voucher.findFirst({ where: { vendorId, amount, ...(reference ? { reference } : {}) }, select: { id: true } });
+        if (dupe) { duplicates++; continue; }
+        const mode = H.mode >= 0 ? paymentMode(row[H.mode] ?? '') : 'BANK_TRANSFER';
+        seq++;
+        await prisma.voucher.create({
+          data: {
+            number: `CP-${seq}`, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+            voucherDate: date ?? new Date(), partyName: name, vendorId, amount, mode,
+            reference, utr: H.utr >= 0 ? opt(row[H.utr] ?? '') : null,
+            narration: H.note >= 0 ? (row[H.note] ?? '').trim().slice(0, 500) || null : null,
+            createdById: ctx.user.id,
+          },
+        });
+        created++;
+      } catch (e) {
+        failed++;
+        note(`Row ${rowNum}: could not import (${e instanceof Error ? e.message : 'unexpected error'}).`);
       }
-      const reference = H.ref >= 0 ? opt(row[H.ref] ?? '') : null;
-      const date = H.date >= 0 ? toDate(row[H.date] ?? '') : null;
-      const dupe = await prisma.voucher.findFirst({ where: { vendorId, amount, ...(reference ? { reference } : {}) }, select: { id: true } });
-      if (dupe) { skipped++; continue; }
-      const modeRaw = H.mode >= 0 ? (row[H.mode] ?? '').toLowerCase() : '';
-      const mode = /cash/.test(modeRaw) ? 'CASH' : /upi/.test(modeRaw) ? 'UPI' : /cheque/.test(modeRaw) ? 'CHEQUE' : 'BANK_TRANSFER';
-      seq++;
-      await prisma.voucher.create({
-        data: {
-          number: `CP-${seq}`, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
-          voucherDate: date ?? new Date(), partyName: name, vendorId, amount, mode,
-          reference, utr: H.utr >= 0 ? opt(row[H.utr] ?? '') : null,
-          narration: H.note >= 0 ? (row[H.note] ?? '').trim().slice(0, 500) || null : null,
-          createdById: ctx.user.id,
-        },
-      });
-      created++;
     }
-    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: 'import', summary: `Imported ${created} payments (${vendorsCreated} new payees)` });
+    const skipped = duplicates + blanks + badAmounts;
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: 'import', summary: `Imported ${created} payments (${vendorsCreated} new payees, ${skipped} skipped, ${failed} failed)` });
     revalidatePath('/ledgers');
-    return { ok: true, created, vendorsCreated, skipped };
+    return { ok: true, created, vendorsCreated, skipped, duplicates, blanks, badAmounts, failed, issues };
   } catch (e) { return toActionError(e); }
 }
 
@@ -103,18 +114,29 @@ export async function mergeVendors(keepId: string, mergeId: string): Promise<Led
     const [keep, merge] = await Promise.all([prisma.vendor.findUnique({ where: { id: keepId } }), prisma.vendor.findUnique({ where: { id: mergeId } })]);
     if (!keep || !merge) return { error: 'One of those payees no longer exists.' };
 
-    await prisma.voucher.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId, partyName: keep.name } });
-    await prisma.voucher.updateMany({ where: { vendorId: null, partyName: { equals: merge.name, mode: 'insensitive' } }, data: { vendorId: keepId, partyName: keep.name } });
-    await prisma.vendorBill.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
-    await prisma.purchaseOrder.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
+    // All-or-nothing: every reference is repointed and the duplicate removed in
+    // one transaction, so a failure part-way can never leave the ledger half-merged.
+    await prisma.$transaction(async (tx) => {
+      // Payments, by id and by loose name match.
+      await tx.voucher.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId, partyName: keep.name } });
+      await tx.voucher.updateMany({ where: { vendorId: null, partyName: { equals: merge.name, mode: 'insensitive' } }, data: { vendorId: keepId, partyName: keep.name } });
+      // Every other place a vendor is referenced — so nothing is left pointing at
+      // the payee we're about to delete.
+      await tx.vendorBill.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
+      await tx.purchaseOrder.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
+      await tx.mailThreadMessage.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
+      await tx.account.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
+      await tx.journalLine.updateMany({ where: { vendorId: mergeId }, data: { vendorId: keepId } });
 
-    const patch: Record<string, string> = {};
-    if (!keep.bankAccountNumber && merge.bankAccountNumber) { patch.bankAccountNumber = merge.bankAccountNumber; if (merge.bankIfsc) patch.bankIfsc = merge.bankIfsc; if (merge.bankName) patch.bankName = merge.bankName; if (merge.bankAccountName) patch.bankAccountName = merge.bankAccountName; }
-    if (!keep.upiId && merge.upiId) patch.upiId = merge.upiId;
-    if (Object.keys(patch).length) await prisma.vendor.update({ where: { id: keepId }, data: patch });
+      // Carry over bank/UPI details only where the one we're keeping has none.
+      const patch: Record<string, string> = {};
+      if (!keep.bankAccountNumber && merge.bankAccountNumber) { patch.bankAccountNumber = merge.bankAccountNumber; if (merge.bankIfsc) patch.bankIfsc = merge.bankIfsc; if (merge.bankName) patch.bankName = merge.bankName; if (merge.bankAccountName) patch.bankAccountName = merge.bankAccountName; }
+      if (!keep.upiId && merge.upiId) patch.upiId = merge.upiId;
+      if (Object.keys(patch).length) await tx.vendor.update({ where: { id: keepId }, data: patch });
 
-    await prisma.vendorPortalAccess.deleteMany({ where: { vendorId: mergeId } });
-    await prisma.vendor.delete({ where: { id: mergeId } });
+      await tx.vendorPortalAccess.deleteMany({ where: { vendorId: mergeId } });
+      await tx.vendor.delete({ where: { id: mergeId } });
+    });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: keepId, summary: `Merged "${merge.name}" into "${keep.name}"` });
     revalidatePath('/ledgers');
     return { ok: true };

@@ -16,7 +16,7 @@ export interface HealthReport {
 }
 
 const CAP_LABEL: Record<Capability, string> = {
-  ai: 'AI provider', whatsapp: 'WhatsApp', email: 'Email', sms: 'SMS', maps: 'Maps', storage: 'File storage',
+  ai: 'AI provider', whatsapp: 'WhatsApp', email: 'Email', sms: 'SMS', maps: 'Maps', storage: 'File storage', realtime: 'Real-time',
 };
 
 const worst = (list: Subsystem[]): Health =>
