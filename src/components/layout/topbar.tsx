@@ -1,5 +1,6 @@
 'use client';
-import { Menu, Search } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, Search, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './theme-toggle';
 import { DisplaySettings } from './display-settings';
@@ -39,6 +40,14 @@ export function Topbar({
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <Link
+          href="/features"
+          title="Explore features — everything the CRM can do"
+          aria-label="Explore features"
+          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </Link>
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell userId={user.id} />
         <div className="hidden sm:block"><DisplaySettings /></div>

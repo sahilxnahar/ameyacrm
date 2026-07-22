@@ -167,6 +167,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Decision Log', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view', blurb: 'SOPs, decisions and lessons learned.' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view', blurb: 'A record of who did what.' },
       { label: 'Glossary', href: '/glossary', icon: HelpCircle, blurb: 'Plain-English meaning of any term used here.' },
+      { label: 'Explore Features', href: '/features', icon: LayoutGrid, blurb: 'A map of everything the CRM can do — search and jump to any screen.' },
       { label: 'Settings', href: '/settings', icon: Settings, blurb: 'Your profile, security and preferences.' },
     ],
   },

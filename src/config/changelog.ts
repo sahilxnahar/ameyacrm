@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.41';
+export const APP_VERSION = 'v14.42';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.42',
+    date: '22 Jul 2026',
+    highlights: [
+      'New “Explore Features” button in the top bar (and in the menu): a searchable map of everything the CRM can do, grouped by area, with a plain-language line on each — click any card to jump straight there.',
+      'It only shows what you’re allowed to open, so it doubles as a guide for new team members.',
+    ],
+  },
   {
     version: 'v14.41',
     date: '22 Jul 2026',
