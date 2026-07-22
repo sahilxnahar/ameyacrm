@@ -95,6 +95,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view', blurb: 'Money that has gone out, with UTRs.' },
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
       { label: 'Ledger', href: '/ledger', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'The full accounting record.' },
+      { label: 'Vendor Ledgers', href: '/ledgers', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'One ledger per payee — import payments, save bank details, merge duplicates.' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view', blurb: 'What you planned to spend, versus actual.' },
       { label: 'Cash Flow & Treasury', href: '/treasury', icon: Banknote, permission: 'treasury.view', blurb: 'Bank position, reconciliation and forecast.' },
       { label: 'Capital & Escrow', href: '/capital', icon: PiggyBank, permission: 'capital.view', blurb: 'Investors and the RERA escrow account.' },

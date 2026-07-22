@@ -1,5 +1,27 @@
 # Ameya Heights CRM — complete handover
 
+**Written 22 July 2026. Build v14.28 — Vendor Ledgers (payment import + merge) + install-prompt fix. No SQL.**
+
+> **v14.28 delivers the payments-import → per-payee ledger, and fixes the install pop-up.**
+> - **Install pop-up fix.** The "Install Ameya Heights CRM" prompt now has a **"Not now"** button,
+>   and once dismissed it **never shows again** (and shows at most once per session before that).
+> - **Vendor Ledgers** (`/ledgers`, under Money). **Import your payments** — export your Google
+>   Sheet / Excel as **CSV** and upload or paste it (a downloadable template is provided). Columns
+>   are matched flexibly (Payee, Amount, Date, Mode, Reference, UTR, Note). Each payee becomes a
+>   **ledger automatically**: total paid, every payment, and their **bank details** (editable and
+>   saved so a payment never needs them retyped).
+> - **Merge duplicates.** If "Arun" and "Octos Infra" are the same person, open one and **merge**
+>   the other in — all their payments move across (and bank details are carried over), leaving one
+>   consolidated ledger. Reuses the existing Vendor + Voucher tables, so **no schema change**.
+>
+> **On Excel specifically:** the app has no binary-`.xlsx` parser, so the path is **CSV** (Google
+> Sheets → File → Download → CSV is one click). A native `.xlsx` upload would need an added library.
+>
+> **Still queued from your message:** a plain-language **features guide** page (#3), **Meta Business
+> Suite** connect (external OAuth — the connect UI can be built; real login needs a Meta app), and
+> **30 custom objects**. Hard check: 0 type errors, 309 tests, all verifier checks (122 pages, 182
+> models), production build exit 0. No migration.
+
 **Written 22 July 2026. Build v14.27 — Email-into-chat + localisation foundation (31).**
 
 > **v14.27 adds Gmail-forwarding into chat and the localisation foundation.** Run
