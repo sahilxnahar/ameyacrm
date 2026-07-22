@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.44';
+export const APP_VERSION = 'v14.48';
 
 export interface Release {
   version: string;
@@ -13,6 +13,35 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.48',
+    date: '22 Jul 2026',
+    highlights: [
+      'New “Easy view” — one tap in the Display menu sets the roomy spacing and larger text together, for anyone who finds the app busy. “Standard” puts it back.',
+    ],
+  },
+  {
+    version: 'v14.47',
+    date: '22 Jul 2026',
+    highlights: [
+      'Quick-jump search (⌘K / the top-bar search) now shows your Recent screens the moment it opens — so hopping back to what you were just doing is one tap, before you type anything.',
+    ],
+  },
+  {
+    version: 'v14.46',
+    date: '22 Jul 2026',
+    highlights: [
+      'A softer, more alive feel: pages now ease in gently as you move around, instead of snapping — subtle, and automatically off if you prefer reduced motion.',
+    ],
+  },
+  {
+    version: 'v14.45',
+    date: '22 Jul 2026',
+    highlights: [
+      'A real spacing switch (Display menu → Spacing): Compact, Comfortable, or Spacious — and it now changes the whole app, not just tables. Pick Spacious for a roomy, open feel; Compact to fit more on screen.',
+      'Combine it with Large text for the most open, easy-to-read layout — remembered on your device.',
+    ],
+  },
   {
     version: 'v14.44',
     date: '22 Jul 2026',

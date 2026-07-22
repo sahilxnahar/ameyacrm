@@ -23,6 +23,18 @@ export function CommandPalette({
   const [q, setQ] = React.useState('');
   const [hits, setHits] = React.useState<CommandHit[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [recent, setRecent] = React.useState<string[]>([]);
+
+  // Read the screens you were just on when the palette opens, so an empty search
+  // offers instant "jump back" (U11).
+  React.useEffect(() => {
+    if (!open) return;
+    try {
+      const raw = window.localStorage.getItem('amh:recent-nav');
+      const arr = raw ? (JSON.parse(raw) as unknown) : [];
+      setRecent(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : []);
+    } catch { setRecent([]); }
+  }, [open]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -65,6 +77,16 @@ export function CommandPalette({
     items: group.items.filter((i) => canSee(i.permission) && (!term || i.label.toLowerCase().includes(term) || (i.blurb ?? '').toLowerCase().includes(term) || aliasHit(i.href))),
   })).filter((g) => g.items.length > 0);
 
+  const byHref = React.useMemo(() => {
+    const m = new Map<string, (typeof NAVIGATION)[number]['items'][number]>();
+    for (const g of NAVIGATION) for (const it of g.items) m.set(it.href, it);
+    return m;
+  }, []);
+  const recentItems = recent
+    .map((h) => byHref.get(h))
+    .filter((i): i is NonNullable<typeof i> => Boolean(i) && canSee(i?.permission))
+    .slice(0, 5);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0">
@@ -84,6 +106,28 @@ export function CommandPalette({
           <Command.List className="max-h-96 overflow-y-auto p-2">
             {navGroups.length === 0 && hits.length === 0 && !loading && (
               <Command.Empty className="p-4 text-sm text-muted-foreground">No results.</Command.Empty>
+            )}
+
+            {!term && recentItems.length > 0 && (
+              <Command.Group
+                heading="Recent"
+                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+              >
+                {recentItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Command.Item
+                      key={`recent-${item.href}`}
+                      value={`recent:${item.href}`}
+                      onSelect={() => go(item.href)}
+                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-foreground aria-selected:bg-secondary"
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{item.label}</span>
+                    </Command.Item>
+                  );
+                })}
+              </Command.Group>
             )}
 
             {navGroups.map((group) => (

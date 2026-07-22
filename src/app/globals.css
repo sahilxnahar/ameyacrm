@@ -387,11 +387,40 @@ html[data-text-scale='s'] { font-size: 14px; }
 html[data-text-scale='m'] { font-size: 16px; }
 html[data-text-scale='l'] { font-size: 18px; }
 
-/* Compact density trims the vertical breathing room in tables and list rows,
-   so power users can see more at once without touching the code of each screen. */
+/* ────────────────────────────────────────────────────────────────────────────
+   Density (U1). Comfortable is the baseline — no overrides. Compact tightens the
+   whole app so power users see more; Spacious opens it up for an easy, roomy
+   feel. It works app-wide by adjusting the two things every screen shares: the
+   page padding and the rhythm between stacked sections (Tailwind's space-y-*),
+   plus table and list rows. One switch, every screen responds — no per-screen code.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* — Compact — */
+html[data-density='compact'] main#main { padding-top: 0.85rem; padding-bottom: 0.85rem; }
 html[data-density='compact'] table td,
 html[data-density='compact'] table th { padding-top: 0.3rem; padding-bottom: 0.3rem; }
 html[data-density='compact'] .divide-y > * { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+html[data-density='compact'] .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
+html[data-density='compact'] .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+html[data-density='compact'] .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
+html[data-density='compact'] .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.7rem; }
+html[data-density='compact'] .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+
+/* — Spacious — */
+html[data-density='spacious'] main#main { padding-top: 1.9rem; padding-bottom: 2.25rem; }
+@media (min-width: 1024px) {
+  html[data-density='spacious'] main#main { padding-left: 2.5rem; padding-right: 2.5rem; }
+}
+html[data-density='spacious'] .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 3rem; }
+html[data-density='spacious'] .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 2.35rem; }
+html[data-density='spacious'] .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.95rem; }
+html[data-density='spacious'] .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.6rem; }
+html[data-density='spacious'] .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.2rem; }
+html[data-density='spacious'] table td,
+html[data-density='spacious'] table th { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+html[data-density='spacious'] .divide-y > * { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+/* U2 — a touch more open by default: comfortable line-height for body copy. */
+html[data-density='spacious'] { line-height: 1.65; }
 
 /* ────────────────────────────────────────────────────────────────────────────
    V1 — premium elevation. A softer, layered card shadow than a flat one, so

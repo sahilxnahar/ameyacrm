@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { Breadcrumbs } from './breadcrumbs';
@@ -42,6 +43,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const pathname = usePathname();
 
   // Swipe from the left edge to open the menu, and swipe left to close it.
   // Only from the very edge, so it never fights a horizontally scrolling table.
@@ -122,7 +124,11 @@ export function AppShell({
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
         <Breadcrumbs />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
+        {/* Keyed by route so page content eases in on every navigation — makes
+            the app feel responsive and alive (U14). Honours reduced-motion. */}
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">
+          <div key={pathname} className="animate-in">{children}</div>
+        </main>
       </div>
       <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />

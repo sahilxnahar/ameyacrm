@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { SlidersHorizontal, Type, Rows3, Palette, Languages } from 'lucide-react';
+import { SlidersHorizontal, Type, Rows3, Palette, Languages, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useT } from '@/components/i18n/language-provider';
 import { LANGS } from '@/lib/i18n';
@@ -26,7 +26,7 @@ const ACCENTS = [
 ] as const;
 type Accent = (typeof ACCENTS)[number]['key'];
 
-function apply(scale: Scale, density: 'comfortable' | 'compact', accent: Accent) {
+function apply(scale: Scale, density: 'comfortable' | 'compact' | 'spacious', accent: Accent) {
   const el = document.documentElement;
   el.setAttribute('data-text-scale', scale);
   el.setAttribute('data-density', density);
@@ -36,17 +36,17 @@ function apply(scale: Scale, density: 'comfortable' | 'compact', accent: Accent)
 export function DisplaySettings() {
   const [open, setOpen] = React.useState(false);
   const [scale, setScale] = React.useState<Scale>('m');
-  const [density, setDensity] = React.useState<'comfortable' | 'compact'>('comfortable');
+  const [density, setDensity] = React.useState<'comfortable' | 'compact' | 'spacious'>('comfortable');
   const [accent, setAccent] = React.useState<Accent>('brass');
   const { lang, setLang } = useT();
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const s = (localStorage.getItem(TEXT_KEY) as Scale) || 'm';
-    const d = (localStorage.getItem(DENSITY_KEY) as 'comfortable' | 'compact') || 'comfortable';
+    const d = (localStorage.getItem(DENSITY_KEY) as 'comfortable' | 'compact' | 'spacious') || 'comfortable';
     const a = (localStorage.getItem(ACCENT_KEY) as Accent) || 'brass';
     setScale(SCALES.includes(s) ? s : 'm');
-    setDensity(d === 'compact' ? 'compact' : 'comfortable');
+    setDensity(d === 'compact' || d === 'spacious' ? d : 'comfortable');
     setAccent(ACCENTS.some((x) => x.key === a) ? a : 'brass');
   }, []);
 
@@ -58,8 +58,17 @@ export function DisplaySettings() {
   }, [open]);
 
   const setTextScale = (s: Scale) => { setScale(s); localStorage.setItem(TEXT_KEY, s); apply(s, density, accent); };
-  const setDens = (d: 'comfortable' | 'compact') => { setDensity(d); localStorage.setItem(DENSITY_KEY, d); apply(scale, d, accent); };
+  const setDens = (d: 'comfortable' | 'compact' | 'spacious') => { setDensity(d); localStorage.setItem(DENSITY_KEY, d); apply(scale, d, accent); };
   const setAccentColor = (a: Accent) => { setAccent(a); localStorage.setItem(ACCENT_KEY, a); apply(scale, density, a); };
+
+  // One-tap presets (U8). Sets text size and spacing together in a single apply,
+  // so both take effect at once. "Easy view" is the roomy, large-text layout for
+  // anyone who finds the app busy; "Standard" is the balanced default.
+  const applyPreset = (s: Scale, d: 'comfortable' | 'compact' | 'spacious') => {
+    setScale(s); setDensity(d);
+    localStorage.setItem(TEXT_KEY, s); localStorage.setItem(DENSITY_KEY, d);
+    apply(s, d, accent);
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -74,6 +83,17 @@ export function DisplaySettings() {
       </button>
       {open && (
         <div className="absolute right-0 top-11 z-50 w-60 rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold"><Sparkles className="h-3.5 w-3.5" /> Quick view</p>
+          <div className="mb-3 grid grid-cols-2 gap-1">
+            <button onClick={() => applyPreset('l', 'spacious')}
+              className={cn('rounded-md border px-2 py-1.5 text-sm', scale === 'l' && density === 'spacious' ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
+              Easy view
+            </button>
+            <button onClick={() => applyPreset('m', 'comfortable')}
+              className={cn('rounded-md border px-2 py-1.5 text-sm', scale === 'm' && density === 'comfortable' ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
+              Standard
+            </button>
+          </div>
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold"><Type className="h-3.5 w-3.5" /> Text size</p>
           <div className="grid grid-cols-3 gap-1">
             {([['s', 'Small'], ['m', 'Default'], ['l', 'Large']] as const).map(([v, lbl]) => (
@@ -83,12 +103,13 @@ export function DisplaySettings() {
               </button>
             ))}
           </div>
-          <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><Rows3 className="h-3.5 w-3.5" /> Density</p>
-          <div className="grid grid-cols-2 gap-1">
-            {([['comfortable', 'Comfortable'], ['compact', 'Compact']] as const).map(([v, lbl]) => (
+          <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><Rows3 className="h-3.5 w-3.5" /> Spacing</p>
+          <div className="grid grid-cols-1 gap-1">
+            {([['compact', 'Compact', 'More on screen'], ['comfortable', 'Comfortable', 'The balance'], ['spacious', 'Spacious', 'Extra room & open feel']] as const).map(([v, lbl, desc]) => (
               <button key={v} onClick={() => setDens(v)}
-                className={cn('rounded-md border px-2 py-1.5 text-sm', density === v ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
-                {lbl}
+                className={cn('flex items-center justify-between rounded-md border px-2.5 py-1.5 text-left text-sm', density === v ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
+                <span>{lbl}</span>
+                <span className="text-[11px] font-normal text-muted-foreground">{desc}</span>
               </button>
             ))}
           </div>
