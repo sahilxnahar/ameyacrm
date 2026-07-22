@@ -53,6 +53,8 @@ const REQUIRED_TABLES = [
   'VendorPortalAccess',
   // 31-plan #27 — site telemetry
   'TelemetryDevice', 'SiteReading',
+  // Internal chat / direct messaging
+  'Conversation', 'ConversationMember', 'ChatMessage',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }

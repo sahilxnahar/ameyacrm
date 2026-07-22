@@ -1,5 +1,25 @@
 # Ameya Heights CRM — complete handover
 
+**Written 22 July 2026. Build v14.26 — Internal chat / direct messaging.**
+
+> **v14.26 adds internal Messages** — chat people by name or @username instead of internal email.
+> Run **`MIGRATION_v14.26_all.sql`** once (adds 3 tables: Conversation, ConversationMember, ChatMessage).
+> - **`/chat`** (Messages, under My Day): a conversation list, a message thread with full **history**,
+>   and a **"New message"** person-picker (search by name or @username). Access is checked
+>   server-side — you only see conversations you're a member of.
+> - **@mention tagging.** Type `@` and a picker suggests people (autocomplete); tagged people are
+>   **notified** through the existing notification bell (rides the notify layer from I3). Mentions
+>   render as chips, and your own handle is highlighted.
+> - **Usernames** already existed on every user; you can now **edit your own** (`@handle`) from the
+>   chat panel, and they're what people tag you by.
+> - Near-real-time without a socket server: the open conversation **polls** every 6s, and sending is
+>   optimistic. (True push needs an external realtime service — flagged earlier.) 5 new tests.
+>
+> **Still queued from your list:** Gmail forwarding into a thread (needs an inbound-email address /
+> integration), the app-type / de-jargon polish, and **30 (custom objects)** + **31 (localisation)** —
+> both still large net-new builds. Hard check: 0 type errors, 304 tests, all verifier checks (121
+> pages, 181 models), migration idempotent + drift-clean, build exit 0.
+
 **Written 21 July 2026. Build v14.25 — Site Telemetry (31-plan #27, software side).**
 
 > **v14.25 builds the software for Site Telemetry** — the last hardware-gated 31-plan item.
