@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Trash2, Loader2, Check, X } from 'lucide-react';
 import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder } from '@/server/actions/billing';
+import { VendorPortalLink } from './vendor-portal-link';
 import { Button } from '@/components/ui/button';
 import { AiBillImport } from './ai-bill-import';
 import { Input } from '@/components/ui/input';
@@ -115,9 +116,9 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
 
       <TabsContent value="vendors">
         <Card><Table>
-          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Email</TableHead><TableHead>Where you pay them</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Email</TableHead><TableHead>Where you pay them</TableHead><TableHead>Portal</TableHead></TableRow></TableHeader>
           <TableBody>
-            {vendors.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No vendors yet.</TableCell></TableRow>}
+            {vendors.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No vendors yet.</TableCell></TableRow>}
             {vendors.map((v) => (
               <TableRow key={v.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setEditingVendor(v); setOpen('vendor'); }}>
                 <TableCell className="font-medium">{v.name}</TableCell>
@@ -130,6 +131,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                       ? <span className="font-mono text-xs">{v.upiId}</span>
                       : <span className="text-xs text-amber-700 dark:text-amber-500">No bank details</span>}
                 </TableCell>
+                <TableCell><VendorPortalLink vendorId={v.id} /></TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -1,5 +1,26 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.24 — Vendor Portal (31-plan #26).**
+
+> **v14.24 delivers the Vendor Portal** — one of the pending 31-plan items. Run
+> **`MIGRATION_v14.24_all.sql`** once (adds 1 table, `VendorPortalAccess`).
+> - From **Billing → Vendors**, a **"Portal link"** button creates (and copies) a secure,
+>   read-only link per supplier — the same token-link pattern as the buyer portal, **no login**.
+>   Generating again **rotates** the link (revokes the old one). Gated on `billing.bill.manage`.
+> - The public page (`/vendor-portal/[token]`) shows the supplier their **payments received**
+>   (with UTRs), **bills** (with outstanding) and **purchase orders**, plus billed / paid /
+>   outstanding totals — read-only, not indexed by search engines.
+>
+> **On V4 / V7:** most of the image-rich work already existed — the sales pipeline is a full
+> drag-and-drop kanban (`@dnd-kit`), avatars, site-photo galleries, the upload dropzone and
+> image fields are all present; and V7's consistency was largely delivered by the shared-
+> component elevation in v14.22. So this version put the effort into genuine net-new value (the
+> vendor portal) rather than re-polishing what's built.
+>
+> Remaining 31-plan: 30 extensibility, 31 localisation (both large infra builds), and the
+> externally-gated 8/11 (APIs) and 27 (hardware). Hard check: 0 type errors, 293 tests, all
+> verifier checks (119 pages, 176 models), migration idempotent + drift-clean, build exit 0.
+
 **Written 21 July 2026. Build v14.23 — better uploads + V6 accent themes. No SQL.**
 
 > **v14.23 upgrades file upload and adds personal accent themes.**

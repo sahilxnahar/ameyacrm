@@ -4426,3 +4426,12 @@ model RecordLink {
   @@index([fromType, fromId])
   @@index([toType, toId])
 }
+
+model VendorPortalAccess {
+  id        String   @id @default(cuid())
+  vendorId  String   @unique
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}

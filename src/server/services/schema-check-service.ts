@@ -49,6 +49,8 @@ const REQUIRED_TABLES = [
   'WorkRequest', 'WorkRequestEvent', 'WorkRequestComment',
   // I4 — universal record linking
   'RecordLink',
+  // 31-plan #26 — vendor portal
+  'VendorPortalAccess',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }
