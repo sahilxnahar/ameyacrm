@@ -15,7 +15,9 @@ const CHECKS: Record<Capability, () => boolean> = {
   whatsapp: () => has('WHATSAPP_TOKEN', 'META_WHATSAPP_TOKEN', 'WHATSAPP_PHONE_ID', 'OPENWA_API_URL'),
   email: () => has('RESEND_API_KEY', 'SMTP_HOST', 'SMTP_URL', 'EMAIL_SERVER'),
   sms: () => has('TWILIO_AUTH_TOKEN', 'SMS_API_KEY'),
-  maps: () => has('NEXT_PUBLIC_MAPS_KEY', 'GOOGLE_MAPS_API_KEY', 'MAPBOX_TOKEN'),
+  // Maps use OpenStreetMap via MapLibre + Nominatim — no key, no billing, always
+  // available. (A key is only relevant if you ever switch to Google/Mapbox.)
+  maps: () => true,
   storage: () => has('BLOB_READ_WRITE_TOKEN', 'S3_BUCKET', 'AWS_S3_BUCKET'),
   realtime: () => has('REALTIME_PUBLISH_URL', 'NEXT_PUBLIC_REALTIME_SSE_URL'),
 };

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.48';
+export const APP_VERSION = 'v14.51';
 
 export interface Release {
   version: string;
@@ -13,6 +13,28 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.51',
+    date: '22 Jul 2026',
+    highlights: [
+      'Minimise Home sections: each segment on the dashboard (At a glance, Needs attention, Tasks & files) now has a heading you can click to fold it away — remembered per person, so everyone shapes their own Home.',
+    ],
+  },
+  {
+    version: 'v14.50',
+    date: '22 Jul 2026',
+    highlights: [
+      'The AI Assistant now lives right on your Home dashboard, docked on the right — draft, ask or summarise without leaving the page (it moves below the dashboard on smaller screens).',
+    ],
+  },
+  {
+    version: 'v14.49',
+    date: '22 Jul 2026',
+    highlights: [
+      'New “What’s New” page (Team & Admin): a searchable log of every feature and update we’ve ever shipped — type to find anything by name or by what it does.',
+      'System Health now shows Maps correctly as working — it uses OpenStreetMap and needs no key, so it was wrongly flagged as “not configured”.',
+    ],
+  },
   {
     version: 'v14.48',
     date: '22 Jul 2026',

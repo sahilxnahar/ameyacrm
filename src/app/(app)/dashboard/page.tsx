@@ -6,11 +6,14 @@ import {
 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
+import { activeProvider } from '@/lib/ai/provider';
+import { AssistantChat } from '@/components/assistant/assistant-chat';
 import { getDashboardData } from '@/server/services/dashboard-service';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { ActionCard } from '@/components/dashboard/action-card';
 import { QuickAddLead } from '@/components/dashboard/quick-add-lead';
+import { CollapsibleSection } from '@/components/dashboard/collapsible-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PriorityBadge } from '@/components/tasks/badges';
@@ -45,21 +48,25 @@ export default async function DashboardPage() {
   const collectionRate = totalDue > 0 ? Math.round((paid / totalDue) * 100) : 0;
   const winRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
   const overdueAmount = num(overdue._sum.amount);
+  const aiConfigured = activeProvider().kind !== 'none';
 
   return (
-    <div>
+    <div className="xl:flex xl:gap-6">
+      <div className="min-w-0 flex-1">
       <PageHeader title={`Good day, ${firstName}`} description="Here's what needs your attention today.">
         <Button asChild size="sm"><Link href="/tasks?new=1"><Plus className="h-4 w-4" /> New task</Link></Button>
       </PageHeader>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="New leads" value={newLeads7d} icon={Users2} hint="last 7 days" />
-        <StatCard label="Site visits" value={siteVisits7d} icon={CalendarCheck} hint="last 7 days" />
-        <StatCard label="Lead → win rate" value={`${winRate}%`} icon={TrendingUp} tone="success" hint={`${wonLeads} of ${totalLeads}`} />
-        <StatCard label="Collections" value={`${collectionRate}%`} icon={Percent} tone={collectionRate < 50 ? 'warning' : 'success'} hint={`${formatCurrency(paid)} received`} />
-        <StatCard label="Open work" value={data.stats.assignedOpen} icon={CheckSquare} hint={`${data.stats.dueTodayCount} due today`} />
-      </div>
+      <CollapsibleSection id="kpis" title="At a glance">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="New leads" value={newLeads7d} icon={Users2} hint="last 7 days" />
+          <StatCard label="Site visits" value={siteVisits7d} icon={CalendarCheck} hint="last 7 days" />
+          <StatCard label="Lead → win rate" value={`${winRate}%`} icon={TrendingUp} tone="success" hint={`${wonLeads} of ${totalLeads}`} />
+          <StatCard label="Collections" value={`${collectionRate}%`} icon={Percent} tone={collectionRate < 50 ? 'warning' : 'success'} hint={`${formatCurrency(paid)} received`} />
+          <StatCard label="Open work" value={data.stats.assignedOpen} icon={CheckSquare} hint={`${data.stats.dueTodayCount} due today`} />
+        </div>
+      </CollapsibleSection>
 
       {briefing && (
         <Card className="mt-6 border-primary/30 bg-primary/5 p-5">
@@ -75,7 +82,8 @@ export default async function DashboardPage() {
       )}
 
       {/* Action cards */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <CollapsibleSection id="attention" title="Needs attention">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ActionCard title="Hot leads" icon={Flame} tone="danger" value={hotLeads}
           caption="marked hot and still open — call them first"
           emptyCaption="No hot leads right now. Mark your best prospects hot."
@@ -103,9 +111,11 @@ export default async function DashboardPage() {
 
         <QuickAddLead />
       </div>
+      </CollapsibleSection>
 
       {/* Detail lists */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <CollapsibleSection id="tasks-files" title="Tasks & files">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-lg"><Clock className="mr-2 inline h-4 w-4" />Today&apos;s tasks</CardTitle>
@@ -145,6 +155,22 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      </CollapsibleSection>
+      </div>
+
+      {/* Right-side assistant on the home page (desktop). Stacks below on smaller
+          screens. (#1) */}
+      <aside className="mt-6 xl:mt-0 xl:w-[22rem] xl:shrink-0">
+        <div className="xl:sticky xl:top-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" /> Assistant
+            </p>
+            <Link href="/assistant" className="text-xs font-medium text-primary hover:underline">Open full</Link>
+          </div>
+          <AssistantChat configured={aiConfigured} />
+        </div>
+      </aside>
     </div>
   );
 }
