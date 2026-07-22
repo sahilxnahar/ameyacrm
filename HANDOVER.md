@@ -1,5 +1,33 @@
 # Ameya Heights CRM — complete handover
 
+**Written 21 July 2026. Build v14.25 — Site Telemetry (31-plan #27, software side).**
+
+> **v14.25 builds the software for Site Telemetry** — the last hardware-gated 31-plan item.
+> Run **`MIGRATION_v14.25_all.sql`** once (adds 2 tables: `TelemetryDevice`, `SiteReading`).
+> - **`/telemetry`** (under Build & Site): register a device (sensor / GPS tracker / meter /
+>   drone) and get a **secret device key** shown once. A live dashboard shows each device's
+>   **status** (online / idle / offline, from when it last reported), its **latest reading per
+>   metric**, and a feed of recent readings.
+> - **Ingestion endpoint `/api/telemetry`** (POST, authenticated by the device's key — no login):
+>   a real device sends `{ deviceKey, readings:[{ metric, value, unit?, lat?, lng? }] }` and it
+>   appears on the dashboard. This is the "ready for hardware" half — the moment devices exist,
+>   they point here.
+> - A **"Test reading"** button records a reading by hand, so the whole pipeline can be verified
+>   before any hardware is bought. New permissions `telemetry.view` / `.manage`; 6 new tests.
+>
+> **Status of the five you asked for (30, 31, 8, 11, 27):**
+> - **27 Site telemetry** — software **done** this version (needs the physical devices to feed it).
+> - **8 Communications (WhatsApp/Meta)** — the code already exists (`whatsapp-service`, inbox,
+>   sessions, templates, escalation); it is **gated on Meta app approval + the token**, not on code.
+> - **11 Integrations** — the framework already exists (`IntegrationConnection`, integrations
+>   service, `/admin/integrations`); **gated on the partner API keys**.
+> - **30 Extensibility (custom objects)** and **31 Localisation (i18n)** — genuinely net-new and
+>   **large infra builds**; each is its own multi-version effort (a runtime object system; a full
+>   multi-language pass across 120 pages).
+>
+> Hard check: 0 type errors, 299 tests, all verifier checks (120 pages, 178 models), migration
+> idempotent + drift-clean, build exit 0.
+
 **Written 21 July 2026. Build v14.24 — Vendor Portal (31-plan #26).**
 
 > **v14.24 delivers the Vendor Portal** — one of the pending 31-plan items. Run

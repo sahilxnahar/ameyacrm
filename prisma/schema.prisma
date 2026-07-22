@@ -4435,3 +4435,35 @@ model VendorPortalAccess {
 
   @@index([token])
 }
+
+model TelemetryDevice {
+  id         String    @id @default(cuid())
+  name       String
+  deviceKey  String    @unique
+  kind       String    @default("sensor")
+  projectId  String?
+  location   String?
+  lastSeenAt DateTime?
+  isActive   Boolean   @default(true)
+  createdById String?
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId])
+}
+
+model SiteReading {
+  id         String   @id @default(cuid())
+  deviceId   String
+  projectId  String?
+  metric     String
+  value      Float
+  unit       String?
+  lat        Float?
+  lng        Float?
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([deviceId, recordedAt])
+  @@index([projectId, metric])
+  @@index([recordedAt])
+}

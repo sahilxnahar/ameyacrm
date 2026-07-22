@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.24';
+export const APP_VERSION = 'v14.25';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.25',
+    date: '21 Jul 2026',
+    highlights: [
+      'New Site Telemetry — register sensors, trackers and meters, and see their live readings on one dashboard.',
+      'Devices send data to a secure endpoint; a "test reading" lets you try it before any hardware arrives.',
+    ],
+  },
   {
     version: 'v14.24',
     date: '21 Jul 2026',

@@ -160,6 +160,10 @@ export const PERMISSIONS = {
   'workrequest.create': 'Raise work requests to other departments',
   'workrequest.manage': 'Accept, progress and close work requests',
 
+  // Site telemetry (31-plan #27)
+  'telemetry.view': 'View site sensors and their readings',
+  'telemetry.manage': 'Register and manage telemetry devices',
+
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

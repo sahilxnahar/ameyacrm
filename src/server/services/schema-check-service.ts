@@ -51,6 +51,8 @@ const REQUIRED_TABLES = [
   'RecordLink',
   // 31-plan #26 — vendor portal
   'VendorPortalAccess',
+  // 31-plan #27 — site telemetry
+  'TelemetryDevice', 'SiteReading',
 ];
 
 export interface SchemaState { behind: boolean; missing: string[] }
