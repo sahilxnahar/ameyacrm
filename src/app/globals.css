@@ -42,13 +42,13 @@
     --warning: 40 46% 56%;
     --info: 220 46% 20%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 40 10% 6%; /* Charcoal #100F0D */
+    --background: 40 10% 5%; /* Charcoal #100F0D, a touch deeper for crisper cards */
     --foreground: 37 26% 90%; /* Sand */
-    --card: 40 9% 9%;
+    --card: 40 8% 10%;
     --card-foreground: 37 26% 90%;
     --popover: 40 9% 9%;
     --popover-foreground: 37 26% 90%;
@@ -64,8 +64,8 @@
     --destructive: 353 64% 44%;
     --destructive-foreground: 37 26% 92%;
 
-    --border: 40 8% 18%;
-    --input: 40 8% 18%;
+    --border: 40 8% 20%;
+    --input: 40 8% 20%;
     --ring: 40 46% 56%;
 
     --brass: 40 51% 46%;
@@ -127,7 +127,11 @@
   .brass-gradient {
     background-image: linear-gradient(135deg, hsl(var(--brass-light)) 0%, hsl(var(--brass)) 45%, hsl(var(--brass-deep)) 100%);
   }
-  .card-elevated { @apply rounded-lg border bg-card shadow-sm; }
+  .card-elevated {
+    @apply rounded-lg border bg-card;
+    box-shadow: 0 1px 2px rgb(16 15 13 / 0.05), 0 6px 18px -8px rgb(16 15 13 / 0.10);
+  }
+  .dark .card-elevated { box-shadow: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 22px -10px rgb(0 0 0 / 0.45); }
   .focus-ring { @apply outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring; }
 }
 
