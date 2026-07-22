@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   CheckSquare, Clock, Inbox, Plus, Flame, BellRing, Wallet, Home, TrendingUp,
-  Users2, CalendarCheck, FileStack, Percent,
+  Users2, CalendarCheck, FileStack, Percent, BookOpen,
 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
@@ -56,6 +56,13 @@ export default async function DashboardPage() {
       <PageHeader title={`Good day, ${firstName}`} description="Here's what needs your attention today.">
         <Button asChild size="sm"><Link href="/tasks?new=1"><Plus className="h-4 w-4" /> New task</Link></Button>
       </PageHeader>
+
+      {/* Onboarding entry, always on Home. */}
+      <Link href="/guide" className="mt-4 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 transition-colors hover:bg-primary/10">
+        <BookOpen className="h-5 w-5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 text-sm"><span className="font-semibold">New here, or need a hand?</span> Open your Guide — first steps and a walk through every feature.</span>
+        <span className="shrink-0 text-xs font-medium text-primary">Open →</span>
+      </Link>
 
       {/* KPI strip */}
       <CollapsibleSection id="kpis" title="At a glance">

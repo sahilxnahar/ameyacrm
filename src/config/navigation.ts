@@ -41,6 +41,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'The screens to open every morning.',
     items: [
       { label: "Today's Priorities", href: '/today', icon: ListChecks, blurb: 'Everything due today, in one list. Start here.' },
+      { label: 'Guide', href: '/guide', icon: BookOpen, blurb: 'How to use the CRM — first steps, and a walk through every feature.' },
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view', blurb: 'Your numbers at a glance — leads, sales, cash.' },
       { label: 'Daily Briefing', href: '/briefing', icon: Sparkles, permission: 'dashboard.view', blurb: 'A short plain-English summary of what changed.' },
       { label: 'Assistant', href: '/assistant', icon: Bot, blurb: 'An AI helper for drafting, explaining and summarising.' },
