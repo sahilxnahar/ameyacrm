@@ -78,6 +78,22 @@ export function AppShell({
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const allowed = React.useMemo(() => new Set(permissionKeys), [permissionKeys]);
 
+  // Desktop "icon rail" collapse — like the Google Cloud console. Off by default;
+  // remembered per device once the person picks. Only affects the `lg:` layout,
+  // so on a phone the drawer is always the full, labelled menu.
+  const RAIL_KEY = 'amh:nav-rail';
+  const [rail, setRail] = React.useState(false);
+  React.useEffect(() => {
+    try { setRail(window.localStorage.getItem(RAIL_KEY) === '1'); } catch { /* ignore */ }
+  }, []);
+  const toggleRail = React.useCallback((v?: boolean) => {
+    setRail((prev) => {
+      const next = typeof v === 'boolean' ? v : !prev;
+      try { window.localStorage.setItem(RAIL_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* Batch 12 (a11y): the first focusable element lets a keyboard or
@@ -96,9 +112,11 @@ export function AppShell({
         isSuperAdmin={isSuperAdmin}
         mobileOpen={mobileOpen}
         navPrefs={navPrefs}
+        collapsed={rail}
+        onToggleRail={toggleRail}
         onClose={() => setMobileOpen(false)}
       />
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-64'}`}>
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>

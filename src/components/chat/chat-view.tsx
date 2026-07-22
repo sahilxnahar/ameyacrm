@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
 import { timeAgo, formatDateTime } from '@/lib/utils/format';
+import { useVisiblePoll } from '@/lib/hooks/use-visible-poll';
 
 function MessageBody({ body, meHandle }: { body: string; meHandle: string | null }) {
   return (
@@ -54,15 +55,16 @@ export function ChatView({
   React.useEffect(() => setMessages(activeMessages), [activeMessages, activeId]);
   React.useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Poll for new messages while a conversation is open (no socket server needed).
-  React.useEffect(() => {
+  // Mark the open conversation read once when it changes.
+  React.useEffect(() => { if (activeId) void markConversationRead(activeId); }, [activeId]);
+
+  // Poll for new messages while a conversation is open — but only while the tab
+  // is visible, so a chat left open in a background tab stops polling until you
+  // come back to it (no socket server needed).
+  useVisiblePoll(() => {
     if (!activeId) return;
-    void markConversationRead(activeId);
-    const t = setInterval(() => {
-      void fetchMessages(activeId).then((r) => { if ('ok' in r && r.ok) setMessages(r.messages); });
-    }, 6000);
-    return () => clearInterval(t);
-  }, [activeId]);
+    void fetchMessages(activeId).then((r) => { if ('ok' in r && r.ok) setMessages(r.messages); });
+  }, 6000, [activeId]);
 
   const open = (id: string) => router.push(`/chat?c=${id}`);
 

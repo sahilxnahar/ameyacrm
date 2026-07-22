@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.29';
+export const APP_VERSION = 'v14.33';
 
 export interface Release {
   version: string;
@@ -13,6 +13,38 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.33',
+    date: '22 Jul 2026',
+    highlights: [
+      'New System Health board (Team & Admin): one green/amber/red view of the database, schema, and every integration — plus live numbers and links to the deeper Performance and AI Health pages.',
+    ],
+  },
+  {
+    version: 'v14.32',
+    date: '22 Jul 2026',
+    highlights: [
+      'Safer under load: the newest endpoints — telemetry ingestion, file-upload tokens and chat sends — are now rate-limited so none can be hammered or abused.',
+      'The guard fails open, so a database hiccup never blocks a genuine request.',
+    ],
+  },
+  {
+    version: 'v14.31',
+    date: '22 Jul 2026',
+    highlights: [
+      'Less lag: Messages and Site Telemetry now load in a single database pass instead of one query per conversation or device — noticeably snappier.',
+      'Calmer in the background: chat and the notification bell stop polling when the tab isn’t in front, and refresh the instant you come back.',
+    ],
+  },
+  {
+    version: 'v14.30',
+    date: '22 Jul 2026',
+    highlights: [
+      'A calmer menu: collapse the sidebar to a slim icon rail (like Google’s consoles) and give the page more room — one tap, and it remembers your choice.',
+      'Hover any icon in the collapsed rail to see its name; expand again whenever you like.',
+      'Tidier sections and spacing throughout the menu so it’s easier to scan.',
+    ],
+  },
   {
     version: 'v14.29',
     date: '22 Jul 2026',

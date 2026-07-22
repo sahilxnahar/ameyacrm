@@ -7,6 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { timeAgo } from '@/lib/utils/format';
+import { useVisiblePoll } from '@/lib/hooks/use-visible-poll';
 
 interface Notif { id: string; title: string; body: string | null; link: string | null; readAt: string | null; createdAt: string }
 
@@ -24,11 +25,9 @@ export function NotificationsBell() {
     } catch { /* offline — ignore */ }
   }, []);
 
-  React.useEffect(() => {
-    load();
-    const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
-  }, [load]);
+  // Poll once a minute while the tab is open; pause entirely when it's in the
+  // background, and refresh the instant it comes back to the foreground.
+  useVisiblePoll(load, 60_000);
 
   const markAll = async () => {
     await fetch('/api/notifications', { method: 'POST' }).catch(() => {});

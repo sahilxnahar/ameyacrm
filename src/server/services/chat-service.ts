@@ -39,30 +39,46 @@ export async function listConversations(userId: string): Promise<ConversationSum
     take: 300,
   });
 
+  const convIds = memberships.map((m) => m.conversation.id);
+
   const otherIds = [...new Set(memberships.flatMap((m) => m.conversation.members.map((x) => x.userId)).filter((id) => id !== userId))];
   const names = otherIds.length
     ? new Map((await prisma.user.findMany({ where: { id: { in: otherIds } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]))
     : new Map<string, string>();
 
-  const rows = await Promise.all(
-    memberships.map(async (m) => {
-      const c = m.conversation;
-      const others = c.members.map((x) => x.userId).filter((id) => id !== userId);
-      const otherUserId = others[0] ?? null;
-      const last = c.messages[0] ?? null;
-      const unread = await prisma.chatMessage.count({
-        where: { conversationId: c.id, senderId: { not: userId }, createdAt: m.lastReadAt ? { gt: m.lastReadAt } : undefined },
-      });
-      return {
-        id: c.id,
-        title: c.title ?? (otherUserId ? names.get(otherUserId) ?? 'Direct message' : 'Conversation'),
-        otherUserId,
-        lastMessage: last?.body ?? null,
-        lastAt: last?.createdAt ?? c.updatedAt,
-        unread,
-      };
-    }),
-  );
+  // Unread counts in ONE query, not a COUNT per conversation (the old N+1). We
+  // pull just the (conversation, time) of every message someone else sent, then
+  // tally per conversation against that person's own last-read time in memory.
+  const unreadCandidates = convIds.length
+    ? await prisma.chatMessage.findMany({
+        where: { conversationId: { in: convIds }, senderId: { not: userId } },
+        select: { conversationId: true, createdAt: true },
+        take: 5000,
+      })
+    : [];
+  const lastReadByConv = new Map(memberships.map((m) => [m.conversation.id, m.lastReadAt] as const));
+  const unreadByConv = new Map<string, number>();
+  for (const msg of unreadCandidates) {
+    const lastRead = lastReadByConv.get(msg.conversationId);
+    if (!lastRead || msg.createdAt > lastRead) {
+      unreadByConv.set(msg.conversationId, (unreadByConv.get(msg.conversationId) ?? 0) + 1);
+    }
+  }
+
+  const rows = memberships.map((m) => {
+    const c = m.conversation;
+    const others = c.members.map((x) => x.userId).filter((id) => id !== userId);
+    const otherUserId = others[0] ?? null;
+    const last = c.messages[0] ?? null;
+    return {
+      id: c.id,
+      title: c.title ?? (otherUserId ? names.get(otherUserId) ?? 'Direct message' : 'Conversation'),
+      otherUserId,
+      lastMessage: last?.body ?? null,
+      lastAt: last?.createdAt ?? c.updatedAt,
+      unread: unreadByConv.get(c.id) ?? 0,
+    };
+  });
   return rows.sort((a, b) => (b.lastAt?.getTime() ?? 0) - (a.lastAt?.getTime() ?? 0));
 }
 

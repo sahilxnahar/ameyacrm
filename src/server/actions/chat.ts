@@ -7,6 +7,7 @@ import { parseMentions } from '@/lib/chat/mentions';
 import { notifyUsers } from '@/lib/notify/notify';
 import { fireAndForget } from '@/lib/resilience/safely';
 import { isMember, getMessages, type ChatMessageRow } from '@/server/services/chat-service';
+import { checkRate } from '@/lib/security/rate-limit';
 
 export type ChatResult = { ok: true; conversationId?: string } | { error: string };
 
@@ -54,6 +55,10 @@ export async function sendMessage(conversationId: string, body: string, attachme
   try {
     const ctx = await getActionContext();
     const me = ctx.user.id;
+    // Guard against a runaway client or a spam loop — 40 sends per 10s per person
+    // is far above human typing speed.
+    const rate = await checkRate(`chat-send:${me}`, 40, 10);
+    if (!rate.allowed) return { error: 'You’re sending messages too quickly — give it a second.' };
     const text = (body ?? '').trim().slice(0, 4000);
     const files = (attachments ?? []).filter((a) => a && typeof a.url === 'string' && a.url.startsWith('http')).slice(0, 10);
     if (!text && files.length === 0) return { error: 'Type a message or attach something.' };

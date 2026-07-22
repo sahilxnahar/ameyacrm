@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { checkRate, callerIp } from '@/lib/security/rate-limit';
 
 /**
  * Ingestion endpoint for site telemetry (31-plan #27). A real sensor, tracker,
@@ -13,6 +14,14 @@ import { prisma } from '@/lib/db/prisma';
  */
 export async function POST(req: Request) {
   try {
+    // Blunt any flood from one source. Generous — a gateway may relay many
+    // devices — and it fails open, so a database hiccup never drops real readings.
+    const ip = await callerIp();
+    const rate = await checkRate(`telemetry:${ip}`, 600, 60);
+    if (!rate.allowed) {
+      return NextResponse.json({ ok: false, error: 'Too many requests. Slow down.' }, { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } });
+    }
+
     const body = await req.json().catch(() => null);
     const deviceKey: unknown = body?.deviceKey;
     if (typeof deviceKey !== 'string' || !deviceKey) {

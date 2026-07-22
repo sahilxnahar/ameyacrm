@@ -26,15 +26,31 @@ export async function getTelemetryOverview(): Promise<TelemetryOverview> {
     prisma.siteReading.count(),
   ]);
   const nameById = new Map(devices.map((d) => [d.id, d.name]));
+  const deviceIds = devices.map((d) => d.id);
 
-  const deviceRows: TelemetryDeviceRow[] = await Promise.all(
-    devices.map(async (d) => {
-      const readings = await prisma.siteReading.findMany({ where: { deviceId: d.id }, orderBy: { recordedAt: 'desc' }, take: 50 });
-      const latest = new Map<string, DeviceReading>();
-      for (const r of readings) if (!latest.has(r.metric)) latest.set(r.metric, { metric: r.metric, value: r.value, unit: r.unit, recordedAt: r.recordedAt });
-      return { id: d.id, name: d.name, kind: d.kind, location: d.location, status: deviceStatus(d.lastSeenAt, now), lastSeenAt: d.lastSeenAt, latest: [...latest.values()] };
-    }),
-  );
+  // The latest reading per (device, metric) in ONE query, using DISTINCT on the
+  // desc-by-time order — instead of a findMany per device (the old N+1 that ran
+  // up to 200 queries to paint one dashboard).
+  const latestReadings = deviceIds.length
+    ? await prisma.siteReading.findMany({
+        where: { deviceId: { in: deviceIds } },
+        orderBy: { recordedAt: 'desc' },
+        distinct: ['deviceId', 'metric'],
+        take: 2000,
+      })
+    : [];
+  const latestByDevice = new Map<string, DeviceReading[]>();
+  for (const r of latestReadings) {
+    const arr = latestByDevice.get(r.deviceId) ?? [];
+    arr.push({ metric: r.metric, value: r.value, unit: r.unit, recordedAt: r.recordedAt });
+    latestByDevice.set(r.deviceId, arr);
+  }
+
+  const deviceRows: TelemetryDeviceRow[] = devices.map((d) => ({
+    id: d.id, name: d.name, kind: d.kind, location: d.location,
+    status: deviceStatus(d.lastSeenAt, now), lastSeenAt: d.lastSeenAt,
+    latest: latestByDevice.get(d.id) ?? [],
+  }));
 
   return {
     devices: deviceRows,
