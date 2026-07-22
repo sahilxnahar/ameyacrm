@@ -120,6 +120,9 @@ export async function sendViaOpenWA(to: string, message: string): Promise<SendRe
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Skip ngrok's free-tier browser interstitial for these server calls,
+        // so the request always reaches OpenWA (harmless on any other host).
+        'ngrok-skip-browser-warning': 'true',
         ...(env.OPENWA_API_KEY ? { 'X-API-Key': env.OPENWA_API_KEY } : {}),
       },
       body: JSON.stringify({ chatId: `${number}@c.us`, text: message.slice(0, 4000) }),

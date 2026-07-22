@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.43';
+export const APP_VERSION = 'v14.44';
 
 export interface Release {
   version: string;
@@ -13,6 +13,13 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.44',
+    date: '22 Jul 2026',
+    highlights: [
+      'WhatsApp/OpenWA works cleanly through an ngrok tunnel — server calls skip ngrok’s browser warning so messages always reach your gateway.',
+    ],
+  },
   {
     version: 'v14.43',
     date: '22 Jul 2026',
