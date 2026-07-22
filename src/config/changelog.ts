@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.28';
+export const APP_VERSION = 'v14.29';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.29',
+    date: '22 Jul 2026',
+    highlights: [
+      'Import anything: every upload spot now clearly accepts any file — PDF, HTML, images, CAD, Office, ZIP — up to 100 MB each.',
+      'A clear “Import files” heading over the drop area in Documents, so it’s obvious where to bring files in.',
+    ],
+  },
   {
     version: 'v14.28',
     date: '22 Jul 2026',

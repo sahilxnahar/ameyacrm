@@ -119,8 +119,8 @@ export function FileDropzone({ folderId, onFinished }: { folderId?: string; onFi
         className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors ${dragging ? 'border-primary bg-primary/10' : 'border-input hover:border-primary/60 hover:bg-secondary/40'}`}
       >
         <UploadCloud className={`mb-2 h-8 w-8 text-primary transition-transform ${dragging ? 'scale-110' : ''}`} />
-        <p className="text-sm font-medium">Drag &amp; drop files here</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">or tap to choose, paste a screenshot, or drop a whole folder — any type, up to 100 MB each</p>
+        <p className="text-sm font-medium">Import files — drag &amp; drop here</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">PDF, HTML, images, CAD drawings, Office, ZIP — <span className="font-medium">any file type</span>, up to 100 MB each. Tap to choose, paste a screenshot, or drop a whole folder.</p>
         <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => { void run(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
         <input
           ref={folderRef} type="file" multiple className="hidden"

@@ -154,7 +154,12 @@ export function DriveBrowser({
           />
         ) : null}
 
-        {canUpload && <FileDropzone folderId={currentId ?? undefined} />}
+        {canUpload && (
+          <div>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Import files</p>
+            <FileDropzone folderId={currentId ?? undefined} />
+          </div>
+        )}
       </div>
     </div>
   );
