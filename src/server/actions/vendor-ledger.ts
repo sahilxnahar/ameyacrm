@@ -23,7 +23,7 @@ export async function setPaymentApprovalLimit(amount: number): Promise<LedgerAct
     const n = Math.max(0, Math.round(Number(amount) || 0));
     await prisma.setting.upsert({ where: { key: 'finance.payment_approval_limit' }, create: { key: 'finance.payment_approval_limit', value: n }, update: { value: n } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Payment review threshold set to Rs ${n.toLocaleString('en-IN')}` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -36,7 +36,7 @@ export async function approveVendorPayment(voucherId: string): Promise<LedgerAct
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', approvedById: ctx.user.id, approvedAt: new Date() } });
     await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number}` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -138,7 +138,7 @@ export async function importVendorPayments(text: string): Promise<LedgerActionRe
     }
     const skipped = duplicates + blanks + badAmounts;
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: 'import', summary: `Imported ${created} payments (${vendorsCreated} new payees, ${skipped} skipped, ${failed} failed)` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true, created, vendorsCreated, skipped, duplicates, blanks, badAmounts, failed, issues };
   } catch (e) { return toActionError(e); }
 }
@@ -175,7 +175,7 @@ export async function mergeVendors(keepId: string, mergeId: string): Promise<Led
       await tx.vendor.delete({ where: { id: mergeId } });
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: keepId, summary: `Merged "${merge.name}" into "${keep.name}"` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -194,7 +194,7 @@ export async function renameVendor(id: string, newName: string): Promise<LedgerA
       await tx.vendor.update({ where: { id }, data: { name } });
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: id, summary: `Renamed payee "${vendor.name}" → "${name}"` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -211,7 +211,7 @@ export async function mergeVendorsMany(keepId: string, mergeIds: string[]): Prom
       if ('error' in r) return { error: r.error };
       merged++;
     }
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true, created: merged };
   } catch (e) { return toActionError(e); }
 }
@@ -229,7 +229,7 @@ export async function saveVendorBank(vendorId: string, v: Record<string, string>
       },
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: vendorId, summary: 'Updated bank details' });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -315,7 +315,7 @@ export async function addVendorPayment(input: {
       } catch { /* WhatsApp is a courtesy, not a requirement */ }
     }
 
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     revalidatePath('/payments');
     return { ok: true, id: v.id, flagged };
   } catch (e) { return toActionError(e); }
@@ -329,7 +329,7 @@ export async function settleAdvance(voucherId: string): Promise<LedgerActionResu
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { advanceSettled: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Advance ${v.number} settled` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -341,7 +341,7 @@ export async function releaseRetention(voucherId: string): Promise<LedgerActionR
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { retentionReleased: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Retention on ${v.number} released` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
@@ -353,7 +353,7 @@ export async function setPaymentCategory(voucherId: string, accountCode: string)
     const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true } });
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { accountCode: accountCode.trim() || null } });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
@@ -367,7 +367,7 @@ export async function attachPaymentProof(voucherId: string, url: string): Promis
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { attachmentId: url.trim() || null } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Voucher', entityId: voucherId, summary: `Attached payment proof to ${v.number}` });
-    revalidatePath('/ledgers');
+    revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }

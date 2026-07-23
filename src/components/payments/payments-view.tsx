@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge } from 'lucide-react';
 import { recordUtr, readPaymentAdvice } from '@/server/actions/vouchers';
 import { PAY_MODE_LABEL } from '@/config/vouchers';
 
@@ -75,6 +75,13 @@ export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: Pa
           <Download className="mr-1.5 inline h-4 w-4" />Export CSV
         </a>
       </div>
+
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <GitMerge className="h-3.5 w-3.5" />
+        Same payee showing under different names (e.g. all the “Arun” / construction rows)?{' '}
+        <Link href="/ledgers" className="font-medium text-primary hover:underline">Combine them in Vendor Ledgers → Tidy up payees</Link>
+        {' '}— they’ll then appear here as one.
+      </p>
 
       {parties.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

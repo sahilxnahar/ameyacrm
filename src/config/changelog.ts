@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.70';
+export const APP_VERSION = 'v14.72';
 
 export interface Release {
   version: string;
@@ -13,6 +13,23 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.72',
+    date: '23 Jul 2026',
+    highlights: [
+      'New Secret Cash Book (Money → Secret Cash Book): a private cash book only you and people you nominate can open. Every time it’s opened it asks for a one-time code sent to your email and WhatsApp, and it re-locks itself after a while.',
+      'Its entries are stored in a separate, walled-off table — they never appear in the normal books, reports or exports. Cash in / cash out / running balance, with add, delete and CSV export.',
+      'As the owner you can nominate exactly who else may open it, from inside the cash book.',
+    ],
+  },
+  {
+    version: 'v14.71',
+    date: '23 Jul 2026',
+    highlights: [
+      'Combining duplicate payees (e.g. all the “Arun”/construction rows into one) now updates Payments Made instantly, not just Vendor Ledgers — so a merged payee shows here as a single total straight away.',
+      'Payments Made now has a one-line pointer to the “Tidy up payees” tool, so it’s obvious where to combine the same payee that’s recorded under different names.',
+    ],
+  },
   {
     version: 'v14.70',
     date: '23 Jul 2026',

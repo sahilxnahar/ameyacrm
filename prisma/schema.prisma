@@ -2636,6 +2636,23 @@ enum VoucherStatus {
   CANCELLED
 }
 
+/// A private, OTP-locked cash book. Kept in its own table so it is walled off
+/// from the main books — only nominated people can ever read or write it.
+model SecretCashEntry {
+  id          String   @id @default(cuid())
+  entryDate   DateTime @default(now())
+  direction   String   @default("OUT") // IN (money in) | OUT (money out)
+  amount      Decimal  @db.Decimal(14, 2)
+  party       String
+  mode        String   @default("Cash") // Cash | Bank | UPI | Cheque
+  reference   String?
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([entryDate])
+}
+
 /// A payment that repeats — salary, rent, an EMI, a subscription. The CRM
 /// surfaces the next one due so it is recorded on time; it never pays anything.
 model RecurringPayment {

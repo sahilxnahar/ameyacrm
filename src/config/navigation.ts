@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -97,6 +97,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view', blurb: 'Money that has gone out, with UTRs.' },
       { label: 'Spend Report', href: '/spend', icon: PieChart, permission: 'finance.ledger.view', blurb: 'Where the money went — by category, project, payee and month.' },
       { label: 'Recurring Payments', href: '/recurring', icon: Repeat, permission: 'finance.ledger.view', blurb: 'Salaries, rent, EMIs and subscriptions — recorded on time.' },
+      { label: 'Secret Cash Book', href: '/secret-cash-book', icon: LockKeyhole, permission: 'finance.ledger.view', blurb: 'A private, OTP-locked cash book — only you and your nominees.' },
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
       { label: 'Ledger', href: '/ledger', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'The full accounting record.' },
       { label: 'Vendor Ledgers', href: '/ledgers', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'One ledger per payee — import payments, save bank details, merge duplicates.' },
