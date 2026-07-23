@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.54';
+export const APP_VERSION = 'v14.57';
 
 export interface Release {
   version: string;
@@ -13,6 +13,28 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.57',
+    date: '23 Jul 2026',
+    highlights: [
+      'Messages and the Assistant are now one tap away from every screen — new icons in the top bar, so you never have to scroll or hunt for them.',
+    ],
+  },
+  {
+    version: 'v14.56',
+    date: '23 Jul 2026',
+    highlights: [
+      'Finished work stops nagging you: once you mark your part of a task complete (or reject it), it no longer emails you or shows up as pending — even if the whole task is still open for others.',
+      'Today’s Priorities is now in sync — it drops assignments you’ve completed, so it reflects what’s genuinely still on your plate.',
+    ],
+  },
+  {
+    version: 'v14.55',
+    date: '23 Jul 2026',
+    highlights: [
+      'Your Profile is now editable: set a profile photo, and add your phone and WhatsApp number. Your role is shown too, so you know what you can do.',
+    ],
+  },
   {
     version: 'v14.54',
     date: '23 Jul 2026',

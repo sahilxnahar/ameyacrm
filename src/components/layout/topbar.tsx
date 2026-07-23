@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Menu, Search, LayoutGrid } from 'lucide-react';
+import { Menu, Search, LayoutGrid, MessageSquare, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './theme-toggle';
 import { DisplaySettings } from './display-settings';
@@ -41,10 +41,26 @@ export function Topbar({
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <Link
+          href="/chat"
+          title="Messages — chat anyone in the company"
+          aria-label="Messages"
+          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Link>
+        <Link
+          href="/assistant"
+          title="Assistant — draft, explain, summarise"
+          aria-label="Assistant"
+          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Sparkles className="h-4 w-4" />
+        </Link>
+        <Link
           href="/features"
           title="Explore features — everything the CRM can do"
           aria-label="Explore features"
-          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
           <LayoutGrid className="h-4 w-4" />
         </Link>

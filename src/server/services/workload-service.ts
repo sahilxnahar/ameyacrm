@@ -47,11 +47,16 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
   // 1 — tasks with a due date
   const tasks = await prisma.task.findMany({
     where: { deletedAt: null, dueDate: range, status: { not: 'DONE' } },
-    select: { id: true, reference: !light, title: !light, dueDate: true, priority: !light, status: !light, assignees: { select: { userId: true } } },
+    select: { id: true, reference: !light, title: !light, dueDate: true, priority: !light, status: !light, assignees: { select: { userId: true, state: true } } },
     take: 800,
   });
   for (const t of tasks) {
-    const owners = t.assignees.length ? t.assignees.map((a) => a.userId) : [null];
+    // Only assignees still on the hook. Someone who has marked their part
+    // COMPLETED (or REJECTED it) should not keep seeing it as pending or get
+    // chased about it — even if the overall task is still open.
+    const owners = t.assignees.length
+      ? t.assignees.filter((a) => a.state !== 'COMPLETED' && a.state !== 'REJECTED').map((a) => a.userId)
+      : [null];
     for (const ownerId of owners) {
       if (!inScope(ownerId)) continue;
       items.push({
