@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.65';
+export const APP_VERSION = 'v14.67';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.67',
+    date: '23 Jul 2026',
+    highlights: [
+      'Mobile: pull down from the top of any screen to refresh its data — the standard phone gesture, now everywhere.',
+    ],
+  },
+  {
+    version: 'v14.66',
+    date: '23 Jul 2026',
+    highlights: [
+      'Mobile: a floating “+” button puts the things you create most — record a payment, add a lead, log a visit, capture a photo, voice note — two taps away from any screen.',
+      'Mobile: pop-ups now slide up from the bottom as thumb-reachable sheets instead of appearing mid-screen.',
+      'Mobile: the bottom bar now includes Money, so payments are one tap away.',
+    ],
+  },
   {
     version: 'v14.65',
     date: '23 Jul 2026',

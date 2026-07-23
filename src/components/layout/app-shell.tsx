@@ -12,6 +12,8 @@ import { OfflineOutbox } from './offline-outbox';
 import { FeedbackWidget } from './feedback-widget';
 import { WhatsNew } from './whats-new';
 import { UpdateBanner } from '@/components/pwa/update-banner';
+import { MobileFab } from './mobile-fab';
+import { PullToRefresh } from './pull-to-refresh';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
 
@@ -112,6 +114,7 @@ export function AppShell({
       <React.Suspense fallback={null}>
         <NavProgress />
       </React.Suspense>
+      <PullToRefresh />
       <Sidebar
         allowed={allowed}
         isSuperAdmin={isSuperAdmin}
@@ -132,6 +135,7 @@ export function AppShell({
           <div key={pathname} className="animate-in">{children}</div>
         </main>
       </div>
+      <MobileFab allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />

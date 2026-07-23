@@ -2,7 +2,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ListChecks, LayoutDashboard, Users2, CheckSquare, Menu } from 'lucide-react';
+import { ListChecks, LayoutDashboard, Users2, BadgeIndianRupee, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -14,7 +14,7 @@ const ITEMS = [
   { href: '/today', label: 'Today', icon: ListChecks, permission: null },
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard, permission: 'dashboard.view' },
   { href: '/sales', label: 'Leads', icon: Users2, permission: 'lead.view' },
-  { href: '/tasks', label: 'Tasks', icon: CheckSquare, permission: 'task.view' },
+  { href: '/payments', label: 'Money', icon: BadgeIndianRupee, permission: 'finance.ledger.view' },
 ] as const;
 
 export function MobileNav({
