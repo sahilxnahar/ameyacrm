@@ -3,8 +3,9 @@
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X, Landmark, ShieldCheck, TrendingUp, AlertTriangle } from 'lucide-react';
-import { saveInvestor, addInvestorTransaction, saveCapitalEntry, recordEscrowMovement, saveCovenant } from '@/server/actions/capital';
+import { saveInvestor, addInvestorTransaction, saveCapitalEntry, recordEscrowMovement, saveCovenant, generateReraComplianceReport } from '@/server/actions/capital';
 import type { EscrowPosition, CovenantStatus } from '@/lib/capital/escrow';
+import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 const inr = (n: number | null) => n == null ? '—' : n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -33,6 +34,12 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
   const [pending, start] = useTransition();
   const [openForm, setOpenForm] = useState<string | null>(null);
   const run = (fn: () => Promise<Res>) => start(async () => { const r = await fn(); setMsg('error' in r ? { bad: true, text: r.error } : { bad: false, text: r.message }); if (!('error' in r)) { setOpenForm(null); router.refresh(); } });
+  const downloadReraReport = () => start(async () => {
+    const r = await generateReraComplianceReport(projectId);
+    if ('error' in r) { setMsg({ bad: true, text: r.error }); return; }
+    const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
+    setMsg({ bad: false, text: 'RERA compliance statement downloaded.' });
+  });
 
   const e = overview.escrow;
 
@@ -126,6 +133,11 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
             <Tile label="Withdrawable now" value={inr(e.withdrawable)} sub={`at ${overview.latestCertifiedPct}% certified`} />
           </div>
           {e.overWithdrawn && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">Withdrawals have exceeded the certified entitlement — this is a RERA breach to correct.</div>}
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={downloadReraReport} disabled={pending} className="focus-ring inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-60">
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Download RERA 70:30 compliance statement
+            </button>
+          </div>
           {canManage && projectId && <AddBtn open={openForm === 'esc'} onClick={() => setOpenForm(openForm === 'esc' ? null : 'esc')} label="Record escrow movement" />}
           {openForm === 'esc' && canManage && projectId && (
             <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => recordEscrowMovement({ projectId, kind: (f.get('kind') as string) as never, amount: Number(f.get('amount') || 0), certifiedPct: f.get('certifiedPct') ? Number(f.get('certifiedPct')) : null, reference: (f.get('reference') as string) || null })); }}>

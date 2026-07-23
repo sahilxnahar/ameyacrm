@@ -6,9 +6,38 @@ import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 import { escrowPosition, canWithdraw, type EscrowMovementInput } from '@/lib/capital/escrow';
+import { capitalOverview } from '@/server/services/capital-service';
+import { getCompanyDetails } from '@/server/services/company-service';
+import { buildReraCompliancePdf } from '@/lib/pdf/rera-compliance-pdf';
 
 export type CapitalResult = { ok: true; message: string; id?: string } | { error: string };
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
+
+/** Generate the RERA 70:30 escrow compliance statement (PDF) for a project. */
+export async function generateReraComplianceReport(projectId: string | null): Promise<{ ok: true; filename: string; pdfBase64: string } | { error: string }> {
+  try {
+    const ctx = await ensure('capital.view');
+    const [overview, company, project] = await Promise.all([
+      capitalOverview(projectId),
+      getCompanyDetails(),
+      projectId ? prisma.project.findUnique({ where: { id: projectId }, select: { name: true, reraNumber: true } }) : Promise.resolve(null),
+    ]);
+    const bytes = await buildReraCompliancePdf({
+      company: {
+        name: company.legalName, registeredAddress: company.registeredAddress,
+        phone: company.phone, email: company.email, website: company.website, gstin: company.gstin,
+      },
+      projectName: project?.name ?? 'All projects',
+      reraNumber: project?.reraNumber ?? null,
+      asOf: new Date(),
+      escrow: overview.escrow,
+      certifiedPct: overview.latestCertifiedPct,
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'EXPORT', entityType: 'Project', entityId: projectId ?? undefined, summary: `Generated RERA escrow compliance statement${project?.name ? ` for ${project.name}` : ''}` });
+    const safe = (project?.name ?? 'all-projects').replace(/[^a-z0-9]+/gi, '-');
+    return { ok: true, filename: `RERA-Escrow-Compliance-${safe}.pdf`, pdfBase64: Buffer.from(bytes).toString('base64') };
+  } catch (err) { return toActionError(err); }
+}
 
 export async function saveInvestor(input: unknown): Promise<CapitalResult> {
   try {

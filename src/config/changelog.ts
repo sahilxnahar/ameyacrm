@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.80';
+export const APP_VERSION = 'v14.81';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.81',
+    date: '23 Jul 2026',
+    highlights: [
+      'Demand notices now compute the tax automatically: GST (default 5%, configurable) is added and TDS under Sec. 194-IA (1% when the consideration is ₹50 lakh or more) is shown as a deduction, with the net payable to the developer and a Form 26QB note — all on the letter.',
+      'New RERA 70:30 escrow compliance statement: from Capital & Escrow, download a formal PDF showing receipts, the 70% required in the designated account, what’s deposited, the certified-progress withdrawable limit, and a clear COMPLIANT / under-funded / breach status.',
+      'Both documents are now in the Ameya house colours — navy and gold.',
+    ],
+  },
   {
     version: 'v14.80',
     date: '23 Jul 2026',
