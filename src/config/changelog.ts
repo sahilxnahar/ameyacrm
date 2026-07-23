@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.64';
+export const APP_VERSION = 'v14.65';
 
 export interface Release {
   version: string;
@@ -13,6 +13,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.65',
+    date: '23 Jul 2026',
+    highlights: [
+      'Tell the vendor you’ve paid: tick “WhatsApp the vendor a receipt” when adding a payment and they get an instant “₹X paid, UTR…” message. Plus a one-click passbook (CSV) of any payee’s full ledger to send for reconciliation.',
+      'Payment review limit: set a threshold (e.g. ₹5,00,000) and any payment above it is flagged for a second person to approve before it counts.',
+      'Advances & retention: mark a payment as an advance and settle it later; hold back retention on a contractor and release it on completion — with running totals per payee.',
+      'TDS: record TDS deducted on a payment; the Spend Report now shows total TDS to deposit, plus a statutory due-dates reference (TDS 7th, GSTR 11th/20th, advance tax).',
+      'Recurring Payments (Money → Recurring Payments): set salaries, rent, EMIs and subscriptions once; the ones due are flagged, and “Record paid” logs the payment and rolls the date forward.',
+      'Bank reconciliation is already built-in under Cash Flow & Treasury — import a statement and it matches each debit to your recorded payments by UTR.',
+    ],
+  },
   {
     version: 'v14.64',
     date: '23 Jul 2026',

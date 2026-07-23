@@ -2,9 +2,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks } from 'lucide-react';
+import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks, Download, BadgeCheck, ShieldAlert } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory } from '@/server/actions/vendor-ledger';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention } from '@/server/actions/vendor-ledger';
 import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { ImportDropzone } from '@/components/import/import-dropzone';
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils/cn';
 
 const TEMPLATE = 'Payee,Amount,Date,Mode,Reference,UTR,Note\nArun,50000,01/07/2026,Bank,NEFT001,UTR12345,Slab work\nOctos Infra,25000,05/07/2026,UPI,,,Steel supply\n';
 
-export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: LedgerRow[]; activeId: string | null; detail: LedgerDetail | null; canManage: boolean }) {
+export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit = 0 }: { ledgers: LedgerRow[]; activeId: string | null; detail: LedgerDetail | null; canManage: boolean; approvalLimit?: number }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [importOpen, setImportOpen] = React.useState(false);
@@ -86,9 +86,10 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
   const doAdd = (input: Parameters<typeof addVendorPayment>[0], reset?: () => void) => {
     start(async () => {
       const r = await addVendorPayment(input);
-      if ('duplicate' in r && r.duplicate) { setDupWarn({ msg: r.duplicate, input }); return; }
+      if ('duplicate' in r) { setDupWarn({ msg: r.duplicate, input }); return; }
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Payment added'); setDupWarn(null); reset?.(); setShowAdd(false); router.refresh();
+      toast.success(r.flagged ? 'Payment recorded — flagged for review (over the limit)' : 'Payment added');
+      setDupWarn(null); reset?.(); setShowAdd(false); router.refresh();
     });
   };
 
@@ -115,12 +116,17 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
         utr: String(fd.get('utr') ?? ''),
         note: String(fd.get('note') ?? ''),
         category: String(fd.get('category') ?? ''),
+        notifyWhatsApp: fd.get('notifyWhatsApp') === 'on',
+        isAdvance: fd.get('isAdvance') === 'on',
+        retentionAmount: String(fd.get('retentionAmount') ?? ''),
+        tdsRate: String(fd.get('tdsRate') ?? ''),
         proofUrl,
       };
       const r = await addVendorPayment(input);
-      if ('duplicate' in r && r.duplicate) { setDupWarn({ msg: r.duplicate, input }); return; }
+      if ('duplicate' in r) { setDupWarn({ msg: r.duplicate, input }); return; }
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Payment added'); form.reset(); setShowAdd(false); router.refresh();
+      toast.success(r.flagged ? 'Payment recorded — flagged for review (over the limit)' : 'Payment added');
+      form.reset(); setShowAdd(false); router.refresh();
     });
   };
 
@@ -153,6 +159,37 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
     });
   };
 
+  const approve = (voucherId: string) => {
+    start(async () => {
+      const r = await approveVendorPayment(voucherId);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Payment approved'); router.refresh();
+    });
+  };
+
+  const downloadPassbook = () => {
+    if (!detail) return;
+    const rows = [['Voucher', 'Date', 'Amount', 'Mode', 'UTR/Ref', 'Category', 'Note', 'Status']];
+    for (const p of detail.payments) {
+      rows.push([p.number, new Date(p.paidOn ?? p.date).toLocaleDateString('en-IN'), String(p.amount), p.mode, p.utr ?? p.reference ?? '', EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '', (p.narration ?? '').replace(/"/g, '""'), p.status]);
+    }
+    const csv = [`Statement for ${detail.vendor.name}`, `Total paid,${detail.totalPaid}`, '', ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+    a.download = `passbook-${detail.vendor.name.replace(/[^a-z0-9]+/gi, '-')}.csv`;
+    a.click();
+  };
+
+  const saveLimit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await setPaymentApprovalLimit(Number(fd.get('limit') ?? 0));
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Review threshold saved'); router.refresh();
+    });
+  };
+
   const changeCategory = (voucherId: string, code: string) => {
     start(async () => {
       const r = await setPaymentCategory(voucherId, code);
@@ -160,6 +197,17 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
       router.refresh();
     });
   };
+
+  const doSettle = (voucherId: string) => start(async () => {
+    const r = await settleAdvance(voucherId);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Advance settled'); router.refresh();
+  });
+  const doRelease = (voucherId: string) => start(async () => {
+    const r = await releaseRetention(voucherId);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Retention released'); router.refresh();
+  });
 
   const pickProof = (voucherId: string) => { setProofTarget(voucherId); proofInputRef.current?.click(); };
   const onProofChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,9 +228,12 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
-          {canManage && !renaming && (
-            <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}><Pencil className="h-4 w-4" /> Rename payee</Button>
-          )}
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={downloadPassbook}><Download className="h-4 w-4" /> Passbook (CSV)</Button>
+            {canManage && !renaming && (
+              <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}><Pencil className="h-4 w-4" /> Rename payee</Button>
+            )}
+          </div>
         </div>
         {canManage && renaming && (
           <form
@@ -201,6 +252,12 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               <StatTile label="Payments" value={String(d.payments.length)} />
               <StatTile label="Bank on file" value={d.vendor.bankAccountNumber || d.vendor.upiId ? 'Yes' : 'No'} tone={d.vendor.bankAccountNumber || d.vendor.upiId ? 'good' : 'bad'} />
             </StatTileRow>
+            {(d.advancesOutstanding > 0 || d.retentionHeld > 0) && (
+              <div className="grid grid-cols-2 gap-3">
+                <StatTile label="Unsettled advances" value={formatCompactCurrency(d.advancesOutstanding)} tone={d.advancesOutstanding > 0 ? 'bad' : 'good'} />
+                <StatTile label="Retention held" value={formatCompactCurrency(d.retentionHeld)} tone={d.retentionHeld > 0 ? 'bad' : 'good'} />
+              </div>
+            )}
             <input ref={proofInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={onProofChosen} />
             <Card className="p-0">
               <div className="flex items-center justify-between border-b p-3">
@@ -227,10 +284,20 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                       {EXPENSE_CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                     </select>
                   </Field>
+                  <Field label="Retention held (₹)"><Input name="retentionAmount" type="number" step="1" placeholder="0" /></Field>
+                  <Field label="TDS deducted (%)"><Input name="tdsRate" type="number" step="0.1" placeholder="0" /></Field>
+                  <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                    <input type="checkbox" name="isAdvance" /> This is an advance (adjust against a later bill)
+                  </label>
                   <div className="sm:col-span-2"><Field label="What was it for? (note)"><Input name="note" placeholder="e.g. Construction advance" /></Field></div>
                   <div className="sm:col-span-2">
                     <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
                   </div>
+                  {d.vendor.phone && (
+                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                      <input type="checkbox" name="notifyWhatsApp" /> WhatsApp the vendor a receipt ({d.vendor.phone})
+                    </label>
+                  )}
                   <input type="hidden" name="reference" value="" />
                   {dupWarn && (
                     <div className="sm:col-span-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs">
@@ -250,7 +317,27 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                   <tbody>
                     {d.payments.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
                       <tr key={p.id} className="border-t align-top">
-                        <td className="p-2 font-medium">{p.number}</td>
+                        <td className="p-2 font-medium">
+                          {p.number}
+                          {p.status === 'DRAFT' && (
+                            <span className="mt-1 flex items-center gap-1">
+                              <Badge variant="warning" className="gap-1 text-[10px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>
+                              {canManage && <button onClick={() => approve(p.id)} disabled={pending} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline disabled:opacity-60"><BadgeCheck className="h-3 w-3" /> Approve</button>}
+                            </span>
+                          )}
+                          {p.isAdvance && (
+                            <span className="mt-1 flex items-center gap-1">
+                              <Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[10px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>
+                              {canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}
+                            </span>
+                          )}
+                          {p.retentionAmount ? (
+                            <span className="mt-1 flex items-center gap-1">
+                              <Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[10px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>
+                              {canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="p-2 whitespace-nowrap">{formatDate(p.paidOn ?? p.date)}</td>
                         <td className="p-2 text-right tabular-nums">{formatCurrency(p.amount)}</td>
                         <td className="p-2">{p.mode.replace(/_/g, ' ').toLowerCase()}</td>
@@ -265,7 +352,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                             <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '—'}</span>
                           )}
                         </td>
-                        <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}</td>
+                        <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[10px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
                         <td className="p-2">
                           {p.proofUrl ? (
                             <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> View</a>
@@ -342,6 +429,12 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               <Button size="sm" className="mt-2" onClick={() => runImport(text)} disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Import</Button>
             </div>
           )}
+          <form onSubmit={saveLimit} className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
+            <span className="text-muted-foreground">Flag payments above ₹</span>
+            <Input name="limit" type="number" step="1" defaultValue={approvalLimit || ''} placeholder="0 = off" className="h-8 w-32" />
+            <span className="text-muted-foreground">for review before they count as approved.</span>
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>Save</Button>
+          </form>
         </Card>
       )}
 

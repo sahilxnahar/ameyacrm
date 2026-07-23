@@ -48,13 +48,20 @@ export function SpendReportView({ report, projectName }: { report: SpendReport; 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-stretch justify-between gap-3">
         <Card className="flex-1 p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Total paid out · {projectName}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{formatCompactCurrency(report.total)}</p>
           <p className="text-xs text-muted-foreground">{report.count} payments</p>
         </Card>
-        <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4" /> Export CSV</Button>
+        {report.tdsTotal > 0 && (
+          <Card className="p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">TDS deducted</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{formatCompactCurrency(report.tdsTotal)}</p>
+            <p className="text-xs text-muted-foreground">{formatCompactCurrency(report.tdsThisMonth)} in the latest month — to deposit</p>
+          </Card>
+        )}
+        <Button variant="outline" size="sm" onClick={exportCsv} className="self-start"><Download className="h-4 w-4" /> Export CSV</Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

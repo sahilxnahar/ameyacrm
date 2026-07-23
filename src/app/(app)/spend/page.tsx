@@ -6,6 +6,7 @@ import { getSpendReport } from '@/server/services/spend-report-service';
 import { getCostToComplete } from '@/server/services/cost-to-complete-service';
 import { SpendReportView } from '@/components/finance/spend-report-view';
 import { CostToCompleteTable } from '@/components/finance/cost-to-complete-table';
+import { StatutoryCalendar } from '@/components/finance/statutory-calendar';
 
 export const metadata: Metadata = { title: 'Spend Report' };
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ export default async function SpendPage() {
       />
       <SpendReportView report={report} projectName={active.name} />
       <CostToCompleteTable rows={cost} />
+      <StatutoryCalendar />
     </div>
   );
 }

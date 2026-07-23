@@ -7,6 +7,39 @@ import { parseTable } from '@/lib/import/parse';
 import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { categorizeExpense } from '@/config/expense-categories';
+import { sendViaOpenWA } from '@/server/services/whatsapp-service';
+
+/** The company's "payments above this need a review" threshold (₹). 0 = off. */
+async function paymentApprovalLimit(): Promise<number> {
+  const row = await prisma.setting.findUnique({ where: { key: 'finance.payment_approval_limit' } });
+  const n = Number(row?.value ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** Admin sets the review threshold. */
+export async function setPaymentApprovalLimit(amount: number): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const n = Math.max(0, Math.round(Number(amount) || 0));
+    await prisma.setting.upsert({ where: { key: 'finance.payment_approval_limit' }, create: { key: 'finance.payment_approval_limit', value: n }, update: { value: n } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Payment review threshold set to Rs ${n.toLocaleString('en-IN')}` });
+    revalidatePath('/ledgers');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Mark a flagged (over-threshold) payment as reviewed/approved. */
+export async function approveVendorPayment(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', approvedById: ctx.user.id, approvedAt: new Date() } });
+    await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number}` });
+    revalidatePath('/ledgers');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
 
 export type LedgerActionResult =
   | {
@@ -214,11 +247,12 @@ async function nextCpNumber(): Promise<string> {
  */
 export async function addVendorPayment(input: {
   vendorId: string; amount: number | string; date?: string; mode?: string;
-  reference?: string; utr?: string; note?: string; proofUrl?: string; category?: string; force?: boolean;
-}): Promise<{ ok: true; id?: string } | { error: string } | { duplicate: string }> {
+  reference?: string; utr?: string; note?: string; proofUrl?: string; category?: string; force?: boolean; notifyWhatsApp?: boolean;
+  isAdvance?: boolean; retentionAmount?: number | string; tdsRate?: number | string;
+}): Promise<{ ok: true; id?: string; flagged?: boolean } | { error: string } | { duplicate: string }> {
   try {
     const ctx = await ensure('billing.bill.manage');
-    const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId }, select: { id: true, name: true } });
+    const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId }, select: { id: true, name: true, phone: true } });
     if (!vendor) return { error: 'That payee no longer exists.' };
     const amount = Number(input.amount);
     if (!Number.isFinite(amount) || amount <= 0) return { error: 'Enter an amount above zero.' };
@@ -246,25 +280,69 @@ export async function addVendorPayment(input: {
     const active = await getActiveProject(ctx.user.id);
     const number = await nextCpNumber();
 
+    // Payments above the company threshold are flagged for review (DRAFT) rather
+    // than posted straight away.
+    const limit = await paymentApprovalLimit();
+    const flagged = limit > 0 && amount > limit;
+
+    const retentionAmount = Number(input.retentionAmount) > 0 ? Math.round(Number(input.retentionAmount) * 100) / 100 : null;
+    const tdsRate = Number(input.tdsRate) > 0 ? Number(input.tdsRate) : null;
+    const tdsAmount = tdsRate ? Math.round(((amount * tdsRate) / 100) * 100) / 100 : null;
+
     const v = await prisma.voucher.create({
       data: {
-        number, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+        number, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: flagged ? 'DRAFT' : 'POSTED',
         voucherDate: when, paidOn: mode === 'CASH' ? null : when,
         partyName: vendor.name, vendorId: vendor.id, amount, mode,
         reference: opt(input.reference ?? ''), utr,
         utrEnteredById: utr ? ctx.user.id : null, utrEnteredAt: utr ? new Date() : null,
         narration: note,
         accountCode,
+        isAdvance: Boolean(input.isAdvance),
+        retentionAmount, tdsRate, tdsAmount,
         attachmentId: opt(input.proofUrl ?? ''),
         projectId: active.id ?? null,
         createdById: ctx.user.id,
       },
       select: { id: true },
     });
-    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Payment ${number} to ${vendor.name} — Rs ${amount.toLocaleString('en-IN')}` });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Payment ${number} to ${vendor.name} — Rs ${amount.toLocaleString('en-IN')}${flagged ? ' (flagged for review)' : ''}` });
+
+    // Best-effort WhatsApp receipt to the vendor. Never fails the payment.
+    if (input.notifyWhatsApp && !flagged && vendor.phone) {
+      try {
+        await sendViaOpenWA(vendor.phone, `Ameya Heights: ₹${amount.toLocaleString('en-IN')} paid on ${when.toLocaleDateString('en-IN')}${utr ? ` · UTR ${utr}` : ''}${note ? ` · ${note}` : ''}. Thank you.`);
+      } catch { /* WhatsApp is a courtesy, not a requirement */ }
+    }
+
     revalidatePath('/ledgers');
     revalidatePath('/payments');
-    return { ok: true, id: v.id };
+    return { ok: true, id: v.id, flagged };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Mark an advance as settled (set off against a bill), or a retention as released. */
+export async function settleAdvance(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { advanceSettled: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Advance ${v.number} settled` });
+    revalidatePath('/ledgers');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function releaseRetention(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { retentionReleased: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Retention on ${v.number} released` });
+    revalidatePath('/ledgers');
+    return { ok: true };
   } catch (e) { return toActionError(e); }
 }
 

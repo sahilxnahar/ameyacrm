@@ -2636,6 +2636,28 @@ enum VoucherStatus {
   CANCELLED
 }
 
+/// A payment that repeats — salary, rent, an EMI, a subscription. The CRM
+/// surfaces the next one due so it is recorded on time; it never pays anything.
+model RecurringPayment {
+  id          String   @id @default(cuid())
+  payeeName   String
+  vendorId    String?
+  amount      Decimal  @db.Decimal(14, 2)
+  frequency   String   @default("MONTHLY") // MONTHLY | QUARTERLY | YEARLY | WEEKLY
+  nextDue     DateTime
+  accountCode String? // expense category
+  projectId   String?
+  mode        String? // Bank | UPI | Cash | Cheque
+  note        String?
+  isActive    Boolean  @default(true)
+  lastPaidAt  DateTime?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, nextDue])
+}
+
 enum PayMode {
   CASH
   BANK_TRANSFER
@@ -2687,6 +2709,12 @@ model Voucher {
 
   attachmentId String?
   accountCode  String? // expense category for reporting (chart-of-accounts code, e.g. 5300 Materials)
+  isAdvance       Boolean  @default(false) // paid ahead of a bill; adjust later
+  advanceSettled  Boolean  @default(false) // advance has been set off against a bill
+  retentionAmount Decimal? @db.Decimal(14, 2) // amount held back from a contractor
+  retentionReleased Boolean @default(false)
+  tdsAmount    Decimal? @db.Decimal(14, 2) // TDS deducted from this payment
+  tdsRate      Decimal? @db.Decimal(5, 2)
   createdById  String?
   approvedById String?
   approvedAt   DateTime?

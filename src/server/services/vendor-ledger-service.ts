@@ -36,7 +36,9 @@ export async function listLedgers(): Promise<LedgerRow[]> {
 export interface LedgerDetail {
   vendor: { id: string; name: string; gstin: string | null; phone: string | null; bankName: string | null; bankAccountName: string | null; bankAccountNumber: string | null; bankIfsc: string | null; upiId: string | null };
   totalPaid: number;
-  payments: Array<{ id: string; number: string; date: Date; paidOn: Date | null; amount: number; mode: string; reference: string | null; utr: string | null; narration: string | null; proofUrl: string | null; category: string | null }>;
+  payments: Array<{ id: string; number: string; date: Date; paidOn: Date | null; amount: number; mode: string; reference: string | null; utr: string | null; narration: string | null; proofUrl: string | null; category: string | null; status: string; isAdvance: boolean; advanceSettled: boolean; retentionAmount: number | null; retentionReleased: boolean; tdsAmount: number | null }>;
+  advancesOutstanding: number;
+  retentionHeld: number;
 }
 
 export async function getLedger(vendorId: string): Promise<LedgerDetail | null> {
@@ -49,7 +51,7 @@ export async function getLedger(vendorId: string): Promise<LedgerDetail | null> 
     },
     orderBy: { voucherDate: 'desc' }, take: 1000,
     // `attachmentId` carries the proof-of-payment file URL (screenshot / bank PDF).
-    select: { id: true, number: true, voucherDate: true, paidOn: true, amount: true, mode: true, reference: true, utr: true, narration: true, attachmentId: true, accountCode: true },
+    select: { id: true, number: true, voucherDate: true, paidOn: true, amount: true, mode: true, reference: true, utr: true, narration: true, attachmentId: true, accountCode: true, status: true, isAdvance: true, advanceSettled: true, retentionAmount: true, retentionReleased: true, tdsAmount: true },
   });
   return {
     vendor: {
@@ -57,6 +59,8 @@ export async function getLedger(vendorId: string): Promise<LedgerDetail | null> 
       bankName: vendor.bankName, bankAccountName: vendor.bankAccountName, bankAccountNumber: vendor.bankAccountNumber, bankIfsc: vendor.bankIfsc, upiId: vendor.upiId,
     },
     totalPaid: vouchers.reduce((s, v) => s + num(v.amount), 0),
-    payments: vouchers.map((v) => ({ id: v.id, number: v.number, date: v.voucherDate, paidOn: v.paidOn, amount: num(v.amount), mode: v.mode, reference: v.reference, utr: v.utr, narration: v.narration, proofUrl: v.attachmentId, category: v.accountCode })),
+    advancesOutstanding: vouchers.filter((v) => v.isAdvance && !v.advanceSettled).reduce((s, v) => s + num(v.amount), 0),
+    retentionHeld: vouchers.filter((v) => v.retentionAmount && !v.retentionReleased).reduce((s, v) => s + num(v.retentionAmount), 0),
+    payments: vouchers.map((v) => ({ id: v.id, number: v.number, date: v.voucherDate, paidOn: v.paidOn, amount: num(v.amount), mode: v.mode, reference: v.reference, utr: v.utr, narration: v.narration, proofUrl: v.attachmentId, category: v.accountCode, status: v.status, isAdvance: v.isAdvance, advanceSettled: v.advanceSettled, retentionAmount: v.retentionAmount == null ? null : num(v.retentionAmount), retentionReleased: v.retentionReleased, tdsAmount: v.tdsAmount == null ? null : num(v.tdsAmount) })),
   };
 }

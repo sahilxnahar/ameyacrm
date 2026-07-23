@@ -10,6 +10,8 @@ export interface SpendSlice { key: string; label: string; total: number; count: 
 export interface SpendReport {
   total: number;
   count: number;
+  tdsTotal: number;
+  tdsThisMonth: number;
   byCategory: SpendSlice[];
   byVendor: SpendSlice[];
   byProject: SpendSlice[];
@@ -26,9 +28,21 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export async function getSpendReport(activeProjectId: string | null): Promise<SpendReport> {
   const rows = await prisma.voucher.findMany({
     where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, ...projectScope(activeProjectId) },
-    select: { amount: true, voucherDate: true, accountCode: true, partyName: true, projectId: true },
+    select: { amount: true, voucherDate: true, accountCode: true, partyName: true, projectId: true, tdsAmount: true },
     take: 20000,
   });
+
+  // TDS totals — all-time, and the most recent month present in the data.
+  let tdsTotal = 0;
+  let tdsThisMonth = 0;
+  const latest = rows.reduce<Date | null>((a, r) => (!a || r.voucherDate > a ? r.voucherDate : a), null);
+  const monthKey = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  const latestKey = latest ? monthKey(latest) : '';
+  for (const r of rows) {
+    const t = num(r.tdsAmount);
+    tdsTotal += t;
+    if (latestKey && monthKey(r.voucherDate) === latestKey) tdsThisMonth += t;
+  }
 
   const projects = await prisma.project.findMany({ select: { id: true, name: true } });
   const projName = new Map(projects.map((p) => [p.id, p.name]));
@@ -62,6 +76,8 @@ export async function getSpendReport(activeProjectId: string | null): Promise<Sp
   return {
     total,
     count: rows.length,
+    tdsTotal,
+    tdsThisMonth,
     byCategory: slices(cat, (k) => (k === '—' ? 'Uncategorised' : CATEGORY_LABEL[k] ?? k)),
     byVendor: slices(ven, (k) => k).slice(0, 25),
     byProject: slices(proj, (k) => (k === '—' ? 'No project' : projName.get(k) ?? k)),
