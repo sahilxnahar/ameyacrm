@@ -7,6 +7,7 @@ import { parseMentions } from '@/lib/chat/mentions';
 import { notifyUsers } from '@/lib/notify/notify';
 import { fireAndForget } from '@/lib/resilience/safely';
 import { isMember, getMessages, type ChatMessageRow } from '@/server/services/chat-service';
+import { emailNudgeNow } from '@/server/services/chat-nudge-service';
 import { checkRate } from '@/lib/security/rate-limit';
 import { publish } from '@/lib/realtime/realtime';
 
@@ -93,6 +94,24 @@ export async function sendMessage(conversationId: string, body: string, attachme
 
     revalidatePath('/chat');
     return { ok: true, conversationId };
+  } catch (e) { return toActionError(e); }
+}
+
+/**
+ * Email the other person a "you have a message waiting" nudge, on demand — the
+ * button in the conversation header. Handy when someone isn't checking the chat.
+ * Rate-limited so it can't be used to spam an inbox.
+ */
+export async function nudgeConversation(conversationId: string): Promise<{ ok: true; sent: number } | { error: string }> {
+  try {
+    const ctx = await getActionContext();
+    if (!(await isMember(conversationId, ctx.user.id))) return { error: 'You are not part of this conversation.' };
+    const rate = await checkRate(`chat-nudge:${ctx.user.id}:${conversationId}`, 3, 3600);
+    if (!rate.allowed) return { error: 'You’ve already sent a reminder recently — give them a little time.' };
+    const r = await emailNudgeNow(conversationId, ctx.user.id);
+    if (r.error) return { error: r.error };
+    if (r.sent === 0) return { error: 'Couldn’t email them — they may not have an email address on file.' };
+    return { ok: true, sent: r.sent };
   } catch (e) { return toActionError(e); }
 }
 

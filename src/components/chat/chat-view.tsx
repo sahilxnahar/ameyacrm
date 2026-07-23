@@ -2,9 +2,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, Pencil, Paperclip, FileText } from 'lucide-react';
+import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, Pencil, Paperclip, FileText, BellRing } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { sendMessage, startDirectConversation, fetchMessages, setMyUsername, markConversationRead } from '@/server/actions/chat';
+import { sendMessage, startDirectConversation, fetchMessages, setMyUsername, markConversationRead, nudgeConversation } from '@/server/actions/chat';
 import type { ConversationSummary, DirectoryUser, ChatMessageRow } from '@/server/services/chat-service';
 import { segmentMessage } from '@/lib/chat/mentions';
 import { Card } from '@/components/ui/card';
@@ -166,6 +166,18 @@ export function ChatView({
             <div className="flex items-center gap-2 border-b p-3">
               <button onClick={() => router.push('/chat')} className="lg:hidden"><X className="h-4 w-4" /></button>
               <span className="font-medium">{activeTitle ?? 'Conversation'}</span>
+              <button
+                onClick={() => start(async () => {
+                  const r = await nudgeConversation(activeId);
+                  if ('error' in r) { toast.error(r.error); return; }
+                  toast.success('Emailed them a reminder to check the chat.');
+                })}
+                disabled={pending}
+                title="Email them a reminder to check this chat"
+                className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
+              >
+                <BellRing className="h-3.5 w-3.5" /> Notify by email
+              </button>
             </div>
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 && <p className="text-center text-sm text-muted-foreground">No messages yet — say hello.</p>}

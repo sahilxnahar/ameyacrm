@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { env } from '@/config/env';
 import { runOverdueEscalation } from '@/server/services/escalation-service';
 import { runOnboardingReminders } from '@/server/services/onboarding-service';
+import { runChatNudges } from '@/server/services/chat-nudge-service';
 import { runSequences } from '@/server/services/sequence-service';
 import { processPending } from '@/server/services/file-sync-service';
 import { pruneRateLimits } from '@/lib/security/rate-limit';
@@ -40,8 +41,10 @@ export async function GET(req: NextRequest) {
     try { files = await processPending(); } catch { files = 'failed'; }
     let onboarding: unknown = 'skipped';
     try { onboarding = await runOnboardingReminders(); } catch { onboarding = 'failed'; }
+    let chatNudges: unknown = 'skipped';
+    try { chatNudges = await runChatNudges(); } catch { chatNudges = 'failed'; }
     try { await pruneRateLimits(); } catch { /* housekeeping only */ }
-    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result, sequences, files, onboarding });
+    return NextResponse.json({ ok: true, at: new Date().toISOString(), ...result, sequences, files, onboarding, chatNudges });
   } catch (err) {
     await logError(err, { path: '/api/cron/escalate' });
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'failed' }, { status: 500 });

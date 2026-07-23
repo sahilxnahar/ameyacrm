@@ -7,6 +7,9 @@ import { releaseExpiredHolds } from '@/lib/inventory/auto-release';
 import { writeAudit } from '@/lib/audit/log';
 import { getBriefing } from '@/server/services/briefing-service';
 import { runOverdueEscalation } from '@/server/services/escalation-service';
+import { runOnboardingReminders } from '@/server/services/onboarding-service';
+import { runChatNudges } from '@/server/services/chat-nudge-service';
+import { runTaskDigests } from '@/server/services/task-digest-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -79,6 +82,18 @@ export async function GET(req: NextRequest) {
 
   // 5) regenerate the AI daily briefing
   try { const b = await getBriefing(true); result.briefing = b.cached ? 'generated' : 'skipped'; } catch { result.briefing = 'failed'; }
+
+  // 6) email people who were invited but haven't signed in yet ("please log in")
+  try { result.onboarding = await runOnboardingReminders(now); } catch { result.onboarding = 'failed'; }
+
+  // 7) email anyone with a chat message left unread for a few hours
+  try { result.chatNudges = await runChatNudges(now); } catch { result.chatNudges = 'failed'; }
+
+  // 8) overdue-task / approval escalation (also runs hourly if /api/cron/escalate is wired)
+  try { result.escalation = await runOverdueEscalation(); } catch { result.escalation = 'failed'; }
+
+  // 9) daily task digest — each person's open tasks with one-tap "Mark done" links
+  try { result.taskDigests = await runTaskDigests(now); } catch { result.taskDigests = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

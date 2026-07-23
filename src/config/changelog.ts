@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.79';
+export const APP_VERSION = 'v14.80';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.80',
+    date: '23 Jul 2026',
+    highlights: [
+      'Private chat can now reach people by email: open a conversation and press “Notify by email” to send the other person a “you have a message waiting” note. Messages left unread for a few hours also trigger one automatic email, so nothing sits unseen.',
+      'New joiners who haven’t signed in are now reliably emailed a “please log in” reminder (this used to depend on a schedule that wasn’t always running).',
+      'A daily task email: each morning you get your open tasks with a one-tap “Mark done ✓” button per task — close things straight from your inbox, no sign-in needed.',
+    ],
+  },
   {
     version: 'v14.79',
     date: '23 Jul 2026',
