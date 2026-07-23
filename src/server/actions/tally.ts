@@ -400,6 +400,230 @@ export async function tallyCostCentreReport(fromISO: string | null, toISO: strin
   } catch (e) { const r = toActionError(e); return r; }
 }
 
+// ── GST returns (offline summary) ───────────────────────────────────────────
+export interface GstRateRow { rate: number; taxable: number; cgst: number; sgst: number; totalTax: number }
+export interface GstReturns {
+  ok: true;
+  gstr1: GstRateRow[];
+  gstr1Total: { taxable: number; cgst: number; sgst: number; totalTax: number };
+  gstr3b: {
+    outwardTaxable: number; outputCgst: number; outputSgst: number; outputTax: number;
+    inwardTaxable: number; inputCgst: number; inputSgst: number; inputTax: number;
+    netCgst: number; netSgst: number; netPayable: number;
+  };
+  itc: GstRateRow[];
+}
+
+/**
+ * Offline GST return summary computed from item invoices. GSTR-1 is outward
+ * supplies grouped by tax rate; GSTR-3B nets output tax against input tax credit.
+ * Tax is split CGST/SGST assuming intra-state supply — for inter-state (IGST)
+ * or filing-ready JSON, use the connected GST tier. Always have your CA review.
+ */
+export async function tallyGstReturns(fromISO: string | null, toISO: string | null): Promise<GstReturns | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const from = fromISO ? new Date(fromISO) : null;
+    const to = toISO ? new Date(toISO) : new Date('9999-12-31T00:00:00.000Z');
+    const lines = await prisma.tallyInventoryLine.findMany({
+      where: { voucher: { date: from ? { gte: from, lte: to } : { lte: to } } },
+      include: { item: { select: { gstRate: true } } },
+      take: 50000,
+    });
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    const outMap = new Map<number, number>(); // rate -> taxable
+    const inMap = new Map<number, number>();
+    for (const l of lines) {
+      const rate = Number(l.item.gstRate);
+      const amt = Number(l.amount);
+      const m = l.direction === 'OUT' ? outMap : inMap;
+      m.set(rate, (m.get(rate) ?? 0) + amt);
+    }
+    const toRows = (m: Map<number, number>): GstRateRow[] => [...m.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([rate, taxable]) => {
+        const tax = r2((taxable * rate) / 100);
+        const half = r2(tax / 2);
+        return { rate, taxable: r2(taxable), cgst: half, sgst: r2(tax - half), totalTax: tax };
+      });
+    const gstr1 = toRows(outMap);
+    const itc = toRows(inMap);
+    const sum = (rows: GstRateRow[]) => rows.reduce((a, r) => ({ taxable: a.taxable + r.taxable, cgst: a.cgst + r.cgst, sgst: a.sgst + r.sgst, totalTax: a.totalTax + r.totalTax }), { taxable: 0, cgst: 0, sgst: 0, totalTax: 0 });
+    const o = sum(gstr1); const i = sum(itc);
+    return {
+      ok: true,
+      gstr1,
+      gstr1Total: { taxable: r2(o.taxable), cgst: r2(o.cgst), sgst: r2(o.sgst), totalTax: r2(o.totalTax) },
+      itc,
+      gstr3b: {
+        outwardTaxable: r2(o.taxable), outputCgst: r2(o.cgst), outputSgst: r2(o.sgst), outputTax: r2(o.totalTax),
+        inwardTaxable: r2(i.taxable), inputCgst: r2(i.cgst), inputSgst: r2(i.sgst), inputTax: r2(i.totalTax),
+        netCgst: r2(o.cgst - i.cgst), netSgst: r2(o.sgst - i.sgst), netPayable: r2(o.totalTax - i.totalTax),
+      },
+    };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+// ── Cash Flow & Funds Flow ──────────────────────────────────────────────────
+export interface FlowRow { name: string; group: string; amount: number }
+export interface FlowStatements {
+  ok: true;
+  cash: {
+    opening: number; closing: number; net: number;
+    inflows: FlowRow[]; outflows: FlowRow[]; totalIn: number; totalOut: number;
+  };
+  funds: {
+    sources: FlowRow[]; applications: FlowRow[]; totalSources: number; totalApplications: number;
+  };
+}
+
+const CASH_BANK_GROUPS = ['Cash-in-Hand', 'Bank Accounts', 'Bank OD A/c'];
+
+/** Cash Flow (movement of cash & bank) and Funds Flow (sources vs applications). */
+export async function tallyFlows(fromISO: string | null, toISO: string | null): Promise<FlowStatements | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const from = fromISO ? new Date(fromISO) : null;
+    const to = toISO ? new Date(toISO) : new Date('9999-12-31T00:00:00.000Z');
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+
+    const ledgers = await prisma.tallyLedger.findMany();
+    const cashIds = new Set(ledgers.filter((l) => CASH_BANK_GROUPS.includes(l.group)).map((l) => l.id));
+    const ledgerById = new Map(ledgers.map((l) => [l.id, l]));
+    const openSigned = (l: (typeof ledgers)[number]) => (l.openingSide === 'Dr' ? Number(l.openingBalance) : -Number(l.openingBalance));
+
+    // Movements strictly before the period (for opening balances) and up to `to` (for closing).
+    const [beforeMov, closeMov] = await Promise.all([
+      from ? prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: { voucher: { date: { lt: from } } }, _sum: { debit: true, credit: true } }) : Promise.resolve([] as Array<{ ledgerId: string; _sum: { debit: unknown; credit: unknown } }>),
+      prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: { voucher: { date: { lte: to } } }, _sum: { debit: true, credit: true } }),
+    ]);
+    const beforeOf = new Map(beforeMov.map((m) => [m.ledgerId, Number(m._sum.debit ?? 0) - Number(m._sum.credit ?? 0)]));
+    const closeOf = new Map(closeMov.map((m) => [m.ledgerId, Number(m._sum.debit ?? 0) - Number(m._sum.credit ?? 0)]));
+
+    // Cash & bank opening/closing.
+    let cashOpen = 0, cashClose = 0;
+    for (const l of ledgers) {
+      if (!cashIds.has(l.id)) continue;
+      cashOpen += openSigned(l) + (beforeOf.get(l.id) ?? 0);
+      cashClose += openSigned(l) + (closeOf.get(l.id) ?? 0);
+    }
+
+    // Cash flow detail — in-period vouchers that touch cash/bank; attribute to counterparties.
+    const periodVouchers = await prisma.tallyVoucher.findMany({
+      where: { date: from ? { gte: from, lte: to } : { lte: to } },
+      include: { lines: true },
+      take: 50000,
+    });
+    const inflowMap = new Map<string, number>(), outflowMap = new Map<string, number>();
+    for (const v of periodVouchers) {
+      const touchesCash = v.lines.some((l) => cashIds.has(l.ledgerId));
+      if (!touchesCash) continue;
+      for (const l of v.lines) {
+        if (cashIds.has(l.ledgerId)) continue; // counterparties only
+        const credit = Number(l.credit), debit = Number(l.debit);
+        if (credit > 0) inflowMap.set(l.ledgerId, (inflowMap.get(l.ledgerId) ?? 0) + credit);
+        if (debit > 0) outflowMap.set(l.ledgerId, (outflowMap.get(l.ledgerId) ?? 0) + debit);
+      }
+    }
+    const toFlowRows = (m: Map<string, number>): FlowRow[] => [...m.entries()]
+      .map(([id, amt]) => ({ name: ledgerById.get(id)?.name ?? '?', group: ledgerById.get(id)?.group ?? '', amount: r2(amt) }))
+      .filter((r) => r.amount > 0.009)
+      .sort((a, b) => b.amount - a.amount);
+    const inflows = toFlowRows(inflowMap), outflows = toFlowRows(outflowMap);
+    const totalIn = r2(inflows.reduce((s, r) => s + r.amount, 0));
+    const totalOut = r2(outflows.reduce((s, r) => s + r.amount, 0));
+
+    // Funds flow — movement of each non-P&L ledger over the period, classed as source or application.
+    const sources: FlowRow[] = [], applications: FlowRow[] = [];
+    for (const l of ledgers) {
+      const nat = natureOfGroup(l.group);
+      if (nat === 'INCOME' || nat === 'EXPENSE') continue; // captured via profit
+      const open = openSigned(l) + (from ? (beforeOf.get(l.id) ?? 0) : 0);
+      const close = openSigned(l) + (closeOf.get(l.id) ?? 0);
+      const delta = r2(close - open); // Dr-positive change
+      if (Math.abs(delta) < 0.01) continue;
+      if (nat === 'ASSET') {
+        if (delta > 0) applications.push({ name: l.name, group: l.group, amount: delta });
+        else sources.push({ name: l.name, group: l.group, amount: -delta });
+      } else { // LIABILITY (incl. capital, reserves)
+        if (delta < 0) sources.push({ name: l.name, group: l.group, amount: -delta });
+        else applications.push({ name: l.name, group: l.group, amount: delta });
+      }
+    }
+    // Net profit for the period is a source of funds (loss = application).
+    const plSums = await prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: { voucher: { date: from ? { gte: from, lte: to } : { lte: to } } }, _sum: { debit: true, credit: true } });
+    let profit = 0;
+    for (const m of plSums) {
+      const l = ledgerById.get(m.ledgerId); if (!l) continue;
+      const nat = natureOfGroup(l.group);
+      if (nat !== 'INCOME' && nat !== 'EXPENSE') continue;
+      const d = Number(m._sum.debit ?? 0), c = Number(m._sum.credit ?? 0);
+      profit += nat === 'INCOME' ? c - d : -(d - c);
+    }
+    profit = r2(profit);
+    if (profit > 0.009) sources.push({ name: 'Profit for the period', group: 'Profit & Loss', amount: profit });
+    else if (profit < -0.009) applications.push({ name: 'Loss for the period', group: 'Profit & Loss', amount: -profit });
+    sources.sort((a, b) => b.amount - a.amount);
+    applications.sort((a, b) => b.amount - a.amount);
+
+    return {
+      ok: true,
+      cash: { opening: r2(cashOpen), closing: r2(cashClose), net: r2(cashClose - cashOpen), inflows, outflows, totalIn, totalOut },
+      funds: {
+        sources, applications,
+        totalSources: r2(sources.reduce((s, r) => s + r.amount, 0)),
+        totalApplications: r2(applications.reduce((s, r) => s + r.amount, 0)),
+      },
+    };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+// ── Ratio analysis ──────────────────────────────────────────────────────────
+export interface RatioRow { name: string; value: string; hint: string }
+export type Ratios = { ok: true; rows: RatioRow[]; asOf: string } | { error: string };
+
+const CURRENT_ASSET_GROUPS = ['Current Assets', 'Cash-in-Hand', 'Bank Accounts', 'Sundry Debtors', 'Stock-in-Hand', 'Loans & Advances (Asset)', 'Deposits (Asset)'];
+const CURRENT_LIAB_GROUPS = ['Current Liabilities', 'Sundry Creditors', 'Duties & Taxes', 'Provisions', 'Bank OD A/c'];
+const DEBT_GROUPS = ['Secured Loans', 'Unsecured Loans', 'Loans (Liability)'];
+const EQUITY_GROUPS = ['Capital Account', 'Reserves & Surplus'];
+
+/** Key accounting ratios, Tally-style, from the balance sheet & P&L for the period. */
+export async function tallyRatios(fromISO: string | null, toISO: string | null, label?: string): Promise<Ratios> {
+  try {
+    await ensure('finance.ledger.view');
+    const data = await getTallyData({ from: fromISO ? new Date(fromISO) : null, to: toISO ? new Date(toISO) : null, label });
+    const sumGroups = (groups: string[]) => data.ledgers.filter((l) => groups.includes(l.group)).reduce((s, l) => s + l.balance, 0);
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    const ca = sumGroups(CURRENT_ASSET_GROUPS);
+    const cl = sumGroups(CURRENT_LIAB_GROUPS);
+    const stock = data.stock.reduce((s, r) => s + r.value, 0);
+    const debt = sumGroups(DEBT_GROUPS);
+    const equity = sumGroups(EQUITY_GROUPS) + data.pl.profit;
+    const debtors = data.ledgers.filter((l) => l.group === 'Sundry Debtors').reduce((s, l) => s + l.balance, 0);
+    const creditors = data.ledgers.filter((l) => l.group === 'Sundry Creditors').reduce((s, l) => s + l.balance, 0);
+    const income = data.pl.totalIncome, profit = data.pl.profit;
+    const capitalEmployed = equity + debt;
+
+    const money = (x: number) => `₹ ${inr(r2(x))}`;
+    const times = (num: number, den: number) => (den > 0.009 ? `${(num / den).toFixed(2)} : 1` : '—');
+    const pct = (num: number, den: number) => (Math.abs(den) > 0.009 ? `${r2((num / den) * 100).toFixed(2)} %` : '—');
+
+    const rows: RatioRow[] = [
+      { name: 'Working Capital', value: money(ca - cl), hint: 'Current Assets − Current Liabilities' },
+      { name: 'Current Ratio', value: times(ca, cl), hint: 'Current Assets ÷ Current Liabilities (2:1 is healthy)' },
+      { name: 'Quick Ratio', value: times(ca - stock, cl), hint: '(Current Assets − Stock) ÷ Current Liabilities (1:1 is healthy)' },
+      { name: 'Debt-Equity Ratio', value: times(debt, equity), hint: 'Loans ÷ (Capital + Reserves + Profit)' },
+      { name: 'Net Profit %', value: pct(profit, income), hint: 'Net Profit ÷ Income for the period' },
+      { name: 'Return on Capital Employed', value: pct(profit, capitalEmployed), hint: 'Net Profit ÷ (Equity + Debt)' },
+      { name: 'Sundry Debtors (receivable)', value: money(debtors), hint: 'Money owed to you' },
+      { name: 'Sundry Creditors (payable)', value: money(creditors), hint: 'Money you owe' },
+      { name: 'Closing Stock value', value: money(stock), hint: 'Inventory on hand at cost' },
+    ];
+    const asOf = data.period.label && data.period.label !== 'All time' ? data.period.label : `As of ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    return { ok: true, rows, asOf };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
 export async function deleteTallyStockItem(id: string): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.view');
@@ -410,6 +634,143 @@ export async function deleteTallyStockItem(id: string): Promise<TallyResult> {
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'TallyStockItem', entityId: id, summary: `Deleted Tally stock item ${it.name}` });
     revalidatePath('/tally');
     return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+// ── Bank reconciliation ─────────────────────────────────────────────────────
+export interface BankReconLine {
+  lineId: string; date: string; type: string; number: number; particulars: string;
+  debit: number; credit: number; clearedDate: string | null;
+}
+export type BankRecon = {
+  ok: true; name: string; group: string;
+  rows: BankReconLine[];
+  bookBalance: number; bookSide: 'Dr' | 'Cr';
+  bankBalance: number; bankSide: 'Dr' | 'Cr';
+  unclearedDebit: number; unclearedCredit: number;
+} | { error: string };
+
+/** Bank reconciliation for one bank ledger — book vs bank (cleared-only) balance. */
+export async function tallyBankRecon(ledgerId: string): Promise<BankRecon> {
+  try {
+    await ensure('finance.ledger.view');
+    const ledger = await prisma.tallyLedger.findUnique({ where: { id: ledgerId } });
+    if (!ledger) return { error: 'Ledger not found.' };
+    const lines = await prisma.tallyVoucherLine.findMany({
+      where: { ledgerId },
+      include: { voucher: { select: { date: true, type: true, number: true, lines: { include: { ledger: { select: { name: true } } } } } } },
+      orderBy: [{ voucher: { date: 'asc' } }, { voucher: { number: 'asc' } }],
+      take: 5000,
+    });
+    const opening = ledger.openingSide === 'Dr' ? Number(ledger.openingBalance) : -Number(ledger.openingBalance);
+    let book = opening, bank = opening, unclearedDr = 0, unclearedCr = 0;
+    const rows: BankReconLine[] = lines.map((ln) => {
+      const debit = Number(ln.debit), credit = Number(ln.credit);
+      book = Math.round((book + debit - credit) * 100) / 100;
+      if (ln.clearedDate) bank = Math.round((bank + debit - credit) * 100) / 100;
+      else { unclearedDr += debit; unclearedCr += credit; }
+      const particulars = ln.voucher.lines.filter((x) => x.ledger.name !== ledger.name).map((x) => x.ledger.name).join(', ') || ledger.name;
+      return { lineId: ln.id, date: ln.voucher.date.toISOString(), type: ln.voucher.type, number: ln.voucher.number, particulars, debit, credit, clearedDate: ln.clearedDate ? ln.clearedDate.toISOString() : null };
+    });
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    return {
+      ok: true, name: ledger.name, group: ledger.group, rows,
+      bookBalance: Math.abs(book), bookSide: book >= 0 ? 'Dr' : 'Cr',
+      bankBalance: Math.abs(bank), bankSide: bank >= 0 ? 'Dr' : 'Cr',
+      unclearedDebit: r2(unclearedDr), unclearedCredit: r2(unclearedCr),
+    };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+/** Mark a bank entry cleared on a given date, or un-clear it (null). */
+export async function tallySetCleared(lineId: string, dateISO: string | null): Promise<TallyResult> {
+  try {
+    const ctx = await ensure('finance.ledger.view');
+    const line = await prisma.tallyVoucherLine.findUnique({ where: { id: lineId }, select: { id: true, ledgerId: true } });
+    if (!line) return { error: 'Entry not found.' };
+    await prisma.tallyVoucherLine.update({ where: { id: lineId }, data: { clearedDate: dateISO ? new Date(dateISO) : null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucherLine', entityId: lineId, summary: dateISO ? `Bank recon: cleared ${dateISO.slice(0, 10)}` : 'Bank recon: un-cleared' });
+    revalidatePath('/tally');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+// ── Voucher editing ─────────────────────────────────────────────────────────
+export interface VoucherEdit {
+  ok: true; id: string; type: string; date: string; narration: string | null;
+  costCentre: string | null; isInvoice: boolean;
+  lines: Array<{ ledgerId: string; debit: number; credit: number }>;
+}
+/** Fetch one voucher for editing (with ledger IDs so the form can pre-fill). */
+export async function tallyVoucherForEdit(id: string): Promise<VoucherEdit | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const v = await prisma.tallyVoucher.findUnique({ where: { id }, include: { lines: true } });
+    if (!v) return { error: 'Voucher not found.' };
+    return {
+      ok: true, id: v.id, type: v.type, date: v.date.toISOString().slice(0, 10),
+      narration: v.narration, costCentre: v.costCentre, isInvoice: v.type === 'Sales' || v.type === 'Purchase',
+      lines: v.lines.map((l) => ({ ledgerId: l.ledgerId, debit: Number(l.debit), credit: Number(l.credit) })),
+    };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+const voucherEditSchema = z.object({
+  id: z.string().min(1),
+  date: z.string().min(1),
+  narration: z.string().max(500).optional(),
+  costCentre: z.string().max(120).optional(),
+  lines: z.array(z.object({ ledgerId: z.string().min(1), debit: z.coerce.number().min(0).default(0), credit: z.coerce.number().min(0).default(0) })).min(2, 'A voucher needs at least two lines'),
+});
+
+/** Edit an accounting voucher (Contra/Payment/Receipt/Journal) — replaces its lines. */
+export async function updateTallyVoucher(input: unknown): Promise<TallyResult> {
+  try {
+    const ctx = await ensure('finance.ledger.view');
+    const d = voucherEditSchema.parse(input);
+    const existing = await prisma.tallyVoucher.findUnique({ where: { id: d.id }, select: { type: true, number: true } });
+    if (!existing) return { error: 'Voucher not found.' };
+    if (existing.type === 'Sales' || existing.type === 'Purchase') return { error: 'Item invoices carry stock — edit the date/narration only, or delete and re-post to change amounts.' };
+    const lines = d.lines.filter((l) => l.ledgerId && (l.debit > 0 || l.credit > 0));
+    if (lines.length < 2) return { error: 'Enter at least two ledger lines with amounts.' };
+    const totalDr = Math.round(lines.reduce((s, l) => s + l.debit, 0) * 100);
+    const totalCr = Math.round(lines.reduce((s, l) => s + l.credit, 0) * 100);
+    if (totalDr === 0) return { error: 'The voucher amount cannot be zero.' };
+    if (totalDr !== totalCr) return { error: `Debit and credit must match. Dr ₹${(totalDr / 100).toLocaleString('en-IN')} vs Cr ₹${(totalCr / 100).toLocaleString('en-IN')}.` };
+
+    await prisma.$transaction([
+      prisma.tallyVoucherLine.deleteMany({ where: { voucherId: d.id } }),
+      prisma.tallyVoucher.update({
+        where: { id: d.id },
+        data: {
+          date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null,
+          lines: { create: lines.map((l) => ({ ledgerId: l.ledgerId, debit: l.debit, credit: l.credit })) },
+        },
+      }),
+    ]);
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: d.id, summary: `Edited Tally ${existing.type} #${existing.number} — Rs ${(totalDr / 100).toLocaleString('en-IN')}` });
+    revalidatePath('/tally');
+    return { ok: true, id: d.id };
+  } catch (e) { return toActionError(e); }
+}
+
+const headerEditSchema = z.object({
+  id: z.string().min(1),
+  date: z.string().min(1),
+  narration: z.string().max(500).optional(),
+  costCentre: z.string().max(120).optional(),
+});
+/** Edit just the header of any voucher (date, narration, cost centre) — safe for invoices. */
+export async function updateTallyVoucherHeader(input: unknown): Promise<TallyResult> {
+  try {
+    const ctx = await ensure('finance.ledger.view');
+    const d = headerEditSchema.parse(input);
+    const existing = await prisma.tallyVoucher.findUnique({ where: { id: d.id }, select: { type: true, number: true } });
+    if (!existing) return { error: 'Voucher not found.' };
+    await prisma.tallyVoucher.update({ where: { id: d.id }, data: { date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: d.id, summary: `Edited header of Tally ${existing.type} #${existing.number}` });
+    revalidatePath('/tally');
+    return { ok: true, id: d.id };
   } catch (e) { return toActionError(e); }
 }
 

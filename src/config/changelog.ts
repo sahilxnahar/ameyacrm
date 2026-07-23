@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.93';
+export const APP_VERSION = 'v14.98';
 
 export interface Release {
   version: string;
@@ -13,6 +13,42 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.98',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 11 — Ratio Analysis (press A). One screen of the numbers your CA and bank ask for: working capital, current & quick ratios, debt-equity, net profit %, return on capital employed, debtors, creditors and closing stock — all for the selected period, with the basis shown under each and an Excel export.',
+      'Ameya Tally is now feature-complete for in-house books: masters, all six voucher types with keyboard shortcuts, item invoices with auto-GST, cost centres & job costing, bank reconciliation, voucher editing, GST returns, cash/funds flow and ratios — plus Trial Balance, P&L, Balance Sheet, Day Book, outstanding ageing and branded PDF/Excel exports throughout. The connected tier (GST e-filing JSON, e-invoice/e-way-bill, live bank feeds, Tally sync) is ready to switch on once credentials are provided.',
+    ],
+  },
+  {
+    version: 'v14.97',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 10 — Cash Flow & Funds Flow (press F). Cash Flow shows opening cash & bank, money received and paid grouped by ledger, and the closing balance for the selected period. Funds Flow lays out the sources of funds against how they were applied, including the period’s profit as a source. Both export to Excel.',
+    ],
+  },
+  {
+    version: 'v14.96',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 9 — GST Returns summary. A new report (press G) shows GSTR-1 outward supplies grouped by tax rate, your input tax credit on purchases, and a GSTR-3B net-payable working (output tax less ITC), all for the selected period and exportable to Excel. Tax is split CGST/SGST for intra-state supply; filing-ready JSON and inter-state IGST come with the connected GST tier. Have your CA review before filing.',
+    ],
+  },
+  {
+    version: 'v14.95',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 8 — Edit vouchers. The Day Book now has an “edit” button on every entry. Accounting vouchers (Contra, Payment, Receipt, Journal) open in the full editor so you can fix the date, narration, cost centre or any line and re-save (it still has to balance). Item invoices open a safe header editor for the date, narration and cost centre — their stock and amounts stay intact.',
+    ],
+  },
+  {
+    version: 'v14.94',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 7 — Bank Reconciliation. Pick any bank ledger (press R), then tick off each entry with the date it cleared your bank statement. Ameya Tally shows your balance as per books, the amounts not yet cleared, and the balance as per bank — which should match your statement once everything on it is dated. Cleared rows turn green.',
+    ],
+  },
   {
     version: 'v14.93',
     date: '23 Jul 2026',

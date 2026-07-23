@@ -1979,13 +1979,14 @@ model TallyInventoryLine {
 }
 
 model TallyVoucherLine {
-  id        String       @id @default(cuid())
-  voucherId String
-  ledgerId  String
-  debit     Decimal      @default(0) @db.Decimal(16, 2)
-  credit    Decimal      @default(0) @db.Decimal(16, 2)
-  voucher   TallyVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
-  ledger    TallyLedger  @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
+  id          String       @id @default(cuid())
+  voucherId   String
+  ledgerId    String
+  debit       Decimal      @default(0) @db.Decimal(16, 2)
+  credit      Decimal      @default(0) @db.Decimal(16, 2)
+  clearedDate DateTime?    // bank-reconciliation: the date this entry cleared the bank
+  voucher     TallyVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  ledger      TallyLedger  @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
 
   @@index([voucherId])
   @@index([ledgerId])
