@@ -411,6 +411,20 @@ export async function reclassifyPaymentToCash(voucherId: string): Promise<Ledger
   } catch (e) { return toActionError(e); }
 }
 
+/** Reclassify a payment as a bank payment — the mirror of "To cash", so any
+ *  payment can be moved either way. Leaves the UTR blank for you to fill in. */
+export async function reclassifyPaymentToBank(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true, paidOn: true, voucherDate: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { kind: 'BANK_PAID', mode: 'BANK_TRANSFER', paidOn: v.paidOn ?? v.voucherDate } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Moved ${v.number} to bank` });
+    revalidatePath('/ledgers'); revalidatePath('/payments'); revalidatePath('/cash-book');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
 /** Set the expense category (chart-of-accounts code) on a single payment. */
 export async function setPaymentCategory(voucherId: string, accountCode: string): Promise<LedgerActionResult> {
   try {

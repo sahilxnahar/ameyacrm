@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.81';
+export const APP_VERSION = 'v14.82';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.82',
+    date: '23 Jul 2026',
+    highlights: [
+      'Chat now shows read receipts: your sent messages say “Sent”, then “Read ✓✓” once the other person opens the conversation. Always on — nobody can switch it off.',
+      'Every payment can now be reclassified either way — “To cash” on bank/UPI payments and “To bank” on cash ones — so you have full control over where each entry lands.',
+      'The Vendor Ledger is tidier: colour-coded mode pills (Cash / Bank / UPI) and a single wrapping row of pill actions per payment, so nothing gets clipped off the edge.',
+    ],
+  },
   {
     version: 'v14.81',
     date: '23 Jul 2026',

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks, Download, BadgeCheck, ShieldAlert, Trash2, Wallet, FileText } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention, deleteVendorPayment, restoreVendorPayment, reclassifyPaymentToCash, hardDeleteVendorPayment } from '@/server/actions/vendor-ledger';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention, deleteVendorPayment, restoreVendorPayment, reclassifyPaymentToCash, reclassifyPaymentToBank, hardDeleteVendorPayment } from '@/server/actions/vendor-ledger';
 import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { exportXlsx } from '@/lib/export/xlsx';
@@ -226,6 +226,50 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
     if ('error' in r) { toast.error(r.error); return; }
     toast.success('Moved to Cash Book (marked as cash)'); router.refresh();
   });
+  const toBank = (voucherId: string) => start(async () => {
+    const r = await reclassifyPaymentToBank(voucherId);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Marked as a bank payment'); router.refresh();
+  });
+
+  // A colour-coded pill for the payment mode, so cash vs bank vs UPI reads at a glance.
+  const modePill = (mode: string) => {
+    const m = (mode || '').toUpperCase();
+    const isCash = m === 'CASH';
+    const isUpi = m === 'UPI';
+    const isCheque = m.includes('CHEQUE');
+    const label = isCash ? 'Cash' : isUpi ? 'UPI' : isCheque ? 'Cheque' : 'Bank';
+    const cls = isCash
+      ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+      : isUpi
+        ? 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300'
+        : 'bg-[#1B2A4A]/10 text-[#1B2A4A] dark:bg-[#8FB0E8]/15 dark:text-[#8FB0E8]';
+    return (
+      <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', cls)}>
+        {isCash ? <Wallet className="h-3 w-3" /> : <Landmark className="h-3 w-3" />} {label}
+      </span>
+    );
+  };
+
+  const pillBtn = 'focus-ring inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-secondary disabled:opacity-50';
+
+  // One consistent, wrapping row of pill actions — used on both the phone cards
+  // and the desktop table, so every payment offers the same full set of controls.
+  const PaymentActions = (p: LedgerDetail['payments'][number]) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {p.proofUrl ? (
+        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className={cn(pillBtn, 'text-primary')}><Paperclip className="h-3 w-3" /> Proof</a>
+      ) : canManage ? (
+        <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className={pillBtn}>{uploadingId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Proof</button>
+      ) : null}
+      <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className={pillBtn}><FileText className="h-3 w-3" /> Slip</a>
+      {canManage && (p.mode === 'CASH'
+        ? <button onClick={() => toBank(p.id)} disabled={pending} className={pillBtn} title="Reclassify as a bank payment"><Landmark className="h-3 w-3" /> To bank</button>
+        : <button onClick={() => toCash(p.id)} disabled={pending} className={pillBtn} title="Reclassify as cash — shows in the Cash Book"><Wallet className="h-3 w-3" /> To cash</button>)}
+      {canManage && <button onClick={() => removePayment(p)} disabled={pending} className={cn(pillBtn, 'border-destructive/30 text-destructive')}><Trash2 className="h-3 w-3" /> Delete</button>}
+      {canHardDelete && <button onClick={() => permanentlyDelete(p)} disabled={pending} className={cn(pillBtn, 'border-destructive/40 font-semibold text-destructive')} title="Remove permanently — cannot be undone"><Trash2 className="h-3 w-3" /> Delete forever</button>}
+    </div>
+  );
 
   const doSettle = (voucherId: string) => start(async () => {
     const r = await settleAdvance(voucherId);
@@ -351,9 +395,9 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                       <span className="font-semibold tabular-nums">{formatCurrency(p.amount)}</span>
                       <span className="text-xs text-muted-foreground">{formatDate(p.paidOn ?? p.date)}</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                      <span className="capitalize">{p.mode.replace(/_/g, ' ').toLowerCase()}</span>
-                      {(p.utr ?? p.reference) && <span className="font-mono">· {p.utr ?? p.reference}</span>}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      {modePill(p.mode)}
+                      {(p.utr ?? p.reference) && <span className="font-mono">{p.utr ?? p.reference}</span>}
                       <span>· {p.number}</span>
                     </div>
                     {p.narration && <p className="text-xs text-muted-foreground">{p.narration}</p>}
@@ -369,31 +413,21 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                         <><Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[10px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>{canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}</>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
                       {canManage ? (
                         <select value={p.category ?? ''} onChange={(e) => changeCategory(p.id, e.target.value)} disabled={pending} className="focus-ring rounded-md border border-input bg-background px-2 py-1 text-xs">
                           <option value="">— uncategorised —</option>
                           {EXPENSE_CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                         </select>
                       ) : <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? ''}</span>}
-                      {p.proofUrl ? (
-                        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> Proof</a>
-                      ) : canManage ? (
-                        <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">{uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Proof</button>
-                      ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 pt-0.5">
-                      <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
-                      {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
-                      {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
-                      {canHardDelete && <button onClick={() => permanentlyDelete(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs font-medium text-destructive disabled:opacity-60" title="Remove permanently — cannot be undone"><Trash2 className="h-3.5 w-3.5" /> Delete forever</button>}
-                    </div>
+                    {PaymentActions(p)}
                   </div>
                 ))}
               </div>
               <div className="hidden max-h-[26rem] overflow-auto sm:block">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Category</th><th className="p-2">Note</th><th className="p-2">Proof</th></tr></thead>
+                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Category</th><th className="p-2">Note</th><th className="p-2">Actions</th></tr></thead>
                   <tbody>
                     {d.payments.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
                       <tr key={p.id} className="border-t align-top">
@@ -420,7 +454,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                         </td>
                         <td className="p-2 whitespace-nowrap">{formatDate(p.paidOn ?? p.date)}</td>
                         <td className="p-2 text-right tabular-nums">{formatCurrency(p.amount)}</td>
-                        <td className="p-2">{p.mode.replace(/_/g, ' ').toLowerCase()}</td>
+                        <td className="p-2">{modePill(p.mode)}</td>
                         <td className="p-2 font-mono text-xs">{p.utr ?? p.reference ?? '—'}</td>
                         <td className="p-2">
                           {canManage ? (
@@ -432,22 +466,8 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                             <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '—'}</span>
                           )}
                         </td>
-                        <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[10px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
-                        <td className="p-2">
-                          <div className="flex flex-col items-start gap-1">
-                            {p.proofUrl ? (
-                              <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> Proof</a>
-                            ) : canManage ? (
-                              <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">
-                                {uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Proof
-                              </button>
-                            ) : null}
-                            <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
-                            {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
-                            {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
-                            {canHardDelete && <button onClick={() => permanentlyDelete(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:underline disabled:opacity-60" title="Remove permanently — cannot be undone"><Trash2 className="h-3.5 w-3.5" /> Delete forever</button>}
-                          </div>
-                        </td>
+                        <td className="max-w-[15rem] whitespace-normal break-words p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[10px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
+                        <td className="min-w-[13rem] p-2">{PaymentActions(p)}</td>
                       </tr>
                     ))}
                   </tbody>

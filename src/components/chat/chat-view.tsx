@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, Pencil, Paperclip, FileText, BellRing } from 'lucide-react';
+import { Send, Loader2, Plus, X, Search, MessagesSquare, AtSign, Check, CheckCheck, Pencil, Paperclip, FileText, BellRing } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
 import { sendMessage, startDirectConversation, fetchMessages, setMyUsername, markConversationRead, nudgeConversation } from '@/server/actions/chat';
 import type { ConversationSummary, DirectoryUser, ChatMessageRow } from '@/server/services/chat-service';
@@ -95,7 +95,7 @@ export function ChatView({
     if ((!text && files.length === 0) || !activeId || pending || uploading) return;
     const sending = files;
     setInput(''); setFiles([]);
-    setMessages((prev) => [...prev, { id: `tmp-${prev.length}`, senderId: me.id, senderName: me.name, body: text, createdAt: new Date(), mine: true, attachments: sending.map((f, i) => ({ id: `t${i}`, url: f.url, name: f.name, mimeType: f.mimeType })) }]);
+    setMessages((prev) => [...prev, { id: `tmp-${prev.length}`, senderId: me.id, senderName: me.name, body: text, createdAt: new Date(), mine: true, read: false, attachments: sending.map((f, i) => ({ id: `t${i}`, url: f.url, name: f.name, mimeType: f.mimeType })) }]);
     start(async () => {
       const r = await sendMessage(activeId, text, sending.map((f) => ({ url: f.url, name: f.name, mimeType: f.mimeType })));
       if ('error' in r) { toast.error(r.error); return; }
@@ -195,7 +195,12 @@ export function ChatView({
                       )
                     ))}
                   </div>
-                  <span className="mt-0.5 text-[10px] text-muted-foreground">{formatDateTime(m.createdAt)}</span>
+                  <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    {formatDateTime(m.createdAt)}
+                    {m.mine && (m.read
+                      ? <span className="flex items-center gap-0.5 text-[#1B2A4A] dark:text-[#8FB0E8]"><CheckCheck className="h-3 w-3" /> Read</span>
+                      : <span className="flex items-center gap-0.5"><Check className="h-3 w-3" /> Sent</span>)}
+                  </span>
                 </div>
               ))}
               <div ref={endRef} />
