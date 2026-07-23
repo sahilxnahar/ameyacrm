@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Upload, Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search } from 'lucide-react';
 import { importVendorPayments, mergeVendors, saveVendorBank } from '@/server/actions/vendor-ledger';
+import { readSpreadsheetAsCsv, SPREADSHEET_ACCEPT } from '@/lib/import/read-spreadsheet';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,11 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
       setImportOpen(false); setText(''); router.refresh();
     });
   };
-  const onFile = (f: File) => { const rd = new FileReader(); rd.onload = () => runImport(String(rd.result ?? '')); rd.readAsText(f); };
+  const onFile = (f: File) => {
+    readSpreadsheetAsCsv(f)
+      .then((text) => runImport(text))
+      .catch(() => toast.error('Could not read that file. Try a .csv or .xlsx.'));
+  };
 
   const merge = () => {
     if (!detail || !mergeInto) return;
@@ -149,7 +154,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               <p className="text-xs text-muted-foreground">Export your Google Sheet / Excel as CSV, then upload or paste it. A ledger is built per payee automatically.</p>
             </div>
             <div className="flex gap-2">
-              <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+              <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
               <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={pending}><Upload className="h-4 w-4" /> Upload CSV</Button>
               <Button size="sm" variant="ghost" onClick={() => setImportOpen((v) => !v)}>{importOpen ? 'Close' : 'Or paste'}</Button>
               <Button size="sm" variant="ghost" onClick={() => { const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`; a.download = 'payments-template.csv'; a.click(); }}>Template</Button>

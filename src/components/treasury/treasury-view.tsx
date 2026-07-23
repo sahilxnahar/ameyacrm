@@ -7,6 +7,7 @@ import {
   saveBankAccount, importStatement, confirmMatch, setLineStatus, saveLoan, addLoanEvent,
 } from '@/server/actions/treasury';
 import type { Forecast } from '@/lib/treasury/forecast';
+import { readSpreadsheetAsCsv, SPREADSHEET_ACCEPT } from '@/lib/import/read-spreadsheet';
 import { cn } from '@/lib/utils/cn';
 
 const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -137,9 +138,7 @@ function PositionTab({ positions, projects, projectId, canManage, pending, openF
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f || !fileRef.current) return;
-    const reader = new FileReader();
-    reader.onload = () => { if (fileRef.current) fileRef.current.value = String(reader.result ?? ''); };
-    reader.readAsText(f);
+    readSpreadsheetAsCsv(f).then((text) => { if (fileRef.current) fileRef.current.value = text; }).catch(() => undefined);
   };
 
   return (
@@ -195,7 +194,7 @@ function PositionTab({ positions, projects, projectId, canManage, pending, openF
                 {positions.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.bankName}</option>)}
               </select>
             </Field>
-            <Field label="Upload CSV (or paste below)"><input type="file" accept=".csv,text/csv,text/plain" onChange={onFile} className={cn(inputCls, 'py-1')} /></Field>
+            <Field label="Upload CSV or Excel (or paste below)"><input type="file" accept={SPREADSHEET_ACCEPT} onChange={onFile} className={cn(inputCls, 'py-1')} /></Field>
           </div>
           <input type="hidden" name="fileName" value="statement.csv" />
           <label className="block text-xs">

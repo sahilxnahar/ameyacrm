@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.52';
+export const APP_VERSION = 'v14.53';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.53',
+    date: '22 Jul 2026',
+    highlights: [
+      'Import Excel directly: the payments/ledger import, lead import and treasury import now accept .xlsx (and .xls) files, not just CSV — no more converting to CSV first.',
+      'Your Excel files are read in the browser and turned into rows automatically; the first sheet is used.',
+    ],
+  },
   {
     version: 'v14.52',
     date: '22 Jul 2026',
