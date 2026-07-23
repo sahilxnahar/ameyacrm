@@ -3,6 +3,18 @@ import { Home, FileText, HardHat, Wrench, CheckCircle2 } from 'lucide-react';
 import { prisma } from '@/lib/db/prisma';
 import { SnagForm } from '@/components/portal/snag-form';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
+import { classifySnag, snagSla } from '@/lib/portal/snag-sla';
+
+const VAULT_GROUPS: Array<{ key: string; label: string; match: RegExp }> = [
+  { key: 'kyc', label: 'KYC', match: /kyc|pan|aadhaar|aadhar|identity|address proof/i },
+  { key: 'legal', label: 'Legal', match: /legal|agreement|sale deed|jda|allotment|title|possession/i },
+  { key: 'financial', label: 'Financial', match: /financial|receipt|demand|invoice|payment|loan|noc/i },
+  { key: 'handover', label: 'Handover', match: /handover|possession|snag|occupancy|oc\b/i },
+];
+function vaultGroupOf(category: string | null, title: string): string {
+  const s = `${category ?? ''} ${title}`;
+  return VAULT_GROUPS.find((g) => g.match.test(s))?.label ?? 'Other';
+}
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Your Home · Ameya Heights', robots: { index: false } };
@@ -84,13 +96,24 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       <section className="rounded-xl border p-5">
         <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold"><FileText className="h-5 w-5 text-brass" /> Document vault</h2>
         {docs.length === 0 && <p className="text-sm text-muted-foreground">No documents shared yet.</p>}
-        <div className="space-y-1">
-          {docs.map((d) => (
-            <div key={d.id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
-              <span>{d.title}{d.category ? <span className="text-xs text-muted-foreground"> · {d.category}</span> : null}</span>
-              <a href={d.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-brass underline">Download</a>
-            </div>
-          ))}
+        <div className="space-y-4">
+          {['KYC', 'Legal', 'Financial', 'Handover', 'Other'].map((group) => {
+            const inGroup = docs.filter((d) => vaultGroupOf(d.category, d.title) === group);
+            if (inGroup.length === 0) return null;
+            return (
+              <div key={group}>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brass">{group}</p>
+                <div className="space-y-1">
+                  {inGroup.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
+                      <span>{d.title}</span>
+                      <a href={d.url} target="_blank" rel="noreferrer" className="text-xs font-medium text-brass underline">Download</a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -100,12 +123,17 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
         {tickets.length > 0 && (
           <div className="mt-4 space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Your reported issues</p>
-            {tickets.map((t) => (
-              <div key={t.id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
-                <span>{t.title}</span>
-                <span className={`flex items-center gap-1 text-xs ${t.status === 'RESOLVED' ? 'text-emerald-700' : 'text-amber-700'}`}>{t.status === 'RESOLVED' && <CheckCircle2 className="h-3 w-3" />}{t.status.replace('_', ' ')}</span>
-              </div>
-            ))}
+            {tickets.map((t) => {
+              const sla = snagSla(classifySnag(t.category, t.title), t.createdAt, t.resolvedAt);
+              const resolved = t.status === 'RESOLVED';
+              return (
+                <div key={t.id} className="flex items-center justify-between gap-2 border-b py-1.5 text-sm last:border-0">
+                  <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                  {!resolved && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${sla.overdue ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}>{sla.label}</span>}
+                  <span className={`flex shrink-0 items-center gap-1 text-xs ${resolved ? 'text-emerald-700' : 'text-amber-700'}`}>{resolved && <CheckCircle2 className="h-3 w-3" />}{t.status.replace('_', ' ')}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

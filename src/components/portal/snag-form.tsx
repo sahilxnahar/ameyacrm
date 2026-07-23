@@ -32,7 +32,15 @@ export function SnagForm({ token }: { token: string }) {
     <form onSubmit={submit} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1"><Label htmlFor="title">Issue *</Label><Input id="title" name="title" required placeholder="e.g. Scratched window glass" /></div>
-        <div className="space-y-1"><Label htmlFor="category">Area</Label><Input id="category" name="category" placeholder="Kitchen, bathroom…" /></div>
+        <div className="space-y-1"><Label htmlFor="category">Type</Label>
+          <select id="category" name="category" defaultValue="cosmetic" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+            <option value="structural">Structural (cracks, leaks, slab)</option>
+            <option value="plumbing">Plumbing (taps, drains, water)</option>
+            <option value="electrical">Electrical (wiring, sockets, lights)</option>
+            <option value="cosmetic">Finishing / cosmetic (paint, tiles, doors)</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
       </div>
       <div className="space-y-1"><Label htmlFor="priority">Priority</Label>
         <select id="priority" name="priority" defaultValue="MEDIUM" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="URGENT">Urgent</option></select></div>

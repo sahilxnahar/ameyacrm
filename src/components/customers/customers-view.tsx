@@ -3,7 +3,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, Link2, MessageCircle, Trash2, FileText, RefreshCw } from 'lucide-react';
-import { createCustomer, regenPortalToken, setCustomerActive, postConstructionUpdate, deleteConstructionUpdate, addCustomerDocument, setSnagStatus, assignSnag } from '@/server/actions/customers';
+import { createCustomer, regenPortalToken, setCustomerActive, postConstructionUpdate, deleteConstructionUpdate, addCustomerDocument, setSnagStatus, assignSnag, generatePossessionLetter } from '@/server/actions/customers';
+import { classifySnag, snagSla } from '@/lib/portal/snag-sla';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +43,12 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
     e.preventDefault(); if (!sel) return; const fd = new FormData(e.currentTarget);
     start(async () => { const r = await addCustomerDocument({ customerId: sel.id, title: fd.get('title'), category: fd.get('category') || undefined, url: fd.get('url') }); if ('error' in r) { toast.error(r.error); return; } toast.success('Document added'); (e.target as HTMLFormElement).reset(); router.refresh(); });
   };
+  const downloadPossession = (customerId: string) => start(async () => {
+    const r = await generatePossessionLetter(customerId);
+    if ('error' in r) { toast.error(r.error); return; }
+    const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
+    toast.success('Possession letter downloaded');
+  });
   const portalLink = (token: string) => (typeof window !== 'undefined' ? `${window.location.origin}/portal/${token}` : `/portal/${token}`);
   const copyLink = (token: string) => { navigator.clipboard?.writeText(portalLink(token)); toast.success('Portal link copied'); };
 
@@ -105,7 +112,10 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
                 <TableCell><p className="font-medium">{t.title}</p>{t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}</TableCell>
                 <TableCell className="text-sm">{t.customerName}</TableCell>
                 <TableCell><Badge variant={t.priority === 'URGENT' || t.priority === 'HIGH' ? 'destructive' : 'secondary'}>{t.priority}</Badge></TableCell>
-                <TableCell><Badge variant={t.status === 'RESOLVED' ? 'success' : t.status === 'IN_PROGRESS' ? 'warning' : 'secondary'}>{t.status.replace('_', ' ')}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant={t.status === 'RESOLVED' ? 'success' : t.status === 'IN_PROGRESS' ? 'warning' : 'secondary'}>{t.status.replace('_', ' ')}</Badge>
+                  {t.status !== 'RESOLVED' && (() => { const s = snagSla(classifySnag(t.category, t.title), new Date(t.createdAt)); return <span className={`mt-1 block text-[10px] font-medium ${s.overdue ? 'text-rose-600' : 'text-amber-600'}`}>{s.label}</span>; })()}
+                </TableCell>
                 <TableCell className="text-right">{canManage && (
                   <span className="flex justify-end gap-1">
                     {t.status !== 'IN_PROGRESS' && t.status !== 'RESOLVED' && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => act(() => setSnagStatus(t.id, 'IN_PROGRESS'), 'In progress')}>Start</Button>}
@@ -150,6 +160,7 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
                     {sel.phone && <Button asChild size="sm" variant="outline" className="border-emerald-500/40 text-emerald-700"><a target="_blank" rel="noreferrer" href={`https://wa.me/${(sel.phone || '').replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Hello ${sel.name}, here is your Ameya Heights buyer portal: ${portalLink(sel.portalToken)}`)}`}><MessageCircle className="h-4 w-4" /> WhatsApp</a></Button>}
                     {canManage && <Button size="sm" variant="ghost" onClick={() => act(() => regenPortalToken(sel.id), 'New link generated')}><RefreshCw className="h-4 w-4" /> New link</Button>}
                     {canManage && <Button size="sm" variant="ghost" onClick={() => act(() => setCustomerActive(sel.id, !sel.isActive), 'Updated')}>{sel.isActive ? 'Disable' : 'Enable'}</Button>}
+                    {canManage && <Button size="sm" variant="outline" disabled={pending} onClick={() => downloadPossession(sel.id)}><FileText className="h-4 w-4" /> Possession letter</Button>}
                   </div>
                 </div>
                 <div className="rounded-md border p-3">
@@ -159,7 +170,13 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
                   {canManage && (
                     <form onSubmit={submitDoc} className="mt-3 grid grid-cols-3 gap-2">
                       <Input name="title" placeholder="Title e.g. Allotment Letter" required className="col-span-2" />
-                      <Input name="category" placeholder="Category" />
+                      <select name="category" defaultValue="Legal" className={`${sel9} w-full`}>
+                        <option value="KYC">KYC</option>
+                        <option value="Legal">Legal</option>
+                        <option value="Financial">Financial</option>
+                        <option value="Handover">Handover</option>
+                        <option value="Other">Other</option>
+                      </select>
                       <Input name="url" placeholder="File link or /api/files/… URL" required className="col-span-2" />
                       <Button type="submit" size="sm" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Add</Button>
                     </form>

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.82';
+export const APP_VERSION = 'v14.83';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.83',
+    date: '23 Jul 2026',
+    highlights: [
+      'Post-sales & handover (Batch 2): buyers who report a snag now pick a type (structural, plumbing, electrical, finishing) — the CRM auto-routes it (structural/services → certifying engineer, finishing → site supervisor) and starts an SLA clock shown on both the portal and the internal snag list.',
+      'New Letter of Possession PDF — generate a branded handover letter (with a handover checklist) from any buyer’s Manage panel.',
+      'The buyer portal document vault is now organised into KYC, Legal, Financial and Handover sections, and you pick the category when sharing a document.',
+      'Set the two routing people via settings keys snag.route.structural and snag.route.cosmetic (a user ID each).',
+    ],
+  },
   {
     version: 'v14.82',
     date: '23 Jul 2026',
