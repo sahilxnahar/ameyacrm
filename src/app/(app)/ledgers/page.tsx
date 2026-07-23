@@ -28,6 +28,7 @@ export default async function LedgersPage({ searchParams }: { searchParams: Prom
           detail={detail}
           approvalLimit={approvalLimit}
           canManage={can(ctx.permissions, 'billing.bill.manage')}
+          canHardDelete={ctx.permissions.isSuperAdmin || can(ctx.permissions, 'admin.setting.manage')}
         />
       </div>
     );

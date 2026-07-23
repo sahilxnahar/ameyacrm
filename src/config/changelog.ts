@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.78';
+export const APP_VERSION = 'v14.79';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.79',
+    date: '23 Jul 2026',
+    highlights: [
+      'Redesigned payment receipt: the Ameya emblem at the top, a faint emblem watermark, and the house colours — deep navy and gold (no more yellow). The description of the payment now prints in its own clear panel right under the amount.',
+      'When you record a payment, the “Description — what was this payment for?” box is clearer and prints straight onto the receipt.',
+      'Payments can now be permanently deleted by an administrator (a deliberate two-tap “Delete forever”). Everyone else’s “Delete” still cancels-with-undo, so the audit trail is never lost by accident.',
+    ],
+  },
   {
     version: 'v14.78',
     date: '23 Jul 2026',

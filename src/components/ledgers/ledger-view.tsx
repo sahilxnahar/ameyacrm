@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks, Download, BadgeCheck, ShieldAlert, Trash2, Wallet, FileText } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention, deleteVendorPayment, restoreVendorPayment, reclassifyPaymentToCash } from '@/server/actions/vendor-ledger';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention, deleteVendorPayment, restoreVendorPayment, reclassifyPaymentToCash, hardDeleteVendorPayment } from '@/server/actions/vendor-ledger';
 import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { exportXlsx } from '@/lib/export/xlsx';
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils/cn';
 
 const TEMPLATE = 'Payee,Amount,Date,Mode,Reference,UTR,Note\nArun,50000,01/07/2026,Bank,NEFT001,UTR12345,Slab work\nOctos Infra,25000,05/07/2026,UPI,,,Steel supply\n';
 
-export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit = 0 }: { ledgers: LedgerRow[]; activeId: string | null; detail: LedgerDetail | null; canManage: boolean; approvalLimit?: number }) {
+export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete = false, approvalLimit = 0 }: { ledgers: LedgerRow[]; activeId: string | null; detail: LedgerDetail | null; canManage: boolean; canHardDelete?: boolean; approvalLimit?: number }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [importOpen, setImportOpen] = React.useState(false);
@@ -205,6 +205,22 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
     router.refresh();
     toast(`Payment removed (${formatCurrency(p.amount)})`, { action: { label: 'Undo', onClick: () => start(async () => { await restoreVendorPayment(p.id); toast.success('Restored'); router.refresh(); }) } });
   });
+  // Permanent delete is irreversible, so it asks for a deliberate second tap via
+  // a confirming toast rather than deleting on the first click.
+  const permanentlyDelete = (p: { id: string; number: string; amount: number }) => {
+    toast(`Permanently delete ${p.number}? This cannot be undone.`, {
+      duration: 8000,
+      action: {
+        label: 'Delete forever',
+        onClick: () => start(async () => {
+          const r = await hardDeleteVendorPayment(p.id);
+          if ('error' in r) { toast.error(r.error); return; }
+          toast.success(`Permanently deleted ${p.number}`);
+          router.refresh();
+        }),
+      },
+    });
+  };
   const toCash = (voucherId: string) => start(async () => {
     const r = await reclassifyPaymentToCash(voucherId);
     if ('error' in r) { toast.error(r.error); return; }
@@ -303,7 +319,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                   <label className="flex items-center gap-2 text-sm sm:col-span-2">
                     <input type="checkbox" name="isAdvance" /> This is an advance (adjust against a later bill)
                   </label>
-                  <div className="sm:col-span-2"><Field label="What was it for? (note)"><Input name="note" placeholder="e.g. Construction advance" /></Field></div>
+                  <div className="sm:col-span-2"><Field label="Description — what was this payment for?"><Input name="note" maxLength={500} placeholder="e.g. Advance for RCC slab casting, 3rd floor Tower B — steel + labour" /></Field><p className="mt-1 text-[11px] text-muted-foreground">This prints on the receipt as the payment description.</p></div>
                   <div className="sm:col-span-2">
                     <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
                   </div>
@@ -370,6 +386,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                       <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
                       {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
                       {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
+                      {canHardDelete && <button onClick={() => permanentlyDelete(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs font-medium text-destructive disabled:opacity-60" title="Remove permanently — cannot be undone"><Trash2 className="h-3.5 w-3.5" /> Delete forever</button>}
                     </div>
                   </div>
                 ))}
@@ -428,6 +445,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                             <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
                             {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
                             {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
+                            {canHardDelete && <button onClick={() => permanentlyDelete(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:underline disabled:opacity-60" title="Remove permanently — cannot be undone"><Trash2 className="h-3.5 w-3.5" /> Delete forever</button>}
                           </div>
                         </td>
                       </tr>

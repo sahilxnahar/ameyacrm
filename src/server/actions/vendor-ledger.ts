@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
+import { can } from '@/lib/rbac/can';
 import { ensure, toActionError } from './_helpers';
 import { parseTable } from '@/lib/import/parse';
 import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
@@ -355,6 +356,33 @@ export async function deleteVendorPayment(voucherId: string): Promise<LedgerActi
     await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Removed from vendor ledger' } });
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId, summary: `Removed payment ${v.number}` });
     revalidatePath('/ledgers'); revalidatePath('/payments');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/**
+ * Permanently delete a payment — gone for good, no undo.
+ *
+ * Reserved for an administrator: the everyday "delete" soft-cancels (and can be
+ * restored), which keeps the audit trail intact. This is the escape hatch for a
+ * genuine mistake — a test entry, a duplicate imported twice — that should not
+ * linger as a CANCELLED row forever. Voucher has no hard foreign keys pointing
+ * at it, so the row can be removed cleanly. The deletion itself is still audited.
+ */
+export async function hardDeleteVendorPayment(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    if (!ctx.permissions.isSuperAdmin && !can(ctx.permissions, 'admin.setting.manage')) {
+      return { error: 'Only an administrator can permanently delete a payment. You can still remove it (which keeps a cancelled record).' };
+    }
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true, partyName: true, amount: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.delete({ where: { id: voucherId } });
+    await writeAudit({
+      actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId,
+      summary: `PERMANENTLY deleted payment ${v.number} — ${v.partyName}, Rs ${Number(v.amount).toLocaleString('en-IN')}`,
+    });
+    revalidatePath('/ledgers'); revalidatePath('/payments'); revalidatePath('/cash-book');
     return { ok: true };
   } catch (e) { return toActionError(e); }
 }
