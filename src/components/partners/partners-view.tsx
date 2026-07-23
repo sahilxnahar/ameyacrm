@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Loader2, ShieldCheck, UserPlus, Wallet } from 'lucide-react';
+import { Plus, Loader2, ShieldCheck, UserPlus, Wallet, Globe, Copy, ChevronDown } from 'lucide-react';
 import { createChannelPartner, setPartnerStatus, setPartnerKyc, addBrokeragePayout, setPayoutStatus, registerCpLead } from '@/server/actions/partners';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,8 +52,30 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
 
   const selPayouts = sel ? payouts.filter((p) => p.channelPartnerId === sel.id) : [];
 
+  const [connectOpen, setConnectOpen] = React.useState(false);
+  const hookUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://crm.ameyaheights.com'}/api/ingest/partner?key=YOUR_INGEST_SECRET`;
+  const copyHook = () => { navigator.clipboard?.writeText(hookUrl); toast.success('Webhook URL copied — swap in your INGEST_SECRET'); };
+
   return (
     <div>
+      {canManage && (
+        <Card className="mb-3 p-3">
+          <button onClick={() => setConnectOpen((v) => !v)} className="flex w-full items-center gap-2 text-left text-sm font-medium">
+            <Globe className="h-4 w-4 text-[#A07D34]" /> Get website registrations here automatically
+            <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${connectOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {connectOpen && (
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="text-muted-foreground">Point your website&apos;s &ldquo;Become a channel partner&rdquo; form at the URL below. Each registration then lands here as a <b>Pending</b> partner for you to approve — no more copying details out of an email.</p>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md border bg-muted/40 px-2 py-1.5 text-xs">{hookUrl}</code>
+                <Button size="sm" variant="outline" onClick={copyHook}><Copy className="h-4 w-4" /> Copy</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Send a POST with JSON like <code className="rounded bg-muted/40 px-1">{'{ "name": "...", "phone": "...", "email": "...", "company": "..." }'}</code>. Replace <code className="rounded bg-muted/40 px-1">YOUR_INGEST_SECRET</code> with the INGEST_SECRET from your CRM settings. Duplicates (same phone/email) are skipped automatically.</p>
+            </div>
+          )}
+        </Card>
+      )}
       <div className="mb-3 flex justify-end">{canManage && <Button size="sm" onClick={() => setAdd(true)}><Plus className="h-4 w-4" /> Onboard partner</Button>}</div>
       <Card>
         <Table>

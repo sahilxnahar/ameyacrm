@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.60';
+export const APP_VERSION = 'v14.61';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.61',
+    date: '23 Jul 2026',
+    highlights: [
+      'Channel-partner sign-ups from the website now flow straight into the CRM: when someone registers as a channel partner on ameyaheights.com, they appear in Channel Partners as a Pending partner and admins get a notification — no more copying names out of an email.',
+      'On the Channel Partners page, admins get a “Get website registrations here automatically” panel with the exact web address to point the website form at.',
+    ],
+  },
   {
     version: 'v14.60',
     date: '23 Jul 2026',
