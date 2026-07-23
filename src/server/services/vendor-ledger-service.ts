@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 const PAID_KINDS = ['CASH_PAID', 'BANK_PAID'] as const;
 
-export interface LedgerRow { id: string; name: string; gstin: string | null; hasBank: boolean; totalPaid: number; count: number }
+export interface LedgerRow { id: string; name: string; gstin: string | null; hasBank: boolean; totalPaid: number; count: number; owed: number }
 
 /**
  * One ledger per payee (vendor). The total is every payment we've made to them —
@@ -16,17 +16,20 @@ export async function listLedgers(): Promise<LedgerRow[]> {
     where: { isActive: true }, orderBy: { name: 'asc' }, take: 2000,
     select: { id: true, name: true, gstin: true, bankAccountNumber: true, upiId: true },
   });
-  const [byVendor, byParty] = await Promise.all([
+  const [byVendor, byParty, unpaidBills] = await Promise.all([
     prisma.voucher.groupBy({ by: ['vendorId'], where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, vendorId: { not: null } }, _sum: { amount: true }, _count: { _all: true } }),
     prisma.voucher.groupBy({ by: ['partyName'], where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, vendorId: null }, _sum: { amount: true }, _count: { _all: true } }),
+    // What we still owe: vendor bills not yet fully paid (anything but PAID/VOID).
+    prisma.vendorBill.groupBy({ by: ['vendorId'], where: { vendorId: { not: null }, status: { notIn: ['PAID', 'VOID'] } }, _sum: { amount: true, gstAmount: true } }),
   ]);
   const vMap = new Map(byVendor.map((r) => [r.vendorId!, { sum: num(r._sum.amount), count: r._count._all }]));
   const pMap = new Map(byParty.map((r) => [(r.partyName ?? '').trim().toLowerCase(), { sum: num(r._sum.amount), count: r._count._all }]));
+  const owedMap = new Map(unpaidBills.map((r) => [r.vendorId!, num(r._sum.amount) + num(r._sum.gstAmount)]));
 
   return vendors.map((v) => {
     const a = vMap.get(v.id) ?? { sum: 0, count: 0 };
     const b = pMap.get(v.name.trim().toLowerCase()) ?? { sum: 0, count: 0 };
-    return { id: v.id, name: v.name, gstin: v.gstin, hasBank: Boolean(v.bankAccountNumber || v.upiId), totalPaid: a.sum + b.sum, count: a.count + b.count };
+    return { id: v.id, name: v.name, gstin: v.gstin, hasBank: Boolean(v.bankAccountNumber || v.upiId), totalPaid: a.sum + b.sum, count: a.count + b.count, owed: owedMap.get(v.id) ?? 0 };
   }).sort((a, b) => b.totalPaid - a.totalPaid);
 }
 

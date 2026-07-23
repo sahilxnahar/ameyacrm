@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.63';
+export const APP_VERSION = 'v14.64';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.64',
+    date: '23 Jul 2026',
+    highlights: [
+      'Duplicate-payment guard: when you add a payment, the CRM warns if the same UTR — or the same payee and amount in the last 30 days — was already recorded, so nothing gets entered (or paid) twice.',
+      'Vendor Ledgers now show what you still OWE each payee (from unpaid vendor bills) alongside what you’ve paid — plus a “Still owed” total at the top.',
+      'Project cost-to-complete: on the Spend Report, a per-project view of budget vs committed (POs) vs spent, and what’s left to complete.',
+    ],
+  },
   {
     version: 'v14.63',
     date: '23 Jul 2026',

@@ -81,6 +81,17 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
   const [proofTarget, setProofTarget] = React.useState<string | null>(null);
   const [uploadingId, setUploadingId] = React.useState<string | null>(null);
 
+  const [dupWarn, setDupWarn] = React.useState<{ msg: string; input: Parameters<typeof addVendorPayment>[0] } | null>(null);
+
+  const doAdd = (input: Parameters<typeof addVendorPayment>[0], reset?: () => void) => {
+    start(async () => {
+      const r = await addVendorPayment(input);
+      if ('duplicate' in r && r.duplicate) { setDupWarn({ msg: r.duplicate, input }); return; }
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Payment added'); setDupWarn(null); reset?.(); setShowAdd(false); router.refresh();
+    });
+  };
+
   const submitPayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!detail) return;
@@ -95,7 +106,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
           proofUrl = blob.url;
         } catch { toast.error('Could not upload the screenshot — saving the payment without it.'); }
       }
-      const r = await addVendorPayment({
+      const input = {
         vendorId: detail.vendor.id,
         amount: String(fd.get('amount') ?? ''),
         date: String(fd.get('date') ?? ''),
@@ -103,8 +114,11 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
         reference: String(fd.get('reference') ?? ''),
         utr: String(fd.get('utr') ?? ''),
         note: String(fd.get('note') ?? ''),
+        category: String(fd.get('category') ?? ''),
         proofUrl,
-      });
+      };
+      const r = await addVendorPayment(input);
+      if ('duplicate' in r && r.duplicate) { setDupWarn({ msg: r.duplicate, input }); return; }
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Payment added'); form.reset(); setShowAdd(false); router.refresh();
     });
@@ -218,6 +232,15 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                     <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
                   </div>
                   <input type="hidden" name="reference" value="" />
+                  {dupWarn && (
+                    <div className="sm:col-span-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs">
+                      <p className="mb-2 font-medium text-amber-700">⚠ {dupWarn.msg}</p>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" variant="outline" onClick={() => doAdd({ ...dupWarn.input, force: true })} disabled={pending}>Save anyway</Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setDupWarn(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                   <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Save payment</Button></div>
                 </form>
               )}
@@ -293,9 +316,10 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
   const shown = query.trim() ? ledgers.filter((l) => l.name.toLowerCase().includes(query.toLowerCase())) : ledgers;
   return (
     <div className="space-y-4">
-      <StatTileRow cols={3}>
+      <StatTileRow cols={4}>
         <StatTile label="Payees" value={String(ledgers.length)} />
         <StatTile label="Total paid out" value={formatCompactCurrency(total)} />
+        <StatTile label="Still owed (unpaid bills)" value={formatCompactCurrency(ledgers.reduce((s, l) => s + l.owed, 0))} tone={ledgers.some((l) => l.owed > 0) ? 'bad' : 'good'} />
         <StatTile label="Missing bank details" value={String(ledgers.filter((l) => !l.hasBank).length)} tone={ledgers.some((l) => !l.hasBank) ? 'bad' : 'good'} />
       </StatTileRow>
 
@@ -357,7 +381,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
 
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{tidy && <th className="w-8 p-2" />}<th className="p-2">Payee</th><th className="p-2 text-right">Total paid</th><th className="p-2 text-right">Payments</th><th className="p-2">Bank</th></tr></thead>
+              <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{tidy && <th className="w-8 p-2" />}<th className="p-2">Payee</th><th className="p-2 text-right">Total paid</th><th className="p-2 text-right">Still owed</th><th className="p-2 text-right">Payments</th><th className="p-2">Bank</th></tr></thead>
               <tbody>
                 {shown.map((l) => (
                   <tr
@@ -368,6 +392,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                     {tidy && <td className="p-2"><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} onClick={(e) => e.stopPropagation()} /></td>}
                     <td className="p-2 font-medium">{l.name}</td>
                     <td className="p-2 text-right tabular-nums">{formatCurrency(l.totalPaid)}</td>
+                    <td className="p-2 text-right tabular-nums">{l.owed > 0 ? <span className="text-amber-600">{formatCurrency(l.owed)}</span> : '—'}</td>
                     <td className="p-2 text-right tabular-nums">{l.count}</td>
                     <td className="p-2">{l.hasBank ? <Badge variant="success">On file</Badge> : <Badge variant="warning">Missing</Badge>}</td>
                   </tr>

@@ -214,8 +214,8 @@ async function nextCpNumber(): Promise<string> {
  */
 export async function addVendorPayment(input: {
   vendorId: string; amount: number | string; date?: string; mode?: string;
-  reference?: string; utr?: string; note?: string; proofUrl?: string; category?: string;
-}): Promise<LedgerActionResult & { id?: string }> {
+  reference?: string; utr?: string; note?: string; proofUrl?: string; category?: string; force?: boolean;
+}): Promise<{ ok: true; id?: string } | { error: string } | { duplicate: string }> {
   try {
     const ctx = await ensure('billing.bill.manage');
     const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId }, select: { id: true, name: true } });
@@ -226,6 +226,21 @@ export async function addVendorPayment(input: {
     const mode = input.mode ? paymentMode(input.mode) : 'BANK_TRANSFER';
     const utr = input.utr ? input.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null;
     const when = input.date ? new Date(input.date) : new Date();
+
+    // Duplicate guard — unless the user has confirmed "save anyway".
+    if (!input.force) {
+      if (utr) {
+        const byUtr = await prisma.voucher.findFirst({ where: { utr, cancelledAt: null }, select: { number: true, partyName: true } });
+        if (byUtr) return { duplicate: `A payment with UTR ${utr} is already recorded (${byUtr.number} — ${byUtr.partyName}). Save anyway?` };
+      } else {
+        const from = new Date(when.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const similar = await prisma.voucher.findFirst({
+          where: { vendorId: vendor.id, amount, cancelledAt: null, voucherDate: { gte: from, lte: new Date(when.getTime() + 24 * 60 * 60 * 1000) } },
+          select: { number: true, voucherDate: true },
+        });
+        if (similar) return { duplicate: `You already recorded ₹${amount.toLocaleString('en-IN')} to ${vendor.name} around ${similar.voucherDate.toLocaleDateString('en-IN')} (${similar.number}). Save anyway?` };
+      }
+    }
     const note = (input.note ?? '').trim().slice(0, 500) || null;
     const accountCode = (input.category ?? '').trim() || categorizeExpense(`${vendor.name} ${note ?? ''}`);
     const active = await getActiveProject(ctx.user.id);
