@@ -5,6 +5,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 import { parseTable } from '@/lib/import/parse';
 import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
+import { getActiveProject } from '@/server/services/active-project-service';
 
 export type LedgerActionResult =
   | {
@@ -156,6 +157,68 @@ export async function saveVendorBank(vendorId: string, v: Record<string, string>
       },
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: vendorId, summary: 'Updated bank details' });
+    revalidatePath('/ledgers');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+async function nextCpNumber(): Promise<string> {
+  const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true } });
+  const n = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
+  return `CP-${(Number.isFinite(n) ? n : 1000) + 1}`;
+}
+
+/**
+ * Add a single payment to a payee's ledger by hand — so you never need a CSV
+ * just to record one payment. Tags it to the project you're currently working
+ * on, so it shows on Payments Made too. `proofUrl` is the screenshot / bank PDF.
+ */
+export async function addVendorPayment(input: {
+  vendorId: string; amount: number | string; date?: string; mode?: string;
+  reference?: string; utr?: string; note?: string; proofUrl?: string;
+}): Promise<LedgerActionResult & { id?: string }> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId }, select: { id: true, name: true } });
+    if (!vendor) return { error: 'That payee no longer exists.' };
+    const amount = Number(input.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return { error: 'Enter an amount above zero.' };
+
+    const mode = input.mode ? paymentMode(input.mode) : 'BANK_TRANSFER';
+    const utr = input.utr ? input.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null;
+    const when = input.date ? new Date(input.date) : new Date();
+    const active = await getActiveProject(ctx.user.id);
+    const number = await nextCpNumber();
+
+    const v = await prisma.voucher.create({
+      data: {
+        number, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+        voucherDate: when, paidOn: mode === 'CASH' ? null : when,
+        partyName: vendor.name, vendorId: vendor.id, amount, mode,
+        reference: opt(input.reference ?? ''), utr,
+        utrEnteredById: utr ? ctx.user.id : null, utrEnteredAt: utr ? new Date() : null,
+        narration: (input.note ?? '').trim().slice(0, 500) || null,
+        attachmentId: opt(input.proofUrl ?? ''),
+        projectId: active.id ?? null,
+        createdById: ctx.user.id,
+      },
+      select: { id: true },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Payment ${number} to ${vendor.name} — Rs ${amount.toLocaleString('en-IN')}` });
+    revalidatePath('/ledgers');
+    revalidatePath('/payments');
+    return { ok: true, id: v.id };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Attach (or replace) the proof file on a payment — a phone screenshot or bank PDF. */
+export async function attachPaymentProof(voucherId: string, url: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { attachmentId: url.trim() || null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPLOAD', entityType: 'Voucher', entityId: voucherId, summary: `Attached payment proof to ${v.number}` });
     revalidatePath('/ledgers');
     return { ok: true };
   } catch (e) { return toActionError(e); }

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.61';
+export const APP_VERSION = 'v14.62';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.62',
+    date: '23 Jul 2026',
+    highlights: [
+      'Vendor Ledgers now show the full story of every payment: date, mode, UTR/reference, and the note (what it was for) — all in one row, like a passbook.',
+      'Add a payment by hand right inside a payee’s ledger — amount, date, mode, UTR and note — no CSV needed. It’s tagged to your current project so it also shows on Payments Made.',
+      'Attach proof to any payment: upload the phone screenshot or bank PDF (with the UTR) against each payment, and open it later with one click.',
+      'Payments Made no longer hides imported payments: payments not tagged to a project now show under any project instead of vanishing — so your ₹65 L of expenses appear where you expect.',
+    ],
+  },
   {
     version: 'v14.61',
     date: '23 Jul 2026',

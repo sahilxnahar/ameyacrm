@@ -2,8 +2,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search } from 'lucide-react';
-import { importVendorPayments, mergeVendors, saveVendorBank } from '@/server/actions/vendor-ledger';
+import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload } from 'lucide-react';
+import { upload } from '@vercel/blob/client';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof } from '@/server/actions/vendor-ledger';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
@@ -74,6 +75,53 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
   };
 
   // Detail view
+  const [showAdd, setShowAdd] = React.useState(false);
+  const proofInputRef = React.useRef<HTMLInputElement>(null);
+  const [proofTarget, setProofTarget] = React.useState<string | null>(null);
+  const [uploadingId, setUploadingId] = React.useState<string | null>(null);
+
+  const submitPayment = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!detail) return;
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const file = (fd.get('proof') as File) || null;
+    start(async () => {
+      let proofUrl: string | undefined;
+      if (file && file.size) {
+        try {
+          const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
+          proofUrl = blob.url;
+        } catch { toast.error('Could not upload the screenshot — saving the payment without it.'); }
+      }
+      const r = await addVendorPayment({
+        vendorId: detail.vendor.id,
+        amount: String(fd.get('amount') ?? ''),
+        date: String(fd.get('date') ?? ''),
+        mode: String(fd.get('mode') ?? ''),
+        reference: String(fd.get('reference') ?? ''),
+        utr: String(fd.get('utr') ?? ''),
+        note: String(fd.get('note') ?? ''),
+        proofUrl,
+      });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Payment added'); form.reset(); setShowAdd(false); router.refresh();
+    });
+  };
+
+  const pickProof = (voucherId: string) => { setProofTarget(voucherId); proofInputRef.current?.click(); };
+  const onProofChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; const vid = proofTarget; e.target.value = '';
+    if (!file || !vid) return;
+    setUploadingId(vid);
+    try {
+      const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
+      const r = await attachPaymentProof(vid, blob.url);
+      if ('error' in r) toast.error(r.error); else { toast.success('Proof attached'); router.refresh(); }
+    } catch { toast.error('Upload failed — try again.'); }
+    setUploadingId(null); setProofTarget(null);
+  };
+
   if (detail) {
     const d = detail;
     return (
@@ -86,19 +134,55 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               <StatTile label="Payments" value={String(d.payments.length)} />
               <StatTile label="Bank on file" value={d.vendor.bankAccountNumber || d.vendor.upiId ? 'Yes' : 'No'} tone={d.vendor.bankAccountNumber || d.vendor.upiId ? 'good' : 'bad'} />
             </StatTileRow>
+            <input ref={proofInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={onProofChosen} />
             <Card className="p-0">
-              <div className="border-b p-3 font-medium">{d.vendor.name} — payments</div>
+              <div className="flex items-center justify-between border-b p-3">
+                <span className="font-medium">{d.vendor.name} — payments</span>
+                {canManage && (
+                  <Button size="sm" variant={showAdd ? 'ghost' : 'outline'} onClick={() => setShowAdd((v) => !v)}>
+                    {showAdd ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {showAdd ? 'Close' : 'Add a payment'}
+                  </Button>
+                )}
+              </div>
+              {showAdd && canManage && (
+                <form onSubmit={submitPayment} className="grid gap-2 border-b bg-muted/20 p-3 sm:grid-cols-2">
+                  <Field label="Amount (₹) *"><Input name="amount" type="number" step="1" required placeholder="100000" /></Field>
+                  <Field label="Date paid"><Input name="date" type="date" /></Field>
+                  <Field label="Mode">
+                    <select name="mode" defaultValue="Bank" className="focus-ring w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm">
+                      <option>Bank</option><option>UPI</option><option>Cash</option><option>Cheque</option>
+                    </select>
+                  </Field>
+                  <Field label="UTR / reference"><Input name="utr" placeholder="UTR or cheque no." /></Field>
+                  <div className="sm:col-span-2"><Field label="What was it for? (note)"><Input name="note" placeholder="e.g. Construction advance" /></Field></div>
+                  <div className="sm:col-span-2">
+                    <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
+                  </div>
+                  <input type="hidden" name="reference" value="" />
+                  <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Save payment</Button></div>
+                </form>
+              )}
               <div className="max-h-[26rem] overflow-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th></tr></thead>
+                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Note</th><th className="p-2">Proof</th></tr></thead>
                   <tbody>
-                    {d.payments.length === 0 ? <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
-                      <tr key={p.id} className="border-t">
+                    {d.payments.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
+                      <tr key={p.id} className="border-t align-top">
                         <td className="p-2 font-medium">{p.number}</td>
-                        <td className="p-2">{formatDate(p.date)}</td>
+                        <td className="p-2 whitespace-nowrap">{formatDate(p.paidOn ?? p.date)}</td>
                         <td className="p-2 text-right tabular-nums">{formatCurrency(p.amount)}</td>
                         <td className="p-2">{p.mode.replace(/_/g, ' ').toLowerCase()}</td>
                         <td className="p-2 font-mono text-xs">{p.utr ?? p.reference ?? '—'}</td>
+                        <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}</td>
+                        <td className="p-2">
+                          {p.proofUrl ? (
+                            <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> View</a>
+                          ) : canManage ? (
+                            <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">
+                              {uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Add
+                            </button>
+                          ) : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

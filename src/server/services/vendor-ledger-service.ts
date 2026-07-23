@@ -33,7 +33,7 @@ export async function listLedgers(): Promise<LedgerRow[]> {
 export interface LedgerDetail {
   vendor: { id: string; name: string; gstin: string | null; phone: string | null; bankName: string | null; bankAccountName: string | null; bankAccountNumber: string | null; bankIfsc: string | null; upiId: string | null };
   totalPaid: number;
-  payments: Array<{ id: string; number: string; date: Date; amount: number; mode: string; reference: string | null; utr: string | null; narration: string | null }>;
+  payments: Array<{ id: string; number: string; date: Date; paidOn: Date | null; amount: number; mode: string; reference: string | null; utr: string | null; narration: string | null; proofUrl: string | null }>;
 }
 
 export async function getLedger(vendorId: string): Promise<LedgerDetail | null> {
@@ -45,7 +45,8 @@ export async function getLedger(vendorId: string): Promise<LedgerDetail | null> 
       OR: [{ vendorId }, { vendorId: null, partyName: { equals: vendor.name, mode: 'insensitive' } }],
     },
     orderBy: { voucherDate: 'desc' }, take: 1000,
-    select: { id: true, number: true, voucherDate: true, amount: true, mode: true, reference: true, utr: true, narration: true },
+    // `attachmentId` carries the proof-of-payment file URL (screenshot / bank PDF).
+    select: { id: true, number: true, voucherDate: true, paidOn: true, amount: true, mode: true, reference: true, utr: true, narration: true, attachmentId: true },
   });
   return {
     vendor: {
@@ -53,6 +54,6 @@ export async function getLedger(vendorId: string): Promise<LedgerDetail | null> 
       bankName: vendor.bankName, bankAccountName: vendor.bankAccountName, bankAccountNumber: vendor.bankAccountNumber, bankIfsc: vendor.bankIfsc, upiId: vendor.upiId,
     },
     totalPaid: vouchers.reduce((s, v) => s + num(v.amount), 0),
-    payments: vouchers.map((v) => ({ id: v.id, number: v.number, date: v.voucherDate, amount: num(v.amount), mode: v.mode, reference: v.reference, utr: v.utr, narration: v.narration })),
+    payments: vouchers.map((v) => ({ id: v.id, number: v.number, date: v.voucherDate, paidOn: v.paidOn, amount: num(v.amount), mode: v.mode, reference: v.reference, utr: v.utr, narration: v.narration, proofUrl: v.attachmentId })),
   };
 }

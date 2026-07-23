@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
-import { getActiveProject, strictProjectScope } from '@/server/services/active-project-service';
+import { getActiveProject, projectScope } from '@/server/services/active-project-service';
 import { PaymentsView } from '@/components/payments/payments-view';
 
 export const metadata: Metadata = { title: 'Payments made' };
@@ -11,7 +11,9 @@ export const dynamic = 'force-dynamic';
 export default async function PaymentsPage() {
   const ctx = await requirePermission('finance.ledger.view');
   const active = await getActiveProject(ctx.user.id);
-  const scope = strictProjectScope(active.id);
+  // Include payments that aren't tagged to any project (e.g. imported vendor
+  // payments) so they never silently vanish just because a project is selected.
+  const scope = projectScope(active.id);
 
   const rows = await prisma.voucher.findMany({
     where: { kind: { in: ['CASH_PAID', 'BANK_PAID'] }, ...scope },
