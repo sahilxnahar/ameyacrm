@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.98';
+export const APP_VERSION = 'v15.0';
 
 export interface Release {
   version: string;
@@ -13,6 +13,21 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.0',
+    date: '23 Jul 2026',
+    highlights: [
+      'Litigation & Renewals (Land, Lease & Legal) — a proper court-matter docket. Every matter now keeps its full hearing history on a timeline: date, purpose, outcome and the next date the court gave, added in a click. The matter’s next-hearing date rolls forward automatically.',
+      'EC / Khata renewal alerts — set a “renew by” date on any Encumbrance Certificate or Khata and the CRM flags it amber 60 days out and red once overdue, so land documents never quietly lapse.',
+    ],
+  },
+  {
+    version: 'v14.99',
+    date: '23 Jul 2026',
+    highlights: [
+      'Parking Matrix (Inventory & Bookings) — a visual grid of every parking slot by level. Add slots one at a time or generate a whole basement at once (B1-001 … B1-120), then click any slot to assign it to a unit, block it, or free it. Colour-coded by status with live counts by type, and it works per project.',
+    ],
+  },
   {
     version: 'v14.98',
     date: '23 Jul 2026',

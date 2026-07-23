@@ -1992,6 +1992,27 @@ model TallyVoucherLine {
   @@index([ledgerId])
 }
 
+/// Parking-slot inventory. Logical links to project/unit/booking by id (resolved
+/// in the service) so the matrix can map slots to the units and bookings that own
+/// them without a hard FK. type/status are plain strings for simple migrations.
+model ParkingSlot {
+  id        String   @id @default(cuid())
+  projectId String?
+  code      String   @unique // e.g. B1-023 (basement 1, slot 23)
+  level     String? // Basement 1, Ground, Stilt, Podium 2 …
+  type      String   @default("Covered") // Covered | Open | Mechanical | EV | Visitor | Disabled
+  status    String   @default("Available") // Available | Assigned | Blocked
+  unitId    String? // the unit this slot is allotted to
+  bookingId String? // the booking that took it, if any
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([unitId])
+  @@index([status])
+}
+
 enum HomeLoanStatus {
   ENQUIRY
   APPLIED
@@ -3337,11 +3358,14 @@ model TitleDocument {
   documentId     String?
   verified       Boolean      @default(false)
   notes          String?
+  expiresOn      DateTime? // for EC / Khata etc. — when it needs renewing
+  renewalNote    String?
 
   parcel    LandParcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now())
 
   @@index([parcelId, chainOrder])
+  @@index([expiresOn])
 }
 
 enum JdaShareType {
@@ -3475,12 +3499,30 @@ model LitigationMatter {
   exposure    Decimal?         @db.Decimal(16, 2)
   summary     String?
 
+  hearings    LitigationHearing[]
+
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([projectId, status])
   @@index([status, nextHearing])
+}
+
+/// One dated entry in a case's docket — the hearing history behind a matter.
+model LitigationHearing {
+  id          String           @id @default(cuid())
+  matterId    String
+  date        DateTime
+  purpose     String? // e.g. Arguments, Evidence, Interim application
+  outcome     String? // what happened on the day
+  nextDate    DateTime? // the date the court gave for next hearing
+  notes       String?
+  createdById String?
+  createdAt   DateTime         @default(now())
+  matter      LitigationMatter @relation(fields: [matterId], references: [id], onDelete: Cascade)
+
+  @@index([matterId, date])
 }
 
 /// Who may sign what, until when.

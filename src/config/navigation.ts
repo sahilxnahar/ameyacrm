@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -78,6 +78,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Buyers & Portal', href: '/customers', icon: UserRound, permission: 'booking.view', blurb: 'Your buyers and the portal they log in to.' },
       { label: 'Buyer Variations', href: '/variations', icon: Receipt, permission: 'variations.view', blurb: 'Change requests — priced and agreed before the work.' },
       { label: 'Home Loans', href: '/home-loans', icon: Landmark, permission: 'booking.view', blurb: 'Track buyer home loans — sanction, disbursement, NOC and the tripartite agreement.' },
+      { label: 'Parking Matrix', href: '/parking', icon: Car, permission: 'booking.view', blurb: 'Every parking slot by level — assign each to a unit, block or free it.' },
     ],
   },
   {
@@ -133,6 +134,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Ownership, tenancies and statutory duties.',
     items: [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
+      { label: 'Litigation & Renewals', href: '/litigation', icon: Gavel, permission: 'land.view', blurb: 'Court matters with full hearing history, and EC / Khata renewal alerts.' },
       { label: 'Statutory Calendar', href: '/statutory', icon: Scale, permission: 'statutory.view', blurb: 'Filing and renewal dates you must not miss.' },
       { label: 'Governance & Risk', href: '/governance', icon: ShieldCheck, permission: 'governance.view', blurb: 'The risk register, contracts and insurance.' },
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view', blurb: 'Tenants, rent schedule and maintenance.' },
