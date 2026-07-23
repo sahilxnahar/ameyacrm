@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.58';
+export const APP_VERSION = 'v14.59';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.59',
+    date: '23 Jul 2026',
+    highlights: [
+      'One-tap updates: when a new version goes live, a slim bar appears at the top — tap “Update now” and you’re on the latest in seconds. No deleting the app, no reinstalling, no re-downloading everything. Works on phones too.',
+      'Add your own projects: Admin → Projects (also “+ New project” in the project switcher at the top) lets an admin create a new development — name it, give it a city and RERA number — and it instantly shows up for everyone to work under.',
+      'No more wrong turns on imports: if you drop a spreadsheet on the AI bill reader, it now points you straight to Vendor Ledgers, which is the right place for a whole list of expenses.',
+    ],
+  },
   {
     version: 'v14.58',
     date: '23 Jul 2026',

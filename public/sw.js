@@ -1,5 +1,5 @@
 /* Ameya Heights CRM — service worker (offline shell + push). */
-const VERSION = 'ameya-crm-v129';
+const VERSION = 'ameya-crm-v130';
 const CORE = [
   '/', '/offline.html', '/manifest.webmanifest',
   '/icons/icon-192.png', '/icons/icon-512.png', '/brand/mark-gold-dark.svg',
@@ -7,6 +7,12 @@ const CORE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+});
+
+// The update banner posts this so a freshly-installed worker takes over at once
+// instead of waiting for every tab to close.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

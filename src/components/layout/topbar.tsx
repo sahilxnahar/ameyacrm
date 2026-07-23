@@ -28,7 +28,7 @@ export function Topbar({
         <Menu className="h-5 w-5" />
       </Button>
 
-      <div className="hidden sm:block"><ProjectSwitcher projects={projects} activeId={activeProjectId} activeName={activeProjectName} /></div>
+      <div className="hidden sm:block"><ProjectSwitcher projects={projects} activeId={activeProjectId} activeName={activeProjectName} canAdd={isSuperAdmin || allowed.has('admin.project.manage')} /></div>
 
       <button
         onClick={onSearch}

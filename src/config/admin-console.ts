@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound,
   UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles,
-  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet,
+  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet, FolderKanban,
 } from 'lucide-react';
 
 export interface AdminTool {
@@ -40,6 +40,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     label: 'Company & money',
     blurb: 'The details that appear on anything you send out.',
     tools: [
+      { href: '/admin/projects', icon: FolderKanban, title: 'Projects', desc: 'Add and edit the developments you sell and build', keywords: 'project site development add new tower phase', permission: 'admin.project.manage' },
       { href: '/admin/company', icon: Building2, title: 'Company Details', desc: 'GST, bank and addresses for invoices', keywords: 'gstin pan bank ifsc address' },
       { href: '/admin/branding', icon: Palette, title: 'Branding', desc: 'Name, tagline, colours', keywords: 'logo colour theme' },
       { href: '/admin/collections', icon: Percent, title: 'Collections & Tax', desc: 'Interest rate, default GST', keywords: 'gst tax interest penalty' },

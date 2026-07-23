@@ -11,6 +11,7 @@ import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
 import { FeedbackWidget } from './feedback-widget';
 import { WhatsNew } from './whats-new';
+import { UpdateBanner } from '@/components/pwa/update-banner';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
 
@@ -121,6 +122,7 @@ export function AppShell({
         onClose={() => setMobileOpen(false)}
       />
       <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-64'}`}>
+        <UpdateBanner />
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
         <Breadcrumbs />

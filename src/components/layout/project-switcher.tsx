@@ -1,8 +1,9 @@
 'use client';
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Building2, Check, ChevronDown, Loader2, Plus } from 'lucide-react';
 import { setActiveProject } from '@/server/actions/active-project';
 import { cn } from '@/lib/utils/cn';
 
@@ -15,7 +16,7 @@ export interface ProjectOption { id: string; name: string; code: string | null }
  * one filters leads, units, bookings, collections and reports to it; "All
  * projects" puts everything back.
  */
-export function ProjectSwitcher({ projects, activeId, activeName }: { projects: ProjectOption[]; activeId: string | null; activeName: string }) {
+export function ProjectSwitcher({ projects, activeId, activeName, canAdd }: { projects: ProjectOption[]; activeId: string | null; activeName: string; canAdd?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, start] = React.useTransition();
@@ -37,7 +38,7 @@ export function ProjectSwitcher({ projects, activeId, activeName }: { projects: 
     });
   };
 
-  if (projects.length === 0) return null;
+  if (projects.length === 0 && !canAdd) return null;
 
   return (
     <div ref={ref} className="relative">
@@ -80,6 +81,15 @@ export function ProjectSwitcher({ projects, activeId, activeName }: { projects: 
               </span>
             </button>
           ))}
+          {canAdd && (
+            <Link
+              href="/admin/projects"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 border-t px-3 py-2.5 text-left text-sm font-medium text-primary hover:bg-secondary"
+            >
+              <Plus className="h-4 w-4" /> New project
+            </Link>
+          )}
           <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
             Filters leads, inventory, bookings and collections. Anything not tied to a project stays visible.
           </p>

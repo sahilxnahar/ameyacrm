@@ -1,8 +1,9 @@
 'use client';
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, Upload, Trash2, Plus } from 'lucide-react';
+import { Sparkles, Loader2, Upload, Trash2, Plus, FileSpreadsheet, ArrowRight } from 'lucide-react';
 import { extractBill, createInvoice } from '@/server/actions/billing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 interface Item { description: string; quantity: string; rate: string; gstRate: string }
 const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+
+/** A spreadsheet of many rows isn't a single bill — it belongs in Vendor Ledgers. */
+const looksLikeSpreadsheet = (name: string) => /\.(csv|xlsx|xls|xlsm|xlsb|ods|tsv)$/i.test(name);
 
 export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boolean; projects: { id: string; name: string }[] }) {
   const router = useRouter();
@@ -30,6 +34,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   const doExtract = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const file = fd.get('file');
     if (!(file instanceof File) || !file.size) { toast.error('Choose a file first.'); return; }
+    if (looksLikeSpreadsheet(file.name)) { toast.error('That is a spreadsheet — import it in Vendor Ledgers, not here.'); return; }
     start(async () => {
       const r = await extractBill(fd);
       if ('error' in r) { toast.error(r.error); return; }
@@ -79,12 +84,22 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
                   name="file"
                   type="file"
                   required
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.gif,.bmp,.tiff,.txt,.csv,image/*"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.gif,.bmp,.tiff,image/*"
                   className="hidden"
                   onChange={(e) => setDropName(e.target.files?.[0]?.name ?? '')}
                 />
               </div>
-              <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<Upload className="h-4 w-4" /> Read with AI</Button></div>
+              {looksLikeSpreadsheet(dropName) ? (
+                <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium"><FileSpreadsheet className="h-4 w-4 text-amber-600" /> That looks like a spreadsheet, not a single bill.</p>
+                  <p className="text-muted-foreground">This AI reader is for one scanned bill or invoice (a PDF or photo). To import a whole list of expenses or payments from Excel/CSV, use Vendor Ledgers — it builds a running ledger for each payee automatically.</p>
+                  <Link href="/ledgers" onClick={close} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">
+                    Go to Vendor Ledgers → Import <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<Upload className="h-4 w-4" /> Read with AI</Button></div>
+              )}
             </form>
           )}
           {stage === 'review' && (
