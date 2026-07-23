@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.88';
+export const APP_VERSION = 'v14.89';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.89',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 2 — inventory & GST invoicing: create Stock Items (unit, HSN, GST rate, opening qty/rate), then raise Sales (F8) and Purchase (F9) item invoices. GST is auto-calculated per item and the CRM auto-posts the correct double-entry (a sale debits the party, credits Sales + Output GST; a purchase debits Purchase + Input GST, credits the party) and records the stock movement.',
+      'New Stock Summary report — inward, outward, closing quantity and value per item, with a total stock value. Reach Stock Items with “I”, Stock Summary with “S”.',
+      'Run MIGRATION_v14.89_all.sql in Neon before deploying (adds stock-item and inventory tables). If you skipped v14.88, run its migration first.',
+    ],
+  },
   {
     version: 'v14.88',
     date: '23 Jul 2026',

@@ -1926,19 +1926,48 @@ model TallyLedger {
 }
 
 model TallyVoucher {
-  id          String             @id @default(cuid())
-  number      Int
-  type        String             // Payment | Receipt | Contra | Journal | Sales | Purchase
-  date        DateTime
-  narration   String?
-  reference   String?
-  lines       TallyVoucherLine[]
-  createdById String?
-  createdAt   DateTime           @default(now())
+  id             String               @id @default(cuid())
+  number         Int
+  type           String               // Payment | Receipt | Contra | Journal | Sales | Purchase
+  date           DateTime
+  narration      String?
+  reference      String?
+  lines          TallyVoucherLine[]
+  inventoryLines TallyInventoryLine[]
+  createdById    String?
+  createdAt      DateTime             @default(now())
 
   @@unique([type, number])
   @@index([date])
   @@index([type, date])
+}
+
+model TallyStockItem {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  unit        String               @default("Nos")
+  hsn         String?
+  gstRate     Decimal              @default(0) @db.Decimal(5, 2)
+  openingQty  Decimal              @default(0) @db.Decimal(16, 3)
+  openingRate Decimal              @default(0) @db.Decimal(16, 2)
+  lines       TallyInventoryLine[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model TallyInventoryLine {
+  id        String         @id @default(cuid())
+  voucherId String
+  itemId    String
+  qty       Decimal        @default(0) @db.Decimal(16, 3)
+  rate      Decimal        @default(0) @db.Decimal(16, 2)
+  amount    Decimal        @default(0) @db.Decimal(16, 2)
+  direction String         // IN | OUT
+  voucher   TallyVoucher   @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  item      TallyStockItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([voucherId])
+  @@index([itemId])
 }
 
 model TallyVoucherLine {

@@ -3,10 +3,10 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem } from '@/server/actions/tally';
 import type { TallyData } from '@/server/services/tally-service';
 
-type Screen = 'gateway' | 'voucher' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -23,10 +23,21 @@ export function TallyApp({ data }: { data: TallyData }) {
   const [vNarr, setVNarr] = React.useState('');
   const [lines, setLines] = React.useState<Line[]>([{ ledgerId: '', debit: '', credit: '' }, { ledgerId: '', debit: '', credit: '' }]);
 
-  const go = (s: Screen) => setScreen(s);
+  // Item-invoice (Sales/Purchase) state
+  const [invType, setInvType] = React.useState<'Sales' | 'Purchase'>('Sales');
+  const [invParty, setInvParty] = React.useState('');
+  const [invItems, setInvItems] = React.useState<Array<{ itemId: string; qty: string; rate: string }>>([{ itemId: '', qty: '', rate: '' }]);
+
   const back = () => setScreen('gateway');
 
-  const openVoucher = (t: VoucherType) => { setVType(t); setVDate(todayISO()); setVNarr(''); setLines([{ ledgerId: '', debit: '', credit: '' }, { ledgerId: '', debit: '', credit: '' }]); setScreen('voucher'); };
+  const openVoucher = (t: VoucherType) => {
+    if (t === 'Sales' || t === 'Purchase') {
+      setInvType(t); setVDate(todayISO()); setVNarr(''); setInvParty(''); setInvItems([{ itemId: '', qty: '', rate: '' }]);
+      setScreen('invoice');
+      return;
+    }
+    setVType(t); setVDate(todayISO()); setVNarr(''); setLines([{ ledgerId: '', debit: '', credit: '' }, { ledgerId: '', debit: '', credit: '' }]); setScreen('voucher');
+  };
 
   // Global keyboard: Esc = back; F4–F9 open a voucher from anywhere.
   React.useEffect(() => {
@@ -35,7 +46,7 @@ export function TallyApp({ data }: { data: TallyData }) {
       const vk = (Object.entries(VOUCHER_KEY) as Array<[VoucherType, string]>).find(([, k]) => k === e.key);
       if (vk) { e.preventDefault(); openVoucher(vk[0]); return; }
       if (screen === 'gateway') {
-        const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', c: 'createLedger' };
+        const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary' };
         const s = map[e.key.toLowerCase()];
         if (s) { e.preventDefault(); if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }
       }
@@ -64,6 +75,27 @@ export function TallyApp({ data }: { data: TallyData }) {
     toast.success('Voucher deleted'); router.refresh();
   });
 
+  const stockById = new Map(data.stock.map((s) => [s.id, s]));
+  const invTaxable = invItems.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0);
+  const invGst = invItems.reduce((s, l) => { const it = stockById.get(l.itemId); const amt = (Number(l.qty) || 0) * (Number(l.rate) || 0); return s + amt * ((it?.gstRate ?? 0) / 100); }, 0);
+  const invTotal = Math.round((invTaxable + invGst) * 100) / 100;
+
+  const saveInvoice = () => {
+    if (!invParty) { toast.error('Choose the party ledger'); return; }
+    const rows = invItems.filter((l) => l.itemId && Number(l.qty) > 0);
+    if (!rows.length) { toast.error('Add at least one item with a quantity'); return; }
+    start(async () => {
+      const r = await createTallyItemInvoice({ type: invType, date: vDate, partyLedgerId: invParty, narration: vNarr || undefined, items: rows.map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate) || 0 })) });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(`${invType} invoice posted`); router.refresh(); back();
+    });
+  };
+  const removeStock = (id: string) => start(async () => {
+    const r = await deleteTallyStockItem(id);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Stock item deleted'); router.refresh();
+  });
+
   return (
     <div className="tally-wrap min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
       {/* Title bar */}
@@ -83,6 +115,17 @@ export function TallyApp({ data }: { data: TallyData }) {
               onSave={saveVoucher} onBack={back} pending={pending} openVoucher={openVoucher}
             />
           )}
+          {screen === 'invoice' && (
+            <ItemInvoice
+              type={invType} setType={(t) => { setInvType(t); }} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
+              party={invParty} setParty={setInvParty} items={invItems} setItems={setInvItems}
+              ledgers={data.ledgers} stock={data.stock} taxable={invTaxable} gst={invGst} total={invTotal}
+              onSave={saveInvoice} onBack={back} pending={pending} onNewItem={() => setScreen('createStock')}
+            />
+          )}
+          {screen === 'stock' && <StockItems data={data} onBack={back} onCreate={() => setScreen('createStock')} onDelete={removeStock} pending={pending} />}
+          {screen === 'createStock' && <CreateStock onDone={() => { router.refresh(); setScreen('stock'); }} onBack={() => setScreen('stock')} />}
+          {screen === 'stockSummary' && <StockSummary data={data} onBack={back} />}
           {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} pending={pending} />}
           {screen === 'trial' && <TrialBalance data={data} onBack={back} />}
           {screen === 'pl' && <ProfitLoss data={data} onBack={back} />}
@@ -103,8 +146,10 @@ export function TallyApp({ data }: { data: TallyData }) {
           <BarBtn label="Trial Balance" k="T" onClick={() => setScreen('trial')} />
           <BarBtn label="Profit & Loss" k="P" onClick={() => setScreen('pl')} />
           <BarBtn label="Balance Sheet" k="B" onClick={() => setScreen('balsheet')} />
+          <BarBtn label="Stock Summary" k="S" onClick={() => setScreen('stockSummary')} />
           <div className="pt-2 text-[10px] font-semibold text-[#5B4412]">MASTERS</div>
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
+          <BarBtn label="Stock Items" k="I" onClick={() => setScreen('stock')} />
         </aside>
       </div>
 
@@ -149,10 +194,12 @@ function Gateway({ onGo, data }: { onGo: (s: Screen) => void; data: TallyData })
           <MenuItem label="Day Book" k="D" onClick={() => onGo('daybook')} />
           <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Masters</p>
           <MenuItem label="Create / view Ledgers" k="L" onClick={() => onGo('ledgers')} />
+          <MenuItem label="Stock Items" k="I" onClick={() => onGo('stock')} />
           <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Reports</p>
           <MenuItem label="Trial Balance" k="T" onClick={() => onGo('trial')} />
           <MenuItem label="Profit & Loss A/c" k="P" onClick={() => onGo('pl')} />
           <MenuItem label="Balance Sheet" k="B" onClick={() => onGo('balsheet')} />
+          <MenuItem label="Stock Summary" k="S" onClick={() => onGo('stockSummary')} />
         </div>
         <div className="rounded border border-[#0f2038]/30 bg-white/50 p-3 text-[12px]">
           <p className="mb-2 font-semibold">At a glance</p>
@@ -375,6 +422,136 @@ function CreateLedger({ onDone, onBack }: { onDone: () => void; onBack: () => vo
         <label className="flex items-center justify-between gap-2">Opening side <select name="openingSide" defaultValue="Dr" className={cls}><option>Dr</option><option>Cr</option></select></label>
         <button type="submit" disabled={pending} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Accept &amp; Save</button>
       </form>
+    </Panel>
+  );
+}
+
+function ItemInvoice(props: {
+  type: 'Sales' | 'Purchase'; setType: (t: 'Sales' | 'Purchase') => void; date: string; setDate: (s: string) => void;
+  narr: string; setNarr: (s: string) => void; party: string; setParty: (s: string) => void;
+  items: Array<{ itemId: string; qty: string; rate: string }>; setItems: (l: Array<{ itemId: string; qty: string; rate: string }>) => void;
+  ledgers: TallyData['ledgers']; stock: TallyData['stock']; taxable: number; gst: number; total: number;
+  onSave: () => void; onBack: () => void; pending: boolean; onNewItem: () => void;
+}) {
+  const { type, setType, date, setDate, narr, setNarr, party, setParty, items, setItems, ledgers, stock, taxable, gst, total, onSave, onBack, pending, onNewItem } = props;
+  const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
+  const setItem = (i: number, patch: Partial<{ itemId: string; qty: string; rate: string }>) => setItems(items.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const partyGroups = type === 'Sales' ? ['Sundry Debtors'] : ['Sundry Creditors'];
+  const partyLedgers = ledgers.filter((l) => partyGroups.includes(l.group));
+  const stockById = new Map(stock.map((s) => [s.id, s]));
+
+  return (
+    <Panel title={`${type} Invoice (item)`}>
+      <BackBtn onBack={onBack} />
+      {stock.length === 0 && <p className="mb-2 rounded bg-amber-100 px-2 py-1 text-[12px] text-amber-800">No stock items yet — <button onClick={onNewItem} className="underline">create one</button> first.</p>}
+      <div className="mb-2 flex gap-1">
+        {(['Sales', 'Purchase'] as const).map((t) => <button key={t} onClick={() => setType(t)} className={`rounded px-2 py-0.5 text-[11px] ${t === type ? 'bg-[#1B2A4A] text-white' : 'bg-white/70 hover:bg-white'}`}>{t} <kbd className="text-[#8C6E2C]">{t === 'Sales' ? 'F8' : 'F9'}</kbd></button>)}
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-1">Date <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={cls} /></label>
+        <label className="flex items-center gap-1">Party
+          <select value={party} onChange={(e) => setParty(e.target.value)} className={`${cls} min-w-[12rem]`}>
+            <option value="">— {type === 'Sales' ? 'debtor' : 'creditor'} —</option>
+            {partyLedgers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </label>
+        <span className="text-[11px] text-[#5B4412]">Party ledger must be under {partyGroups[0]} — create it in Ledgers (L).</span>
+      </div>
+
+      <table className="w-full border-collapse">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Item</th><th className="w-24 p-1 text-right">Qty</th><th className="w-24 p-1 text-right">Rate</th><th className="w-16 p-1 text-right">GST%</th><th className="w-28 p-1 text-right">Amount</th><th className="w-8" /></tr></thead>
+        <tbody>
+          {items.map((l, i) => {
+            const it = stockById.get(l.itemId);
+            const amount = (Number(l.qty) || 0) * (Number(l.rate) || 0);
+            return (
+              <tr key={i} className="border-b border-[#0f2038]/20">
+                <td className="p-1"><select value={l.itemId} onChange={(e) => setItem(i, { itemId: e.target.value, rate: l.rate || (stockById.get(e.target.value)?.rate ? String(stockById.get(e.target.value)!.rate) : '') })} className={`${cls} w-full`}><option value="">— item —</option>{stock.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.unit})</option>)}</select></td>
+                <td className="p-1 text-right"><input inputMode="decimal" value={l.qty} onChange={(e) => setItem(i, { qty: e.target.value })} className={`${cls} w-20 text-right`} /></td>
+                <td className="p-1 text-right"><input inputMode="decimal" value={l.rate} onChange={(e) => setItem(i, { rate: e.target.value })} className={`${cls} w-20 text-right`} /></td>
+                <td className="p-1 text-right tabular-nums">{it ? it.gstRate : 0}</td>
+                <td className="p-1 text-right tabular-nums">{inr(amount)}</td>
+                <td className="p-1 text-center"><button onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)} className="text-rose-700">✕</button></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="mt-1"><button onClick={() => setItems([...items, { itemId: '', qty: '', rate: '' }])} className="rounded border border-[#0f2038]/40 bg-white/70 px-2 py-1 text-[12px] hover:bg-white">+ Add item</button></div>
+
+      <div className="mt-3 flex flex-wrap items-end gap-4">
+        <label className="flex flex-1 items-center gap-1">Narration <input value={narr} onChange={(e) => setNarr(e.target.value)} className={`${cls} min-w-[10rem] flex-1`} /></label>
+        <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2 text-[12px]">
+          <Row k="Taxable" v={`₹ ${inr(taxable)}`} />
+          <Row k="GST" v={`₹ ${inr(gst)}`} />
+          <Row k="Invoice total" v={`₹ ${inr(total)}`} strong />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">Esc — Cancel</button>
+          <button onClick={onSave} disabled={pending || total <= 0} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Accept &amp; Save</button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function StockItems({ data, onBack, onCreate, onDelete, pending }: { data: TallyData; onBack: () => void; onCreate: () => void; onDelete: (id: string) => void; pending: boolean }) {
+  return (
+    <Panel title="Stock Items">
+      <div className="mb-2 flex items-center gap-2"><BackBtn onBack={onBack} /><button onClick={onCreate} className="rounded bg-[#1B2A4A] px-3 py-1 text-[12px] font-semibold text-white">Create item</button></div>
+      <table className="w-full border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Name</th><th className="p-1">Unit</th><th className="p-1 text-right">GST%</th><th className="p-1 text-right">Closing qty</th><th className="p-1 text-right">Value</th><th /></tr></thead>
+        <tbody>
+          {data.stock.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-[#5B4412]">No stock items yet.</td></tr> : data.stock.map((s) => (
+            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.gstRate}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{inr(s.value)}</td><td className="p-1"><button onClick={() => onDelete(s.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td></tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
+  );
+}
+
+function CreateStock({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+  const [pending, start] = React.useTransition();
+  const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await createTallyStockItem({ name: fd.get('name'), unit: fd.get('unit') || 'Nos', hsn: fd.get('hsn') || undefined, gstRate: Number(fd.get('gstRate') || 0), openingQty: Number(fd.get('openingQty') || 0), openingRate: Number(fd.get('openingRate') || 0) });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Stock item created'); onDone();
+    });
+  };
+  return (
+    <Panel title="Stock Item Creation">
+      <BackBtn onBack={onBack} />
+      <form onSubmit={submit} className="max-w-md space-y-2">
+        <label className="flex items-center justify-between gap-2">Name <input name="name" required className={`${cls} flex-1`} /></label>
+        <label className="flex items-center justify-between gap-2">Unit <input name="unit" defaultValue="Nos" className={`${cls} w-32`} /></label>
+        <label className="flex items-center justify-between gap-2">HSN/SAC <input name="hsn" className={`${cls} w-40`} /></label>
+        <label className="flex items-center justify-between gap-2">GST rate % <input name="gstRate" type="number" step="0.01" defaultValue="18" className={`${cls} w-32 text-right`} /></label>
+        <label className="flex items-center justify-between gap-2">Opening qty <input name="openingQty" type="number" step="0.001" defaultValue="0" className={`${cls} w-32 text-right`} /></label>
+        <label className="flex items-center justify-between gap-2">Opening rate <input name="openingRate" type="number" step="0.01" defaultValue="0" className={`${cls} w-32 text-right`} /></label>
+        <button type="submit" disabled={pending} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Accept &amp; Save</button>
+      </form>
+    </Panel>
+  );
+}
+
+function StockSummary({ data, onBack }: { data: TallyData; onBack: () => void }) {
+  const totalValue = data.stock.reduce((s, r) => s + r.value, 0);
+  return (
+    <Panel title="Stock Summary">
+      <BackBtn onBack={onBack} />
+      <table className="w-full border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Item</th><th className="p-1">Unit</th><th className="p-1 text-right">Inward</th><th className="p-1 text-right">Outward</th><th className="p-1 text-right">Closing</th><th className="p-1 text-right">Rate</th><th className="p-1 text-right">Value</th></tr></thead>
+        <tbody>
+          {data.stock.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-[#5B4412]">No stock items yet.</td></tr> : data.stock.map((s) => (
+            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.inQty}</td><td className="p-1 text-right tabular-nums">{s.outQty}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{inr(s.rate)}</td><td className="p-1 text-right tabular-nums">{inr(s.value)}</td></tr>
+          ))}
+        </tbody>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={6}>Total stock value</td><td className="p-1 text-right tabular-nums">{inr(totalValue)}</td></tr></tfoot>
+      </table>
     </Panel>
   );
 }
