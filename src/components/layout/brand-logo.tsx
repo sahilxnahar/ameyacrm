@@ -35,7 +35,7 @@ export function BrandLogo({
       />
       {!collapsed && (
         <div className="leading-none">
-          <div className="font-display text-[1.35rem] font-semibold leading-none tracking-[0.01em] text-[#8C6E2C] dark:text-[#D9BE79]">
+          <div className="font-display text-[1.35rem] font-semibold leading-none tracking-[0.01em] text-[#5B4412] dark:text-[#D9BE79]">
             {brand.company.displayName}
           </div>
           <div className="mt-1 text-[9px] font-medium uppercase tracking-[0.34em] text-muted-foreground">CRM</div>

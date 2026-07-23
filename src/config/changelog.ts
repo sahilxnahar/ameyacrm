@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.53';
+export const APP_VERSION = 'v14.54';
 
 export interface Release {
   version: string;
@@ -13,6 +13,13 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.54',
+    date: '23 Jul 2026',
+    highlights: [
+      'The “Ameya Heights” wordmark is now crisp and readable in light mode (it was washed out); dark mode is unchanged.',
+    ],
+  },
   {
     version: 'v14.53',
     date: '22 Jul 2026',
