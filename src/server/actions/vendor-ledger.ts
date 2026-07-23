@@ -6,6 +6,7 @@ import { ensure, toActionError } from './_helpers';
 import { parseTable } from '@/lib/import/parse';
 import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
 import { getActiveProject } from '@/server/services/active-project-service';
+import { categorizeExpense } from '@/config/expense-categories';
 
 export type LedgerActionResult =
   | {
@@ -84,13 +85,15 @@ export async function importVendorPayments(text: string): Promise<LedgerActionRe
         const dupe = await prisma.voucher.findFirst({ where: { vendorId, amount, ...(reference ? { reference } : {}) }, select: { id: true } });
         if (dupe) { duplicates++; continue; }
         const mode = H.mode >= 0 ? paymentMode(row[H.mode] ?? '') : 'BANK_TRANSFER';
+        const noteText = H.note >= 0 ? (row[H.note] ?? '').trim().slice(0, 500) || null : null;
         seq++;
         await prisma.voucher.create({
           data: {
             number: `CP-${seq}`, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
             voucherDate: date ?? new Date(), partyName: name, vendorId, amount, mode,
             reference, utr: H.utr >= 0 ? opt(row[H.utr] ?? '') : null,
-            narration: H.note >= 0 ? (row[H.note] ?? '').trim().slice(0, 500) || null : null,
+            narration: noteText,
+            accountCode: categorizeExpense(`${name} ${noteText ?? ''}`),
             createdById: ctx.user.id,
           },
         });
@@ -144,6 +147,42 @@ export async function mergeVendors(keepId: string, mergeId: string): Promise<Led
   } catch (e) { return toActionError(e); }
 }
 
+/** Rename a payee — and keep every payment tagged to the old name in sync. */
+export async function renameVendor(id: string, newName: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const name = newName.trim();
+    if (name.length < 2) return { error: 'Give the payee a name.' };
+    const vendor = await prisma.vendor.findUnique({ where: { id }, select: { id: true, name: true } });
+    if (!vendor) return { error: 'That payee no longer exists.' };
+    await prisma.$transaction(async (tx) => {
+      await tx.voucher.updateMany({ where: { vendorId: id }, data: { partyName: name } });
+      await tx.voucher.updateMany({ where: { vendorId: null, partyName: { equals: vendor.name, mode: 'insensitive' } }, data: { partyName: name, vendorId: id } });
+      await tx.vendor.update({ where: { id }, data: { name } });
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: id, summary: `Renamed payee "${vendor.name}" → "${name}"` });
+    revalidatePath('/ledgers');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Merge several payees into one keeper in a single go — the tidy-up tool. */
+export async function mergeVendorsMany(keepId: string, mergeIds: string[]): Promise<LedgerActionResult> {
+  try {
+    await ensure('billing.bill.manage');
+    const ids = [...new Set(mergeIds.filter((m) => m && m !== keepId))];
+    if (!keepId || ids.length === 0) return { error: 'Pick at least one other payee to merge in.' };
+    let merged = 0;
+    for (const mid of ids) {
+      const r = await mergeVendors(keepId, mid);
+      if ('error' in r) return { error: r.error };
+      merged++;
+    }
+    revalidatePath('/ledgers');
+    return { ok: true, created: merged };
+  } catch (e) { return toActionError(e); }
+}
+
 /** Save a payee's bank details, so a payment never needs them retyped. */
 export async function saveVendorBank(vendorId: string, v: Record<string, string>): Promise<LedgerActionResult> {
   try {
@@ -175,7 +214,7 @@ async function nextCpNumber(): Promise<string> {
  */
 export async function addVendorPayment(input: {
   vendorId: string; amount: number | string; date?: string; mode?: string;
-  reference?: string; utr?: string; note?: string; proofUrl?: string;
+  reference?: string; utr?: string; note?: string; proofUrl?: string; category?: string;
 }): Promise<LedgerActionResult & { id?: string }> {
   try {
     const ctx = await ensure('billing.bill.manage');
@@ -187,6 +226,8 @@ export async function addVendorPayment(input: {
     const mode = input.mode ? paymentMode(input.mode) : 'BANK_TRANSFER';
     const utr = input.utr ? input.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null;
     const when = input.date ? new Date(input.date) : new Date();
+    const note = (input.note ?? '').trim().slice(0, 500) || null;
+    const accountCode = (input.category ?? '').trim() || categorizeExpense(`${vendor.name} ${note ?? ''}`);
     const active = await getActiveProject(ctx.user.id);
     const number = await nextCpNumber();
 
@@ -197,7 +238,8 @@ export async function addVendorPayment(input: {
         partyName: vendor.name, vendorId: vendor.id, amount, mode,
         reference: opt(input.reference ?? ''), utr,
         utrEnteredById: utr ? ctx.user.id : null, utrEnteredAt: utr ? new Date() : null,
-        narration: (input.note ?? '').trim().slice(0, 500) || null,
+        narration: note,
+        accountCode,
         attachmentId: opt(input.proofUrl ?? ''),
         projectId: active.id ?? null,
         createdById: ctx.user.id,
@@ -208,6 +250,19 @@ export async function addVendorPayment(input: {
     revalidatePath('/ledgers');
     revalidatePath('/payments');
     return { ok: true, id: v.id };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Set the expense category (chart-of-accounts code) on a single payment. */
+export async function setPaymentCategory(voucherId: string, accountCode: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { accountCode: accountCode.trim() || null } });
+    revalidatePath('/ledgers');
+    revalidatePath('/payments');
+    return { ok: true };
   } catch (e) { return toActionError(e); }
 }
 

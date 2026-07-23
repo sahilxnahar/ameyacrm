@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload } from 'lucide-react';
+import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof } from '@/server/actions/vendor-ledger';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory } from '@/server/actions/vendor-ledger';
+import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
@@ -109,6 +110,43 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
     });
   };
 
+  const [renaming, setRenaming] = React.useState(false);
+  const doRename = (id: string, name: string) => {
+    start(async () => {
+      const r = await renameVendor(id, name);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Payee renamed'); setRenaming(false); router.refresh();
+    });
+  };
+
+  // Tidy-up (multi-merge) on the list
+  const [tidy, setTidy] = React.useState(false);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [keepId, setKeepId] = React.useState('');
+  const toggleSel = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const doMultiMerge = () => {
+    const ids = [...selected];
+    const keep = keepId || ids[0];
+    if (!keep || ids.length < 2) { toast.error('Pick at least two payees, and which name to keep.'); return; }
+    start(async () => {
+      const r = await mergeVendorsMany(keep, ids.filter((i) => i !== keep));
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Payees merged'); setSelected(new Set()); setKeepId(''); setTidy(false); router.refresh();
+    });
+  };
+
+  const changeCategory = (voucherId: string, code: string) => {
+    start(async () => {
+      const r = await setPaymentCategory(voucherId, code);
+      if ('error' in r) { toast.error(r.error); return; }
+      router.refresh();
+    });
+  };
+
   const pickProof = (voucherId: string) => { setProofTarget(voucherId); proofInputRef.current?.click(); };
   const onProofChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; const vid = proofTarget; e.target.value = '';
@@ -126,7 +164,22 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
     const d = detail;
     return (
       <div className="space-y-4">
-        <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
+          {canManage && !renaming && (
+            <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}><Pencil className="h-4 w-4" /> Rename payee</Button>
+          )}
+        </div>
+        {canManage && renaming && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); doRename(d.vendor.id, String(fd.get('name') ?? '')); }}
+            className="flex items-center gap-2 rounded-md border bg-muted/20 p-2"
+          >
+            <Input name="name" defaultValue={d.vendor.name} className="max-w-xs" autoFocus />
+            <Button type="submit" size="sm" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Save</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(false)}>Cancel</Button>
+          </form>
+        )}
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <StatTileRow cols={3}>
@@ -154,6 +207,12 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
                     </select>
                   </Field>
                   <Field label="UTR / reference"><Input name="utr" placeholder="UTR or cheque no." /></Field>
+                  <Field label="Category">
+                    <select name="category" defaultValue="" className="focus-ring w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm">
+                      <option value="">Auto (from the note)</option>
+                      {EXPENSE_CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    </select>
+                  </Field>
                   <div className="sm:col-span-2"><Field label="What was it for? (note)"><Input name="note" placeholder="e.g. Construction advance" /></Field></div>
                   <div className="sm:col-span-2">
                     <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
@@ -164,15 +223,25 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               )}
               <div className="max-h-[26rem] overflow-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Note</th><th className="p-2">Proof</th></tr></thead>
+                  <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Category</th><th className="p-2">Note</th><th className="p-2">Proof</th></tr></thead>
                   <tbody>
-                    {d.payments.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
+                    {d.payments.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No payments yet.</td></tr> : d.payments.map((p) => (
                       <tr key={p.id} className="border-t align-top">
                         <td className="p-2 font-medium">{p.number}</td>
                         <td className="p-2 whitespace-nowrap">{formatDate(p.paidOn ?? p.date)}</td>
                         <td className="p-2 text-right tabular-nums">{formatCurrency(p.amount)}</td>
                         <td className="p-2">{p.mode.replace(/_/g, ' ').toLowerCase()}</td>
                         <td className="p-2 font-mono text-xs">{p.utr ?? p.reference ?? '—'}</td>
+                        <td className="p-2">
+                          {canManage ? (
+                            <select value={p.category ?? ''} onChange={(e) => changeCategory(p.id, e.target.value)} disabled={pending} className="focus-ring rounded-md border border-input bg-background px-1.5 py-1 text-xs">
+                              <option value="">— uncategorised —</option>
+                              {EXPENSE_CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                            </select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '—'}</span>
+                          )}
+                        </td>
                         <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}</td>
                         <td className="p-2">
                           {p.proofUrl ? (
@@ -256,16 +325,47 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
         <EmptyState icon={FileSpreadsheet} title="No payees yet" body="Import your payments (as a CSV) to build a ledger for each person you pay." />
       ) : (
         <>
-          <div className="relative max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search payees" className="pl-9" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="relative max-w-xs flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search payees" className="pl-9" />
+            </div>
+            {canManage && (
+              <Button size="sm" variant={tidy ? 'default' : 'outline'} onClick={() => { setTidy((v) => !v); setSelected(new Set()); setKeepId(''); }}>
+                <ListChecks className="h-4 w-4" /> {tidy ? 'Done tidying' : 'Tidy up payees'}
+              </Button>
+            )}
           </div>
+
+          {tidy && (
+            <div className="rounded-md border border-[#A07D34]/40 bg-[#A07D34]/5 p-3 text-sm">
+              <p className="mb-2 text-muted-foreground">Tick every row that is really the <b>same payee</b> (e.g. all the “Arun” lines), choose which name to keep, then merge — their payments combine into one ledger.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{selected.size} selected</span>
+                {selected.size >= 2 && (
+                  <>
+                    <span className="text-muted-foreground">→ keep as</span>
+                    <select value={keepId || [...selected][0]} onChange={(e) => setKeepId(e.target.value)} className="focus-ring rounded-md border border-input bg-background px-2 py-1 text-sm">
+                      {[...selected].map((id) => { const l = ledgers.find((x) => x.id === id); return <option key={id} value={id}>{l?.name}</option>; })}
+                    </select>
+                    <Button size="sm" onClick={doMultiMerge} disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Merge {selected.size} into one</Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Payee</th><th className="p-2 text-right">Total paid</th><th className="p-2 text-right">Payments</th><th className="p-2">Bank</th></tr></thead>
+              <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{tidy && <th className="w-8 p-2" />}<th className="p-2">Payee</th><th className="p-2 text-right">Total paid</th><th className="p-2 text-right">Payments</th><th className="p-2">Bank</th></tr></thead>
               <tbody>
                 {shown.map((l) => (
-                  <tr key={l.id} className="cursor-pointer border-t hover:bg-secondary/50" onClick={() => router.push(`/ledgers?v=${l.id}`)}>
+                  <tr
+                    key={l.id}
+                    className={cn('border-t hover:bg-secondary/50', tidy ? 'cursor-pointer' : 'cursor-pointer', tidy && selected.has(l.id) && 'bg-[#A07D34]/10')}
+                    onClick={() => (tidy ? toggleSel(l.id) : router.push(`/ledgers?v=${l.id}`))}
+                  >
+                    {tidy && <td className="p-2"><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} onClick={(e) => e.stopPropagation()} /></td>}
                     <td className="p-2 font-medium">{l.name}</td>
                     <td className="p-2 text-right tabular-nums">{formatCurrency(l.totalPaid)}</td>
                     <td className="p-2 text-right tabular-nums">{l.count}</td>

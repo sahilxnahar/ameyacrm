@@ -2686,6 +2686,7 @@ model Voucher {
   gstAmount Decimal? @db.Decimal(14, 2)
 
   attachmentId String?
+  accountCode  String? // expense category for reporting (chart-of-accounts code, e.g. 5300 Materials)
   createdById  String?
   approvedById String?
   approvedAt   DateTime?

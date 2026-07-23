@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.62';
+export const APP_VERSION = 'v14.63';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.63',
+    date: '23 Jul 2026',
+    highlights: [
+      'Tidy up payees: on Vendor Ledgers, tap “Tidy up payees”, tick every line that’s really the same person (all the “Arun” rows, etc.), choose the name to keep, and merge them into one ledger. You can also rename any payee.',
+      'Every payment now has a category — Materials, Labour & sub-contractors, Approvals & statutory fees, Professional fees, Overheads — set automatically from the note and changeable per payment.',
+      'New Spend Report (Money → Spend Report): see where the money went by category, by project, by payee and by month, with a one-click CSV export.',
+      'Your existing payments are auto-categorised by the accompanying database update, so the report is populated from day one.',
+    ],
+  },
   {
     version: 'v14.62',
     date: '23 Jul 2026',
