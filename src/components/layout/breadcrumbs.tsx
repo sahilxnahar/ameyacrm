@@ -58,7 +58,7 @@ export function Breadcrumbs() {
   if (crumbs.length === 0 || pathname === '/dashboard' || pathname === '/today') return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pt-3 sm:px-6 lg:px-8">
+    <div className="mx-auto hidden w-full max-w-[1400px] px-4 pt-3 sm:block sm:px-6 lg:px-8">
     <nav aria-label="Breadcrumb" className="flex items-center gap-1 overflow-x-auto py-0.5 text-sm text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <Link href="/dashboard" className="flex shrink-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-secondary hover:text-foreground" title="Home">
         <Home className="h-3.5 w-3.5" />

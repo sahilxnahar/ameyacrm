@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.69';
+export const APP_VERSION = 'v14.70';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.70',
+    date: '23 Jul 2026',
+    highlights: [
+      'Less clutter on phones: the little stat boxes at the top of a screen are now one clean swipeable strip of comfortably-sized tiles, instead of three or five squeezed side by side.',
+      'The breadcrumb trail is hidden on phones (the page title already tells you where you are), and the top bar drops the Messages and Assistant icons on mobile — they live in the menu — so the header breathes.',
+      'Long page descriptions are trimmed to two lines on a phone so the actual content starts higher up.',
+    ],
+  },
   {
     version: 'v14.69',
     date: '23 Jul 2026',

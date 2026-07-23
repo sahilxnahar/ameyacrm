@@ -55,12 +55,20 @@ export function StatTile({
   );
 }
 
-/** A responsive row of stat tiles — two up on a phone, N up on a wide screen. */
+/**
+ * A responsive row of stat tiles. On a phone the tiles become a single
+ * swipeable strip — each one comfortably sized and readable — instead of three
+ * or five squeezed side by side. On a wide screen it's the usual grid.
+ */
 export function StatTileRow({ cols = 4, children, className }: { cols?: 3 | 4 | 5; children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        'grid grid-cols-2 gap-3',
+        // Mobile: edge-to-edge horizontal scroll, one-and-a-bit tiles visible so
+        // it's obvious there's more to swipe.
+        '-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:w-[44%] [&>*]:shrink-0 [&>*]:snap-start',
+        // Desktop: the grid, tiles full width again.
+        'sm:mx-0 sm:grid sm:snap-none sm:overflow-visible sm:px-0 sm:pb-0 sm:[&>*]:w-auto',
         cols === 3 && 'sm:grid-cols-3',
         cols === 4 && 'sm:grid-cols-4',
         cols === 5 && 'sm:grid-cols-5',

@@ -20,7 +20,7 @@ export function PageHeader({
           {title}
           {(helpTermId || helpText) && <HelpTip termId={helpTermId} text={helpText} className="ml-2 align-middle" />}
         </h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground sm:line-clamp-none">{description}</p>}
       </div>
       {children && <div className="chip-row items-center sm:flex sm:gap-2">{children}</div>}
     </div>

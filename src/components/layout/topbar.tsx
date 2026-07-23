@@ -44,7 +44,7 @@ export function Topbar({
           href="/chat"
           title="Messages — chat anyone in the company"
           aria-label="Messages"
-          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
           <MessageSquare className="h-4 w-4" />
         </Link>
@@ -52,7 +52,7 @@ export function Topbar({
           href="/assistant"
           title="Assistant — draft, explain, summarise"
           aria-label="Assistant"
-          className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
         >
           <Sparkles className="h-4 w-4" />
         </Link>
