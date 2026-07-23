@@ -1,9 +1,10 @@
 'use client';
 import * as React from 'react';
-import { Send, Loader2, Bot, User, Sparkles, Paperclip, X, FolderInput, FileText, Search, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, Paperclip, X, FolderInput, FileText, Search, CheckCircle2, Library } from 'lucide-react';
 import Link from 'next/link';
 import { askAssistant, type AssistantTurn } from '@/server/actions/assistant';
 import { askAssistantAboutFile, listFilingFolders, fileAssistantDocument, type FilingFolder } from '@/server/actions/assistant-files';
+import { ask } from '@/server/actions/docqa';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils/cn';
 
@@ -27,6 +28,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
   const [error, setError] = React.useState<string | null>(null);
   const [attached, setAttached] = React.useState<File | null>(null);
   const [filing, setFiling] = React.useState<Filing | null>(null);
+  const [grounded, setGrounded] = React.useState(false);
   const endRef = React.useRef<HTMLDivElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -76,6 +78,19 @@ export function AssistantChat({ configured }: { configured: boolean }) {
     const next: AssistantTurn[] = [...turns, { role: 'user', content }];
     setTurns(next);
     setInput('');
+
+    // Grounded mode: answer from your indexed documents (RAG), with sources.
+    if (grounded) {
+      start(async () => {
+        const r = await ask(content);
+        if ('error' in r) { setError(r.error); return; }
+        const src = r.data.sources.slice(0, 4).map((s) => s.title).filter((v, i, a) => a.indexOf(v) === i);
+        const footer = src.length ? `\n\n— From your documents: ${src.join(', ')}` : '';
+        setTurns((prev) => [...prev, { role: 'assistant', content: r.data.answer + footer }]);
+      });
+      return;
+    }
+
     start(async () => {
       const r = await askAssistant(next);
       if ('error' in r && !r.ok) { setError(r.error); return; }
@@ -151,6 +166,15 @@ export function AssistantChat({ configured }: { configured: boolean }) {
           />
           <button
             type="button"
+            onClick={() => setGrounded((v) => !v)}
+            aria-pressed={grounded}
+            title={grounded ? 'Answering from your indexed documents — click to switch off' : 'Answer from your documents (searches your indexed files)'}
+            className={cn('focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border', grounded ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground')}
+          >
+            <Library className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             aria-label="Attach a document"
             title="Attach a PDF or image"
@@ -163,7 +187,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
             rows={1}
-            placeholder={attached ? 'Ask about this document… (or leave blank for a summary)' : 'Ask anything… (Shift+Enter for a new line)'}
+            placeholder={attached ? 'Ask about this document… (or leave blank for a summary)' : grounded ? 'Ask about your documents — answers cite your files…' : 'Ask anything… (Shift+Enter for a new line)'}
             className="focus-ring max-h-32 min-h-[40px] flex-1 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           <button type="submit" disabled={pending || (!input.trim() && !attached)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground disabled:opacity-50">

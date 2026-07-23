@@ -9,6 +9,8 @@ import { prisma } from '@/lib/db/prisma';
 import { activeProvider } from '@/lib/ai/provider';
 import { AssistantChat } from '@/components/assistant/assistant-chat';
 import { getDashboardData } from '@/server/services/dashboard-service';
+import { getDashboardCharts } from '@/server/services/dashboard-charts-service';
+import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { ActionCard } from '@/components/dashboard/action-card';
@@ -27,6 +29,7 @@ export default async function DashboardPage() {
   const data = await getDashboardData(user.id);
   const firstName = user.name.split(' ')[0];
   const now = new Date();
+  const charts = await getDashboardCharts(now).catch(() => null);
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
   const num = (v: unknown) => Number(v || 0);
 
@@ -86,6 +89,12 @@ export default async function DashboardPage() {
             <Button asChild size="sm" variant="outline"><Link href="/briefing">Open</Link></Button>
           </div>
         </Card>
+      )}
+
+      {charts && (
+        <CollapsibleSection id="charts" title="Visual overview">
+          <DashboardCharts data={charts} />
+        </CollapsibleSection>
       )}
 
       {/* Action cards */}

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.84';
+export const APP_VERSION = 'v14.86';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.86',
+    date: '23 Jul 2026',
+    highlights: [
+      'Grounded AI assistant (Batch 7): the assistant has a new “library” toggle — switch it on and it answers from your own indexed documents (brochures, term sheets, letters) and cites which files it used, instead of answering generically.',
+      'Index your files first from Documents → Ask (or the Ask Documents screen) so the assistant has something to search.',
+    ],
+  },
+  {
+    version: 'v14.85',
+    date: '23 Jul 2026',
+    highlights: [
+      'Dashboard visualisations (Batch 6): a new “Visual overview” with a lead-pipeline bar chart, a lead-source pie, and a 6-month money-in-vs-out cash-flow graph — instant, at-a-glance comprehension in the navy + gold palette.',
+      'Charts are colour-coded and read cleanly in light and dark mode.',
+    ],
+  },
   {
     version: 'v14.84',
     date: '23 Jul 2026',
