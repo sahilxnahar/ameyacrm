@@ -3,13 +3,13 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, type LedgerStmt, type Outstanding, type AgedParty } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, type LedgerStmt, type Outstanding, type AgedParty, type CostReport } from '@/server/actions/tally';
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
-type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -36,6 +36,8 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
 
   const [cfrom, setCfrom] = React.useState('');
   const [cto, setCto] = React.useState('');
+  const [vCostCentre, setVCostCentre] = React.useState('');
+  const [costReport, setCostReport] = React.useState<CostReport | null>(null);
 
   // Item-invoice (Sales/Purchase) state
   const [invType, setInvType] = React.useState<'Sales' | 'Purchase'>('Sales');
@@ -45,6 +47,7 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
   const back = () => setScreen('gateway');
 
   const openVoucher = (t: VoucherType) => {
+    setVCostCentre('');
     if (t === 'Sales' || t === 'Purchase') {
       setInvType(t); setVDate(todayISO()); setVNarr(''); setInvParty(''); setInvItems([{ itemId: '', qty: '', rate: '' }]);
       setScreen('invoice');
@@ -61,7 +64,8 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
       if (vk) { e.preventDefault(); openVoucher(vk[0]); return; }
       if (screen === 'gateway') {
         if (e.key.toLowerCase() === 'o') { e.preventDefault(); openOutstanding(); return; }
-        const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary' };
+        if (e.key.toLowerCase() === 'j') { e.preventDefault(); openJobCosting(); return; }
+        const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary', c: 'costCentres' };
         const s = map[e.key.toLowerCase()];
         if (s) { e.preventDefault(); if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }
       }
@@ -78,7 +82,7 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
   const saveVoucher = () => {
     if (!balanced) { toast.error(diff !== 0 ? `Out of balance by ₹${inr(Math.abs(diff))}` : 'Enter amounts on both sides'); return; }
     start(async () => {
-      const r = await createTallyVoucher({ type: vType, date: vDate, narration: vNarr || undefined, lines: lines.filter((l) => l.ledgerId && (Number(l.debit) || Number(l.credit))).map((l) => ({ ledgerId: l.ledgerId, debit: Number(l.debit) || 0, credit: Number(l.credit) || 0 })) });
+      const r = await createTallyVoucher({ type: vType, date: vDate, narration: vNarr || undefined, costCentre: vCostCentre || undefined, lines: lines.filter((l) => l.ledgerId && (Number(l.debit) || Number(l.credit))).map((l) => ({ ledgerId: l.ledgerId, debit: Number(l.debit) || 0, credit: Number(l.credit) || 0 })) });
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`${vType} voucher posted`); router.refresh(); back();
     });
@@ -100,7 +104,7 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
     const rows = invItems.filter((l) => l.itemId && Number(l.qty) > 0);
     if (!rows.length) { toast.error('Add at least one item with a quantity'); return; }
     start(async () => {
-      const r = await createTallyItemInvoice({ type: invType, date: vDate, partyLedgerId: invParty, narration: vNarr || undefined, items: rows.map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate) || 0 })) });
+      const r = await createTallyItemInvoice({ type: invType, date: vDate, partyLedgerId: invParty, narration: vNarr || undefined, costCentre: vCostCentre || undefined, items: rows.map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate) || 0 })) });
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`${invType} invoice posted`); router.refresh(); back();
     });
@@ -136,6 +140,16 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
     const r = await tallyOutstanding();
     if ('error' in r) { toast.error(r.error); return; }
     setOutstanding(r); setScreen('outstanding');
+  });
+  const openJobCosting = () => start(async () => {
+    const r = await tallyCostCentreReport(data.period.from, data.period.to);
+    if ('error' in r) { toast.error(r.error); return; }
+    setCostReport(r); setScreen('jobCosting');
+  });
+  const addCostCentre = (name: string) => start(async () => {
+    const r = await createTallyCostCentre(name);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Cost centre created'); router.refresh();
   });
   const idByName = new Map(data.ledgers.map((l) => [l.name, l.id]));
 
@@ -176,11 +190,12 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
 
       <div className="flex">
         <div className="min-h-[70vh] flex-1 p-4">
-          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }} onOutstanding={openOutstanding} data={data} />}
+          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }} onOutstanding={openOutstanding} onJobCosting={openJobCosting} data={data} />}
           {screen === 'voucher' && (
             <VoucherEntry
               type={vType} setType={setVType} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
               lines={lines} setLines={setLines} ledgers={data.ledgers} totalDr={totalDr} totalCr={totalCr} diff={diff} balanced={balanced}
+              costCentres={data.costCentres} costCentre={vCostCentre} setCostCentre={setVCostCentre}
               onSave={saveVoucher} onBack={back} pending={pending} openVoucher={openVoucher}
             />
           )}
@@ -189,6 +204,7 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
               type={invType} setType={(t) => { setInvType(t); }} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
               party={invParty} setParty={setInvParty} items={invItems} setItems={setInvItems}
               ledgers={data.ledgers} stock={data.stock} taxable={invTaxable} gst={invGst} total={invTotal}
+              costCentres={data.costCentres} costCentre={vCostCentre} setCostCentre={setVCostCentre}
               onSave={saveInvoice} onBack={back} pending={pending} onNewItem={() => setScreen('createStock')}
             />
           )}
@@ -203,6 +219,8 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
           {screen === 'balsheet' && <BalanceSheet data={data} onBack={back} onPdf={() => exportPdf('bs')} onExcel={() => exportExcel('bs')} />}
           {screen === 'ledgers' && <Ledgers data={data} onBack={back} onCreate={() => setScreen('createLedger')} onOpen={openLedger} onDelete={(id) => start(async () => { const r = await deleteTallyLedger(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Ledger deleted'); router.refresh(); })} pending={pending} />}
           {screen === 'createLedger' && <CreateLedger onDone={() => { router.refresh(); setScreen('ledgers'); }} onBack={() => setScreen('ledgers')} />}
+          {screen === 'costCentres' && <CostCentres data={data} onBack={back} onCreate={addCostCentre} onReport={openJobCosting} pending={pending} />}
+          {screen === 'jobCosting' && <JobCosting report={costReport} label={data.period.label} onBack={back} onExcel={() => { if (costReport && 'ok' in costReport) exportXlsx('Tally-Job-Costing', 'Job Costing', costReport.rows.map((r) => ({ 'Cost Centre': r.name, Income: r.income, Expense: r.expense, Profit: r.profit }))); }} />}
         </div>
 
         {/* Right button bar — Tally-style function keys */}
@@ -219,9 +237,11 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
           <BarBtn label="Balance Sheet" k="B" onClick={() => setScreen('balsheet')} />
           <BarBtn label="Stock Summary" k="S" onClick={() => setScreen('stockSummary')} />
           <BarBtn label="Outstanding" k="O" onClick={openOutstanding} />
+          <BarBtn label="Job Costing" k="J" onClick={openJobCosting} />
           <div className="pt-2 text-[10px] font-semibold text-[#5B4412]">MASTERS</div>
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
           <BarBtn label="Stock Items" k="I" onClick={() => setScreen('stock')} />
+          <BarBtn label="Cost Centres" k="C" onClick={() => setScreen('costCentres')} />
         </aside>
       </div>
 
@@ -254,7 +274,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Gateway({ onGo, onOutstanding, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; data: TallyData }) {
+function Gateway({ onGo, onOutstanding, onJobCosting, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; onJobCosting: () => void; data: TallyData }) {
   const income = data.pl.totalIncome;
   const expense = data.pl.totalExpense;
   return (
@@ -273,6 +293,9 @@ function Gateway({ onGo, onOutstanding, data }: { onGo: (s: Screen) => void; onO
           <MenuItem label="Balance Sheet" k="B" onClick={() => onGo('balsheet')} />
           <MenuItem label="Stock Summary" k="S" onClick={() => onGo('stockSummary')} />
           <MenuItem label="Outstanding (ageing)" k="O" onClick={onOutstanding} />
+          <MenuItem label="Job Costing (P&L by centre)" k="J" onClick={onJobCosting} />
+          <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Cost Centres</p>
+          <MenuItem label="Cost Centres" k="C" onClick={() => onGo('costCentres')} />
         </div>
         <div className="rounded border border-[#0f2038]/30 bg-white/50 p-3 text-[12px]">
           <p className="mb-2 font-semibold">At a glance</p>
@@ -304,9 +327,10 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
 function VoucherEntry(props: {
   type: VoucherType; setType: (t: VoucherType) => void; date: string; setDate: (s: string) => void; narr: string; setNarr: (s: string) => void;
   lines: Line[]; setLines: (l: Line[]) => void; ledgers: TallyData['ledgers']; totalDr: number; totalCr: number; diff: number; balanced: boolean;
+  costCentres: string[]; costCentre: string; setCostCentre: (s: string) => void;
   onSave: () => void; onBack: () => void; pending: boolean; openVoucher: (t: VoucherType) => void;
 }) {
-  const { type, date, setDate, narr, setNarr, lines, setLines, ledgers, totalDr, totalCr, diff, balanced, onSave, onBack, pending, openVoucher } = props;
+  const { type, date, setDate, narr, setNarr, lines, setLines, ledgers, totalDr, totalCr, diff, balanced, costCentres, costCentre, setCostCentre, onSave, onBack, pending, openVoucher } = props;
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const addLine = () => setLines([...lines, { ledgerId: '', debit: '', credit: '' }]);
   const removeLine = (i: number) => setLines(lines.length > 2 ? lines.filter((_, j) => j !== i) : lines);
@@ -324,6 +348,14 @@ function VoucherEntry(props: {
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-1">Date <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={cls} /></label>
         <label className="flex flex-1 items-center gap-1">Narration <input value={narr} onChange={(e) => setNarr(e.target.value)} placeholder="Being…" className={`${cls} min-w-[12rem] flex-1`} /></label>
+        {costCentres.length > 0 && (
+          <label className="flex items-center gap-1">Cost centre
+            <select value={costCentre} onChange={(e) => setCostCentre(e.target.value)} className={cls}>
+              <option value="">— none —</option>
+              {costCentres.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+        )}
       </div>
 
       <table className="w-full border-collapse">
@@ -502,9 +534,10 @@ function ItemInvoice(props: {
   narr: string; setNarr: (s: string) => void; party: string; setParty: (s: string) => void;
   items: Array<{ itemId: string; qty: string; rate: string }>; setItems: (l: Array<{ itemId: string; qty: string; rate: string }>) => void;
   ledgers: TallyData['ledgers']; stock: TallyData['stock']; taxable: number; gst: number; total: number;
+  costCentres: string[]; costCentre: string; setCostCentre: (s: string) => void;
   onSave: () => void; onBack: () => void; pending: boolean; onNewItem: () => void;
 }) {
-  const { type, setType, date, setDate, narr, setNarr, party, setParty, items, setItems, ledgers, stock, taxable, gst, total, onSave, onBack, pending, onNewItem } = props;
+  const { type, setType, date, setDate, narr, setNarr, party, setParty, items, setItems, ledgers, stock, taxable, gst, total, costCentres, costCentre, setCostCentre, onSave, onBack, pending, onNewItem } = props;
   const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
   const setItem = (i: number, patch: Partial<{ itemId: string; qty: string; rate: string }>) => setItems(items.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const partyGroups = type === 'Sales' ? ['Sundry Debtors'] : ['Sundry Creditors'];
@@ -526,6 +559,14 @@ function ItemInvoice(props: {
             {partyLedgers.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </label>
+        {costCentres.length > 0 && (
+          <label className="flex items-center gap-1">Cost centre
+            <select value={costCentre} onChange={(e) => setCostCentre(e.target.value)} className={cls}>
+              <option value="">— none —</option>
+              {costCentres.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+        )}
         <span className="text-[11px] text-[#5B4412]">Party ledger must be under {partyGroups[0]} — create it in Ledgers (L).</span>
       </div>
 
@@ -672,6 +713,53 @@ function OutstandingView({ o, onBack, onExcel, onOpen }: { o: Outstanding | null
       <Table title="Receivables (money owed to us)" rows={o.receivables} total={o.totalReceivable} />
       <Table title="Payables (money we owe)" rows={o.payables} total={o.totalPayable} />
       <p className="text-[11px] text-[#5B4412]">Ageing is FIFO — the oldest unpaid charges age into each bucket. Click a party to open its ledger.</p>
+    </Panel>
+  );
+}
+
+function CostCentres({ data, onBack, onCreate, onReport, pending }: { data: TallyData; onBack: () => void; onCreate: (name: string) => void; onReport: () => void; pending: boolean }) {
+  const [name, setName] = React.useState('');
+  const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
+  const submit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const nm = name.trim(); if (!nm) return; onCreate(nm); setName(''); };
+  return (
+    <Panel title="Cost Centres">
+      <div className="mb-2 flex items-center gap-2"><BackBtn onBack={onBack} /><button onClick={onReport} className="rounded bg-[#1B2A4A] px-3 py-1 text-[12px] font-semibold text-white">Job Costing report (J)</button></div>
+      <p className="mb-3 max-w-2xl text-[12px] text-[#5B4412]">A cost centre is a project or site you want to track profit for — e.g. <em>Tower A</em>, <em>Clubhouse</em>, <em>Phase 2</em>. Tag it on any voucher or invoice, then open Job Costing to see income, expense and profit for each centre.</p>
+      <form onSubmit={submit} className="mb-4 flex max-w-md items-center gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New cost centre name" className={`${cls} flex-1`} />
+        <button type="submit" disabled={pending || !name.trim()} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Create</button>
+      </form>
+      <table className="w-full max-w-md border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">#</th><th className="p-1">Cost Centre</th></tr></thead>
+        <tbody>
+          {data.costCentres.length === 0 ? <tr><td colSpan={2} className="p-4 text-center text-[#5B4412]">No cost centres yet. Create one above.</td></tr> : data.costCentres.map((c, i) => (
+            <tr key={c} className="border-b border-[#0f2038]/20"><td className="p-1 tabular-nums text-[#5B4412]">{i + 1}</td><td className="p-1">{c}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
+  );
+}
+
+function JobCosting({ report, label, onBack, onExcel }: { report: CostReport | null; label: string; onBack: () => void; onExcel: () => void }) {
+  if (!report) return <Panel title="Job Costing"><BackBtn onBack={onBack} /><p className="text-[#5B4412]">Loading…</p></Panel>;
+  if ('error' in report) return <Panel title="Job Costing"><BackBtn onBack={onBack} /><p className="text-rose-700">{report.error}</p></Panel>;
+  const ti = report.rows.reduce((s, r) => s + r.income, 0);
+  const te = report.rows.reduce((s, r) => s + r.expense, 0);
+  const tp = report.rows.reduce((s, r) => s + r.profit, 0);
+  return (
+    <Panel title={`Job Costing — ${label}`}>
+      <div className="mb-2 flex items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
+      <table className="w-full border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Cost Centre</th><th className="p-1 text-right">Income</th><th className="p-1 text-right">Expense</th><th className="p-1 text-right">Profit / (Loss)</th></tr></thead>
+        <tbody>
+          {report.rows.length === 0 ? <tr><td colSpan={4} className="p-4 text-center text-[#5B4412]">No entries tagged to a cost centre in this period.</td></tr> : report.rows.map((r) => (
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1">{r.name}</td><td className="p-1 text-right tabular-nums">{inr(r.income)}</td><td className="p-1 text-right tabular-nums">{inr(r.expense)}</td><td className={`p-1 text-right font-semibold tabular-nums ${r.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{inr(r.profit)}</td></tr>
+          ))}
+        </tbody>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1">Total</td><td className="p-1 text-right tabular-nums">{inr(ti)}</td><td className="p-1 text-right tabular-nums">{inr(te)}</td><td className={`p-1 text-right tabular-nums ${tp >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{inr(tp)}</td></tr></tfoot>
+      </table>
+      <p className="mt-2 text-[11px] text-[#5B4412]">Income and expense are the movement on income/expense ledgers in vouchers tagged to each centre. Untagged entries show as “Unallocated”.</p>
     </Panel>
   );
 }

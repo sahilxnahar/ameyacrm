@@ -24,6 +24,7 @@ export interface TallyData {
   ledgers: TallyLedgerRow[];
   vouchers: TallyVoucherRow[];
   stock: StockRow[];
+  costCentres: string[];
   pl: PLData;
   trial: { rows: TrialRow[]; totalDebit: number; totalCredit: number; balanced: boolean };
   period: { from: string | null; to: string | null; label: string };
@@ -84,6 +85,7 @@ export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
     prisma.tallyStockItem.findMany({ orderBy: { name: 'asc' } }),
     prisma.tallyInventoryLine.groupBy({ by: ['itemId', 'direction'], where: asAt, _sum: { qty: true } }),
   ]);
+  const costCentres = (await prisma.tallyCostCentre.findMany({ orderBy: { name: 'asc' } })).map((c) => c.name);
   const sumOf = new Map(sums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
   const plOf = new Map(plSums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
 
@@ -150,6 +152,7 @@ export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
     ledgers: ledgerRows,
     vouchers: voucherRows,
     stock: stockRows,
+    costCentres,
     pl,
     trial: {
       rows: trialRows,

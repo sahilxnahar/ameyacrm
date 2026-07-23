@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.92';
+export const APP_VERSION = 'v14.93';
 
 export interface Release {
   version: string;
@@ -13,6 +13,13 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.93',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 6 — Cost Centres & Job Costing. Create a cost centre for each project or site (Tower A, Clubhouse, Phase 2), tag it on any voucher or item invoice, and open the new Job Costing report to see income, expense and profit per centre for the chosen period. Manage centres under Masters (press C); run the report with J. Untagged entries roll up under “Unallocated”, and the report exports to Excel.',
+    ],
+  },
   {
     version: 'v14.92',
     date: '23 Jul 2026',

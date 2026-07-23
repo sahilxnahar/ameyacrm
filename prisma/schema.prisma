@@ -1932,6 +1932,7 @@ model TallyVoucher {
   date           DateTime
   narration      String?
   reference      String?
+  costCentre     String?              // job-costing tag, e.g. a project name
   lines          TallyVoucherLine[]
   inventoryLines TallyInventoryLine[]
   createdById    String?
@@ -1940,6 +1941,13 @@ model TallyVoucher {
   @@unique([type, number])
   @@index([date])
   @@index([type, date])
+  @@index([costCentre])
+}
+
+model TallyCostCentre {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
 }
 
 model TallyStockItem {

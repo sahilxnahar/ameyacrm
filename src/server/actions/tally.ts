@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
-import { GROUP_NAMES, VOUCHER_TYPES } from '@/config/tally-groups';
+import { GROUP_NAMES, VOUCHER_TYPES, natureOfGroup } from '@/config/tally-groups';
 import { getTallyData, type TallyData } from '@/server/services/tally-service';
 import { getCompanyDetails } from '@/server/services/company-service';
 import { buildTallyStatementPdf, type StmtRow } from '@/lib/pdf/tally-statement-pdf';
@@ -125,6 +125,7 @@ const voucherSchema = z.object({
   date: z.string().min(1),
   narration: z.string().max(500).optional(),
   reference: z.string().max(80).optional(),
+  costCentre: z.string().max(120).optional(),
   lines: z.array(z.object({
     ledgerId: z.string().min(1),
     debit: z.coerce.number().min(0).default(0),
@@ -150,6 +151,7 @@ export async function createTallyVoucher(input: unknown): Promise<TallyResult> {
     const v = await prisma.tallyVoucher.create({
       data: {
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, reference: d.reference || null,
+        costCentre: d.costCentre?.trim() || null,
         createdById: ctx.user.id,
         lines: { create: lines.map((l) => ({ ledgerId: l.ledgerId, debit: l.debit, credit: l.credit })) },
       },
@@ -197,6 +199,7 @@ const invoiceSchema = z.object({
   date: z.string().min(1),
   partyLedgerId: z.string().min(1, 'Choose a party ledger'),
   narration: z.string().max(500).optional(),
+  costCentre: z.string().max(120).optional(),
   items: z.array(z.object({ itemId: z.string().min(1), qty: z.coerce.number().positive(), rate: z.coerce.number().min(0) })).min(1, 'Add at least one item'),
 });
 
@@ -246,7 +249,7 @@ export async function createTallyItemInvoice(input: unknown): Promise<TallyResul
 
     const v = await prisma.tallyVoucher.create({
       data: {
-        type: d.type, number, date: new Date(d.date), narration: d.narration || null, createdById: ctx.user.id,
+        type: d.type, number, date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null, createdById: ctx.user.id,
         lines: { create: lines },
         inventoryLines: { create: invLines },
       },
@@ -347,6 +350,53 @@ export async function tallyOutstanding(): Promise<Outstanding> {
       totalReceivable: Math.round(receivables.reduce((s, r) => s + r.total, 0) * 100) / 100,
       totalPayable: Math.round(payables.reduce((s, r) => s + r.total, 0) * 100) / 100,
     };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+// ── Cost centres / job costing ──────────────────────────────────────────────
+export async function createTallyCostCentre(name: unknown): Promise<TallyResult> {
+  try {
+    const ctx = await ensure('finance.ledger.view');
+    const nm = z.string().min(1, 'Name is required').max(120).parse(name).trim();
+    const exists = await prisma.tallyCostCentre.findUnique({ where: { name: nm }, select: { id: true } });
+    if (exists) return { error: 'That cost centre already exists.' };
+    const c = await prisma.tallyCostCentre.create({ data: { name: nm } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'TallyCostCentre', entityId: c.id, summary: `Tally cost centre ${nm}` });
+    revalidatePath('/tally');
+    return { ok: true, id: c.id };
+  } catch (e) { return toActionError(e); }
+}
+
+export interface CostCentreRow { name: string; income: number; expense: number; profit: number }
+export type CostReport = { ok: true; rows: CostCentreRow[] } | { error: string };
+
+/** Per-cost-centre profit & loss for the period — job costing (Project A vs B). */
+export async function tallyCostCentreReport(fromISO: string | null, toISO: string | null): Promise<CostReport> {
+  try {
+    await ensure('finance.ledger.view');
+    const from = fromISO ? new Date(fromISO) : null;
+    const to = toISO ? new Date(toISO) : new Date('9999-12-31T00:00:00.000Z');
+    const lines = await prisma.tallyVoucherLine.findMany({
+      where: { voucher: { date: from ? { gte: from, lte: to } : { lte: to } } },
+      include: { voucher: { select: { costCentre: true } }, ledger: { select: { group: true } } },
+      take: 50000,
+    });
+    const map = new Map<string, { income: number; expense: number }>();
+    for (const l of lines) {
+      const nat = natureOfGroup(l.ledger.group);
+      if (nat !== 'INCOME' && nat !== 'EXPENSE') continue;
+      const cc = l.voucher.costCentre ?? 'Unallocated';
+      const e = map.get(cc) ?? { income: 0, expense: 0 };
+      const debit = Number(l.debit), credit = Number(l.credit);
+      if (nat === 'INCOME') e.income += credit - debit; else e.expense += debit - credit;
+      map.set(cc, e);
+    }
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    const rows: CostCentreRow[] = [...map.entries()]
+      .map(([name, v]) => ({ name, income: r2(v.income), expense: r2(v.expense), profit: r2(v.income - v.expense) }))
+      .filter((r) => r.income !== 0 || r.expense !== 0)
+      .sort((a, b) => b.profit - a.profit);
+    return { ok: true, rows };
   } catch (e) { const r = toActionError(e); return r; }
 }
 
