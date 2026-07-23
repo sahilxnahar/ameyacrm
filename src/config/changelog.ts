@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.59';
+export const APP_VERSION = 'v14.60';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.60',
+    date: '23 Jul 2026',
+    highlights: [
+      'Enter a bill by hand — no AI needed: the bill importer now has an “Enter the bill by hand” option, so you can add a bill directly even when the AI is down or out of credit. You type the vendor, GST, date and lines; the CRM does the maths and saves it.',
+      'The bill importer is always open now (it no longer greys out when AI is unavailable), because the by-hand path always works.',
+    ],
+  },
   {
     version: 'v14.59',
     date: '23 Jul 2026',

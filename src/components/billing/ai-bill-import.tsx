@@ -3,7 +3,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sparkles, Loader2, Upload, Trash2, Plus, FileSpreadsheet, ArrowRight } from 'lucide-react';
+import { Sparkles, Loader2, Upload, Trash2, Plus, FileSpreadsheet, ArrowRight, PencilLine } from 'lucide-react';
 import { extractBill, createInvoice } from '@/server/actions/billing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,17 +51,26 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
     toast.success('Invoice created from bill'); close(); router.refresh();
   });
 
+  // The no-AI path: skip extraction entirely and go straight to a blank bill
+  // form. Always available — so a dead AI key, no credit, or an offline provider
+  // never stops someone entering a bill by hand.
+  const manual = () => {
+    setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' });
+    setItems([{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
+    setStage('review');
+  };
+
   const total = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0) * (1 + (Number(i.gstRate) || 0) / 100), 0);
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={!geminiEnabled} title={geminiEnabled ? 'Extract a bill with AI' : 'Set GEMINI_API_KEY to enable'}><Sparkles className="h-4 w-4" /> Import bill (AI)</Button>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} title="Read a bill with AI, or enter one by hand"><Sparkles className="h-4 w-4" /> Import bill</Button>
       <Dialog open={open} onOpenChange={(o) => !o && close()}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Import bill with AI</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Import a bill</DialogTitle></DialogHeader>
           {stage === 'upload' && (
             <form onSubmit={doExtract} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Upload a bill / invoice (PDF, image, or scan). Gemini reads it and fills in the vendor, GST number, date, and line items for you to review before saving.</p>
+              <p className="text-sm text-muted-foreground">Upload a bill / invoice (PDF, image, or scan). {geminiEnabled ? 'The AI reads it and fills in the vendor, GST number, date, and line items for you to review before saving.' : 'AI reading is off right now — use “Enter the bill by hand” below to add it directly.'}</p>
               <div
                 role="button"
                 tabIndex={0}
@@ -100,6 +109,19 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
               ) : (
                 <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<Upload className="h-4 w-4" /> Read with AI</Button></div>
               )}
+              <div className="flex items-center gap-3 pt-1">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">or</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <button
+                type="button"
+                onClick={manual}
+                className="focus-ring flex w-full items-center justify-center gap-2 rounded-md border border-input px-3 py-2 text-sm font-medium transition-colors hover:bg-secondary"
+              >
+                <PencilLine className="h-4 w-4" /> Enter the bill by hand — no AI needed
+              </button>
+              <p className="text-center text-xs text-muted-foreground">Works even when the AI is down or out of credit. You type the vendor, GST, date and lines yourself.</p>
             </form>
           )}
           {stage === 'review' && (
