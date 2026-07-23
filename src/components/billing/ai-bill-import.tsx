@@ -19,8 +19,11 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   const [pending, start] = React.useTransition();
   const [head, setHead] = React.useState({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' });
   const [items, setItems] = React.useState<Item[]>([]);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [dropName, setDropName] = React.useState('');
+  const [over, setOver] = React.useState(false);
 
-  const reset = () => { setStage('upload'); setItems([]); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
+  const reset = () => { setStage('upload'); setItems([]); setDropName(''); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
   const close = () => { setOpen(false); reset(); };
   const patch = (i: number, k: keyof Item, v: string) => setItems((arr) => arr.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
 
@@ -54,7 +57,33 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
           {stage === 'upload' && (
             <form onSubmit={doExtract} className="space-y-4">
               <p className="text-sm text-muted-foreground">Upload a bill / invoice (PDF, image, or scan). Gemini reads it and fills in the vendor, GST number, date, and line items for you to review before saving.</p>
-              <Input name="file" type="file" required accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.gif,.bmp,.tiff,.txt,.csv,image/*" />
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileRef.current?.click()}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+                onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setOver(false); }}
+                onDrop={(e) => {
+                  e.preventDefault(); setOver(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f && fileRef.current) { fileRef.current.files = e.dataTransfer.files; setDropName(f.name); }
+                }}
+                className={`focus-ring flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-input px-4 py-6 text-center transition-colors hover:border-primary/60 hover:bg-secondary/40 ${over ? 'border-primary bg-primary/10' : ''}`}
+              >
+                <Upload className={`h-6 w-6 ${over ? 'text-primary' : 'text-muted-foreground'}`} />
+                <p className="text-sm font-medium">{dropName ? `Selected: ${dropName}` : 'Drag & drop a bill here'}</p>
+                <p className="text-xs text-muted-foreground">or click to browse — PDF, image or scan</p>
+                <input
+                  ref={fileRef}
+                  name="file"
+                  type="file"
+                  required
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.gif,.bmp,.tiff,.txt,.csv,image/*"
+                  className="hidden"
+                  onChange={(e) => setDropName(e.target.files?.[0]?.name ?? '')}
+                />
+              </div>
               <div className="flex justify-end"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<Upload className="h-4 w-4" /> Read with AI</Button></div>
             </form>
           )}

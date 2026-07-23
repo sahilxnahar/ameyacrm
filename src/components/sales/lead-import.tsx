@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Upload, Loader2, Download, CheckCircle2 } from 'lucide-react';
+import { Loader2, Download, CheckCircle2 } from 'lucide-react';
 import { importLeadsCsv } from '@/server/actions/import';
-import { readSpreadsheetAsCsv, SPREADSHEET_ACCEPT } from '@/lib/import/read-spreadsheet';
+import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
+import { ImportDropzone } from '@/components/import/import-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -17,8 +18,8 @@ export function LeadImport() {
   const [fileName, setFileName] = React.useState('');
   const [result, setResult] = React.useState<{ created: number; deduped: number; errors: number } | null>(null);
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]; if (!f) return; setFileName(f.name);
+  const onFile = (f: File) => {
+    setFileName(f.name);
     readSpreadsheetAsCsv(f).then(setText).catch(() => toast.error('Could not read that file. Try a .csv or .xlsx.'));
   };
   const run = () => { if (!text.trim()) { toast.error('Choose a CSV file first.'); return; } start(async () => { const r = await importLeadsCsv(text); if ('error' in r) { toast.error(r.error); return; } setResult(r); toast.success(`Imported ${r.created} leads`); router.refresh(); }); };
@@ -27,12 +28,14 @@ export function LeadImport() {
   return (
     <Card><CardContent className="space-y-4 p-6">
       <p className="text-sm text-muted-foreground">Upload a CSV to bulk‑import leads. Required column: <b>name</b>. Optional: email, phone, source, requirement, budget. Duplicates (matching phone or email) are skipped automatically.</p>
+      <ImportDropzone
+        onFile={onFile}
+        disabled={pending}
+        title={fileName ? `Selected: ${fileName}` : 'Drag & drop a CSV or Excel file here'}
+        hint="or click to browse — required column: name"
+      />
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="outline" size="sm" onClick={downloadTemplate}><Download className="h-4 w-4" /> Download template</Button>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-secondary/40">
-          <Upload className="h-4 w-4" /> {fileName || 'Choose CSV or Excel…'}
-          <input type="file" accept={SPREADSHEET_ACCEPT} className="hidden" onChange={onFile} />
-        </label>
         <Button size="sm" onClick={run} disabled={pending || !text.trim()}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Import leads</Button>
       </div>
       {result && (

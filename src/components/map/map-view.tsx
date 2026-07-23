@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge';
 interface P { id: string; name: string; city: string; address: string | null; lat: number | null; lng: number | null }
 interface L { id: string; name: string; reference: string; lat: number; lng: number; status: string; temperature: string; locality: string | null }
 
-const MAPLIBRE_JS = 'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js';
-const MAPLIBRE_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
 const HEAT: Record<string, string> = { HOT: '#DC2626', WARM: '#D97706', COLD: '#2563EB' };
 
 export function MapView({
@@ -32,24 +32,15 @@ export function MapView({
 
   React.useEffect(() => {
     let cancelled = false;
+    let cleanup: (() => void) | undefined;
 
-    const load = () =>
-      new Promise<void>((resolve, reject) => {
-        if ((window as unknown as { maplibregl?: unknown }).maplibregl) return resolve();
-        const css = document.createElement('link');
-        css.rel = 'stylesheet'; css.href = MAPLIBRE_CSS;
-        document.head.appendChild(css);
-        const js = document.createElement('script');
-        js.src = MAPLIBRE_JS;
-        js.onload = () => resolve();
-        js.onerror = () => reject(new Error('map library failed to load'));
-        document.head.appendChild(js);
-      });
-
-    load()
-      .then(() => {
+    // MapLibre is bundled with the app (npm dependency), not fetched from a
+    // CDN — so it can never be blocked by a firewall, ad-blocker or CSP. We
+    // still import it lazily so the ~200 KB library only loads on this page.
+    import('maplibre-gl')
+      .then((mod) => {
         if (cancelled || !ref.current) return;
-        const maplibregl = (window as unknown as { maplibregl: any }).maplibregl;
+        const maplibregl = (mod as { default?: any }).default ?? mod;
         const centre = pinned[0] ?? { lat: 12.9716, lng: 77.5946 };   // Bengaluru
         const map = new maplibregl.Map({
           container: ref.current,
@@ -78,11 +69,11 @@ export function MapView({
             .addTo(map);
         }
         setReady(true);
-        return () => map.remove();
+        cleanup = () => map.remove();
       })
       .catch(() => !cancelled && setFailed(true));
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; cleanup?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

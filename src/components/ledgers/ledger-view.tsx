@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Upload, Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search } from 'lucide-react';
+import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search } from 'lucide-react';
 import { importVendorPayments, mergeVendors, saveVendorBank } from '@/server/actions/vendor-ledger';
-import { readSpreadsheetAsCsv, SPREADSHEET_ACCEPT } from '@/lib/import/read-spreadsheet';
+import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
+import { ImportDropzone } from '@/components/import/import-dropzone';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,6 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
   const [text, setText] = React.useState('');
   const [query, setQuery] = React.useState('');
   const [mergeInto, setMergeInto] = React.useState('');
-  const fileRef = React.useRef<HTMLInputElement>(null);
 
   const total = ledgers.reduce((s, l) => s + l.totalPaid, 0);
 
@@ -154,12 +154,11 @@ export function LedgerView({ ledgers, activeId, detail, canManage }: { ledgers: 
               <p className="text-xs text-muted-foreground">Export your Google Sheet / Excel as CSV, then upload or paste it. A ledger is built per payee automatically.</p>
             </div>
             <div className="flex gap-2">
-              <input ref={fileRef} type="file" accept={SPREADSHEET_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={pending}><Upload className="h-4 w-4" /> Upload CSV</Button>
               <Button size="sm" variant="ghost" onClick={() => setImportOpen((v) => !v)}>{importOpen ? 'Close' : 'Or paste'}</Button>
               <Button size="sm" variant="ghost" onClick={() => { const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`; a.download = 'payments-template.csv'; a.click(); }}>Template</Button>
             </div>
           </div>
+          <ImportDropzone onFile={onFile} disabled={pending} className="mt-3" hint="or click to browse — a ledger is built for each payee automatically" />
           {importOpen && (
             <div className="mt-3">
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="Paste rows with a header like: Payee, Amount, Date, Mode, Reference, UTR, Note" className="focus-ring w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />

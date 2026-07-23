@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.57';
+export const APP_VERSION = 'v14.58';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.58',
+    date: '23 Jul 2026',
+    highlights: [
+      'The map now loads reliably everywhere — the map engine ships inside the app instead of being fetched from an outside link, so a strict network, ad-blocker or firewall can no longer stop it from opening.',
+      'Drag & drop is now on every import: just drop a CSV or Excel file onto Vendor Ledgers, Lead import, or a bank statement — or drop a bill onto the AI bill reader — no more hunting for a file button.',
+    ],
+  },
   {
     version: 'v14.57',
     date: '23 Jul 2026',

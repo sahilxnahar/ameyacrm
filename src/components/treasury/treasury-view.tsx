@@ -7,7 +7,8 @@ import {
   saveBankAccount, importStatement, confirmMatch, setLineStatus, saveLoan, addLoanEvent,
 } from '@/server/actions/treasury';
 import type { Forecast } from '@/lib/treasury/forecast';
-import { readSpreadsheetAsCsv, SPREADSHEET_ACCEPT } from '@/lib/import/read-spreadsheet';
+import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
+import { ImportDropzone } from '@/components/import/import-dropzone';
 import { cn } from '@/lib/utils/cn';
 
 const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -135,9 +136,8 @@ function PositionTab({ positions, projects, projectId, canManage, pending, openF
   pending: boolean; openForm: string | null; setOpenForm: (v: string | null) => void; run: RunFn;
 }) {
   const fileRef = useRef<HTMLTextAreaElement | null>(null);
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f || !fileRef.current) return;
+  const onFile = (f: File) => {
+    if (!fileRef.current) return;
     readSpreadsheetAsCsv(f).then((text) => { if (fileRef.current) fileRef.current.value = text; }).catch(() => undefined);
   };
 
@@ -188,14 +188,12 @@ function PositionTab({ positions, projects, projectId, canManage, pending, openF
               csv: (f.get('csv') as string) || '',
             }));
           }}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Into account">
-              <select name="bankAccountId" className={inputCls}>
-                {positions.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.bankName}</option>)}
-              </select>
-            </Field>
-            <Field label="Upload CSV or Excel (or paste below)"><input type="file" accept={SPREADSHEET_ACCEPT} onChange={onFile} className={cn(inputCls, 'py-1')} /></Field>
-          </div>
+          <Field label="Into account">
+            <select name="bankAccountId" className={inputCls}>
+              {positions.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.bankName}</option>)}
+            </select>
+          </Field>
+          <ImportDropzone onFile={onFile} disabled={pending} title="Drag & drop your bank statement (CSV or Excel)" hint="or click to browse — or paste the rows below" />
           <input type="hidden" name="fileName" value="statement.csv" />
           <label className="block text-xs">
             <span className="text-muted-foreground">Statement CSV — Date, Description, and either an Amount column or Withdrawal/Deposit columns</span>
