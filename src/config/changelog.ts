@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.8';
+export const APP_VERSION = 'v15.9';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.9',
+    date: '23 Jul 2026',
+    highlights: [
+      'The Ameya emblem watermark is now clearly visible — the navy logo sits softly behind every screen (it was there before but far too faint).',
+      'Top bar shortcuts now carry a Tally button and clearer descriptions — Messages, Assistant, Ameya Tally and Explore features each show a label on wide screens and a full description on hover.',
+      'A bigger, more useful Home page — a grid of Quick actions (Today, Tally, Assistant, Scan, Messages, Dashboard, Reminders, Calendar), a wider Today’s agenda, and a “Jump to” panel, so home is a launchpad rather than just a greeting.',
+    ],
+  },
   {
     version: 'v15.8',
     date: '23 Jul 2026',

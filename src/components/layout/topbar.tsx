@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Menu, Search, LayoutGrid, MessageSquare, Sparkles } from 'lucide-react';
+import { Menu, Search, LayoutGrid, MessageSquare, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './theme-toggle';
 import { DisplaySettings } from './display-settings';
@@ -40,30 +40,10 @@ export function Topbar({
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
-        <Link
-          href="/chat"
-          title="Messages — chat anyone in the company"
-          aria-label="Messages"
-          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
-        >
-          <MessageSquare className="h-4 w-4" />
-        </Link>
-        <Link
-          href="/assistant"
-          title="Assistant — draft, explain, summarise"
-          aria-label="Assistant"
-          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
-        >
-          <Sparkles className="h-4 w-4" />
-        </Link>
-        <Link
-          href="/features"
-          title="Explore features — everything the CRM can do"
-          aria-label="Explore features"
-          className="focus-ring hidden h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </Link>
+        <TopLink href="/chat" label="Messages" desc="Chat anyone in the company by @username" Icon={MessageSquare} />
+        <TopLink href="/assistant" label="Assistant" desc="Draft, explain and summarise with AI" Icon={Sparkles} />
+        <TopLink href="/tally" label="Ameya Tally" desc="Keyboard accounting — F4–F9, Day Book, Trial Balance, P&L" Icon={BookOpen} />
+        <TopLink href="/features" label="Explore features" desc="Everything the CRM can do" Icon={LayoutGrid} />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell userId={user.id} />
         <div className="hidden sm:block"><DisplaySettings /></div>
@@ -71,5 +51,21 @@ export function Topbar({
         <UserMenu user={user} />
       </div>
     </header>
+  );
+}
+
+/** A top-bar shortcut: icon everywhere, a text label on wide screens, and a
+    descriptive tooltip on hover so it's clear what each one does. */
+function TopLink({ href, label, desc, Icon }: { href: string; label: string; desc: string; Icon: typeof Menu }) {
+  return (
+    <Link
+      href={href}
+      title={`${label} — ${desc}`}
+      aria-label={`${label}: ${desc}`}
+      className="focus-ring hidden h-9 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex"
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="hidden text-xs font-medium xl:inline">{label}</span>
+    </Link>
   );
 }

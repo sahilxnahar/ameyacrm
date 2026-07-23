@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import Link from 'next/link';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight, ListChecks, BookOpen, Sparkles, QrCode, MessageSquare, LayoutDashboard, BellRing, CalendarDays, Megaphone, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -21,6 +21,25 @@ function weather(code: number): { label: string; Icon: typeof Sun } {
 }
 
 const KIND_LABEL: Record<string, string> = { TASK: 'Task', REMINDER: 'Reminder', APPROVAL: 'Approval', COLLECTION: 'Collection', EVENT: 'Event' };
+
+interface QuickAction { href: string; label: string; sub: string; icon: LucideIcon }
+const QUICK_ACTIONS: QuickAction[] = [
+  { href: '/today', label: "Today's Priorities", sub: 'Everything due today', icon: ListChecks },
+  { href: '/tally', label: 'Ameya Tally', sub: 'Keyboard accounting', icon: BookOpen },
+  { href: '/assistant', label: 'Assistant', sub: 'Draft & summarise', icon: Sparkles },
+  { href: '/scan', label: 'Scan', sub: 'QR / barcode', icon: QrCode },
+  { href: '/chat', label: 'Messages', sub: 'Chat the team', icon: MessageSquare },
+  { href: '/dashboard', label: 'Dashboard', sub: 'Your numbers', icon: LayoutDashboard },
+  { href: '/reminders', label: 'Reminders', sub: 'Your nudges', icon: BellRing },
+  { href: '/calendar', label: 'Calendar', sub: 'Meetings & visits', icon: CalendarDays },
+];
+const JUMP_LINKS = [
+  { href: '/marketing/library', label: 'Marketing Library' },
+  { href: '/parking', label: 'Parking Matrix' },
+  { href: '/litigation', label: 'Litigation & Renewals' },
+  { href: '/approvals', label: 'Approvals' },
+  { href: '/notifications', label: 'Notifications' },
+];
 
 export function WelcomeHome({ firstName, agenda }: { firstName: string; agenda: AgendaItem[] }) {
   const [now, setNow] = React.useState<Date | null>(null);
@@ -98,34 +117,72 @@ export function WelcomeHome({ firstName, agenda }: { firstName: string; agenda: 
         </div>
       </div>
 
-      {/* Agenda */}
-      <Card className="p-4 sm:p-5">
-        <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-[#A07D34]" /> Today’s agenda</p>
-        {agenda.length === 0 ? (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Nothing due today — you’re all clear. 🎉</p>
-        ) : (
-          <ul className="divide-y">
-            {agenda.map((a) => {
-              const due = new Date(a.due);
-              const time = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-              return (
-                <li key={a.id}>
-                  <Link href={a.href} className="flex items-center gap-3 py-2.5 hover:bg-secondary/40">
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">{KIND_LABEL[a.kind] ?? a.kind}</Badge>
-                    <span className="min-w-0 flex-1 truncate text-sm">{a.title || '(untitled)'}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{time}</span>
-                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link href="/today" className="text-xs font-medium text-primary hover:underline">See everything due →</Link>
-          <Link href="/dashboard" className="ml-auto text-xs text-muted-foreground hover:text-foreground">Full dashboard →</Link>
+      {/* Quick actions — jump straight into the work that matters most. */}
+      <div>
+        <p className="mb-2 text-sm font-semibold text-muted-foreground">Quick actions</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {QUICK_ACTIONS.map((q) => {
+            const Icon = q.icon;
+            return (
+              <Link key={q.href} href={q.href} className="group flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-[#A07D34]/50 hover:bg-[#A07D34]/5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#1B2A4A]/10 text-[#1B2A4A] transition-colors group-hover:bg-[#1B2A4A] group-hover:text-white">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{q.label}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{q.sub}</span>
+                </span>
+              </Link>
+            );
+          })}
         </div>
-      </Card>
+      </div>
+
+      {/* Agenda (wide) + jump-to shortcuts */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="p-4 sm:p-5 lg:col-span-2">
+          <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarClock className="h-4 w-4 text-[#A07D34]" /> Today’s agenda</p>
+          {agenda.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Nothing due today — you’re all clear. 🎉</p>
+          ) : (
+            <ul className="divide-y">
+              {agenda.map((a) => {
+                const due = new Date(a.due);
+                const time = due.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <li key={a.id}>
+                    <Link href={a.href} className="flex items-center gap-3 py-3 hover:bg-secondary/40">
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">{KIND_LABEL[a.kind] ?? a.kind}</Badge>
+                      <span className="min-w-0 flex-1 truncate text-sm">{a.title || '(untitled)'}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{time}</span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/today" className="text-xs font-medium text-primary hover:underline">See everything due →</Link>
+            <Link href="/dashboard" className="ml-auto text-xs text-muted-foreground hover:text-foreground">Full dashboard →</Link>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-5">
+          <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><Megaphone className="h-4 w-4 text-[#A07D34]" /> Jump to</p>
+          <ul className="space-y-1">
+            {JUMP_LINKS.map((j) => (
+              <li key={j.href}>
+                <Link href={j.href} className="flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-secondary/50">
+                  <span>{j.label}</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 rounded-lg bg-[#A07D34]/8 p-3 text-xs text-muted-foreground">Tip: press <kbd className="rounded border bg-background px-1">⌘K</kbd> anywhere to search and jump to any screen, or drag your menu into the order you like from <span className="font-medium">Customise this menu</span>.</p>
+        </Card>
+      </div>
     </div>
   );
 }
