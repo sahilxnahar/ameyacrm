@@ -4,9 +4,77 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { GROUP_NAMES, VOUCHER_TYPES } from '@/config/tally-groups';
+import { getTallyData } from '@/server/services/tally-service';
+import { getCompanyDetails } from '@/server/services/company-service';
+import { buildTallyStatementPdf, type StmtRow } from '@/lib/pdf/tally-statement-pdf';
 import { ensure, toActionError } from './_helpers';
 
 export type TallyResult = { ok: true; id?: string } | { error: string };
+
+const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Build a branded PDF of a Tally financial statement for the CA. */
+export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock'): Promise<{ ok: true; filename: string; pdfBase64: string } | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const [data, company] = await Promise.all([getTallyData(), getCompanyDetails()]);
+    const co = { name: company.legalName, registeredAddress: company.registeredAddress, phone: company.phone, email: company.email, website: company.website, gstin: company.gstin };
+    const asOf = `As of ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+
+    let title = '', subtitle = asOf, columns: { label: string; align?: 'left' | 'right'; weight?: number }[] = [], rows: StmtRow[] = [], filename = '';
+
+    if (kind === 'trial') {
+      title = 'Trial Balance';
+      columns = [{ label: 'Ledger', weight: 3 }, { label: 'Group', weight: 3 }, { label: 'Debit', align: 'right', weight: 2 }, { label: 'Credit', align: 'right', weight: 2 }];
+      rows = data.trial.rows.map((r) => ({ cells: [r.name, r.group, r.debit ? inr(r.debit) : '', r.credit ? inr(r.credit) : ''] }));
+      rows.push({ kind: 'total', cells: ['Total', '', inr(data.trial.totalDebit), inr(data.trial.totalCredit)] });
+      filename = 'Tally-Trial-Balance.pdf';
+    } else if (kind === 'pl') {
+      title = 'Profit & Loss A/c';
+      columns = [{ label: 'Particulars', weight: 4 }, { label: 'Amount', align: 'right', weight: 2 }];
+      const inc = data.ledgers.filter((l) => l.nature === 'INCOME' && l.balance !== 0);
+      const exp = data.ledgers.filter((l) => l.nature === 'EXPENSE' && l.balance !== 0);
+      const ti = inc.reduce((s, l) => s + l.balance, 0), te = exp.reduce((s, l) => s + l.balance, 0);
+      rows = [
+        { kind: 'head', cells: ['Income', ''] },
+        ...inc.map((l) => ({ cells: [l.name, inr(l.balance)] })),
+        { kind: 'total', cells: ['Total income', inr(ti)] },
+        { kind: 'head', cells: ['Expenses', ''] },
+        ...exp.map((l) => ({ cells: [l.name, inr(l.balance)] })),
+        { kind: 'total', cells: ['Total expenses', inr(te)] },
+        { kind: 'total', cells: [ti - te >= 0 ? 'Net Profit' : 'Net Loss', inr(Math.abs(ti - te))] },
+      ];
+      filename = 'Tally-Profit-and-Loss.pdf';
+    } else if (kind === 'bs') {
+      title = 'Balance Sheet';
+      columns = [{ label: 'Particulars', weight: 4 }, { label: 'Amount', align: 'right', weight: 2 }];
+      const assets = data.ledgers.filter((l) => l.nature === 'ASSET' && l.balance !== 0);
+      const liabs = data.ledgers.filter((l) => l.nature === 'LIABILITY' && l.balance !== 0);
+      const profit = data.ledgers.filter((l) => l.nature === 'INCOME').reduce((s, l) => s + l.balance, 0) - data.ledgers.filter((l) => l.nature === 'EXPENSE').reduce((s, l) => s + l.balance, 0);
+      const tl = liabs.reduce((s, l) => s + l.balance, 0) + profit;
+      const ta = assets.reduce((s, l) => s + l.balance, 0);
+      rows = [
+        { kind: 'head', cells: ['Liabilities', ''] },
+        ...liabs.map((l) => ({ cells: [l.name, inr(l.balance)] })),
+        { cells: ['Profit & Loss A/c (current)', inr(profit)] },
+        { kind: 'total', cells: ['Total liabilities', inr(tl)] },
+        { kind: 'head', cells: ['Assets', ''] },
+        ...assets.map((l) => ({ cells: [l.name, inr(l.balance)] })),
+        { kind: 'total', cells: ['Total assets', inr(ta)] },
+      ];
+      filename = 'Tally-Balance-Sheet.pdf';
+    } else {
+      title = 'Stock Summary';
+      columns = [{ label: 'Item', weight: 3 }, { label: 'Unit', weight: 1 }, { label: 'Inward', align: 'right', weight: 1.4 }, { label: 'Outward', align: 'right', weight: 1.4 }, { label: 'Closing', align: 'right', weight: 1.4 }, { label: 'Rate', align: 'right', weight: 1.4 }, { label: 'Value', align: 'right', weight: 1.6 }];
+      rows = data.stock.map((s) => ({ cells: [s.name, s.unit, String(s.inQty), String(s.outQty), String(s.closingQty), inr(s.rate), inr(s.value)] }));
+      rows.push({ kind: 'total', cells: ['Total', '', '', '', '', '', inr(data.stock.reduce((a, s) => a + s.value, 0))] });
+      filename = 'Tally-Stock-Summary.pdf';
+    }
+
+    const bytes = await buildTallyStatementPdf({ company: co, title, subtitle, columns, rows });
+    return { ok: true, filename, pdfBase64: Buffer.from(bytes).toString('base64') };
+  } catch (e) { return toActionError(e); }
+}
 
 const ledgerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(120),

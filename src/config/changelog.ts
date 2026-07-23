@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.89';
+export const APP_VERSION = 'v14.90';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.90',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 3 — shareable statements: every report (Trial Balance, Profit & Loss, Balance Sheet, Stock Summary) now has a “Print (PDF)” and an “Excel” button. The PDFs are branded in the Ameya navy + gold with the emblem watermark, ready to hand to your CA.',
+      'No database change — deploy the zip as-is.',
+    ],
+  },
   {
     version: 'v14.89',
     date: '23 Jul 2026',

@@ -3,8 +3,11 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf } from '@/server/actions/tally';
+import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
+
+type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
 type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -96,6 +99,20 @@ export function TallyApp({ data }: { data: TallyData }) {
     toast.success('Stock item deleted'); router.refresh();
   });
 
+  const exportPdf = (kind: StmtKind) => start(async () => {
+    const r = await tallyStatementPdf(kind);
+    if ('error' in r) { toast.error(r.error); return; }
+    const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
+    toast.success('PDF downloaded');
+  });
+  const exportExcel = (kind: StmtKind) => {
+    if (kind === 'trial') exportXlsx('Tally-Trial-Balance', 'Trial Balance', data.trial.rows.map((r) => ({ Ledger: r.name, Group: r.group, Debit: r.debit, Credit: r.credit })));
+    else if (kind === 'stock') exportXlsx('Tally-Stock-Summary', 'Stock Summary', data.stock.map((s) => ({ Item: s.name, Unit: s.unit, Inward: s.inQty, Outward: s.outQty, Closing: s.closingQty, Rate: s.rate, Value: s.value })));
+    else if (kind === 'pl') exportXlsx('Tally-Profit-and-Loss', 'P&L', data.ledgers.filter((l) => (l.nature === 'INCOME' || l.nature === 'EXPENSE') && l.balance !== 0).map((l) => ({ Section: l.nature === 'INCOME' ? 'Income' : 'Expense', Ledger: l.name, Amount: l.balance })));
+    else exportXlsx('Tally-Balance-Sheet', 'Balance Sheet', data.ledgers.filter((l) => (l.nature === 'ASSET' || l.nature === 'LIABILITY') && l.balance !== 0).map((l) => ({ Section: l.nature === 'ASSET' ? 'Asset' : 'Liability', Ledger: l.name, Amount: l.balance })));
+    toast.success('Excel downloaded');
+  };
+
   return (
     <div className="tally-wrap min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
       {/* Title bar */}
@@ -125,11 +142,11 @@ export function TallyApp({ data }: { data: TallyData }) {
           )}
           {screen === 'stock' && <StockItems data={data} onBack={back} onCreate={() => setScreen('createStock')} onDelete={removeStock} pending={pending} />}
           {screen === 'createStock' && <CreateStock onDone={() => { router.refresh(); setScreen('stock'); }} onBack={() => setScreen('stock')} />}
-          {screen === 'stockSummary' && <StockSummary data={data} onBack={back} />}
+          {screen === 'stockSummary' && <StockSummary data={data} onBack={back} onPdf={() => exportPdf('stock')} onExcel={() => exportExcel('stock')} />}
           {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} pending={pending} />}
-          {screen === 'trial' && <TrialBalance data={data} onBack={back} />}
-          {screen === 'pl' && <ProfitLoss data={data} onBack={back} />}
-          {screen === 'balsheet' && <BalanceSheet data={data} onBack={back} />}
+          {screen === 'trial' && <TrialBalance data={data} onBack={back} onPdf={() => exportPdf('trial')} onExcel={() => exportExcel('trial')} />}
+          {screen === 'pl' && <ProfitLoss data={data} onBack={back} onPdf={() => exportPdf('pl')} onExcel={() => exportExcel('pl')} />}
+          {screen === 'balsheet' && <BalanceSheet data={data} onBack={back} onPdf={() => exportPdf('bs')} onExcel={() => exportExcel('bs')} />}
           {screen === 'ledgers' && <Ledgers data={data} onBack={back} onCreate={() => setScreen('createLedger')} onDelete={(id) => start(async () => { const r = await deleteTallyLedger(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Ledger deleted'); router.refresh(); })} pending={pending} />}
           {screen === 'createLedger' && <CreateLedger onDone={() => { router.refresh(); setScreen('ledgers'); }} onBack={() => setScreen('ledgers')} />}
         </div>
@@ -314,10 +331,10 @@ function DayBook({ data, onBack, onDelete, pending }: { data: TallyData; onBack:
   );
 }
 
-function TrialBalance({ data, onBack }: { data: TallyData; onBack: () => void }) {
+function TrialBalance({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
   return (
     <Panel title="Trial Balance">
-      <BackBtn onBack={onBack} />
+      <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
       <table className="w-full border-collapse text-[12px]">
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Ledger</th><th className="p-1">Group</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
         <tbody>
@@ -332,7 +349,7 @@ function TrialBalance({ data, onBack }: { data: TallyData; onBack: () => void })
   );
 }
 
-function ProfitLoss({ data, onBack }: { data: TallyData; onBack: () => void }) {
+function ProfitLoss({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
   const income = data.ledgers.filter((l) => l.nature === 'INCOME' && l.balance !== 0);
   const expense = data.ledgers.filter((l) => l.nature === 'EXPENSE' && l.balance !== 0);
   const ti = income.reduce((s, l) => s + l.balance, 0);
@@ -340,7 +357,7 @@ function ProfitLoss({ data, onBack }: { data: TallyData; onBack: () => void }) {
   const profit = ti - te;
   return (
     <Panel title="Profit & Loss A/c">
-      <BackBtn onBack={onBack} />
+      <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
       <div className="grid gap-4 sm:grid-cols-2">
         <StatementCol title="Expenses (Dr)" rows={expense} total={te} extraLabel={profit >= 0 ? 'Net Profit' : undefined} extra={profit >= 0 ? profit : undefined} />
         <StatementCol title="Income (Cr)" rows={income} total={ti} extraLabel={profit < 0 ? 'Net Loss' : undefined} extra={profit < 0 ? -profit : undefined} />
@@ -350,7 +367,7 @@ function ProfitLoss({ data, onBack }: { data: TallyData; onBack: () => void }) {
   );
 }
 
-function BalanceSheet({ data, onBack }: { data: TallyData; onBack: () => void }) {
+function BalanceSheet({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
   const assets = data.ledgers.filter((l) => l.nature === 'ASSET' && l.balance !== 0);
   const liabilities = data.ledgers.filter((l) => l.nature === 'LIABILITY' && l.balance !== 0);
   const profit = sumNature(data, 'INCOME') - sumNature(data, 'EXPENSE');
@@ -358,7 +375,7 @@ function BalanceSheet({ data, onBack }: { data: TallyData; onBack: () => void })
   const tl = liabilities.reduce((s, l) => s + l.balance, 0) + profit;
   return (
     <Panel title="Balance Sheet">
-      <BackBtn onBack={onBack} />
+      <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
       <div className="grid gap-4 sm:grid-cols-2">
         <StatementCol title="Liabilities" rows={liabilities} total={tl} extraLabel="Profit & Loss (current)" extra={profit} />
         <StatementCol title="Assets" rows={assets} total={ta} />
@@ -538,11 +555,11 @@ function CreateStock({ onDone, onBack }: { onDone: () => void; onBack: () => voi
   );
 }
 
-function StockSummary({ data, onBack }: { data: TallyData; onBack: () => void }) {
+function StockSummary({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
   const totalValue = data.stock.reduce((s, r) => s + r.value, 0);
   return (
     <Panel title="Stock Summary">
-      <BackBtn onBack={onBack} />
+      <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
       <table className="w-full border-collapse text-[12px]">
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Item</th><th className="p-1">Unit</th><th className="p-1 text-right">Inward</th><th className="p-1 text-right">Outward</th><th className="p-1 text-right">Closing</th><th className="p-1 text-right">Rate</th><th className="p-1 text-right">Value</th></tr></thead>
         <tbody>
@@ -558,6 +575,18 @@ function StockSummary({ data, onBack }: { data: TallyData; onBack: () => void })
 
 function BackBtn({ onBack }: { onBack: () => void }) {
   return <button onClick={onBack} className="mb-2 rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button>;
+}
+
+function ReportBar({ onBack, onPdf, onExcel }: { onBack: () => void; onPdf: () => void; onExcel: () => void }) {
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      <button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button>
+      <div className="ml-auto flex gap-2">
+        <button onClick={onPdf} className="rounded bg-[#1B2A4A] px-3 py-1 text-[12px] font-semibold text-white">Print (PDF)</button>
+        <button onClick={onExcel} className="rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button>
+      </div>
+    </div>
+  );
 }
 
 function sumNature(data: TallyData, nature: 'INCOME' | 'EXPENSE'): number {
