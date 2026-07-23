@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.86';
+export const APP_VERSION = 'v14.87';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.87',
+    date: '23 Jul 2026',
+    highlights: [
+      'Channel Partner portal (Batch 4): each partner gets a private self-service link (Partners → Manage → Copy portal link). They register their own clients, and the CRM locks each client to them for 60 days — if a client is already registered by someone else, registration is refused, preventing poaching disputes.',
+      'Partners see their own client list and commission payouts (earned / paid / pending) on the portal, cutting follow-up calls.',
+      'Run MIGRATION_v14.87_all.sql in Neon before deploying (adds the partner portal token).',
+    ],
+  },
   {
     version: 'v14.86',
     date: '23 Jul 2026',

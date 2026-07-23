@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, ShieldCheck, UserPlus, Wallet, Globe, Copy, ChevronDown } from 'lucide-react';
-import { createChannelPartner, setPartnerStatus, setPartnerKyc, addBrokeragePayout, setPayoutStatus, registerCpLead } from '@/server/actions/partners';
+import { createChannelPartner, setPartnerStatus, setPartnerKyc, addBrokeragePayout, setPayoutStatus, registerCpLead, regenCpPortalToken } from '@/server/actions/partners';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -136,6 +136,20 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
                     <span className="ml-3 text-xs font-medium text-muted-foreground">Status:</span>
                     <Button size="sm" variant="outline" className="h-7 text-xs" disabled={pending} onClick={() => act(() => setPartnerStatus(sel.id, 'APPROVED'), 'Approved')}>Approve</Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs" disabled={pending} onClick={() => act(() => setPartnerStatus(sel.id, 'SUSPENDED'), 'Suspended')}>Suspend</Button>
+                  </div>
+                )}
+
+                {canManage && (
+                  <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                    <span className="text-xs font-medium text-muted-foreground">Partner portal:</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={pending} onClick={() => start(async () => {
+                      const r = await regenCpPortalToken(sel.id);
+                      if ('error' in r) { toast.error(r.error); return; }
+                      const url = `${window.location.origin}/cp/${r.token}`;
+                      navigator.clipboard?.writeText(url);
+                      toast.success('Partner portal link copied — share it with them');
+                    })}><Copy className="h-3 w-3" /> Copy portal link</Button>
+                    <span className="text-[11px] text-muted-foreground">They register clients &amp; track commission themselves.</span>
                   </div>
                 )}
 

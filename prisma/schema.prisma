@@ -1839,6 +1839,7 @@ model ChannelPartner {
   status        ChannelPartnerStatus @default(PENDING)
   bankDetails   String?
   notes         String?
+  portalToken   String?              @unique
   onboardedById String?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt

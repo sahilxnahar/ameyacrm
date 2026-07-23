@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -7,6 +8,18 @@ import { nextReference } from '@/lib/utils/reference';
 import { ensure, toActionError } from './_helpers';
 
 export type PartnerResult = { ok: true; id?: string } | { error: string };
+
+/** Create (or rotate) the channel partner's self-service portal link. */
+export async function regenCpPortalToken(id: string): Promise<{ ok: true; token: string } | { error: string }> {
+  try {
+    const ctx = await ensure('booking.manage');
+    const token = randomBytes(20).toString('hex');
+    await prisma.channelPartner.update({ where: { id }, data: { portalToken: token } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'ChannelPartner', entityId: id, summary: 'Generated CP portal link' });
+    revalidatePath('/partners');
+    return { ok: true, token };
+  } catch (err) { const e = toActionError(err); return e; }
+}
 
 const cpSchema = z.object({
   firmName: z.string().min(2).max(160),
