@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.72';
+export const APP_VERSION = 'v14.73';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.73',
+    date: '23 Jul 2026',
+    highlights: [
+      'From a vendor’s ledger you can now, on each payment: print a payment slip (PDF), delete it (with undo), or “To cash” to reclassify a bank payment as cash so it lands in the Cash Book.',
+      'Payments Made has Cash / Bank / UPI filter chips, so you can see just your cash payments (or just bank) at a glance.',
+      'Real Excel (.xlsx) export added — Payments Made, a payee’s passbook, and the Secret Cash Book each export a proper spreadsheet, not just CSV.',
+    ],
+  },
   {
     version: 'v14.72',
     date: '23 Jul 2026',

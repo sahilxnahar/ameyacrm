@@ -2,8 +2,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Plus, X, Trash2, LockKeyhole, Download, Users, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Loader2, Plus, X, Trash2, LockKeyhole, Download, Users, ArrowDownLeft, ArrowUpRight, FileSpreadsheet } from 'lucide-react';
 import { addSecretEntry, deleteSecretEntry, lockSecretCashBook, setSecretNominees } from '@/server/actions/secret-cashbook';
+import { exportXlsx } from '@/lib/export/xlsx';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,7 +85,8 @@ export function SecretCashBookView({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button size="sm" onClick={() => setAddOpen((v) => !v)}>{addOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {addOpen ? 'Close' : 'Add entry'}</Button>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={exportCsv}><Download className="h-4 w-4" /> Export</Button>
+          <Button size="sm" variant="outline" onClick={exportCsv}><Download className="h-4 w-4" /> CSV</Button>
+          <Button size="sm" variant="outline" onClick={() => exportXlsx('secret-cash-book', 'Cash Book', [...rows].reverse().map((r) => ({ Date: formatDate(r.date), Direction: r.direction, Amount: r.amount, Party: r.party, Mode: r.mode, Reference: r.reference ?? '', Note: r.note ?? '', Balance: r.balance })))}><FileSpreadsheet className="h-4 w-4" /> Excel</Button>
           {isSuperAdmin && <Button size="sm" variant="outline" onClick={() => setNomOpen((v) => !v)}><Users className="h-4 w-4" /> Who can access</Button>}
           <Button size="sm" variant="ghost" onClick={lockNow}><LockKeyhole className="h-4 w-4" /> Lock now</Button>
         </div>

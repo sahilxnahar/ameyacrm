@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge } from 'lucide-react';
+import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge, FileSpreadsheet } from 'lucide-react';
 import { recordUtr, readPaymentAdvice } from '@/server/actions/vouchers';
 import { PAY_MODE_LABEL } from '@/config/vouchers';
+import { exportXlsx } from '@/lib/export/xlsx';
 
 export interface PaymentRow {
   id: string; number: string; kind: string; status: string; partyName: string;
@@ -18,12 +19,20 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '2
 export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: PaymentRow[]; totalPaid: number; missingUtr: number }) {
   const [q, setQ] = useState('');
   const [onlyMissing, setOnlyMissing] = useState(false);
+  const [modeFilter, setModeFilter] = useState('');
   const [openParty, setOpenParty] = useState<string | null>(null);
+
+  const modes = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of payments) if (p.status !== 'CANCELLED') s.add(p.mode);
+    return [...s];
+  }, [payments]);
 
   const parties = useMemo(() => {
     const map = new Map<string, { name: string; total: number; count: number; last: string; missing: number; rows: PaymentRow[] }>();
     for (const p of payments) {
       if (p.status === 'CANCELLED') continue;
+      if (modeFilter && p.mode !== modeFilter) continue;
       const key = p.partyName.trim().toLowerCase();
       const e = map.get(key) ?? { name: p.partyName, total: 0, count: 0, last: p.paidOn, missing: 0, rows: [] };
       e.total += p.amount; e.count += 1; e.rows.push(p);
@@ -41,7 +50,7 @@ export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: Pa
       );
     }
     return list;
-  }, [payments, q, onlyMissing]);
+  }, [payments, q, onlyMissing, modeFilter]);
 
   return (
     <div className="space-y-5">
@@ -72,9 +81,30 @@ export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: Pa
           Missing UTR only
         </button>
         <a href="/api/reports/cash-book.csv" className="focus-ring rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted">
-          <Download className="mr-1.5 inline h-4 w-4" />Export CSV
+          <Download className="mr-1.5 inline h-4 w-4" />CSV
         </a>
+        <button
+          type="button"
+          onClick={() => exportXlsx('payments-made', 'Payments', parties.flatMap((pt) => pt.rows).map((r) => ({
+            Voucher: r.number, Date: day(r.paidOn), Party: r.partyName, Mode: PAY_MODE_LABEL[r.mode] ?? r.mode,
+            'UTR / Ref': r.utr ?? r.reference ?? '', Amount: r.amount, Note: r.narration ?? '',
+          })))}
+          className="focus-ring rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted"
+        >
+          <FileSpreadsheet className="mr-1.5 inline h-4 w-4" />Excel
+        </button>
       </div>
+
+      {modes.length > 1 && (
+        <div className="chip-row items-center text-sm">
+          <button onClick={() => setModeFilter('')} className={`focus-ring shrink-0 rounded-full border px-3 py-1 text-xs ${!modeFilter ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>All</button>
+          {modes.map((m) => (
+            <button key={m} onClick={() => setModeFilter(modeFilter === m ? '' : m)} className={`focus-ring shrink-0 rounded-full border px-3 py-1 text-xs ${modeFilter === m ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
+              {PAY_MODE_LABEL[m] ?? m}
+            </button>
+          ))}
+        </div>
+      )}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <GitMerge className="h-3.5 w-3.5" />

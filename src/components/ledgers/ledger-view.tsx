@@ -2,11 +2,12 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks, Download, BadgeCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, X, ArrowLeft, GitMerge, Landmark, FileSpreadsheet, Search, Plus, Paperclip, Upload, Pencil, ListChecks, Download, BadgeCheck, ShieldAlert, Trash2, Wallet, FileText } from 'lucide-react';
 import { upload } from '@vercel/blob/client';
-import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention } from '@/server/actions/vendor-ledger';
+import { importVendorPayments, mergeVendors, saveVendorBank, addVendorPayment, attachPaymentProof, renameVendor, mergeVendorsMany, setPaymentCategory, approveVendorPayment, setPaymentApprovalLimit, settleAdvance, releaseRetention, deleteVendorPayment, restoreVendorPayment, reclassifyPaymentToCash } from '@/server/actions/vendor-ledger';
 import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
+import { exportXlsx } from '@/lib/export/xlsx';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
 import { Card } from '@/components/ui/card';
@@ -198,6 +199,18 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
     });
   };
 
+  const removePayment = (p: { id: string; amount: number }) => start(async () => {
+    const r = await deleteVendorPayment(p.id);
+    if ('error' in r) { toast.error(r.error); return; }
+    router.refresh();
+    toast(`Payment removed (${formatCurrency(p.amount)})`, { action: { label: 'Undo', onClick: () => start(async () => { await restoreVendorPayment(p.id); toast.success('Restored'); router.refresh(); }) } });
+  });
+  const toCash = (voucherId: string) => start(async () => {
+    const r = await reclassifyPaymentToCash(voucherId);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Moved to Cash Book (marked as cash)'); router.refresh();
+  });
+
   const doSettle = (voucherId: string) => start(async () => {
     const r = await settleAdvance(voucherId);
     if ('error' in r) { toast.error(r.error); return; }
@@ -229,7 +242,8 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={downloadPassbook}><Download className="h-4 w-4" /> Passbook (CSV)</Button>
+            <Button size="sm" variant="ghost" onClick={downloadPassbook}><Download className="h-4 w-4" /> CSV</Button>
+            <Button size="sm" variant="ghost" onClick={() => exportXlsx(`passbook-${d.vendor.name.replace(/[^a-z0-9]+/gi, '-')}`, 'Passbook', d.payments.map((p) => ({ Voucher: p.number, Date: formatDate(p.paidOn ?? p.date), Amount: p.amount, Mode: p.mode, 'UTR/Ref': p.utr ?? p.reference ?? '', Category: EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '', Note: p.narration ?? '', Status: p.status })))}><FileSpreadsheet className="h-4 w-4" /> Excel</Button>
             {canManage && !renaming && (
               <Button size="sm" variant="ghost" onClick={() => setRenaming(true)}><Pencil className="h-4 w-4" /> Rename payee</Button>
             )}
@@ -347,10 +361,15 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                         </select>
                       ) : <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? ''}</span>}
                       {p.proofUrl ? (
-                        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> View proof</a>
+                        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> Proof</a>
                       ) : canManage ? (
-                        <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">{uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Add proof</button>
+                        <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">{uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Proof</button>
                       ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 pt-0.5">
+                      <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
+                      {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
+                      {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
                     </div>
                   </div>
                 ))}
@@ -398,13 +417,18 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                         </td>
                         <td className="p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[10px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
                         <td className="p-2">
-                          {p.proofUrl ? (
-                            <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> View</a>
-                          ) : canManage ? (
-                            <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">
-                              {uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Add
-                            </button>
-                          ) : '—'}
+                          <div className="flex flex-col items-start gap-1">
+                            {p.proofUrl ? (
+                              <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> Proof</a>
+                            ) : canManage ? (
+                              <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">
+                                {uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Proof
+                              </button>
+                            ) : null}
+                            <a href={`/api/vouchers/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><FileText className="h-3.5 w-3.5" /> Slip</a>
+                            {canManage && p.mode !== 'CASH' && <button onClick={() => toCash(p.id)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"><Wallet className="h-3.5 w-3.5" /> To cash</button>}
+                            {canManage && <button onClick={() => removePayment(p)} disabled={pending} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
+                          </div>
                         </td>
                       </tr>
                     ))}

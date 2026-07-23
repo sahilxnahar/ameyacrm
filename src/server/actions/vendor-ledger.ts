@@ -346,6 +346,43 @@ export async function releaseRetention(voucherId: string): Promise<LedgerActionR
   } catch (e) { return toActionError(e); }
 }
 
+/** Remove a payment from the ledger — soft-cancelled, so the record survives. */
+export async function deleteVendorPayment(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Removed from vendor ledger' } });
+    await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId, summary: `Removed payment ${v.number}` });
+    revalidatePath('/ledgers'); revalidatePath('/payments');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Undo a removal. */
+export async function restoreVendorPayment(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', cancelledAt: null, cancelReason: null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: 'Restored a payment' });
+    revalidatePath('/ledgers'); revalidatePath('/payments');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Reclassify a payment as cash — it then shows as a cash entry in the Cash Book. */
+export async function reclassifyPaymentToCash(voucherId: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id: voucherId }, data: { kind: 'CASH_PAID', mode: 'CASH', utr: null, bankName: null, paidOn: null } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Moved ${v.number} to cash` });
+    revalidatePath('/ledgers'); revalidatePath('/payments'); revalidatePath('/cash-book');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
 /** Set the expense category (chart-of-accounts code) on a single payment. */
 export async function setPaymentCategory(voucherId: string, accountCode: string): Promise<LedgerActionResult> {
   try {
