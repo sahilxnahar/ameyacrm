@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -40,6 +40,7 @@ export const NAVIGATION: NavGroup[] = [
     label: 'My Day',
     blurb: 'The screens to open every morning.',
     items: [
+      { label: 'Home', href: '/home', icon: Home, blurb: 'Your welcome screen — the weather, the time and today’s agenda.' },
       { label: "Today's Priorities", href: '/today', icon: ListChecks, blurb: 'Everything due today, in one list. Start here.' },
       { label: 'Guide', href: '/guide', icon: BookOpen, blurb: 'How to use the CRM — first steps, and a walk through every feature.' },
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view', blurb: 'Your numbers at a glance — leads, sales, cash.' },
@@ -171,6 +172,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Decision Log', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view', blurb: 'SOPs, decisions and lessons learned.' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view', blurb: 'A record of who did what.' },
       { label: 'Glossary', href: '/glossary', icon: HelpCircle, blurb: 'Plain-English meaning of any term used here.' },
+      { label: 'Send Feedback', href: '/feedback', icon: MessageSquarePlus, blurb: 'Tell us what worked, what didn’t, and what you wish it did.' },
       { label: 'Explore Features', href: '/features', icon: LayoutGrid, blurb: 'A map of everything the CRM can do — search and jump to any screen.' },
       { label: "What's New", href: '/updates', icon: Sparkles, blurb: 'Every feature and update we’ve ever added — searchable, newest first.' },
       { label: 'Settings', href: '/settings', icon: Settings, blurb: 'Your profile, security and preferences.' },

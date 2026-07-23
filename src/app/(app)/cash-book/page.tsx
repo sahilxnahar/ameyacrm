@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
-import { getActiveProject, strictProjectScope } from '@/server/services/active-project-service';
+import { getActiveProject, projectScope } from '@/server/services/active-project-service';
 import { CashBookView } from '@/components/cashbook/cash-book-view';
 
 export const metadata: Metadata = { title: 'Cash book' };
@@ -18,7 +18,8 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
   const to = endOfMonth(base);
 
   const active = await getActiveProject(ctx.user.id);
-  const scope = strictProjectScope(active.id);
+  // Include payments not tagged to any project so nothing hides under a project.
+  const scope = projectScope(active.id);
 
   const [vouchers, projects, openingRows] = await Promise.all([
     prisma.voucher.findMany({

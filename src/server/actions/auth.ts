@@ -87,9 +87,10 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
         await alertNewSignIn(result.user, { country, city: await requestCity(), ip: info.ip, ua: info.userAgent });
       }
 
-      if (result.mustChangePassword) redirect('/settings/security?force=1');
+      // Land people on their home screen. A password that ought to be changed
+      // is surfaced as a dismissible reminder there, not a forced detour.
       if (mustEnroll2FA(result.user, policy)) redirect('/settings/security?enroll=1');
-      redirect('/dashboard');
+      redirect('/home');
     }
   }
   return { error: 'Unexpected error. Please try again.' };
@@ -140,7 +141,7 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   if (parsed.data.trustDevice === 'on') await markTrustedDevice(user.id);
   await markLoginSuccess(user.id, user.username, '2fa');
   await writeAudit({ actorId: user.id, action: 'LOGIN', summary: 'Password + 2FA login' });
-  redirect(user.mustChangePassword ? '/settings/security?force=1' : '/dashboard');
+  redirect('/home');
   // (user has 2FA here, so no enrollment gate needed)
 }
 

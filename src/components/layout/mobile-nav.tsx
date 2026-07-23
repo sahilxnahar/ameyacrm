@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils/cn';
  * behind "More", which opens the full menu.
  */
 const ITEMS = [
+  { href: '/home', label: 'Home', icon: LayoutDashboard, permission: null },
   { href: '/today', label: 'Today', icon: ListChecks, permission: null },
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard, permission: 'dashboard.view' },
   { href: '/sales', label: 'Leads', icon: Users2, permission: 'lead.view' },
   { href: '/payments', label: 'Money', icon: BadgeIndianRupee, permission: 'finance.ledger.view' },
 ] as const;

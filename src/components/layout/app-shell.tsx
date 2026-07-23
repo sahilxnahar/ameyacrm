@@ -9,10 +9,10 @@ import { ShortcutsHelp } from './shortcuts-help';
 import { MobileNav } from './mobile-nav';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
-import { FeedbackWidget } from './feedback-widget';
 import { WhatsNew } from './whats-new';
 import { UpdateBanner } from '@/components/pwa/update-banner';
 import { MobileFab } from './mobile-fab';
+import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { PullToRefresh } from './pull-to-refresh';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import type { ProjectOption } from './project-switcher';
@@ -124,7 +124,7 @@ export function AppShell({
         onToggleRail={toggleRail}
         onClose={() => setMobileOpen(false)}
       />
-      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-64'}`}>
+      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <UpdateBanner />
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
@@ -139,7 +139,7 @@ export function AppShell({
       <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />
-      <FeedbackWidget />
+      <AssistantLauncher />
       <WhatsNew />
     </div>
   );

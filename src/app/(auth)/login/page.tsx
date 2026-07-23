@@ -11,7 +11,7 @@ import { InstallGuide } from '@/components/install/install-guide';
 export const metadata: Metadata = { title: 'Sign in' };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ sso?: string }> }) {
-  if (await getCurrentUser()) redirect('/dashboard');
+  if (await getCurrentUser()) redirect('/home');
   const { enabled } = await getSignupConfig();
   const sso = await getSamlConfig();
   const { sso: ssoError } = await searchParams;

@@ -111,6 +111,10 @@ export function Sidebar({
     const Icon = item.icon;
     const hidden = prefs.hidden.includes(item.href);
     const isPinned = prefs.pinned.includes(item.href);
+    // Show the plain-language description beneath the label in the full menu.
+    // Not on the icon rail (no room) and not while customising (the reorder
+    // controls need the space and a compact row).
+    const showBlurb = !rail && !customising && !!item.blurb;
 
     return (
       <li key={(isPinnedRow ? 'p:' : '') + item.href} className={cn(customising && hidden && 'opacity-40')}>
@@ -121,16 +125,23 @@ export function Sidebar({
             title={rail ? item.label : item.blurb}
             aria-label={item.label}
             className={cn(
-              'flex min-h-[40px] flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors active:bg-secondary',
+              'flex flex-1 items-center gap-3 rounded-md px-3 font-medium transition-colors active:bg-secondary',
+              // A little bigger overall, and taller when a description sits under it.
+              showBlurb ? 'min-h-[52px] py-2 text-[15px]' : 'min-h-[44px] py-2 text-[15px]',
               active ? 'bg-primary/10 font-semibold' : 'gold-solid hover:bg-primary/5',
               customising && 'cursor-default',
               // Icon-only on the desktop rail; full on mobile.
               rail && 'lg:justify-center lg:gap-0 lg:px-0',
             )}
           >
-            <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#A07D34]' : 'text-[#6B6459]')} />
-            <span className={cn('truncate', rail && 'lg:hidden')}>{item.label}</span>
-            {!customising && isPinned && <Pin className={cn('ml-auto h-3 w-3 shrink-0 text-[#A07D34]', rail && 'lg:hidden')} />}
+            <Icon className={cn('shrink-0', showBlurb ? 'h-[18px] w-[18px]' : 'h-[18px] w-[18px]', active ? 'text-[#A07D34]' : 'text-[#6B6459]')} />
+            <span className={cn('flex min-w-0 flex-1 flex-col', rail && 'lg:hidden')}>
+              <span className="truncate leading-tight">{item.label}</span>
+              {showBlurb && (
+                <span className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug text-muted-foreground">{item.blurb}</span>
+              )}
+            </span>
+            {!customising && isPinned && <Pin className={cn('h-3 w-3 shrink-0 text-[#A07D34]', rail && 'lg:hidden')} />}
           </Link>
 
           {/* The controls get their own row. Squeezed next to the label they
@@ -158,7 +169,7 @@ export function Sidebar({
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex max-w-[92vw] flex-col border-r bg-card shadow-2xl transition-[width,transform] duration-200 lg:max-w-none lg:shadow-none lg:translate-x-0',
-          customising ? 'w-[19rem] lg:w-[19rem]' : rail ? 'w-[17rem] lg:w-[4.5rem]' : 'w-[17rem] lg:w-64',
+          customising ? 'w-[19rem] lg:w-[19rem]' : rail ? 'w-[17rem] lg:w-[4.5rem]' : 'w-[18rem] lg:w-72',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -226,10 +237,9 @@ export function Sidebar({
             // stays open so you can reorder and un-hide. On the icon rail, groups
             // are always open (there is no header to fold), separated by a divider.
             const isCollapsedGroup = !customising && !rail && collapsedGroups.includes(group.label);
-            // Keep a group open if the page you are on lives inside it, so the
-            // active item is never hidden behind a folded header.
-            const hasActive = items.some((i) => pathname === i.href || pathname.startsWith(i.href + '/'));
-            const showItems = rail || !isCollapsedGroup || hasActive;
+            // A fold the person explicitly asked for is always honoured — even if
+            // the current page lives inside it — otherwise the button reads as broken.
+            const showItems = rail || !isCollapsedGroup;
             return (
               <div key={group.label} className={cn(rail && 'lg:border-t lg:border-border/50 lg:pt-3 lg:first:border-t-0 lg:first:pt-0')}>
                 {customising ? (
@@ -270,7 +280,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
-          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v14.73</p>
+          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v14.78</p>
         </div>
       </aside>
     </>

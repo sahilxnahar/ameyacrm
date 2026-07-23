@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.73';
+export const APP_VERSION = 'v14.78';
 
 export interface Release {
   version: string;
@@ -13,6 +13,49 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.78',
+    date: '23 Jul 2026',
+    highlights: [
+      'The main menu is easier to read: items are a little bigger, and each one now shows its plain-language description right under the name — no more hovering to find out what a screen does.',
+      'The menu is slightly wider to give those descriptions room. Collapse it to the icon rail any time if you want it slim.',
+    ],
+  },
+  {
+    version: 'v14.77',
+    date: '23 Jul 2026',
+    highlights: [
+      'The assistant now reads documents: attach a PDF or a photo (a bill, a scan, a letter) and ask about it — “what’s the total?”, “when is this due?”, or just get a plain summary.',
+      'Once it has answered, it offers to file the document for you — pick a folder (Legal, Bills, whatever you use) and it lands in Documents, summarised and backed up, without leaving the chat.',
+      'Attachments up to 10MB; PDF and image formats. Larger or other files still go through the Documents screen as before.',
+    ],
+  },
+  {
+    version: 'v14.76',
+    date: '23 Jul 2026',
+    highlights: [
+      'The AI assistant is now everywhere: a small button in the bottom-right corner of every screen opens it, so you can ask, draft or summarise without leaving the page you’re on.',
+      'Feedback has moved from the floating corner button into the menu — find “Send Feedback” under Team & Admin, with more room to write.',
+      'On phones, the quick-actions “+” button now sits neatly above the assistant instead of overlapping it.',
+    ],
+  },
+  {
+    version: 'v14.75',
+    date: '23 Jul 2026',
+    highlights: [
+      'New Home screen (and where you land after signing in): a warm “Good morning, <name>” with the live date and time, your local weather — temperature, conditions, precipitation, UV index and your city — and today’s agenda in one place.',
+      'Weather uses your device location and a free, keyless service — allow location access the first time to see it.',
+    ],
+  },
+  {
+    version: 'v14.74',
+    date: '23 Jul 2026',
+    highlights: [
+      'Fixed: “To cash” now works end-to-end — the Cash Book no longer hides payments that aren’t tagged to a project, so a reclassified payment shows up there.',
+      'Fixed: folding a menu section now always works, even when you’re on a page inside it (it used to spring back open).',
+      'After signing in you now land straight on your home screen instead of being sent to the password/security page.',
+    ],
+  },
   {
     version: 'v14.73',
     date: '23 Jul 2026',

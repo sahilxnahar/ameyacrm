@@ -46,7 +46,7 @@ export function MobileFab({ allowed, isSuperAdmin }: { allowed: Set<string>; isS
       {hint && (
         <div
           className="fixed right-4 z-30 max-w-[220px] rounded-xl bg-foreground px-3 py-2 text-xs text-background shadow-lg lg:hidden"
-          style={{ bottom: 'calc(9rem + env(safe-area-inset-bottom))' }}
+          style={{ bottom: 'calc(13.5rem + env(safe-area-inset-bottom))' }}
           onClick={dismissHint}
           role="button"
         >
@@ -58,7 +58,7 @@ export function MobileFab({ allowed, isSuperAdmin }: { allowed: Set<string>; isS
         onClick={() => { setOpen(true); dismissHint(); }}
         aria-label="Quick actions"
         className="focus-ring fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 lg:hidden"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        style={{ bottom: 'calc(9rem + env(safe-area-inset-bottom))' }}
       >
         <Plus className="h-6 w-6" />
       </button>
