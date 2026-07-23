@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { GROUP_NAMES, VOUCHER_TYPES } from '@/config/tally-groups';
-import { getTallyData } from '@/server/services/tally-service';
+import { getTallyData, type TallyData } from '@/server/services/tally-service';
 import { getCompanyDetails } from '@/server/services/company-service';
 import { buildTallyStatementPdf, type StmtRow } from '@/lib/pdf/tally-statement-pdf';
 import { ensure, toActionError } from './_helpers';
@@ -13,13 +13,25 @@ export type TallyResult = { ok: true; id?: string } | { error: string };
 
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Build a branded PDF of a Tally financial statement for the CA. */
-export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock'): Promise<{ ok: true; filename: string; pdfBase64: string } | { error: string }> {
+/** Re-fetch all Tally data for a chosen period, for the on-screen reports. */
+export async function tallyDataForPeriod(fromISO: string | null, toISO: string | null, label: string): Promise<{ ok: true; data: TallyData } | { error: string }> {
   try {
     await ensure('finance.ledger.view');
-    const [data, company] = await Promise.all([getTallyData(), getCompanyDetails()]);
+    const data = await getTallyData({ from: fromISO ? new Date(fromISO) : null, to: toISO ? new Date(toISO) : null, label });
+    return { ok: true, data };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Build a branded PDF of a Tally financial statement for the CA. */
+export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock', fromISO?: string | null, toISO?: string | null, label?: string): Promise<{ ok: true; filename: string; pdfBase64: string } | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const [data, company] = await Promise.all([
+      getTallyData({ from: fromISO ? new Date(fromISO) : null, to: toISO ? new Date(toISO) : null, label }),
+      getCompanyDetails(),
+    ]);
     const co = { name: company.legalName, registeredAddress: company.registeredAddress, phone: company.phone, email: company.email, website: company.website, gstin: company.gstin };
-    const asOf = `As of ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+    const asOf = label && label !== 'All time' ? label : `As of ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`;
 
     let title = '', subtitle = asOf, columns: { label: string; align?: 'left' | 'right'; weight?: number }[] = [], rows: StmtRow[] = [], filename = '';
 
@@ -32,17 +44,14 @@ export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock'): 
     } else if (kind === 'pl') {
       title = 'Profit & Loss A/c';
       columns = [{ label: 'Particulars', weight: 4 }, { label: 'Amount', align: 'right', weight: 2 }];
-      const inc = data.ledgers.filter((l) => l.nature === 'INCOME' && l.balance !== 0);
-      const exp = data.ledgers.filter((l) => l.nature === 'EXPENSE' && l.balance !== 0);
-      const ti = inc.reduce((s, l) => s + l.balance, 0), te = exp.reduce((s, l) => s + l.balance, 0);
       rows = [
         { kind: 'head', cells: ['Income', ''] },
-        ...inc.map((l) => ({ cells: [l.name, inr(l.balance)] })),
-        { kind: 'total', cells: ['Total income', inr(ti)] },
+        ...data.pl.income.map((l) => ({ cells: [l.name, inr(l.amount)] })),
+        { kind: 'total', cells: ['Total income', inr(data.pl.totalIncome)] },
         { kind: 'head', cells: ['Expenses', ''] },
-        ...exp.map((l) => ({ cells: [l.name, inr(l.balance)] })),
-        { kind: 'total', cells: ['Total expenses', inr(te)] },
-        { kind: 'total', cells: [ti - te >= 0 ? 'Net Profit' : 'Net Loss', inr(Math.abs(ti - te))] },
+        ...data.pl.expense.map((l) => ({ cells: [l.name, inr(l.amount)] })),
+        { kind: 'total', cells: ['Total expenses', inr(data.pl.totalExpense)] },
+        { kind: 'total', cells: [data.pl.profit >= 0 ? 'Net Profit' : 'Net Loss', inr(Math.abs(data.pl.profit))] },
       ];
       filename = 'Tally-Profit-and-Loss.pdf';
     } else if (kind === 'bs') {
@@ -50,7 +59,7 @@ export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock'): 
       columns = [{ label: 'Particulars', weight: 4 }, { label: 'Amount', align: 'right', weight: 2 }];
       const assets = data.ledgers.filter((l) => l.nature === 'ASSET' && l.balance !== 0);
       const liabs = data.ledgers.filter((l) => l.nature === 'LIABILITY' && l.balance !== 0);
-      const profit = data.ledgers.filter((l) => l.nature === 'INCOME').reduce((s, l) => s + l.balance, 0) - data.ledgers.filter((l) => l.nature === 'EXPENSE').reduce((s, l) => s + l.balance, 0);
+      const profit = data.pl.profit;
       const tl = liabs.reduce((s, l) => s + l.balance, 0) + profit;
       const ta = assets.reduce((s, l) => s + l.balance, 0);
       rows = [

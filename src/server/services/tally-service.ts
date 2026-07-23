@@ -15,15 +15,23 @@ export interface StockRow {
   id: string; name: string; unit: string; gstRate: number;
   inQty: number; outQty: number; closingQty: number; rate: number; value: number;
 }
+export interface PLData {
+  income: Array<{ name: string; amount: number }>;
+  expense: Array<{ name: string; amount: number }>;
+  totalIncome: number; totalExpense: number; profit: number;
+}
 export interface TallyData {
   ledgers: TallyLedgerRow[];
   vouchers: TallyVoucherRow[];
   stock: StockRow[];
+  pl: PLData;
   trial: { rows: TrialRow[]; totalDebit: number; totalCredit: number; balanced: boolean };
+  period: { from: string | null; to: string | null; label: string };
   totals: { ledgers: number; vouchers: number; stock: number };
 }
 
 const n = (d: unknown) => (d == null ? 0 : Number(d));
+const FAR_FUTURE = new Date('9999-12-31T00:00:00.000Z');
 
 /** Trading & GST ledgers needed for item invoicing. Auto-created, idempotent. */
 export const TRADING_LEDGERS = [
@@ -51,20 +59,33 @@ export async function ensureDefaultLedgers(): Promise<void> {
   }
 }
 
-export async function getTallyData(): Promise<TallyData> {
+export interface PeriodOpts { from?: Date | null; to?: Date | null; label?: string }
+
+export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
   await ensureDefaultLedgers();
-  const [ledgers, sums, vouchers, items, invSums] = await Promise.all([
+  const from = opts.from ?? null;
+  const to = opts.to ?? null;
+  const toEff = to ?? FAR_FUTURE;
+  // Balances (Trial Balance, Balance Sheet, ledger, stock) are as-at `to`.
+  const asAt = { voucher: { date: { lte: toEff } } };
+  // The Day Book and P&L cover the period [from, to].
+  const inPeriod = { voucher: { date: from ? { gte: from, lte: toEff } : { lte: toEff } } };
+
+  const [ledgers, sums, plSums, vouchers, items, invSums] = await Promise.all([
     prisma.tallyLedger.findMany({ orderBy: { name: 'asc' } }),
-    prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], _sum: { debit: true, credit: true } }),
+    prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: asAt, _sum: { debit: true, credit: true } }),
+    prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: inPeriod, _sum: { debit: true, credit: true } }),
     prisma.tallyVoucher.findMany({
+      where: { date: from ? { gte: from, lte: toEff } : { lte: toEff } },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       take: 200,
       include: { lines: { include: { ledger: { select: { name: true } } } } },
     }),
     prisma.tallyStockItem.findMany({ orderBy: { name: 'asc' } }),
-    prisma.tallyInventoryLine.groupBy({ by: ['itemId', 'direction'], _sum: { qty: true } }),
+    prisma.tallyInventoryLine.groupBy({ by: ['itemId', 'direction'], where: asAt, _sum: { qty: true } }),
   ]);
   const sumOf = new Map(sums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
+  const plOf = new Map(plSums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
 
   const ledgerRows: TallyLedgerRow[] = ledgers.map((l) => {
     const s = sumOf.get(l.id) ?? { d: 0, c: 0 };
@@ -87,6 +108,20 @@ export async function getTallyData(): Promise<TallyData> {
       totalDebit += debit; totalCredit += credit;
       return { name: r.name, group: r.group, debit, credit };
     });
+
+  // Profit & Loss for the PERIOD — movement of income/expense ledgers in [from,to].
+  const income: Array<{ name: string; amount: number }> = [];
+  const expense: Array<{ name: string; amount: number }> = [];
+  for (const l of ledgers) {
+    const nat = natureOfGroup(l.group);
+    if (nat !== 'INCOME' && nat !== 'EXPENSE') continue;
+    const p = plOf.get(l.id) ?? { d: 0, c: 0 };
+    const amount = nat === 'INCOME' ? Math.round((p.c - p.d) * 100) / 100 : Math.round((p.d - p.c) * 100) / 100;
+    if (amount !== 0) (nat === 'INCOME' ? income : expense).push({ name: l.name, amount });
+  }
+  const totalIncome = Math.round(income.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+  const totalExpense = Math.round(expense.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+  const pl: PLData = { income, expense, totalIncome, totalExpense, profit: Math.round((totalIncome - totalExpense) * 100) / 100 };
 
   const voucherRows: TallyVoucherRow[] = vouchers.map((v) => {
     const lines = v.lines.map((ln) => ({ ledger: ln.ledger.name, debit: n(ln.debit), credit: n(ln.credit) }));
@@ -115,12 +150,14 @@ export async function getTallyData(): Promise<TallyData> {
     ledgers: ledgerRows,
     vouchers: voucherRows,
     stock: stockRows,
+    pl,
     trial: {
       rows: trialRows,
       totalDebit: Math.round(totalDebit * 100) / 100,
       totalCredit: Math.round(totalCredit * 100) / 100,
       balanced: Math.round(totalDebit * 100) === Math.round(totalCredit * 100),
     },
+    period: { from: from ? from.toISOString() : null, to: to ? to.toISOString() : null, label: opts.label ?? 'All time' },
     totals: { ledgers: ledgers.length, vouchers: await prisma.tallyVoucher.count(), stock: items.length },
   };
 }

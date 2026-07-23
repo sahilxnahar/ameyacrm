@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.91';
+export const APP_VERSION = 'v14.92';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.92',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 5 — period filter: a bar at the top lets you view every report for This Month, This Quarter, This FY (Apr–Mar), All time, or a custom date range. Trial Balance and Balance Sheet show the position as-at the To date; Profit & Loss and Day Book cover the chosen period — exactly like Tally.',
+      'The period flows into the PDF/Excel exports too, so a statement you hand your CA is stamped with the range it covers.',
+      'No database change — deploy the zip as-is.',
+    ],
+  },
   {
     version: 'v14.91',
     date: '23 Jul 2026',

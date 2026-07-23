@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, type LedgerStmt, type Outstanding, type AgedParty } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, type LedgerStmt, type Outstanding, type AgedParty } from '@/server/actions/tally';
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 
@@ -15,16 +15,27 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 
 interface Line { ledgerId: string; debit: string; credit: string }
 
-export function TallyApp({ data }: { data: TallyData }) {
+export function TallyApp({ data: initialData }: { data: TallyData }) {
   const router = useRouter();
+  const [data, setData] = React.useState<TallyData>(initialData);
+  React.useEffect(() => setData(initialData), [initialData]);
   const [screen, setScreen] = React.useState<Screen>('gateway');
   const [pending, start] = React.useTransition();
+
+  const applyPeriod = (from: Date | null, to: Date | null, label: string) => start(async () => {
+    const r = await tallyDataForPeriod(from ? from.toISOString() : null, to ? to.toISOString() : null, label);
+    if ('error' in r) { toast.error(r.error); return; }
+    setData(r.data);
+  });
 
   // Voucher entry state
   const [vType, setVType] = React.useState<VoucherType>('Payment');
   const [vDate, setVDate] = React.useState(todayISO());
   const [vNarr, setVNarr] = React.useState('');
   const [lines, setLines] = React.useState<Line[]>([{ ledgerId: '', debit: '', credit: '' }, { ledgerId: '', debit: '', credit: '' }]);
+
+  const [cfrom, setCfrom] = React.useState('');
+  const [cto, setCto] = React.useState('');
 
   // Item-invoice (Sales/Purchase) state
   const [invType, setInvType] = React.useState<'Sales' | 'Purchase'>('Sales');
@@ -101,7 +112,7 @@ export function TallyApp({ data }: { data: TallyData }) {
   });
 
   const exportPdf = (kind: StmtKind) => start(async () => {
-    const r = await tallyStatementPdf(kind);
+    const r = await tallyStatementPdf(kind, data.period.from, data.period.to, data.period.label);
     if ('error' in r) { toast.error(r.error); return; }
     const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
     toast.success('PDF downloaded');
@@ -109,7 +120,7 @@ export function TallyApp({ data }: { data: TallyData }) {
   const exportExcel = (kind: StmtKind) => {
     if (kind === 'trial') exportXlsx('Tally-Trial-Balance', 'Trial Balance', data.trial.rows.map((r) => ({ Ledger: r.name, Group: r.group, Debit: r.debit, Credit: r.credit })));
     else if (kind === 'stock') exportXlsx('Tally-Stock-Summary', 'Stock Summary', data.stock.map((s) => ({ Item: s.name, Unit: s.unit, Inward: s.inQty, Outward: s.outQty, Closing: s.closingQty, Rate: s.rate, Value: s.value })));
-    else if (kind === 'pl') exportXlsx('Tally-Profit-and-Loss', 'P&L', data.ledgers.filter((l) => (l.nature === 'INCOME' || l.nature === 'EXPENSE') && l.balance !== 0).map((l) => ({ Section: l.nature === 'INCOME' ? 'Income' : 'Expense', Ledger: l.name, Amount: l.balance })));
+    else if (kind === 'pl') exportXlsx('Tally-Profit-and-Loss', 'P&L', [...data.pl.income.map((l) => ({ Section: 'Income', Ledger: l.name, Amount: l.amount })), ...data.pl.expense.map((l) => ({ Section: 'Expense', Ledger: l.name, Amount: l.amount }))]);
     else exportXlsx('Tally-Balance-Sheet', 'Balance Sheet', data.ledgers.filter((l) => (l.nature === 'ASSET' || l.nature === 'LIABILITY') && l.balance !== 0).map((l) => ({ Section: l.nature === 'ASSET' ? 'Asset' : 'Liability', Ledger: l.name, Amount: l.balance })));
     toast.success('Excel downloaded');
   };
@@ -135,6 +146,32 @@ export function TallyApp({ data }: { data: TallyData }) {
         <span className="font-semibold tracking-wide">AMEYA TALLY</span>
         <span className="text-xs">Ameya Heights LLP · {data.totals.ledgers} ledgers · {data.totals.vouchers} vouchers</span>
         <span className="text-xs">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+      </div>
+
+      {/* Period bar */}
+      <div className="flex flex-wrap items-center gap-2 border-b-2 border-[#0f2038] bg-[#c9d4e0] px-3 py-1.5 text-[11px]">
+        <span className="font-semibold text-[#5B4412]">Period:</span>
+        {(() => {
+          const now = new Date();
+          const mStart = new Date(now.getFullYear(), now.getMonth(), 1), mEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          const q = Math.floor(now.getMonth() / 3); const qStart = new Date(now.getFullYear(), q * 3, 1), qEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
+          const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; const fyStart = new Date(fyY, 3, 1), fyEnd = new Date(fyY + 1, 2, 31);
+          const presets: Array<[string, () => void]> = [
+            ['This Month', () => applyPeriod(mStart, mEnd, mStart.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }))],
+            ['This Quarter', () => applyPeriod(qStart, qEnd, `Q${q + 1} FY${String(fyY).slice(2)}`)],
+            ['This FY', () => applyPeriod(fyStart, fyEnd, `FY ${fyY}-${String(fyY + 1).slice(2)}`)],
+            ['All time', () => applyPeriod(null, null, 'All time')],
+          ];
+          return presets.map(([label, fn]) => (
+            <button key={label} onClick={fn} className={`rounded px-2 py-0.5 ${data.period.label === label ? 'bg-[#1B2A4A] text-white' : 'bg-white/70 hover:bg-white'}`}>{label}</button>
+          ));
+        })()}
+        <span className="mx-1 text-[#5B4412]">|</span>
+        <input type="date" value={cfrom} onChange={(e) => setCfrom(e.target.value)} className="border border-[#0f2038]/40 bg-white px-1.5 py-0.5" />
+        <span>to</span>
+        <input type="date" value={cto} onChange={(e) => setCto(e.target.value)} className="border border-[#0f2038]/40 bg-white px-1.5 py-0.5" />
+        <button onClick={() => { if (!cfrom && !cto) return; applyPeriod(cfrom ? new Date(cfrom) : null, cto ? new Date(cto + 'T23:59:59') : null, `${cfrom || '…'} to ${cto || '…'}`); }} className="rounded bg-[#1B2A4A] px-2 py-0.5 text-white">Apply</button>
+        <span className="ml-auto font-semibold text-[#1B2A4A]">Showing: {data.period.label}{pending ? ' …' : ''}</span>
       </div>
 
       <div className="flex">
@@ -218,8 +255,8 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 function Gateway({ onGo, onOutstanding, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; data: TallyData }) {
-  const income = sumNature(data, 'INCOME');
-  const expense = sumNature(data, 'EXPENSE');
+  const income = data.pl.totalIncome;
+  const expense = data.pl.totalExpense;
   return (
     <Panel title="Gateway of Ameya Tally">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -369,17 +406,15 @@ function TrialBalance({ data, onBack, onPdf, onExcel, onOpen }: { data: TallyDat
 }
 
 function ProfitLoss({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
-  const income = data.ledgers.filter((l) => l.nature === 'INCOME' && l.balance !== 0);
-  const expense = data.ledgers.filter((l) => l.nature === 'EXPENSE' && l.balance !== 0);
-  const ti = income.reduce((s, l) => s + l.balance, 0);
-  const te = expense.reduce((s, l) => s + l.balance, 0);
-  const profit = ti - te;
+  const { income, expense, totalIncome: ti, totalExpense: te, profit } = data.pl;
+  const inc = income.map((r) => ({ name: r.name, value: r.amount }));
+  const exp = expense.map((r) => ({ name: r.name, value: r.amount }));
   return (
-    <Panel title="Profit & Loss A/c">
+    <Panel title={`Profit & Loss A/c — ${data.period.label}`}>
       <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatementCol title="Expenses (Dr)" rows={expense} total={te} extraLabel={profit >= 0 ? 'Net Profit' : undefined} extra={profit >= 0 ? profit : undefined} />
-        <StatementCol title="Income (Cr)" rows={income} total={ti} extraLabel={profit < 0 ? 'Net Loss' : undefined} extra={profit < 0 ? -profit : undefined} />
+        <StatementCol title="Expenses (Dr)" rows={exp} total={te} extraLabel={profit >= 0 ? 'Net Profit' : undefined} extra={profit >= 0 ? profit : undefined} />
+        <StatementCol title="Income (Cr)" rows={inc} total={ti} extraLabel={profit < 0 ? 'Net Loss' : undefined} extra={profit < 0 ? -profit : undefined} />
       </div>
       <p className={`mt-3 text-center text-[13px] font-bold ${profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{profit >= 0 ? 'Net Profit' : 'Net Loss'}: ₹ {inr(Math.abs(profit))}</p>
     </Panel>
@@ -387,11 +422,11 @@ function ProfitLoss({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack:
 }
 
 function BalanceSheet({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
-  const assets = data.ledgers.filter((l) => l.nature === 'ASSET' && l.balance !== 0);
-  const liabilities = data.ledgers.filter((l) => l.nature === 'LIABILITY' && l.balance !== 0);
-  const profit = sumNature(data, 'INCOME') - sumNature(data, 'EXPENSE');
-  const ta = assets.reduce((s, l) => s + l.balance, 0);
-  const tl = liabilities.reduce((s, l) => s + l.balance, 0) + profit;
+  const assets = data.ledgers.filter((l) => l.nature === 'ASSET' && l.balance !== 0).map((l) => ({ name: l.name, value: l.balance }));
+  const liabilities = data.ledgers.filter((l) => l.nature === 'LIABILITY' && l.balance !== 0).map((l) => ({ name: l.name, value: l.balance }));
+  const profit = data.pl.profit;
+  const ta = assets.reduce((s, l) => s + l.value, 0);
+  const tl = liabilities.reduce((s, l) => s + l.value, 0) + profit;
   return (
     <Panel title="Balance Sheet">
       <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
@@ -406,11 +441,11 @@ function BalanceSheet({ data, onBack, onPdf, onExcel }: { data: TallyData; onBac
   );
 }
 
-function StatementCol({ title, rows, total, extraLabel, extra }: { title: string; rows: TallyData['ledgers']; total: number; extraLabel?: string; extra?: number }) {
+function StatementCol({ title, rows, total, extraLabel, extra }: { title: string; rows: Array<{ name: string; value: number }>; total: number; extraLabel?: string; extra?: number }) {
   return (
     <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2">
       <p className="mb-1 border-b border-[#0f2038]/30 pb-1 font-bold">{title}</p>
-      {rows.map((r) => <div key={r.id} className="flex justify-between py-0.5"><span>{r.name}</span><span className="tabular-nums">{inr(r.balance)}</span></div>)}
+      {rows.map((r, i) => <div key={i} className="flex justify-between py-0.5"><span>{r.name}</span><span className="tabular-nums">{inr(r.value)}</span></div>)}
       {extraLabel && extra != null && <div className="flex justify-between py-0.5 italic"><span>{extraLabel}</span><span className="tabular-nums">{inr(extra)}</span></div>}
       <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{inr(total)}</span></div>
     </div>
