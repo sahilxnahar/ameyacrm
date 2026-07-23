@@ -77,6 +77,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Pricing & Commissions', href: '/pricing', icon: BadgeIndianRupee, permission: 'pricing.view', blurb: 'Set unit prices and broker commissions.' },
       { label: 'Buyers & Portal', href: '/customers', icon: UserRound, permission: 'booking.view', blurb: 'Your buyers and the portal they log in to.' },
       { label: 'Buyer Variations', href: '/variations', icon: Receipt, permission: 'variations.view', blurb: 'Change requests — priced and agreed before the work.' },
+      { label: 'Home Loans', href: '/home-loans', icon: Landmark, permission: 'booking.view', blurb: 'Track buyer home loans — sanction, disbursement, NOC and the tripartite agreement.' },
     ],
   },
   {

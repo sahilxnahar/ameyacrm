@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.83';
+export const APP_VERSION = 'v14.84';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.84',
+    date: '23 Jul 2026',
+    highlights: [
+      'Home-loan tracking (Batch 3): a new “Home Loans” screen under Inventory & Bookings tracks each buyer’s loan — bank, amount, sanction, disbursement, and one-tap NOC and tripartite-agreement toggles, with a status pipeline and pending-NOC count.',
+      'Run MIGRATION_v14.84_all.sql in Neon before deploying this version (it adds the HomeLoan table).',
+    ],
+  },
   {
     version: 'v14.83',
     date: '23 Jul 2026',

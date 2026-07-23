@@ -1905,6 +1905,42 @@ model ConstructionUpdate {
   @@index([projectId])
 }
 
+enum HomeLoanStatus {
+  ENQUIRY
+  APPLIED
+  SANCTIONED
+  DISBURSED_PARTIAL
+  DISBURSED_FULL
+  REJECTED
+}
+
+/// Tracks a buyer's home-loan journey: bank, sanction, disbursement, the NOC the
+/// developer issues to the bank, and the tripartite agreement. One row per loan.
+model HomeLoan {
+  id               String         @id @default(cuid())
+  customerId       String?
+  bookingId        String?
+  buyerName        String
+  bankName         String
+  applicationRef   String?
+  loanAmount       Decimal        @default(0) @db.Decimal(14, 2)
+  sanctionedAmount Decimal?       @db.Decimal(14, 2)
+  disbursedAmount  Decimal        @default(0) @db.Decimal(14, 2)
+  status           HomeLoanStatus @default(ENQUIRY)
+  nocIssued        Boolean        @default(false)
+  tripartiteSigned Boolean        @default(false)
+  sanctionDate     DateTime?
+  notes            String?
+  projectId        String?
+  createdById      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([status])
+  @@index([customerId])
+  @@index([projectId])
+}
+
 model SnagTicket {
   id           String     @id @default(cuid())
   customerId   String
