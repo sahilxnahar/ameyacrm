@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.90';
+export const APP_VERSION = 'v14.91';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.91',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally phase 4 — Outstanding & ledger drill-down: a new “Outstanding” report (press O) shows party-wise receivables and payables aged FIFO into 0–30 / 31–60 / 61–90 / 90+ buckets, so you can see exactly who owes what and how overdue it is.',
+      'Click any ledger name (in Ledgers or the Trial Balance, or a party in Outstanding) to open its full statement — every debit and credit with a running balance and closing figure, like Tally’s ledger view.',
+      'Both export to Excel. No database change — deploy the zip as-is.',
+    ],
+  },
   {
     version: 'v14.90',
     date: '23 Jul 2026',

@@ -3,13 +3,13 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, type LedgerStmt, type Outstanding, type AgedParty } from '@/server/actions/tally';
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
-type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -49,6 +49,7 @@ export function TallyApp({ data }: { data: TallyData }) {
       const vk = (Object.entries(VOUCHER_KEY) as Array<[VoucherType, string]>).find(([, k]) => k === e.key);
       if (vk) { e.preventDefault(); openVoucher(vk[0]); return; }
       if (screen === 'gateway') {
+        if (e.key.toLowerCase() === 'o') { e.preventDefault(); openOutstanding(); return; }
         const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary' };
         const s = map[e.key.toLowerCase()];
         if (s) { e.preventDefault(); if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }
@@ -113,6 +114,20 @@ export function TallyApp({ data }: { data: TallyData }) {
     toast.success('Excel downloaded');
   };
 
+  const [stmt, setStmt] = React.useState<LedgerStmt | null>(null);
+  const [outstanding, setOutstanding] = React.useState<Outstanding | null>(null);
+  const openLedger = (id: string) => start(async () => {
+    const r = await tallyLedgerStatement(id);
+    if ('error' in r) { toast.error(r.error); return; }
+    setStmt(r); setScreen('ledgerStmt');
+  });
+  const openOutstanding = () => start(async () => {
+    const r = await tallyOutstanding();
+    if ('error' in r) { toast.error(r.error); return; }
+    setOutstanding(r); setScreen('outstanding');
+  });
+  const idByName = new Map(data.ledgers.map((l) => [l.name, l.id]));
+
   return (
     <div className="tally-wrap min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
       {/* Title bar */}
@@ -124,7 +139,7 @@ export function TallyApp({ data }: { data: TallyData }) {
 
       <div className="flex">
         <div className="min-h-[70vh] flex-1 p-4">
-          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }} data={data} />}
+          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }} onOutstanding={openOutstanding} data={data} />}
           {screen === 'voucher' && (
             <VoucherEntry
               type={vType} setType={setVType} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
@@ -143,11 +158,13 @@ export function TallyApp({ data }: { data: TallyData }) {
           {screen === 'stock' && <StockItems data={data} onBack={back} onCreate={() => setScreen('createStock')} onDelete={removeStock} pending={pending} />}
           {screen === 'createStock' && <CreateStock onDone={() => { router.refresh(); setScreen('stock'); }} onBack={() => setScreen('stock')} />}
           {screen === 'stockSummary' && <StockSummary data={data} onBack={back} onPdf={() => exportPdf('stock')} onExcel={() => exportExcel('stock')} />}
+          {screen === 'ledgerStmt' && <LedgerStatement stmt={stmt} onBack={back} onExcel={() => { if (stmt && 'ok' in stmt) exportXlsx(`Ledger-${stmt.name.replace(/[^a-z0-9]+/gi, '-')}`, 'Ledger', stmt.rows.map((r) => ({ Date: new Date(r.date).toLocaleDateString('en-IN'), Type: r.type, No: r.number, Particulars: r.particulars, Debit: r.debit || '', Credit: r.credit || '', Balance: `${inr(r.balance)} ${r.balanceSide}` }))); }} />}
+          {screen === 'outstanding' && <OutstandingView o={outstanding} onBack={back} onExcel={() => { if (outstanding && 'ok' in outstanding) { const rows = [...outstanding.receivables.map((r) => ({ Type: 'Receivable', Party: r.name, ...ageCols(r) })), ...outstanding.payables.map((r) => ({ Type: 'Payable', Party: r.name, ...ageCols(r) }))]; exportXlsx('Tally-Outstanding', 'Outstanding', rows); } }} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
           {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} pending={pending} />}
-          {screen === 'trial' && <TrialBalance data={data} onBack={back} onPdf={() => exportPdf('trial')} onExcel={() => exportExcel('trial')} />}
+          {screen === 'trial' && <TrialBalance data={data} onBack={back} onPdf={() => exportPdf('trial')} onExcel={() => exportExcel('trial')} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
           {screen === 'pl' && <ProfitLoss data={data} onBack={back} onPdf={() => exportPdf('pl')} onExcel={() => exportExcel('pl')} />}
           {screen === 'balsheet' && <BalanceSheet data={data} onBack={back} onPdf={() => exportPdf('bs')} onExcel={() => exportExcel('bs')} />}
-          {screen === 'ledgers' && <Ledgers data={data} onBack={back} onCreate={() => setScreen('createLedger')} onDelete={(id) => start(async () => { const r = await deleteTallyLedger(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Ledger deleted'); router.refresh(); })} pending={pending} />}
+          {screen === 'ledgers' && <Ledgers data={data} onBack={back} onCreate={() => setScreen('createLedger')} onOpen={openLedger} onDelete={(id) => start(async () => { const r = await deleteTallyLedger(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Ledger deleted'); router.refresh(); })} pending={pending} />}
           {screen === 'createLedger' && <CreateLedger onDone={() => { router.refresh(); setScreen('ledgers'); }} onBack={() => setScreen('ledgers')} />}
         </div>
 
@@ -164,6 +181,7 @@ export function TallyApp({ data }: { data: TallyData }) {
           <BarBtn label="Profit & Loss" k="P" onClick={() => setScreen('pl')} />
           <BarBtn label="Balance Sheet" k="B" onClick={() => setScreen('balsheet')} />
           <BarBtn label="Stock Summary" k="S" onClick={() => setScreen('stockSummary')} />
+          <BarBtn label="Outstanding" k="O" onClick={openOutstanding} />
           <div className="pt-2 text-[10px] font-semibold text-[#5B4412]">MASTERS</div>
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
           <BarBtn label="Stock Items" k="I" onClick={() => setScreen('stock')} />
@@ -199,7 +217,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Gateway({ onGo, data }: { onGo: (s: Screen) => void; data: TallyData }) {
+function Gateway({ onGo, onOutstanding, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; data: TallyData }) {
   const income = sumNature(data, 'INCOME');
   const expense = sumNature(data, 'EXPENSE');
   return (
@@ -217,6 +235,7 @@ function Gateway({ onGo, data }: { onGo: (s: Screen) => void; data: TallyData })
           <MenuItem label="Profit & Loss A/c" k="P" onClick={() => onGo('pl')} />
           <MenuItem label="Balance Sheet" k="B" onClick={() => onGo('balsheet')} />
           <MenuItem label="Stock Summary" k="S" onClick={() => onGo('stockSummary')} />
+          <MenuItem label="Outstanding (ageing)" k="O" onClick={onOutstanding} />
         </div>
         <div className="rounded border border-[#0f2038]/30 bg-white/50 p-3 text-[12px]">
           <p className="mb-2 font-semibold">At a glance</p>
@@ -331,7 +350,7 @@ function DayBook({ data, onBack, onDelete, pending }: { data: TallyData; onBack:
   );
 }
 
-function TrialBalance({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void }) {
+function TrialBalance({ data, onBack, onPdf, onExcel, onOpen }: { data: TallyData; onBack: () => void; onPdf: () => void; onExcel: () => void; onOpen: (name: string) => void }) {
   return (
     <Panel title="Trial Balance">
       <ReportBar onBack={onBack} onPdf={onPdf} onExcel={onExcel} />
@@ -339,7 +358,7 @@ function TrialBalance({ data, onBack, onPdf, onExcel }: { data: TallyData; onBac
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Ledger</th><th className="p-1">Group</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
         <tbody>
           {data.trial.rows.map((r) => (
-            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1">{r.name}</td><td className="p-1 text-[#5B4412]">{r.group}</td><td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td></tr>
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-[#5B4412]">{r.group}</td><td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td></tr>
           ))}
         </tbody>
         <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={2}>Total</td><td className="p-1 text-right tabular-nums">{inr(data.trial.totalDebit)}</td><td className="p-1 text-right tabular-nums">{inr(data.trial.totalCredit)}</td></tr></tfoot>
@@ -398,7 +417,7 @@ function StatementCol({ title, rows, total, extraLabel, extra }: { title: string
   );
 }
 
-function Ledgers({ data, onBack, onCreate, onDelete, pending }: { data: TallyData; onBack: () => void; onCreate: () => void; onDelete: (id: string) => void; pending: boolean }) {
+function Ledgers({ data, onBack, onCreate, onOpen, onDelete, pending }: { data: TallyData; onBack: () => void; onCreate: () => void; onOpen: (id: string) => void; onDelete: (id: string) => void; pending: boolean }) {
   return (
     <Panel title="Ledgers">
       <div className="mb-2 flex items-center gap-2"><BackBtn onBack={onBack} /><button onClick={onCreate} className="rounded bg-[#1B2A4A] px-3 py-1 text-[12px] font-semibold text-white">Create ledger (L)</button></div>
@@ -406,7 +425,7 @@ function Ledgers({ data, onBack, onCreate, onDelete, pending }: { data: TallyDat
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Name</th><th className="p-1">Group</th><th className="p-1 text-right">Balance</th><th /></tr></thead>
         <tbody>
           {data.ledgers.map((l) => (
-            <tr key={l.id} className="border-b border-[#0f2038]/20"><td className="p-1">{l.name}{l.isSystem && <span className="ml-1 text-[10px] text-[#8C6E2C]">(system)</span>}</td><td className="p-1 text-[#5B4412]">{l.group}</td><td className="p-1 text-right tabular-nums">{inr(l.balance)} {l.side}</td><td className="p-1">{!l.isSystem && <button onClick={() => onDelete(l.id)} disabled={pending} className="text-rose-700 hover:underline">del</button>}</td></tr>
+            <tr key={l.id} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(l.id)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{l.name}</button>{l.isSystem && <span className="ml-1 text-[10px] text-[#8C6E2C]">(system)</span>}</td><td className="p-1 text-[#5B4412]">{l.group}</td><td className="p-1 text-right tabular-nums">{inr(l.balance)} {l.side}</td><td className="p-1">{!l.isSystem && <button onClick={() => onDelete(l.id)} disabled={pending} className="text-rose-700 hover:underline">del</button>}</td></tr>
           ))}
         </tbody>
       </table>
@@ -569,6 +588,55 @@ function StockSummary({ data, onBack, onPdf, onExcel }: { data: TallyData; onBac
         </tbody>
         <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={6}>Total stock value</td><td className="p-1 text-right tabular-nums">{inr(totalValue)}</td></tr></tfoot>
       </table>
+    </Panel>
+  );
+}
+
+function ageCols(r: { total: number; b0: number; b30: number; b60: number; b90: number }) {
+  return { '0-30': r.b0, '31-60': r.b30, '61-90': r.b60, '90+': r.b90, Total: r.total };
+}
+
+function LedgerStatement({ stmt, onBack, onExcel }: { stmt: LedgerStmt | null; onBack: () => void; onExcel: () => void }) {
+  if (!stmt) return <Panel title="Ledger"><BackBtn onBack={onBack} /><p className="text-[#5B4412]">Loading…</p></Panel>;
+  if ('error' in stmt) return <Panel title="Ledger"><BackBtn onBack={onBack} /><p className="text-rose-700">{stmt.error}</p></Panel>;
+  return (
+    <Panel title={`Ledger — ${stmt.name}`}>
+      <div className="mb-2 flex items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Back</button><span className="text-[12px] text-[#5B4412]">{stmt.group}</span><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
+      <table className="w-full border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Date</th><th className="p-1">Voucher</th><th className="p-1">Particulars</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th><th className="p-1 text-right">Balance</th></tr></thead>
+        <tbody>
+          {stmt.rows.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-[#5B4412]">No entries.</td></tr> : stmt.rows.map((r, i) => (
+            <tr key={i} className="border-b border-[#0f2038]/20"><td className="whitespace-nowrap p-1">{new Date(r.date).toLocaleDateString('en-IN')}</td><td className="p-1">{r.type} #{r.number}</td><td className="p-1">{r.particulars}</td><td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td><td className="p-1 text-right tabular-nums">{inr(r.balance)} {r.balanceSide}</td></tr>
+          ))}
+        </tbody>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={5}>Closing balance</td><td className="p-1 text-right tabular-nums">{inr(stmt.closing)} {stmt.closingSide}</td></tr></tfoot>
+      </table>
+    </Panel>
+  );
+}
+
+function OutstandingView({ o, onBack, onExcel, onOpen }: { o: Outstanding | null; onBack: () => void; onExcel: () => void; onOpen: (name: string) => void }) {
+  if (!o) return <Panel title="Outstanding"><BackBtn onBack={onBack} /><p className="text-[#5B4412]">Loading…</p></Panel>;
+  if ('error' in o) return <Panel title="Outstanding"><BackBtn onBack={onBack} /><p className="text-rose-700">{o.error}</p></Panel>;
+  const Table = ({ title, rows, total }: { title: string; rows: AgedParty[]; total: number }) => (
+    <div className="mb-4">
+      <p className="mb-1 font-bold text-[#1B2A4A]">{title} — ₹ {inr(total)}</p>
+      <table className="w-full border-collapse text-[12px]">
+        <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Party</th><th className="p-1 text-right">0–30</th><th className="p-1 text-right">31–60</th><th className="p-1 text-right">61–90</th><th className="p-1 text-right">90+</th><th className="p-1 text-right">Total</th></tr></thead>
+        <tbody>
+          {rows.length === 0 ? <tr><td colSpan={6} className="p-3 text-center text-[#5B4412]">Nothing outstanding.</td></tr> : rows.map((r) => (
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-right tabular-nums">{r.b0 ? inr(r.b0) : ''}</td><td className="p-1 text-right tabular-nums">{r.b30 ? inr(r.b30) : ''}</td><td className="p-1 text-right tabular-nums">{r.b60 ? inr(r.b60) : ''}</td><td className={`p-1 text-right tabular-nums ${r.b90 ? 'font-semibold text-rose-700' : ''}`}>{r.b90 ? inr(r.b90) : ''}</td><td className="p-1 text-right font-semibold tabular-nums">{inr(r.total)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+  return (
+    <Panel title="Outstanding (bill-wise ageing)">
+      <div className="mb-2 flex items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
+      <Table title="Receivables (money owed to us)" rows={o.receivables} total={o.totalReceivable} />
+      <Table title="Payables (money we owe)" rows={o.payables} total={o.totalPayable} />
+      <p className="text-[11px] text-[#5B4412]">Ageing is FIFO — the oldest unpaid charges age into each bucket. Click a party to open its ledger.</p>
     </Panel>
   );
 }

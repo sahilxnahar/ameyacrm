@@ -249,6 +249,98 @@ export async function createTallyItemInvoice(input: unknown): Promise<TallyResul
   } catch (e) { return toActionError(e); }
 }
 
+// ── Ledger drill-down ───────────────────────────────────────────────────────
+export interface LedgerStmtLine { date: string; type: string; number: number; particulars: string; debit: number; credit: number; balance: number; balanceSide: 'Dr' | 'Cr' }
+export type LedgerStmt = { ok: true; name: string; group: string; rows: LedgerStmtLine[]; closing: number; closingSide: 'Dr' | 'Cr' } | { error: string };
+
+export async function tallyLedgerStatement(ledgerId: string): Promise<LedgerStmt> {
+  try {
+    await ensure('finance.ledger.view');
+    const ledger = await prisma.tallyLedger.findUnique({ where: { id: ledgerId } });
+    if (!ledger) return { error: 'Ledger not found.' };
+    const lines = await prisma.tallyVoucherLine.findMany({
+      where: { ledgerId },
+      include: { voucher: { select: { date: true, type: true, number: true, lines: { include: { ledger: { select: { name: true } } } } } } },
+      orderBy: [{ voucher: { date: 'asc' } }, { voucher: { number: 'asc' } }],
+      take: 2000,
+    });
+    let running = ledger.openingSide === 'Dr' ? Number(ledger.openingBalance) : -Number(ledger.openingBalance);
+    const rows: LedgerStmtLine[] = lines.map((ln) => {
+      const debit = Number(ln.debit), credit = Number(ln.credit);
+      running = Math.round((running + debit - credit) * 100) / 100;
+      const particulars = ln.voucher.lines.filter((x) => x.ledger.name !== ledger.name).map((x) => x.ledger.name).join(', ') || ledger.name;
+      return { date: ln.voucher.date.toISOString(), type: ln.voucher.type, number: ln.voucher.number, particulars, debit, credit, balance: Math.abs(running), balanceSide: running >= 0 ? 'Dr' : 'Cr' };
+    });
+    return { ok: true, name: ledger.name, group: ledger.group, rows, closing: Math.abs(running), closingSide: running >= 0 ? 'Dr' : 'Cr' };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
+// ── Outstanding / bill-wise with FIFO ageing ────────────────────────────────
+export interface AgedParty { name: string; total: number; b0: number; b30: number; b60: number; b90: number }
+export type Outstanding = { ok: true; receivables: AgedParty[]; payables: AgedParty[]; totalReceivable: number; totalPayable: number } | { error: string };
+
+function fifoAge(charges: Array<{ date: Date; amount: number }>, paymentsTotal: number, now: Date): { total: number; b0: number; b30: number; b60: number; b90: number } {
+  const sorted = [...charges].sort((a, b) => a.date.getTime() - b.date.getTime());
+  let pay = paymentsTotal;
+  const out = { total: 0, b0: 0, b30: 0, b60: 0, b90: 0 };
+  for (const c of sorted) {
+    let rem = c.amount;
+    if (pay > 0) { const used = Math.min(pay, rem); pay -= used; rem -= used; }
+    if (rem <= 0.009) continue;
+    out.total += rem;
+    const age = Math.floor((now.getTime() - c.date.getTime()) / 86400000);
+    if (age <= 30) out.b0 += rem; else if (age <= 60) out.b30 += rem; else if (age <= 90) out.b60 += rem; else out.b90 += rem;
+  }
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  return { total: r2(out.total), b0: r2(out.b0), b30: r2(out.b30), b60: r2(out.b60), b90: r2(out.b90) };
+}
+
+export async function tallyOutstanding(): Promise<Outstanding> {
+  try {
+    await ensure('finance.ledger.view');
+    const now = new Date();
+    const parties = await prisma.tallyLedger.findMany({ where: { group: { in: ['Sundry Debtors', 'Sundry Creditors'] } } });
+    if (parties.length === 0) return { ok: true, receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 };
+    const lines = await prisma.tallyVoucherLine.findMany({
+      where: { ledgerId: { in: parties.map((p) => p.id) } },
+      include: { voucher: { select: { date: true } } },
+      take: 20000,
+    });
+    const byLedger = new Map<string, typeof lines>();
+    for (const l of lines) { const a = byLedger.get(l.ledgerId) ?? []; a.push(l); byLedger.set(l.ledgerId, a); }
+
+    const receivables: AgedParty[] = [], payables: AgedParty[] = [];
+    for (const p of parties) {
+      const isDebtor = p.group === 'Sundry Debtors';
+      const mine = byLedger.get(p.id) ?? [];
+      const charges: Array<{ date: Date; amount: number }> = [];
+      let payments = 0;
+      for (const l of mine) {
+        const debit = Number(l.debit), credit = Number(l.credit);
+        const chargeAmt = isDebtor ? debit : credit;
+        const payAmt = isDebtor ? credit : debit;
+        if (chargeAmt > 0) charges.push({ date: l.voucher.date, amount: chargeAmt });
+        if (payAmt > 0) payments += payAmt;
+      }
+      const opening = Number(p.openingBalance);
+      if (opening > 0) {
+        const openIsCharge = (isDebtor && p.openingSide === 'Dr') || (!isDebtor && p.openingSide === 'Cr');
+        if (openIsCharge) charges.push({ date: new Date(0), amount: opening }); else payments += opening;
+      }
+      const aged = fifoAge(charges, payments, now);
+      if (aged.total <= 0.009) continue;
+      (isDebtor ? receivables : payables).push({ name: p.name, ...aged });
+    }
+    receivables.sort((a, b) => b.total - a.total);
+    payables.sort((a, b) => b.total - a.total);
+    return {
+      ok: true, receivables, payables,
+      totalReceivable: Math.round(receivables.reduce((s, r) => s + r.total, 0) * 100) / 100,
+      totalPayable: Math.round(payables.reduce((s, r) => s + r.total, 0) * 100) / 100,
+    };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
 export async function deleteTallyStockItem(id: string): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.view');
