@@ -399,6 +399,9 @@ model User {
    */
   navPrefs Json?
 
+  /** Personal Ameya Tally preferences: { companyName, defaultVoucher, defaultPeriod, os }. */
+  tallyPrefs Json?
+
   /**
    * The project this person is working on. Null means every project.
    */

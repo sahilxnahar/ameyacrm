@@ -103,6 +103,11 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.
+          Non-interactive and very low opacity so it reads as texture, not clutter. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden">
+        <img src="/brand/ameya-emblem.png" alt="" className="w-[min(72vw,680px)] max-w-none select-none opacity-[0.04] dark:opacity-[0.06]" />
+      </div>
       {/* Batch 12 (a11y): the first focusable element lets a keyboard or
           screen-reader user jump straight past the sidebar to the page content. */}
       <a
@@ -124,7 +129,7 @@ export function AppShell({
         onToggleRail={toggleRail}
         onClose={() => setMobileOpen(false)}
       />
-      <div className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
+      <div className={`relative z-10 flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <UpdateBanner />
         <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />

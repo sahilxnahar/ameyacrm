@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.0';
+export const APP_VERSION = 'v15.5';
 
 export interface Release {
   version: string;
@@ -13,6 +13,43 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.5',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally is now desktop-only — open it on a phone and you get a friendly note to switch to a computer, since it’s keyboard-driven. The rest of the CRM still works on mobile.',
+      'A built-in Keyboard shortcuts screen (press ?) lists every F-key and letter, with a Mac / Windows toggle that shows the right way to press them (e.g. fn + F5 on a Mac laptop).',
+      'Personal Tally settings — each user can set their own company name in the title bar, the default voucher type, the default period the app opens on, and their keyboard style. It’s per-user and never changes the books.',
+    ],
+  },
+  {
+    version: 'v15.4',
+    date: '23 Jul 2026',
+    highlights: [
+      'Drag-and-drop menu — press “Customise this menu” and now you can drag whole sections into the order you want (put Money or Finance right at the top), and drag individual items within a section, using the grip handle. Pin and hide still work, keyboard dragging is supported, and it’s saved per person. Reset puts everything back.',
+    ],
+  },
+  {
+    version: 'v15.3',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya emblem watermark — the real Ameya Heights emblem now sits as a faint, fixed brand mark behind every screen in the app. It’s very low opacity and non-interactive, so it reads as a subtle backdrop, not clutter, and adapts to light and dark themes.',
+    ],
+  },
+  {
+    version: 'v15.2',
+    date: '23 Jul 2026',
+    highlights: [
+      'Scan (QR / Barcode) under Build & Site — point your phone or laptop camera at a unit QR or material barcode to read it instantly. Matching unit codes and parking slots link straight to their screens; a scanned web link or CRM path opens in a tap. You can also type a code by hand if the camera isn’t available.',
+    ],
+  },
+  {
+    version: 'v15.1',
+    date: '23 Jul 2026',
+    highlights: [
+      'Scan a GRN (Procurement) — photograph or upload a delivery challan and the AI reads the vendor, material, PO reference and ordered/received/billed quantities straight into a goods-receipt, ready to check and save. No more typing challans by hand; the three-way match then works as before.',
+    ],
+  },
   {
     version: 'v15.0',
     date: '23 Jul 2026',

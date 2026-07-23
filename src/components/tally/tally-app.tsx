@@ -3,24 +3,36 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, saveTallyPrefs, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios } from '@/server/actions/tally';
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
+import { DEFAULT_TALLY_PREFS, type TallyPrefs } from '@/lib/tally/prefs';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
-type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 interface Line { ledgerId: string; debit: string; credit: string }
 
-export function TallyApp({ data: initialData }: { data: TallyData }) {
+export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { data: TallyData; prefs?: TallyPrefs }) {
   const router = useRouter();
   const [data, setData] = React.useState<TallyData>(initialData);
   React.useEffect(() => setData(initialData), [initialData]);
   const [screen, setScreen] = React.useState<Screen>('gateway');
   const [pending, start] = React.useTransition();
+
+  // Desktop-only: Ameya Tally is keyboard-driven and needs a real keyboard and
+  // screen width. On phones we show a friendly note instead of the cramped app.
+  const [tooSmall, setTooSmall] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setTooSmall(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const applyPeriod = (from: Date | null, to: Date | null, label: string) => start(async () => {
     const r = await tallyDataForPeriod(from ? from.toISOString() : null, to ? to.toISOString() : null, label);
@@ -28,8 +40,26 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
     setData(r.data);
   });
 
+  // Apply the user's preferred default period once on open.
+  const appliedDefault = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedDefault.current || prefs.defaultPeriod === 'all') return;
+    appliedDefault.current = true;
+    const now = new Date();
+    if (prefs.defaultPeriod === 'month') {
+      applyPeriod(new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0), now.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
+    } else if (prefs.defaultPeriod === 'quarter') {
+      const q = Math.floor(now.getMonth() / 3); const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+      applyPeriod(new Date(now.getFullYear(), q * 3, 1), new Date(now.getFullYear(), q * 3 + 3, 0), `Q${q + 1} FY${String(fyY).slice(2)}`);
+    } else if (prefs.defaultPeriod === 'fy') {
+      const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+      applyPeriod(new Date(fyY, 3, 1), new Date(fyY + 1, 2, 31), `FY ${fyY}-${String(fyY + 1).slice(2)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Voucher entry state
-  const [vType, setVType] = React.useState<VoucherType>('Payment');
+  const [vType, setVType] = React.useState<VoucherType>((prefs.defaultVoucher as VoucherType) ?? 'Payment');
   const [vDate, setVDate] = React.useState(todayISO());
   const [vNarr, setVNarr] = React.useState('');
   const [lines, setLines] = React.useState<Line[]>([{ ledgerId: '', debit: '', credit: '' }, { ledgerId: '', debit: '', credit: '' }]);
@@ -93,6 +123,7 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
         if (e.key.toLowerCase() === 'g') { e.preventDefault(); openGst(); return; }
         if (e.key.toLowerCase() === 'f') { e.preventDefault(); openFlows(); return; }
         if (e.key.toLowerCase() === 'a') { e.preventDefault(); openRatios(); return; }
+        if (e.key === '?') { e.preventDefault(); setScreen('shortcuts'); return; }
         const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary', c: 'costCentres' };
         const s = map[e.key.toLowerCase()];
         if (s) { e.preventDefault(); if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }
@@ -211,12 +242,23 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
   });
   const idByName = new Map(data.ledgers.map((l) => [l.name, l.id]));
 
+  if (tooSmall) {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border-2 border-[#1B2A4A] bg-[#dfe6ee] p-6 text-center font-mono text-[#0f2038]">
+        <div className="mb-3 inline-block rounded bg-[#1B2A4A] px-3 py-1 text-sm font-semibold tracking-wide text-[#E9D9A8]">AMEYA TALLY</div>
+        <p className="mb-2 text-lg font-bold text-[#1B2A4A]">Please use a desktop for Tally</p>
+        <p className="text-sm text-[#5B4412]">Ameya Tally is a keyboard-driven accounting workspace — the function keys (F4–F9), the day book and the reports all need a proper keyboard and a wider screen. Open the CRM on a laptop or desktop to use it.</p>
+        <p className="mt-3 text-xs text-[#5B4412]">The rest of the CRM works fine here on your phone — it’s only Tally that asks for a computer.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="tally-wrap min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
       {/* Title bar */}
       <div className="flex items-center justify-between bg-[#1B2A4A] px-3 py-1.5 text-[#E9D9A8]">
         <span className="font-semibold tracking-wide">AMEYA TALLY</span>
-        <span className="text-xs">Ameya Heights LLP · {data.totals.ledgers} ledgers · {data.totals.vouchers} vouchers</span>
+        <span className="text-xs">{prefs.companyName} · {data.totals.ledgers} ledgers · {data.totals.vouchers} vouchers</span>
         <span className="text-xs">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
       </div>
 
@@ -284,6 +326,8 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
           {screen === 'gst' && <GstReturnsView gst={gst} label={data.period.label} onBack={back} onExcel={() => { if (gst && 'ok' in gst) { const rows = [...gst.gstr1.map((r) => ({ Return: 'GSTR-1 (outward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax })), ...gst.itc.map((r) => ({ Return: 'ITC (inward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax }))]; exportXlsx('Tally-GST-Returns', 'GST', rows); } }} />}
           {screen === 'flows' && <FlowsView flows={flows} label={data.period.label} onBack={back} onExcel={() => { if (flows && 'ok' in flows) { const rows = [...flows.cash.inflows.map((r) => ({ Statement: 'Cash inflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.cash.outflows.map((r) => ({ Statement: 'Cash outflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.sources.map((r) => ({ Statement: 'Funds source', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.applications.map((r) => ({ Statement: 'Funds application', Particulars: r.name, Group: r.group, Amount: r.amount }))]; exportXlsx('Tally-Cash-Funds-Flow', 'Flows', rows); } }} />}
           {screen === 'ratios' && <RatioAnalysis ratios={ratios} onBack={back} onExcel={() => { if (ratios && 'ok' in ratios) exportXlsx('Tally-Ratio-Analysis', 'Ratios', ratios.rows.map((r) => ({ Ratio: r.name, Value: r.value, Basis: r.hint }))); }} />}
+          {screen === 'shortcuts' && <ShortcutsScreen os={prefs.os} onBack={back} />}
+          {screen === 'settings' && <TallySettings prefs={prefs} onBack={back} onSaved={() => { router.refresh(); back(); }} />}
         </div>
 
         {/* Right button bar — Tally-style function keys */}
@@ -309,6 +353,9 @@ export function TallyApp({ data: initialData }: { data: TallyData }) {
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
           <BarBtn label="Stock Items" k="I" onClick={() => setScreen('stock')} />
           <BarBtn label="Cost Centres" k="C" onClick={() => setScreen('costCentres')} />
+          <div className="pt-2 text-[10px] font-semibold text-[#5B4412]">HELP</div>
+          <BarBtn label="Shortcuts" k="?" onClick={() => setScreen('shortcuts')} />
+          <BarBtn label="Settings" k="•" onClick={() => setScreen('settings')} />
         </aside>
       </div>
 
@@ -367,6 +414,9 @@ function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, 
           <MenuItem label="Ratio Analysis" k="A" onClick={onRatios} />
           <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Cost Centres</p>
           <MenuItem label="Cost Centres" k="C" onClick={() => onGo('costCentres')} />
+          <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Help & setup</p>
+          <MenuItem label="Keyboard shortcuts" k="?" onClick={() => onGo('shortcuts')} />
+          <MenuItem label="Settings / customise" k="•" onClick={() => onGo('settings')} />
         </div>
         <div className="rounded border border-[#0f2038]/30 bg-white/50 p-3 text-[12px]">
           <p className="mb-2 font-semibold">At a glance</p>
@@ -942,6 +992,103 @@ function EditHeader({ date, setDate, narr, setNarr, costCentres, costCentre, set
           </label>
         )}
         <button onClick={onSave} disabled={pending} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Accept &amp; Save</button>
+      </div>
+    </Panel>
+  );
+}
+
+const SHORTCUT_GROUPS: Array<{ title: string; rows: Array<{ keys: string; label: string }> }> = [
+  { title: 'Voucher entry (from anywhere)', rows: [
+    { keys: 'F4', label: 'Contra' }, { keys: 'F5', label: 'Payment' }, { keys: 'F6', label: 'Receipt' },
+    { keys: 'F7', label: 'Journal' }, { keys: 'F8', label: 'Sales invoice' }, { keys: 'F9', label: 'Purchase invoice' },
+  ] },
+  { title: 'Reports (from the Gateway)', rows: [
+    { keys: 'D', label: 'Day Book' }, { keys: 'T', label: 'Trial Balance' }, { keys: 'P', label: 'Profit & Loss' },
+    { keys: 'B', label: 'Balance Sheet' }, { keys: 'S', label: 'Stock Summary' }, { keys: 'O', label: 'Outstanding (ageing)' },
+    { keys: 'G', label: 'GST Returns' }, { keys: 'F', label: 'Cash / Funds Flow' }, { keys: 'A', label: 'Ratio Analysis' }, { keys: 'J', label: 'Job Costing' },
+  ] },
+  { title: 'Masters & tools', rows: [
+    { keys: 'V', label: 'Accounting voucher' }, { keys: 'L', label: 'Ledgers' }, { keys: 'I', label: 'Stock Items' },
+    { keys: 'C', label: 'Cost Centres' }, { keys: 'R', label: 'Bank Reconciliation' }, { keys: '?', label: 'This shortcuts screen' },
+  ] },
+  { title: 'Everywhere', rows: [
+    { keys: 'Esc', label: 'Go back / cancel' },
+  ] },
+];
+
+function ShortcutsScreen({ os, onBack }: { os: 'auto' | 'mac' | 'windows'; onBack: () => void }) {
+  const [view, setView] = React.useState<'mac' | 'windows'>(os === 'mac' ? 'mac' : 'windows');
+  React.useEffect(() => {
+    if (os === 'auto' && typeof navigator !== 'undefined') {
+      const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+      setView(isMac ? 'mac' : 'windows');
+    }
+  }, [os]);
+  const press = (keys: string) => (view === 'mac' && /^F\d/.test(keys) ? `fn + ${keys}` : keys);
+  return (
+    <Panel title="Keyboard shortcuts">
+      <div className="mb-3 flex items-center gap-2">
+        <BackBtn onBack={onBack} />
+        <div className="ml-auto flex overflow-hidden rounded border border-[#0f2038]/40 text-[11px]">
+          {(['windows', 'mac'] as const).map((o) => (
+            <button key={o} onClick={() => setView(o)} className={`px-3 py-1 ${view === o ? 'bg-[#1B2A4A] text-white' : 'bg-white/70'}`}>{o === 'mac' ? 'Mac' : 'Windows'}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {SHORTCUT_GROUPS.map((g) => (
+          <div key={g.title} className="rounded border border-[#0f2038]/30 bg-white/50 p-2">
+            <p className="mb-1 border-b border-[#0f2038]/30 pb-1 font-bold text-[#1B2A4A]">{g.title}</p>
+            {g.rows.map((r) => (
+              <div key={r.keys} className="flex items-center justify-between py-0.5">
+                <span>{r.label}</span>
+                <kbd className="rounded border border-[#0f2038]/40 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#8C6E2C]">{press(r.keys)}</kbd>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] text-[#5B4412]">
+        {view === 'mac'
+          ? 'On a Mac laptop the top row are “media” keys by default, so the function keys need fn (e.g. fn + F5). Turn on System Settings → Keyboard → “Use F1, F2 … as standard function keys” to press them directly. Esc is just Esc.'
+          : 'On Windows the function keys F4–F9 work directly. Esc goes back or cancels the current voucher.'}
+      </p>
+    </Panel>
+  );
+}
+
+function TallySettings({ prefs, onBack, onSaved }: { prefs: TallyPrefs; onBack: () => void; onSaved: () => void }) {
+  const [pending, start] = React.useTransition();
+  const [companyName, setCompanyName] = React.useState(prefs.companyName);
+  const [defaultVoucher, setDefaultVoucher] = React.useState(prefs.defaultVoucher);
+  const [defaultPeriod, setDefaultPeriod] = React.useState(prefs.defaultPeriod);
+  const [os, setOs] = React.useState(prefs.os);
+  const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
+  const save = () => start(async () => {
+    const r = await saveTallyPrefs({ companyName, defaultVoucher, defaultPeriod, os });
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success('Your Tally settings are saved'); onSaved();
+  });
+  return (
+    <Panel title="Tally Settings — just for you">
+      <BackBtn onBack={onBack} />
+      <p className="mb-3 max-w-2xl text-[12px] text-[#5B4412]">These preferences are personal — each user can set their own. They don’t change anyone else’s Tally or the underlying books.</p>
+      <div className="max-w-md space-y-2">
+        <label className="flex items-center justify-between gap-2">Company name (title bar)<input value={companyName} onChange={(e) => setCompanyName(e.target.value)} maxLength={80} className={`${cls} flex-1`} /></label>
+        <label className="flex items-center justify-between gap-2">Default voucher (F-key start)
+          <select value={defaultVoucher} onChange={(e) => setDefaultVoucher(e.target.value)} className={cls}>{VOUCHER_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
+        </label>
+        <label className="flex items-center justify-between gap-2">Default period on open
+          <select value={defaultPeriod} onChange={(e) => setDefaultPeriod(e.target.value as TallyPrefs['defaultPeriod'])} className={cls}>
+            <option value="all">All time</option><option value="month">This month</option><option value="quarter">This quarter</option><option value="fy">This financial year</option>
+          </select>
+        </label>
+        <label className="flex items-center justify-between gap-2">Keyboard style (for shortcuts)
+          <select value={os} onChange={(e) => setOs(e.target.value as TallyPrefs['os'])} className={cls}>
+            <option value="auto">Auto-detect</option><option value="windows">Windows</option><option value="mac">Mac</option>
+          </select>
+        </label>
+        <button onClick={save} disabled={pending} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Save my settings</button>
       </div>
     </Panel>
   );

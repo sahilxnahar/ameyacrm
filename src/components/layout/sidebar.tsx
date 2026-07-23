@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { NAVIGATION } from '@/config/navigation';
+import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check, ChevronRight, PanelLeftClose, PanelLeftOpen, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { NAVIGATION, type NavItem } from '@/config/navigation';
 import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
-import { applyOrder, type NavPrefs } from '@/lib/nav/prefs';
+import { applyOrder, applyGroupOrder, type NavPrefs } from '@/lib/nav/prefs';
 import { RecentNav } from './recent-nav';
 import { BrandLogo } from './brand-logo';
 import { useT } from '@/components/i18n/language-provider';
@@ -88,6 +91,23 @@ export function Sidebar({
   const toggleHide = (href: string) =>
     setPrefs({ ...prefs, hidden: prefs.hidden.includes(href) ? prefs.hidden.filter((h) => h !== href) : [...prefs.hidden, href] });
 
+  // Drag-and-drop reordering (customise mode). Groups reorder as whole sections;
+  // items reorder within their own section.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const onGroupDragEnd = (e: DragEndEvent, labels: string[]) => {
+    const { active, over } = e; if (!over || active.id === over.id) return;
+    setPrefs({ ...prefs, groups: arrayMove(labels, labels.indexOf(String(active.id)), labels.indexOf(String(over.id))) });
+  };
+  const onItemDragEnd = (e: DragEndEvent, groupHrefs: string[]) => {
+    const { active, over } = e; if (!over || active.id === over.id) return;
+    const within = arrayMove(groupHrefs, groupHrefs.indexOf(String(active.id)), groupHrefs.indexOf(String(over.id)));
+    const others = prefs.order.filter((h) => !groupHrefs.includes(h));
+    setPrefs({ ...prefs, order: [...others, ...within] });
+  };
+
   const save = () =>
     start(async () => {
       const r = await saveNavPrefs(prefs);
@@ -100,7 +120,7 @@ export function Sidebar({
   const reset = () =>
     start(async () => {
       await resetNavPrefs();
-      setPrefs({ pinned: [], order: [], hidden: [], collapsed: [] });
+      setPrefs({ pinned: [], order: [], hidden: [], collapsed: [], groups: [] });
       setCollapsedGroups([]);
       toast.success('Back to the standard menu');
       router.refresh();
@@ -224,27 +244,47 @@ export function Sidebar({
             </div>
           )}
 
-          {NAVIGATION.map((group) => {
-            const raw = group.items.filter((i) => canSee(i.permission));
-            if (raw.length === 0) return null;
-            // Order is applied while customising too. Showing the raw list
-            // during customisation made the move arrows look like dead buttons:
-            // they updated state, but nothing on screen moved.
-            const items = applyOrder(raw, prefs, { keepHidden: customising });
-            if (items.length === 0) return null;
-            const groupHrefs = applyOrder(raw, prefs, { keepHidden: customising }).map((i) => i.href);
-            // Groups fold shut only in normal use; while customising everything
-            // stays open so you can reorder and un-hide. On the icon rail, groups
-            // are always open (there is no header to fold), separated by a divider.
-            const isCollapsedGroup = !customising && !rail && collapsedGroups.includes(group.label);
-            // A fold the person explicitly asked for is always honoured — even if
-            // the current page lives inside it — otherwise the button reads as broken.
-            const showItems = rail || !isCollapsedGroup;
-            return (
-              <div key={group.label} className={cn(rail && 'lg:border-t lg:border-border/50 lg:pt-3 lg:first:border-t-0 lg:first:pt-0')}>
-                {customising ? (
-                  <p className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{t(group.label)}</p>
-                ) : (
+          {(() => {
+            const orderedGroups = applyGroupOrder(NAVIGATION, prefs).filter((g) => g.items.filter((i) => canSee(i.permission)).length > 0);
+
+            // Customise mode: drag whole sections to reorder them, and drag items
+            // within a section. A grip handle starts the drag; keyboard works too.
+            if (customising) {
+              const groupLabels = orderedGroups.map((g) => g.label);
+              return (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => onGroupDragEnd(e, groupLabels)}>
+                  <SortableContext items={groupLabels} strategy={verticalListSortingStrategy}>
+                    {orderedGroups.map((group) => {
+                      const items = applyOrder(group.items.filter((i) => canSee(i.permission)), prefs, { keepHidden: true });
+                      const groupHrefs = items.map((i) => i.href);
+                      return (
+                        <SortableGroup key={group.label} id={group.label} label={t(group.label)}>
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => onItemDragEnd(e, groupHrefs)}>
+                            <SortableContext items={groupHrefs} strategy={verticalListSortingStrategy}>
+                              <ul className="space-y-0.5">
+                                {items.map((item) => (
+                                  <SortableRow key={item.href} item={item} hidden={prefs.hidden.includes(item.href)} isPinned={prefs.pinned.includes(item.href)} onTogglePin={() => togglePin(item.href)} onToggleHide={() => toggleHide(item.href)} />
+                                ))}
+                              </ul>
+                            </SortableContext>
+                          </DndContext>
+                        </SortableGroup>
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
+              );
+            }
+
+            // Normal mode — sections in the person's saved order, foldable.
+            return orderedGroups.map((group) => {
+              const items = applyOrder(group.items.filter((i) => canSee(i.permission)), prefs, { keepHidden: false });
+              if (items.length === 0) return null;
+              const groupHrefs = items.map((i) => i.href);
+              const isCollapsedGroup = !rail && collapsedGroups.includes(group.label);
+              const showItems = rail || !isCollapsedGroup;
+              return (
+                <div key={group.label} className={cn(rail && 'lg:border-t lg:border-border/50 lg:pt-3 lg:first:border-t-0 lg:first:pt-0')}>
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.label)}
@@ -255,11 +295,11 @@ export function Sidebar({
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
                     {t(group.label)}
                   </button>
-                )}
-                {showItems && <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>}
-              </div>
-            );
-          })}
+                  {showItems && <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>}
+                </div>
+              );
+            });
+          })()}
         </nav>
 
         <div className={cn('border-t p-3', rail && 'lg:px-2')}>
@@ -280,10 +320,45 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
-          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v15.0</p>
+          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v15.5</p>
         </div>
       </aside>
     </>
+  );
+}
+
+function SortableGroup({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 20 : undefined };
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-md">
+      <div className="mb-1 flex items-center gap-1">
+        <button type="button" {...attributes} {...listeners} className="flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to move this whole section" aria-label={`Drag section ${label}`}>
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{label}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SortableRow({ item, hidden, isPinned, onTogglePin, onToggleHide }: { item: NavItem; hidden: boolean; isPinned: boolean; onTogglePin: () => void; onToggleHide: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.href });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : hidden ? 0.4 : 1, zIndex: isDragging ? 20 : undefined };
+  const Icon = item.icon;
+  return (
+    <li ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-1 rounded-md border border-transparent px-1 py-1 hover:border-border hover:bg-secondary/40">
+        <button type="button" {...attributes} {...listeners} className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to reorder" aria-label={`Drag ${item.label}`}>
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <Icon className="h-[18px] w-[18px] shrink-0 text-[#6B6459]" />
+        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{item.label}</span>
+        <CtrlButton onClick={onTogglePin} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>{isPinned ? <PinOff className="h-3.5 w-3.5 text-[#A07D34]" /> : <Pin className="h-3.5 w-3.5" />}</CtrlButton>
+        <CtrlButton onClick={onToggleHide} title={hidden ? 'Show this again' : 'Hide from my menu'}>{hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</CtrlButton>
+      </div>
+    </li>
   );
 }
 

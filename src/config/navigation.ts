@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -116,6 +116,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Construction, materials, drawings and safety.',
     items: [
       { label: 'Site & Attendance', href: '/field', icon: HardHat, blurb: 'Who is on site and what is happening there.' },
+      { label: 'Scan (QR / Barcode)', href: '/scan', icon: QrCode, permission: 'booking.view', blurb: 'Scan a unit QR or material barcode with the camera to look it up.' },
       { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create', blurb: 'Photograph progress straight from your phone.' },
       { label: 'Site Telemetry', href: '/telemetry', icon: Radio, permission: 'telemetry.view', blurb: 'Live readings from site sensors, trackers and meters.' },
       { label: 'Voice Note', href: '/voice-note', icon: Mic, permission: 'task.create', blurb: 'Speak a note; it becomes a task.' },

@@ -85,6 +85,30 @@ export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock', f
   } catch (e) { return toActionError(e); }
 }
 
+const tallyPrefsSchema = z.object({
+  companyName: z.string().max(80).optional(),
+  defaultVoucher: z.enum(VOUCHER_TYPES as unknown as [string, ...string[]]).optional(),
+  defaultPeriod: z.enum(['month', 'quarter', 'fy', 'all']).optional(),
+  os: z.enum(['auto', 'mac', 'windows']).optional(),
+});
+
+/** Save this user's personal Ameya Tally preferences (company name, defaults, OS for shortcuts). */
+export async function saveTallyPrefs(input: unknown): Promise<TallyResult> {
+  try {
+    const ctx = await ensure('finance.ledger.view');
+    const d = tallyPrefsSchema.parse(input);
+    const clean = {
+      companyName: (d.companyName ?? '').trim().slice(0, 80) || 'Ameya Heights LLP',
+      defaultVoucher: d.defaultVoucher ?? 'Payment',
+      defaultPeriod: d.defaultPeriod ?? 'all',
+      os: d.os ?? 'auto',
+    };
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { tallyPrefs: clean } });
+    revalidatePath('/tally');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
 const ledgerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(120),
   group: z.enum(GROUP_NAMES as [string, ...string[]]),

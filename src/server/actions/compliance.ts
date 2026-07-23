@@ -42,11 +42,73 @@ export async function createGoodsReceipt(v: Record<string, string>): Promise<Com
       projectId: optStr(v.projectId ?? ''), vendorName, materialName,
       poReference: optStr(v.poReference ?? ''), unit: optStr(v.unit ?? ''),
       orderedQty: Number(v.orderedQty || 0), receivedQty: Number(v.receivedQty || 0), billedQty: Number(v.billedQty || 0),
+      rate: v.rate ? Number(v.rate) : null, note: optStr(v.note ?? ''),
+      ...(v.receivedOn && v.receivedOn.trim() !== '' ? { receivedOn: new Date(v.receivedOn) } : {}),
       createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'GoodsReceipt', entityId: g.id, summary: `GRN ${materialName} from ${vendorName}` });
     revalidatePath('/procurement');
     return { ok: true, message: 'Goods receipt recorded.' };
+  } catch (e) { return toActionError(e); }
+}
+
+// ── GRN AI-OCR: read a goods-receipt note / delivery challan photo ───────────
+export interface GrnExtract {
+  vendorName: string | null; materialName: string | null; poReference: string | null; unit: string | null;
+  orderedQty: number | null; receivedQty: number | null; billedQty: number | null; rate: number | null;
+  receivedOn: string | null; note: string | null;
+}
+
+function pickNum(v: unknown): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : Number(String(v).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+function pickStr(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === '' || s.toLowerCase() === 'null' ? null : s;
+}
+
+/** Read a photographed / uploaded goods-receipt note and extract its fields with the AI reader. */
+export async function extractGrnFromImage(input: { dataBase64: string; mimeType: string; filename: string }): Promise<{ ok: true; data: GrnExtract } | { error: string }> {
+  try {
+    await guard('procurement.manage');
+    const { aiReadFile } = await import('@/lib/ai/provider');
+    const okType = /^image\//.test(input.mimeType) || input.mimeType === 'application/pdf';
+    if (!okType) return { error: 'Upload an image (JPG/PNG) or PDF of the goods-receipt note.' };
+    const buffer = Buffer.from(input.dataBase64, 'base64');
+    if (buffer.length === 0) return { error: 'The file appears to be empty.' };
+    if (buffer.length > 12 * 1024 * 1024) return { error: 'That file is over 12 MB — please use a smaller photo or PDF.' };
+
+    const prompt = [
+      'This is a goods-receipt note or delivery challan for construction materials.',
+      'Extract these fields and return ONLY a JSON object with exactly these keys:',
+      'vendorName, materialName, poReference, unit, orderedQty, receivedQty, billedQty, rate, receivedOn, note.',
+      'Quantities and rate are numbers (no commas or units). unit is the measure like bags/cft/nos/MT.',
+      'receivedOn is an ISO date (YYYY-MM-DD) if a date is visible, else null.',
+      'Use null for any field not present. Do not invent values.',
+    ].join(' ');
+
+    const res = await aiReadFile({ buffer, mimeType: input.mimeType, filename: input.filename }, prompt, { json: true, system: 'You are a careful data-entry assistant. Return only a valid JSON object.', maxTokens: 700 });
+    if (!res.ok) return { error: res.error };
+
+    let parsed: Record<string, unknown> = {};
+    try {
+      const cleaned = res.text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+      const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}');
+      parsed = JSON.parse(start >= 0 && end >= 0 ? cleaned.slice(start, end + 1) : cleaned);
+    } catch {
+      return { error: 'Could not read that document clearly. Try a sharper, well-lit photo — or enter the details by hand.' };
+    }
+
+    const data: GrnExtract = {
+      vendorName: pickStr(parsed.vendorName), materialName: pickStr(parsed.materialName),
+      poReference: pickStr(parsed.poReference), unit: pickStr(parsed.unit),
+      orderedQty: pickNum(parsed.orderedQty), receivedQty: pickNum(parsed.receivedQty), billedQty: pickNum(parsed.billedQty),
+      rate: pickNum(parsed.rate), receivedOn: pickStr(parsed.receivedOn), note: pickStr(parsed.note),
+    };
+    return { ok: true, data };
   } catch (e) { return toActionError(e); }
 }
 
