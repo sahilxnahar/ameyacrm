@@ -225,7 +225,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
   if (detail) {
     const d = detail;
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24 sm:pb-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
           <div className="flex items-center gap-1">
@@ -311,7 +311,51 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
                   <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Save payment</Button></div>
                 </form>
               )}
-              <div className="max-h-[26rem] overflow-auto">
+              {/* Mobile: each payment as a stacked card instead of a sideways-scrolling table. */}
+              <div className="divide-y sm:hidden">
+                {d.payments.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-muted-foreground">No payments yet.</p>
+                ) : d.payments.map((p) => (
+                  <div key={p.id} className="space-y-2 p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold tabular-nums">{formatCurrency(p.amount)}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(p.paidOn ?? p.date)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      <span className="capitalize">{p.mode.replace(/_/g, ' ').toLowerCase()}</span>
+                      {(p.utr ?? p.reference) && <span className="font-mono">· {p.utr ?? p.reference}</span>}
+                      <span>· {p.number}</span>
+                    </div>
+                    {p.narration && <p className="text-xs text-muted-foreground">{p.narration}</p>}
+                    {p.tdsAmount ? <p className="text-[11px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</p> : null}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {p.status === 'DRAFT' && (
+                        <><Badge variant="warning" className="gap-1 text-[10px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>{canManage && <button onClick={() => approve(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Approve</button>}</>
+                      )}
+                      {p.isAdvance && (
+                        <><Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[10px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>{canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}</>
+                      )}
+                      {p.retentionAmount ? (
+                        <><Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[10px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>{canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}</>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {canManage ? (
+                        <select value={p.category ?? ''} onChange={(e) => changeCategory(p.id, e.target.value)} disabled={pending} className="focus-ring rounded-md border border-input bg-background px-2 py-1 text-xs">
+                          <option value="">— uncategorised —</option>
+                          {EXPENSE_CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                        </select>
+                      ) : <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? ''}</span>}
+                      {p.proofUrl ? (
+                        <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline"><Paperclip className="h-3.5 w-3.5" /> View proof</a>
+                      ) : canManage ? (
+                        <button onClick={() => pickProof(p.id)} disabled={uploadingId === p.id} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60">{uploadingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Add proof</button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden max-h-[26rem] overflow-auto sm:block">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Voucher</th><th className="p-2">Date</th><th className="p-2 text-right">Amount</th><th className="p-2">Mode</th><th className="p-2">UTR / Ref</th><th className="p-2">Category</th><th className="p-2">Note</th><th className="p-2">Proof</th></tr></thead>
                   <tbody>
@@ -395,6 +439,14 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
             )}
           </div>
         </div>
+
+        {/* Mobile: a sticky action bar so the primary action is always in thumb reach. */}
+        {canManage && (
+          <div className="fixed inset-x-0 z-30 flex gap-2 border-t bg-background/95 p-3 backdrop-blur sm:hidden" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
+            <Button className="flex-1" onClick={() => { setShowAdd(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Plus className="h-4 w-4" /> Add a payment</Button>
+            <Button variant="outline" onClick={downloadPassbook}><Download className="h-4 w-4" /> Passbook</Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -472,7 +524,24 @@ export function LedgerView({ ledgers, activeId, detail, canManage, approvalLimit
             </div>
           )}
 
-          <div className="overflow-x-auto rounded-lg border">
+          {/* Mobile: payee cards instead of a wide table. */}
+          <div className="divide-y overflow-hidden rounded-lg border sm:hidden">
+            {shown.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => (tidy ? toggleSel(l.id) : router.push(`/ledgers?v=${l.id}`))}
+                className={cn('flex w-full items-center gap-3 p-3 text-left active:bg-secondary/60', tidy && selected.has(l.id) && 'bg-[#A07D34]/10')}
+              >
+                {tidy && <input type="checkbox" checked={selected.has(l.id)} readOnly className="pointer-events-none h-4 w-4 shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{l.name}</p>
+                  <p className="text-xs text-muted-foreground">{l.count} payment{l.count === 1 ? '' : 's'}{l.owed > 0 && <span className="text-amber-600"> · owed {formatCompactCurrency(l.owed)}</span>}{!l.hasBank && <span className="text-amber-600"> · no bank</span>}</p>
+                </div>
+                <span className="shrink-0 font-semibold tabular-nums">{formatCompactCurrency(l.totalPaid)}</span>
+              </button>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-lg border sm:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{tidy && <th className="w-8 p-2" />}<th className="p-2">Payee</th><th className="p-2 text-right">Total paid</th><th className="p-2 text-right">Still owed</th><th className="p-2 text-right">Payments</th><th className="p-2">Bank</th></tr></thead>
               <tbody>

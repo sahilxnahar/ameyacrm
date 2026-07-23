@@ -55,10 +55,24 @@ export function RecurringView({ rows, canManage }: { rows: Row[]; canManage: boo
     if ('error' in r) { toast.error(r.error); return; }
     router.refresh();
   });
-  const remove = (id: string) => start(async () => {
-    const r = await deleteRecurring(id);
+  const remove = (row: Row) => start(async () => {
+    const r = await deleteRecurring(row.id);
     if ('error' in r) { toast.error(r.error); return; }
-    toast.success('Deleted'); router.refresh();
+    router.refresh();
+    // Undo instead of a confirm dialog — reversible for a few seconds.
+    toast(`Deleted “${row.payeeName}”`, {
+      action: {
+        label: 'Undo',
+        onClick: () => start(async () => {
+          const back = await createRecurring({
+            payeeName: row.payeeName, amount: String(row.amount), frequency: row.frequency,
+            nextDue: row.nextDue.slice(0, 10), category: row.category ?? '', mode: row.mode ?? '', note: row.note ?? '',
+          });
+          if ('error' in back) { toast.error(back.error); return; }
+          toast.success('Restored'); router.refresh();
+        }),
+      },
+    });
   });
 
   const dueCount = rows.filter(isDue).length;
@@ -116,7 +130,7 @@ export function RecurringView({ rows, canManage }: { rows: Row[]; canManage: boo
                     <div className="flex items-center justify-end gap-1">
                       {r.isActive && <Button size="sm" variant="outline" onClick={() => record(r.id)} disabled={pending}><CheckCircle2 className="h-4 w-4" /> Record paid</Button>}
                       <Button size="sm" variant="ghost" onClick={() => toggle(r.id, !r.isActive)} disabled={pending} title={r.isActive ? 'Pause' : 'Resume'}>{r.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => remove(r.id)} disabled={pending} title="Delete"><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(r)} disabled={pending} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   )}
                 </td>

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.67';
+export const APP_VERSION = 'v14.69';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.69',
+    date: '23 Jul 2026',
+    highlights: [
+      'Undo instead of confirm: deleting a recurring payment now shows a “Deleted · Undo” message you can reverse in a tap, rather than a pop-up asking “are you sure?”.',
+      'Mobile: a payee’s ledger now has a sticky action bar at the bottom — “Add a payment” and “Passbook” are always in thumb reach without scrolling up.',
+    ],
+  },
+  {
+    version: 'v14.68',
+    date: '23 Jul 2026',
+    highlights: [
+      'Mobile: Vendor Ledgers now show payees and each payment as clean stacked cards instead of a table that scrolled sideways off the screen.',
+      'Mobile: a one-time hint helps you discover the “+” quick-action button.',
+    ],
+  },
   {
     version: 'v14.67',
     date: '23 Jul 2026',

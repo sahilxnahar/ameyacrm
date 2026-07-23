@@ -21,9 +21,21 @@ const ACTIONS: Action[] = [
  */
 export function MobileFab({ allowed, isSuperAdmin }: { allowed: Set<string>; isSuperAdmin: boolean }) {
   const [open, setOpen] = React.useState(false);
+  const [hint, setHint] = React.useState(false);
   const pathname = usePathname();
   const can = (p: string | null) => !p || isSuperAdmin || allowed.has('*') || allowed.has(p);
   const actions = ACTIONS.filter((a) => can(a.permission));
+
+  // First-run nudge, shown once, so people discover the button.
+  React.useEffect(() => {
+    try {
+      if (!localStorage.getItem('amh:fab-hint')) {
+        const t = setTimeout(() => setHint(true), 1200);
+        return () => clearTimeout(t);
+      }
+    } catch { /* ignore */ }
+  }, []);
+  const dismissHint = () => { setHint(false); try { localStorage.setItem('amh:fab-hint', '1'); } catch { /* ignore */ } };
 
   // Keep it out of the way of pages that have their own capture UI.
   const hiddenOn = ['/voice-note', '/site-photos', '/chat', '/assistant'];
@@ -31,8 +43,19 @@ export function MobileFab({ allowed, isSuperAdmin }: { allowed: Set<string>; isS
 
   return (
     <>
+      {hint && (
+        <div
+          className="fixed right-4 z-30 max-w-[220px] rounded-xl bg-foreground px-3 py-2 text-xs text-background shadow-lg lg:hidden"
+          style={{ bottom: 'calc(9rem + env(safe-area-inset-bottom))' }}
+          onClick={dismissHint}
+          role="button"
+        >
+          Tap <span className="font-semibold">+</span> to record a payment, add a lead or capture a photo.
+          <span className="absolute -bottom-1 right-6 h-3 w-3 rotate-45 bg-foreground" />
+        </div>
+      )}
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); dismissHint(); }}
         aria-label="Quick actions"
         className="focus-ring fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 lg:hidden"
         style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
