@@ -1906,6 +1906,54 @@ model ConstructionUpdate {
   @@index([projectId])
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  Ameya Tally — a self-contained, keyboard-driven accounting app inside the CRM.
+//  Deliberately kept in its own tables (Tally* prefix) so it is a separate set of
+//  books from the CRM's own ledger, exactly like running Tally alongside.
+// ════════════════════════════════════════════════════════════════════════════
+model TallyLedger {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  group          String   // Tally group name, e.g. "Sundry Debtors", "Cash-in-Hand"
+  openingBalance Decimal  @default(0) @db.Decimal(16, 2)
+  openingSide    String   @default("Dr") // Dr | Cr
+  isSystem       Boolean  @default(false) // Cash, Profit & Loss A/c — cannot be deleted
+  lines          TallyVoucherLine[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([group])
+}
+
+model TallyVoucher {
+  id          String             @id @default(cuid())
+  number      Int
+  type        String             // Payment | Receipt | Contra | Journal | Sales | Purchase
+  date        DateTime
+  narration   String?
+  reference   String?
+  lines       TallyVoucherLine[]
+  createdById String?
+  createdAt   DateTime           @default(now())
+
+  @@unique([type, number])
+  @@index([date])
+  @@index([type, date])
+}
+
+model TallyVoucherLine {
+  id        String       @id @default(cuid())
+  voucherId String
+  ledgerId  String
+  debit     Decimal      @default(0) @db.Decimal(16, 2)
+  credit    Decimal      @default(0) @db.Decimal(16, 2)
+  voucher   TallyVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  ledger    TallyLedger  @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
+
+  @@index([voucherId])
+  @@index([ledgerId])
+}
+
 enum HomeLoanStatus {
   ENQUIRY
   APPLIED

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v14.87';
+export const APP_VERSION = 'v14.88';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v14.88',
+    date: '23 Jul 2026',
+    highlights: [
+      'Ameya Tally (phase 1): a self-contained, keyboard-driven accounting app inside the CRM — its own books, separate from everything else. Gateway screen, ledger masters, and double-entry voucher entry with function keys (F4 Contra, F5 Payment, F6 Receipt, F7 Journal, F8 Sales, F9 Purchase).',
+      'Reports built in: Day Book, Trial Balance (with a live balanced/out-of-balance check), Profit & Loss, and Balance Sheet — all recomputed from your vouchers. Esc always returns to the Gateway.',
+      'Find it under Money → Ameya Tally. Run MIGRATION_v14.88_all.sql in Neon before deploying (adds the Tally tables). More phases to come: Sales/Purchase item invoicing, inventory, GST, cost centres and printing.',
+    ],
+  },
   {
     version: 'v14.87',
     date: '23 Jul 2026',

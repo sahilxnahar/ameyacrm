@@ -102,6 +102,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Secret Cash Book', href: '/secret-cash-book', icon: LockKeyhole, permission: 'finance.ledger.view', blurb: 'A private, OTP-locked cash book — only you and your nominees.' },
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
       { label: 'Ledger', href: '/ledger', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'The full accounting record.' },
+      { label: 'Ameya Tally', href: '/tally', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'A keyboard-driven Tally-style accounting app — vouchers (F4–F9), Day Book, Trial Balance, P&L and Balance Sheet.' },
       { label: 'Vendor Ledgers', href: '/ledgers', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'One ledger per payee — import payments, save bank details, merge duplicates.' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view', blurb: 'What you planned to spend, versus actual.' },
       { label: 'Cash Flow & Treasury', href: '/treasury', icon: Banknote, permission: 'treasury.view', blurb: 'Bank position, reconciliation and forecast.' },
