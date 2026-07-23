@@ -320,7 +320,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
-          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v15.5</p>
+          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v15.8</p>
         </div>
       </aside>
     </>

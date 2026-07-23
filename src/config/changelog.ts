@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.5';
+export const APP_VERSION = 'v15.8';
 
 export interface Release {
   version: string;
@@ -13,6 +13,28 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.8',
+    date: '23 Jul 2026',
+    highlights: [
+      'Marketing Library (Marketing → Marketing Library) — your key collaterals are now bundled into the CRM and always a click away: the Basaveshwar front and commercial renders, the interactive 3D building model, the Ameya-vs-national-developers comparison, the roadmap tracker, the latest website-audit PDF and the Ameya emblem. View or download each; the 3D model and PDF open in a new tab.',
+    ],
+  },
+  {
+    version: 'v15.7',
+    date: '23 Jul 2026',
+    highlights: [
+      'Schedule III statement in Ameya Tally (press 3) — the balance sheet recast into the Companies Act 2013 Schedule III (Division I) format your CA and bank expect: Equity & Liabilities (shareholders’ funds, non-current and current liabilities) against Assets (non-current and current), with the period’s profit taken to Reserves & surplus. Exports to Excel. This is the last of the offline “latest Tally” features.',
+    ],
+  },
+  {
+    version: 'v15.6',
+    date: '23 Jul 2026',
+    highlights: [
+      'Personalised tax invoices in Ameya Tally — open the Day Book and any Sales or Purchase entry now has an “invoice” button that prints a branded A4 tax invoice (navy & gold, Ameya emblem watermark) with the party, HSN/SAC per line, CGST/SGST breakup, invoice total and the amount in words, plus your company details and GSTIN.',
+      'HSN/SAC-wise summary added to GST Returns — the GST screen now includes the HSN-wise table of outward supplies (GSTR-1 Table 12): HSN, rate, quantity, taxable value and tax.',
+    ],
+  },
   {
     version: 'v15.5',
     date: '23 Jul 2026',

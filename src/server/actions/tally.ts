@@ -7,6 +7,7 @@ import { GROUP_NAMES, VOUCHER_TYPES, natureOfGroup } from '@/config/tally-groups
 import { getTallyData, type TallyData } from '@/server/services/tally-service';
 import { getCompanyDetails } from '@/server/services/company-service';
 import { buildTallyStatementPdf, type StmtRow } from '@/lib/pdf/tally-statement-pdf';
+import { buildTallyInvoicePdf } from '@/lib/pdf/tally-invoice-pdf';
 import { ensure, toActionError } from './_helpers';
 
 export type TallyResult = { ok: true; id?: string } | { error: string };
@@ -426,6 +427,7 @@ export async function tallyCostCentreReport(fromISO: string | null, toISO: strin
 
 // ── GST returns (offline summary) ───────────────────────────────────────────
 export interface GstRateRow { rate: number; taxable: number; cgst: number; sgst: number; totalTax: number }
+export interface GstHsnRow { hsn: string; rate: number; qty: number; taxable: number; tax: number }
 export interface GstReturns {
   ok: true;
   gstr1: GstRateRow[];
@@ -436,6 +438,7 @@ export interface GstReturns {
     netCgst: number; netSgst: number; netPayable: number;
   };
   itc: GstRateRow[];
+  hsn: GstHsnRow[];
 }
 
 /**
@@ -451,18 +454,29 @@ export async function tallyGstReturns(fromISO: string | null, toISO: string | nu
     const to = toISO ? new Date(toISO) : new Date('9999-12-31T00:00:00.000Z');
     const lines = await prisma.tallyInventoryLine.findMany({
       where: { voucher: { date: from ? { gte: from, lte: to } : { lte: to } } },
-      include: { item: { select: { gstRate: true } } },
+      include: { item: { select: { gstRate: true, hsn: true } } },
       take: 50000,
     });
     const r2 = (x: number) => Math.round(x * 100) / 100;
     const outMap = new Map<number, number>(); // rate -> taxable
     const inMap = new Map<number, number>();
+    // HSN-wise summary of outward supplies (GSTR-1 table 12).
+    const hsnMap = new Map<string, { rate: number; qty: number; taxable: number }>();
     for (const l of lines) {
       const rate = Number(l.item.gstRate);
       const amt = Number(l.amount);
       const m = l.direction === 'OUT' ? outMap : inMap;
       m.set(rate, (m.get(rate) ?? 0) + amt);
+      if (l.direction === 'OUT') {
+        const key = `${l.item.hsn || '—'}|${rate}`;
+        const e = hsnMap.get(key) ?? { rate, qty: 0, taxable: 0 };
+        e.qty += Number(l.qty); e.taxable += amt;
+        hsnMap.set(key, e);
+      }
     }
+    const hsn: GstHsnRow[] = [...hsnMap.entries()]
+      .map(([key, v]) => ({ hsn: key.split('|')[0]!, rate: v.rate, qty: r2(v.qty), taxable: r2(v.taxable), tax: r2((v.taxable * v.rate) / 100) }))
+      .sort((a, b) => b.taxable - a.taxable);
     const toRows = (m: Map<number, number>): GstRateRow[] => [...m.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([rate, taxable]) => {
@@ -484,6 +498,7 @@ export async function tallyGstReturns(fromISO: string | null, toISO: string | nu
         inwardTaxable: r2(i.taxable), inputCgst: r2(i.cgst), inputSgst: r2(i.sgst), inputTax: r2(i.totalTax),
         netCgst: r2(o.cgst - i.cgst), netSgst: r2(o.sgst - i.sgst), netPayable: r2(o.totalTax - i.totalTax),
       },
+      hsn,
     };
   } catch (e) { const r = toActionError(e); return r; }
 }
@@ -648,6 +663,77 @@ export async function tallyRatios(fromISO: string | null, toISO: string | null, 
   } catch (e) { const r = toActionError(e); return r; }
 }
 
+// ── Schedule III (Companies Act, Division I) statement ──────────────────────
+export interface SchHead { label: string; amount: number }
+export interface SchSection { title: string; heads: SchHead[]; total: number }
+export type ScheduleIII = { ok: true; equityLiabilities: SchSection[]; assets: SchSection[]; totalEL: number; totalAssets: number; balanced: boolean; asOf: string } | { error: string };
+
+// Map each Tally group to a Schedule III sub-head. [side, section, head].
+const SCHED_MAP: Record<string, [ 'EL' | 'A', string, string ]> = {
+  'Capital Account': ['EL', "Shareholders' funds", 'Share capital'],
+  'Reserves & Surplus': ['EL', "Shareholders' funds", 'Reserves & surplus'],
+  'Secured Loans': ['EL', 'Non-current liabilities', 'Long-term borrowings'],
+  'Unsecured Loans': ['EL', 'Non-current liabilities', 'Long-term borrowings'],
+  'Loans (Liability)': ['EL', 'Non-current liabilities', 'Long-term borrowings'],
+  'Provisions': ['EL', 'Current liabilities', 'Short-term provisions'],
+  'Sundry Creditors': ['EL', 'Current liabilities', 'Trade payables'],
+  'Duties & Taxes': ['EL', 'Current liabilities', 'Other current liabilities'],
+  'Current Liabilities': ['EL', 'Current liabilities', 'Other current liabilities'],
+  'Suspense A/c': ['EL', 'Current liabilities', 'Other current liabilities'],
+  'Bank OD A/c': ['EL', 'Current liabilities', 'Short-term borrowings'],
+  'Fixed Assets': ['A', 'Non-current assets', 'Fixed assets'],
+  'Investments': ['A', 'Non-current assets', 'Non-current investments'],
+  'Loans & Advances (Asset)': ['A', 'Non-current assets', 'Long-term loans & advances'],
+  'Deposits (Asset)': ['A', 'Non-current assets', 'Long-term loans & advances'],
+  'Stock-in-Hand': ['A', 'Current assets', 'Inventories'],
+  'Sundry Debtors': ['A', 'Current assets', 'Trade receivables'],
+  'Cash-in-Hand': ['A', 'Current assets', 'Cash & cash equivalents'],
+  'Bank Accounts': ['A', 'Current assets', 'Cash & cash equivalents'],
+  'Current Assets': ['A', 'Current assets', 'Other current assets'],
+};
+const EL_ORDER = ["Shareholders' funds", 'Non-current liabilities', 'Current liabilities'];
+const A_ORDER = ['Non-current assets', 'Current assets'];
+
+/** Balance sheet recast into the Companies Act Schedule III (Division I) format. */
+export async function tallyScheduleIII(fromISO: string | null, toISO: string | null, label?: string): Promise<ScheduleIII> {
+  try {
+    await ensure('finance.ledger.view');
+    const data = await getTallyData({ from: fromISO ? new Date(fromISO) : null, to: toISO ? new Date(toISO) : null, label });
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    // Aggregate ledger balances into heads, signed for their nature.
+    const heads = new Map<string, { side: 'EL' | 'A'; section: string; amount: number }>();
+    const add = (side: 'EL' | 'A', section: string, head: string, amt: number) => {
+      const key = `${side}|${section}|${head}`;
+      const e = heads.get(key) ?? { side, section, amount: 0 };
+      e.amount += amt; heads.set(key, e);
+    };
+    for (const l of data.ledgers) {
+      const m = SCHED_MAP[l.group];
+      if (!m) continue;
+      // Assets carry a Dr balance, liabilities a Cr balance — take the natural side.
+      const amt = l.nature === 'ASSET' ? (l.side === 'Dr' ? l.balance : -l.balance) : (l.side === 'Cr' ? l.balance : -l.balance);
+      add(m[0], m[1], m[2], amt);
+    }
+    // Current-period profit sits in Reserves & surplus.
+    add('EL', "Shareholders' funds", 'Reserves & surplus', data.pl.profit);
+
+    const build = (side: 'EL' | 'A', order: string[]): SchSection[] => order.map((section) => {
+      const hs = [...heads.entries()].filter(([, v]) => v.side === side && v.section === section)
+        .map(([k, v]) => ({ label: k.split('|')[2]!, amount: r2(v.amount) }))
+        .filter((h) => h.amount !== 0)
+        .sort((a, b) => b.amount - a.amount);
+      return { title: section, heads: hs, total: r2(hs.reduce((s, h) => s + h.amount, 0)) };
+    }).filter((s) => s.heads.length > 0);
+
+    const equityLiabilities = build('EL', EL_ORDER);
+    const assets = build('A', A_ORDER);
+    const totalEL = r2(equityLiabilities.reduce((s, x) => s + x.total, 0));
+    const totalAssets = r2(assets.reduce((s, x) => s + x.total, 0));
+    const asOf = data.period.label && data.period.label !== 'All time' ? data.period.label : `As at ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    return { ok: true, equityLiabilities, assets, totalEL, totalAssets, balanced: Math.round(totalEL * 100) === Math.round(totalAssets * 100), asOf };
+  } catch (e) { const r = toActionError(e); return r; }
+}
+
 export async function deleteTallyStockItem(id: string): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.view');
@@ -716,6 +802,42 @@ export async function tallySetCleared(lineId: string, dateISO: string | null): P
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucherLine', entityId: lineId, summary: dateISO ? `Bank recon: cleared ${dateISO.slice(0, 10)}` : 'Bank recon: un-cleared' });
     revalidatePath('/tally');
     return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+// ── Personalised tax invoice (PDF) ──────────────────────────────────────────
+/** Build a branded tax-invoice PDF for a Sales or Purchase item voucher. */
+export async function tallyInvoicePdf(voucherId: string): Promise<{ ok: true; filename: string; pdfBase64: string } | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const v = await prisma.tallyVoucher.findUnique({
+      where: { id: voucherId },
+      include: {
+        inventoryLines: { include: { item: { select: { name: true, hsn: true, unit: true, gstRate: true } } } },
+        lines: { include: { ledger: { select: { name: true, group: true } } } },
+      },
+    });
+    if (!v) return { error: 'Voucher not found.' };
+    if (v.type !== 'Sales' && v.type !== 'Purchase') return { error: 'Only Sales and Purchase invoices can be printed as an invoice.' };
+    if (v.inventoryLines.length === 0) return { error: 'This voucher has no stock/item lines to invoice.' };
+
+    const partyGroup = v.type === 'Sales' ? 'Sundry Debtors' : 'Sundry Creditors';
+    const partyName = v.lines.find((l) => l.ledger.group === partyGroup)?.ledger.name ?? '(party)';
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    const items = v.inventoryLines.map((il) => ({
+      name: il.item.name, hsn: il.item.hsn, qty: Number(il.qty), unit: il.item.unit,
+      rate: Number(il.rate), amount: Number(il.amount), gstRate: Number(il.item.gstRate),
+    }));
+    const taxable = r2(items.reduce((s, i) => s + i.amount, 0));
+    const gst = r2(items.reduce((s, i) => s + (i.amount * i.gstRate) / 100, 0));
+    const cgst = r2(gst / 2); const sgst = r2(gst - cgst); const total = r2(taxable + gst);
+
+    const company = await getCompanyDetails();
+    const bytes = await buildTallyInvoicePdf({
+      company: { name: company.legalName, registeredAddress: company.registeredAddress, phone: company.phone, email: company.email, website: company.website, gstin: company.gstin },
+      type: v.type, number: v.number, date: v.date, partyName, items, taxable, cgst, sgst, total, narration: v.narration,
+    });
+    return { ok: true, filename: `${v.type}-Invoice-${v.number}.pdf`, pdfBase64: Buffer.from(bytes).toString('base64') };
   } catch (e) { return toActionError(e); }
 }
 

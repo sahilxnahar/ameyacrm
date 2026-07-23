@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basaveshwar Commercial — 3D Concept Model</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a1626;font-family:'Segoe UI',system-ui,sans-serif;}
+  #c{display:block;width:100%;height:100%;}
+  #ui{position:absolute;top:16px;left:16px;color:#eee;background:rgba(20,16,34,.82);padding:14px 16px;border-radius:12px;max-width:290px;backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);}
+  #ui h1{font-size:15px;margin:0 0 4px;color:#f5d9a8;}
+  #ui p{font-size:11.5px;margin:4px 0;line-height:1.45;color:#cfc9dd;}
+  .legend{font-size:11px;margin-top:8px;}
+  .legend div{display:flex;align-items:center;gap:7px;margin:3px 0;}
+  .sw{width:13px;height:13px;border-radius:3px;flex:none;}
+  #views{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  #views button{background:rgba(30,24,50,.9);color:#f0e9da;border:1px solid rgba(255,255,255,.2);padding:9px 15px;border-radius:22px;font-size:12.5px;cursor:pointer;transition:.2s;}
+  #views button:hover{background:#8a6b3f;border-color:#d9b171;}
+  #hint{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);color:#9c93b5;font-size:11px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>Basaveshwar Commercial — Concept Massing</h1>
+  <p>Built to plan dimensions (SV Consultants, 13-04-2026). Corner plot, roads on East &amp; South.</p>
+  <div class="legend">
+    <div><span class="sw" style="background:#3d3a45"></span>Basement −3'6" · 8-car parking · entry ramp (East road)</div>
+    <div><span class="sw" style="background:#9fd8ef"></span>Ground +6'0" · 1,808 sft retail · full glass</div>
+    <div><span class="sw" style="background:#7ec3e8"></span>First · 2,135 sft commercial · full glass</div>
+    <div><span class="sw" style="background:#d8c9ae"></span>Second &amp; Third · 2 × 2BHK each · balconies</div>
+    <div><span class="sw" style="background:#8a7a5c"></span>Roof terrace + pergola</div>
+  </div>
+  <p style="margin-top:8px;">Drag = orbit · Wheel = zoom · Right-drag = pan</p>
+</div>
+<div id="hint">Concept massing model — for design intent, not construction</div>
+<div id="views">
+  <button data-v="hero">Hero Corner (dusk)</button>
+  <button data-v="south">South Elevation</button>
+  <button data-v="east">East Elevation (ramp)</button>
+  <button data-v="aerial">Aerial / Axo</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+// ---------- units: feet ----------
+const GW = 42.83, GD = 47.92;      // ground floor 42'10" x 47'11"
+const UW = 46.08, UD = 53.92;      // upper floors 46'1" x 53'11"
+const BW = 43.25, BD = 47.92;      // basement 43'3" x 47'11"
+const ROAD_LVL = 0, BASE_FLR = -3.5, GRND = 6.0;
+const F2F_C = 11.5, F2F_R = 10.0;  // floor-to-floor commercial / residential
+const L_G0 = GRND, L_G1 = GRND + F2F_C;            // ground, first (commercial)
+const L_R2 = L_G1 + F2F_C, L_R3 = L_R2 + F2F_R;    // second, third (residential)
+const L_RF = L_R3 + F2F_R, PARAPET = 3.5;          // roof
+const CANT = (UW - GW) / 2;
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2b2140);
+scene.fog = new THREE.Fog(0x2b2140, 320, 700);
+
+const camera = new THREE.PerspectiveCamera(42, 2, 1, 2000);
+
+// ---------- lights (dusk) ----------
+scene.add(new THREE.HemisphereLight(0x8d7bb5, 0x241d33, 0.75));
+const sun = new THREE.DirectionalLight(0xffb98a, 0.85);
+sun.position.set(-120, 90, 140);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+const d = 120; Object.assign(sun.shadow.camera,{left:-d,right:d,top:d,bottom:-d,far:500});
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x6f7bd9, 0.35);
+fill.position.set(100, 60, -80); scene.add(fill);
+
+// ---------- materials ----------
+const M = {
+  beige: new THREE.MeshStandardMaterial({color:0xd8c9ae, roughness:.85}),
+  beigeDark: new THREE.MeshStandardMaterial({color:0xb8a98c, roughness:.9}),
+  glassLit: new THREE.MeshPhysicalMaterial({color:0x9fd8ef, roughness:.08, metalness:.1, transparent:true, opacity:.42, emissive:0xffc477, emissiveIntensity:.28}),
+  glassRes: new THREE.MeshPhysicalMaterial({color:0x8fb8d8, roughness:.12, transparent:true, opacity:.5, emissive:0xffb057, emissiveIntensity:.15}),
+  mullion: new THREE.MeshStandardMaterial({color:0x23262b, roughness:.5, metalness:.6}),
+  interior: new THREE.MeshStandardMaterial({color:0xffe9c4, emissive:0xffc267, emissiveIntensity:.9, roughness:1}),
+  cove: new THREE.MeshStandardMaterial({color:0xffdca0, emissive:0xffb545, emissiveIntensity:1.6}),
+  road: new THREE.MeshStandardMaterial({color:0x35323c, roughness:.95}),
+  path: new THREE.MeshStandardMaterial({color:0x8f8578, roughness:.9}),
+  grass: new THREE.MeshStandardMaterial({color:0x3f5a3a, roughness:1}),
+  dark: new THREE.MeshStandardMaterial({color:0x3d3a45, roughness:.9}),
+  bronze: new THREE.MeshStandardMaterial({color:0x8a6b3f, roughness:.4, metalness:.7}),
+  railing: new THREE.MeshPhysicalMaterial({color:0xbcd8e8, transparent:true, opacity:.3, roughness:.1}),
+  white: new THREE.MeshStandardMaterial({color:0xefe9dc, roughness:.85}),
+  green: new THREE.MeshStandardMaterial({color:0x4a7040, roughness:1})
+};
+function box(w,h,dep,mat,x,y,z,parent){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,dep), mat);
+  m.position.set(x,y,z); m.castShadow = m.receiveShadow = true;
+  (parent||scene).add(m); return m;
+}
+
+// ---------- site ----------
+// Building centred at origin. East road: +X. South road: +Z.
+box(600,1,600,M.grass,0,-0.6,0);
+box(34,1.1,600,M.road, UW/2+12+17, -0.05, 0);           // east road
+box(600,1.1,34,M.road, 0, -0.05, UD/2+12+17);           // south road
+box(600,1.15,3,M.white, 0, -0.02, UD/2+12+.5);          // kerbs
+box(3,1.15,600,M.white, UW/2+12+.5, -0.02, 0);
+box(24,1.12,600,M.path, UW/2+6, 0, 0);                  // footpaths
+box(600,1.12,24,M.path, 0, 0, UD/2+6);
+// compound wall (planter wall) along both roads
+box(UW+22,3.4,1.2,M.white, -6, 1.7, UD/2+11);
+box(1.2,3.4,UD+22,M.white, -UW/2-11, 1.7, -6);
+// hedges
+for(let i=-4;i<5;i++){ box(6,2.6,2.2,M.green, i*9-6, 2.6, UD/2+9.4); }
+for(let i=-4;i<5;i++){ box(2.2,2.6,6,M.green, -UW/2-9.4, 2.6, i*9-6); }
+
+// ---------- basement / plinth ----------
+box(BW, GRND-ROAD_LVL+1, BD, M.dark, 0, (GRND+1)/2-0.5, 0);
+// ramp cut + gate on EAST side going down to basement
+const rampW = 12;
+box(rampW, 0.8, 26, M.road, BW/2+7, 1.2, BD/2-16);
+const gate = box(rampW, 8.5, 0.8, M.bronze, BW/2+0.4, 4.2, BD/2-16);
+for(let i=0;i<6;i++){ box(0.4,8.5,0.4,M.mullion, BW/2+0.8, 4.2, BD/2-16-5+i*2, ); }
+// basement signage wall
+box(1.2, 9, 14, M.beigeDark, BW/2+0.6, 4.5, -BD/2+12);
+
+// ---------- entry stair from SOUTH road up to +6'0" ----------
+const stair = new THREE.Group(); scene.add(stair);
+for(let i=0;i<9;i++){ box(14, .75, 2.2, M.white, -GW/2+14, .38+i*.72, GD/2+9-i*1.05, stair); }
+// planters flanking the stair
+box(4,4,10,M.white, -GW/2+5, 2, GD/2+6); box(3.2,2.5,8.6,M.green, -GW/2+5, 5.2, GD/2+6);
+box(4,4,10,M.white, -GW/2+23, 2, GD/2+6); box(3.2,2.5,8.6,M.green, -GW/2+23, 5.2, GD/2+6);
+
+// ---------- commercial glass floors (ground + first) ----------
+function glassFloor(y0, y1, w, dep){
+  const h = y1-y0-1.2;
+  const g = new THREE.Group(); scene.add(g);
+  // interior lit volume
+  box(w-2, h-.5, dep-2, M.interior, 0, y0+h/2+.4, 0, g);
+  // glass skins: SOUTH & EAST full glass; N & W solid beige
+  box(w, h, .5, M.glassLit, 0, y0+h/2+.4, dep/2-.25, g);       // south
+  box(.5, h, dep, M.glassLit, w/2-.25, y0+h/2+.4, 0, g);       // east
+  box(w, h, 1, M.beige, 0, y0+h/2+.4, -dep/2+.5, g);           // north
+  box(1, h, dep, M.beige, -w/2+.5, y0+h/2+.4, 0, g);           // west
+  // ultra-thin mullions (5 ft module) — none at the corner
+  const nx = Math.floor(w/5);
+  for(let i=1;i<nx;i++){ box(.35,h,.7,M.mullion, -w/2+i*(w/nx), y0+h/2+.4, dep/2-.2, g); }
+  const nz = Math.floor(dep/5);
+  for(let i=1;i<nz;i++){ box(.7,h,.35,M.mullion, w/2-.2, y0+h/2+.4, -dep/2+i*(dep/nz), g); }
+  // slab + warm cove band
+  box(w+1.6, 1.2, dep+1.6, M.beige, 0, y1-.6, 0, g);
+  box(w+1.7, .35, .6, M.cove, 0, y1-1.35, dep/2+.55, g);
+  box(.6, .35, dep+1.7, M.cove, w/2+.55, y1-1.35, 0, g);
+  return g;
+}
+glassFloor(L_G0, L_G1, GW, GD);
+const f1 = glassFloor(L_G1, L_R2, UW, UD);   // first floor cantilevers to upper footprint
+// glass balustrade at first-floor edge
+box(UW, 3.2, .35, M.railing, 0, L_G1+1.6, UD/2+.8);
+box(.35, 3.2, UD, M.railing, UW/2+.8, L_G1+1.6, 0);
+
+// ---------- residential floors (second + third) ----------
+function resFloor(y0, y1){
+  const h = y1-y0-1;
+  const g = new THREE.Group(); scene.add(g);
+  box(UW, h, UD-7, M.beige, 0, y0+h/2+.3, -3.5, g);            // main body (recessed 7' balcony zone on south)
+  // window bands east + south body
+  for(let i=0;i<4;i++){
+    box(6.5, h*.55, .6, M.glassRes, -UW/2+7+i*10.5, y0+h/2+.3, UD/2-7+.1, g);
+  }
+  for(let i=0;i<4;i++){
+    box(.6, h*.55, 7, M.glassRes, UW/2-.1, y0+h/2+.3, -UD/2+9+i*11, g);
+  }
+  // balcony slab + glass rail (31'8" long strip on south)
+  box(31.67, .9, 7, M.beige, -UW/2+31.67/2+3, y0+.45, UD/2-3.5, g);
+  box(31.67, 3.4, .3, M.railing, -UW/2+31.67/2+3, y0+2.1, UD/2-.3, g);
+  // bronze screen accent beside balcony
+  for(let i=0;i<7;i++){ box(.7, h, .7, M.bronze, UW/2-9+i*1.15, y0+h/2+.3, UD/2-.6, g); }
+  // party wall hint (two 2BHK per floor)
+  box(.8, h, UD-8, M.beigeDark, 0, y0+h/2+.3, -4, g);
+  box(UW+1.2, 1, UD+1.2, M.beige, 0, y1-.5, 0, g);             // slab
+  return g;
+}
+resFloor(L_R2, L_R3);
+resFloor(L_R3, L_RF);
+
+// ---------- roof ----------
+box(UW, PARAPET, 1, M.beige, 0, L_RF+PARAPET/2, UD/2-.5);
+box(UW, PARAPET, 1, M.beige, 0, L_RF+PARAPET/2, -UD/2+.5);
+box(1, PARAPET, UD, M.beige, UW/2-.5, L_RF+PARAPET/2, 0);
+box(1, PARAPET, UD, M.beige, -UW/2+.5, L_RF+PARAPET/2, 0);
+// pergola over south half
+const perg = new THREE.Group(); scene.add(perg);
+box(1.4,7,1.4,M.beigeDark, -UW/2+6, L_RF+3.5, UD/2-6, perg);
+box(1.4,7,1.4,M.beigeDark, UW/2-6, L_RF+3.5, UD/2-6, perg);
+box(1.4,7,1.4,M.beigeDark, -UW/2+6, L_RF+3.5, UD/2-22, perg);
+box(1.4,7,1.4,M.beigeDark, UW/2-6, L_RF+3.5, UD/2-22, perg);
+for(let i=0;i<11;i++){ box(UW-8, .35, 1.1, M.bronze, 0, L_RF+7, UD/2-6-i*1.6, perg); }
+// lift overrun
+box(9,6,9,M.beigeDark, 4, L_RF+3, -UD/2+9);
+
+// ---------- street props ----------
+function lamp(x,z){ box(.5,14,.5,M.mullion,x,7,z); const b=box(1.6,.8,.8,M.cove,x,14,z); }
+lamp(UW/2+14, UD/2+2); lamp(UW/2+14, -30); lamp(-28, UD/2+14);
+function tree(x,z,s){ box(1.4*s,7*s,1.4*s,new THREE.MeshStandardMaterial({color:0x4a3826}),x,3.5*s,z);
+  const c=new THREE.Mesh(new THREE.SphereGeometry(5.5*s,10,8),M.green); c.position.set(x,9.5*s,z); c.castShadow=true; scene.add(c); }
+tree(-UW/2-24, UD/2+26, 1.15); tree(UW/2+30, -UD/2-14, 1.0); tree(-UW/2-28, -30, .9);
+
+// ---------- camera control (custom orbit) ----------
+const target = new THREE.Vector3(0, 24, 0);
+let sph = {r: 150, theta: Math.PI/4.2, phi: 1.18};   // hero-ish default
+function applyCam(){
+  camera.position.set(
+    target.x + sph.r * Math.sin(sph.phi) * Math.sin(sph.theta),
+    target.y + sph.r * Math.cos(sph.phi),
+    target.z + sph.r * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(target);
+}
+let drag=false, pan=false, px=0, py=0;
+canvas.addEventListener('pointerdown',e=>{drag=e.button===0;pan=e.button===2;px=e.clientX;py=e.clientY;});
+addEventListener('pointerup',()=>{drag=pan=false;});
+addEventListener('pointermove',e=>{
+  const dx=e.clientX-px, dy=e.clientY-py; px=e.clientX; py=e.clientY;
+  if(drag){ sph.theta -= dx*.006; sph.phi = Math.min(1.52, Math.max(.15, sph.phi - dy*.005)); applyCam(); }
+  if(pan){ const s=sph.r*.0011; target.x -= dx*s*Math.cos(sph.theta); target.z += dx*s*Math.sin(sph.theta); target.y += dy*s; applyCam(); }
+});
+canvas.addEventListener('wheel',e=>{ sph.r = Math.min(500, Math.max(45, sph.r * (1 + e.deltaY*.001))); applyCam(); },{passive:true});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+const views = {
+  hero:  {r:150, theta: Math.PI/4.2, phi:1.18, ty:24},
+  south: {r:170, theta: 0.02,        phi:1.32, ty:26},
+  east:  {r:170, theta: Math.PI/2,   phi:1.32, ty:26},
+  aerial:{r:210, theta: Math.PI/3.5, phi:0.62, ty:10}
+};
+document.querySelectorAll('#views button').forEach(b=>{
+  b.onclick=()=>{ const v=views[b.dataset.v]; animateTo(v); };
+});
+let anim=null;
+function animateTo(v){
+  const s0={...sph}, t0=target.y, start=performance.now();
+  cancelAnimationFrame(anim);
+  (function step(){
+    const t=Math.min(1,(performance.now()-start)/900), e=t*t*(3-2*t);
+    sph.r=s0.r+(v.r-s0.r)*e; sph.theta=s0.theta+(v.theta-s0.theta)*e; sph.phi=s0.phi+(v.phi-s0.phi)*e;
+    target.y=t0+(v.ty-t0)*e; target.x*=1-e; target.z*=1-e;
+    applyCam(); if(t<1) anim=requestAnimationFrame(step);
+  })();
+}
+
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize); resize(); applyCam();
+(function loop(){ renderer.render(scene,camera); requestAnimationFrame(loop); })();
+})();
+</script>
+</body>
+</html>

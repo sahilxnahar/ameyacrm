@@ -86,6 +86,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Campaigns, the website and social handles.',
     items: [
       { label: 'Marketing', href: '/marketing', icon: Megaphone, permission: 'marketing.view', blurb: 'Campaigns, budgets and creative assets.' },
+      { label: 'Marketing Library', href: '/marketing/library', icon: FolderOpen, permission: 'marketing.view', blurb: 'Renders, brochures, comparisons and brand assets — always here to view or download.' },
       { label: 'Website Audit', href: '/marketing/audit', icon: Gauge, permission: 'marketing.view', blurb: 'How the public website is performing.' },
       { label: 'Social Accounts', href: '/social-accounts', icon: AtSign, blurb: 'Link the handles enquiries come in on.' },
     ],

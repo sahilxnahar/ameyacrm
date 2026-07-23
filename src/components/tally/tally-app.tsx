@@ -3,14 +3,14 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
-import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, saveTallyPrefs, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios } from '@/server/actions/tally';
+import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, saveTallyPrefs, tallyInvoicePdf, tallyScheduleIII, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios, type ScheduleIII } from '@/server/actions/tally';
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 import { DEFAULT_TALLY_PREFS, type TallyPrefs } from '@/lib/tally/prefs';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
-type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings' | 'schedule3';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -74,6 +74,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
   const [gst, setGst] = React.useState<GstReturns | null>(null);
   const [flows, setFlows] = React.useState<FlowStatements | null>(null);
   const [ratios, setRatios] = React.useState<Ratios | null>(null);
+  const [sch3, setSch3] = React.useState<ScheduleIII | null>(null);
 
   // Item-invoice (Sales/Purchase) state
   const [invType, setInvType] = React.useState<'Sales' | 'Purchase'>('Sales');
@@ -124,6 +125,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
         if (e.key.toLowerCase() === 'f') { e.preventDefault(); openFlows(); return; }
         if (e.key.toLowerCase() === 'a') { e.preventDefault(); openRatios(); return; }
         if (e.key === '?') { e.preventDefault(); setScreen('shortcuts'); return; }
+        if (e.key === '3') { e.preventDefault(); openSchedule3(); return; }
         const map: Record<string, Screen> = { v: 'voucher', d: 'daybook', t: 'trial', b: 'balsheet', p: 'pl', l: 'ledgers', i: 'stock', s: 'stockSummary', c: 'costCentres' };
         const s = map[e.key.toLowerCase()];
         if (s) { e.preventDefault(); if (s === 'voucher') openVoucher('Payment'); else setScreen(s); }
@@ -154,6 +156,13 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
     const r = await deleteTallyVoucher(id);
     if ('error' in r) { toast.error(r.error); return; }
     toast.success('Voucher deleted'); router.refresh();
+  });
+
+  const printInvoice = (id: string) => start(async () => {
+    const r = await tallyInvoicePdf(id);
+    if ('error' in r) { toast.error(r.error); return; }
+    const a = document.createElement('a'); a.href = `data:application/pdf;base64,${r.pdfBase64}`; a.download = r.filename; a.click();
+    toast.success('Invoice PDF downloaded');
   });
 
   const stockById = new Map(data.stock.map((s) => [s.id, s]));
@@ -223,6 +232,11 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
     if ('error' in r) { toast.error(r.error); return; }
     setRatios(r); setScreen('ratios');
   });
+  const openSchedule3 = () => start(async () => {
+    const r = await tallyScheduleIII(data.period.from, data.period.to, data.period.label);
+    if ('error' in r) { toast.error(r.error); return; }
+    setSch3(r); setScreen('schedule3');
+  });
   const addCostCentre = (name: string) => start(async () => {
     const r = await createTallyCostCentre(name);
     if ('error' in r) { toast.error(r.error); return; }
@@ -290,7 +304,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
 
       <div className="flex">
         <div className="min-h-[70vh] flex-1 p-4">
-          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else { if (s === 'bankRecon') { setReconLedgerId(''); setRecon(null); } setScreen(s); } }} onOutstanding={openOutstanding} onJobCosting={openJobCosting} onGst={openGst} onFlows={openFlows} onRatios={openRatios} data={data} />}
+          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else { if (s === 'bankRecon') { setReconLedgerId(''); setRecon(null); } setScreen(s); } }} onOutstanding={openOutstanding} onJobCosting={openJobCosting} onGst={openGst} onFlows={openFlows} onRatios={openRatios} onSchedule3={openSchedule3} data={data} />}
           {screen === 'voucher' && (
             <VoucherEntry
               type={vType} setType={setVType} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
@@ -313,7 +327,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
           {screen === 'stockSummary' && <StockSummary data={data} onBack={back} onPdf={() => exportPdf('stock')} onExcel={() => exportExcel('stock')} />}
           {screen === 'ledgerStmt' && <LedgerStatement stmt={stmt} onBack={back} onExcel={() => { if (stmt && 'ok' in stmt) exportXlsx(`Ledger-${stmt.name.replace(/[^a-z0-9]+/gi, '-')}`, 'Ledger', stmt.rows.map((r) => ({ Date: new Date(r.date).toLocaleDateString('en-IN'), Type: r.type, No: r.number, Particulars: r.particulars, Debit: r.debit || '', Credit: r.credit || '', Balance: `${inr(r.balance)} ${r.balanceSide}` }))); }} />}
           {screen === 'outstanding' && <OutstandingView o={outstanding} onBack={back} onExcel={() => { if (outstanding && 'ok' in outstanding) { const rows = [...outstanding.receivables.map((r) => ({ Type: 'Receivable', Party: r.name, ...ageCols(r) })), ...outstanding.payables.map((r) => ({ Type: 'Payable', Party: r.name, ...ageCols(r) }))]; exportXlsx('Tally-Outstanding', 'Outstanding', rows); } }} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
-          {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} onEdit={openEditVoucher} pending={pending} />}
+          {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} onEdit={openEditVoucher} onInvoice={printInvoice} pending={pending} />}
           {screen === 'trial' && <TrialBalance data={data} onBack={back} onPdf={() => exportPdf('trial')} onExcel={() => exportExcel('trial')} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
           {screen === 'pl' && <ProfitLoss data={data} onBack={back} onPdf={() => exportPdf('pl')} onExcel={() => exportExcel('pl')} />}
           {screen === 'balsheet' && <BalanceSheet data={data} onBack={back} onPdf={() => exportPdf('bs')} onExcel={() => exportExcel('bs')} />}
@@ -326,6 +340,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
           {screen === 'gst' && <GstReturnsView gst={gst} label={data.period.label} onBack={back} onExcel={() => { if (gst && 'ok' in gst) { const rows = [...gst.gstr1.map((r) => ({ Return: 'GSTR-1 (outward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax })), ...gst.itc.map((r) => ({ Return: 'ITC (inward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax }))]; exportXlsx('Tally-GST-Returns', 'GST', rows); } }} />}
           {screen === 'flows' && <FlowsView flows={flows} label={data.period.label} onBack={back} onExcel={() => { if (flows && 'ok' in flows) { const rows = [...flows.cash.inflows.map((r) => ({ Statement: 'Cash inflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.cash.outflows.map((r) => ({ Statement: 'Cash outflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.sources.map((r) => ({ Statement: 'Funds source', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.applications.map((r) => ({ Statement: 'Funds application', Particulars: r.name, Group: r.group, Amount: r.amount }))]; exportXlsx('Tally-Cash-Funds-Flow', 'Flows', rows); } }} />}
           {screen === 'ratios' && <RatioAnalysis ratios={ratios} onBack={back} onExcel={() => { if (ratios && 'ok' in ratios) exportXlsx('Tally-Ratio-Analysis', 'Ratios', ratios.rows.map((r) => ({ Ratio: r.name, Value: r.value, Basis: r.hint }))); }} />}
+          {screen === 'schedule3' && <ScheduleThree sch={sch3} onBack={back} onExcel={() => { if (sch3 && 'ok' in sch3) { const rows = [...sch3.equityLiabilities.flatMap((s) => s.heads.map((h) => ({ Side: 'Equity & Liabilities', Section: s.title, Head: h.label, Amount: h.amount }))), ...sch3.assets.flatMap((s) => s.heads.map((h) => ({ Side: 'Assets', Section: s.title, Head: h.label, Amount: h.amount })))]; exportXlsx('Tally-Schedule-III', 'Schedule III', rows); } }} />}
           {screen === 'shortcuts' && <ShortcutsScreen os={prefs.os} onBack={back} />}
           {screen === 'settings' && <TallySettings prefs={prefs} onBack={back} onSaved={() => { router.refresh(); back(); }} />}
         </div>
@@ -349,6 +364,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
           <BarBtn label="GST Returns" k="G" onClick={openGst} />
           <BarBtn label="Cash / Funds Flow" k="F" onClick={openFlows} />
           <BarBtn label="Ratio Analysis" k="A" onClick={openRatios} />
+          <BarBtn label="Schedule III" k="3" onClick={openSchedule3} />
           <div className="pt-2 text-[10px] font-semibold text-[#5B4412]">MASTERS</div>
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
           <BarBtn label="Stock Items" k="I" onClick={() => setScreen('stock')} />
@@ -388,7 +404,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; onJobCosting: () => void; onGst: () => void; onFlows: () => void; onRatios: () => void; data: TallyData }) {
+function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, onSchedule3, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; onJobCosting: () => void; onGst: () => void; onFlows: () => void; onRatios: () => void; onSchedule3: () => void; data: TallyData }) {
   const income = data.pl.totalIncome;
   const expense = data.pl.totalExpense;
   return (
@@ -412,6 +428,7 @@ function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, 
           <MenuItem label="GST Returns (GSTR-1 / 3B)" k="G" onClick={onGst} />
           <MenuItem label="Cash Flow & Funds Flow" k="F" onClick={onFlows} />
           <MenuItem label="Ratio Analysis" k="A" onClick={onRatios} />
+          <MenuItem label="Schedule III (Balance Sheet)" k="3" onClick={onSchedule3} />
           <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Cost Centres</p>
           <MenuItem label="Cost Centres" k="C" onClick={() => onGo('costCentres')} />
           <p className="mb-1 mt-3 text-[11px] font-semibold uppercase text-[#5B4412]">Help & setup</p>
@@ -517,7 +534,7 @@ function VoucherEntry(props: {
   );
 }
 
-function DayBook({ data, onBack, onDelete, onEdit, pending }: { data: TallyData; onBack: () => void; onDelete: (id: string) => void; onEdit: (id: string) => void; pending: boolean }) {
+function DayBook({ data, onBack, onDelete, onEdit, onInvoice, pending }: { data: TallyData; onBack: () => void; onDelete: (id: string) => void; onEdit: (id: string) => void; onInvoice: (id: string) => void; pending: boolean }) {
   return (
     <Panel title="Day Book">
       <BackBtn onBack={onBack} />
@@ -532,7 +549,7 @@ function DayBook({ data, onBack, onDelete, onEdit, pending }: { data: TallyData;
                 <td className="p-1">{v.number}</td>
                 <td className="p-1">{v.lines.map((ln, i) => <div key={i}>{ln.debit > 0 ? 'Dr ' : 'Cr '}{ln.ledger}</div>)}{v.narration && <div className="text-[#5B4412]">({v.narration})</div>}</td>
                 <td className="p-1 text-right tabular-nums">{inr(v.amount)}</td>
-                <td className="whitespace-nowrap p-1"><button onClick={() => onEdit(v.id)} disabled={pending} className="text-[#1B2A4A] hover:underline">edit</button> <button onClick={() => onDelete(v.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td>
+                <td className="whitespace-nowrap p-1">{(v.type === 'Sales' || v.type === 'Purchase') && <><button onClick={() => onInvoice(v.id)} disabled={pending} className="text-[#8C6E2C] hover:underline">invoice</button> </>}<button onClick={() => onEdit(v.id)} disabled={pending} className="text-[#1B2A4A] hover:underline">edit</button> <button onClick={() => onDelete(v.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td>
               </tr>
             ))}
           </tbody>
@@ -887,6 +904,34 @@ function JobCosting({ report, label, onBack, onExcel }: { report: CostReport | n
   );
 }
 
+function ScheduleThree({ sch, onBack, onExcel }: { sch: ScheduleIII | null; onBack: () => void; onExcel: () => void }) {
+  if (!sch) return <Panel title="Schedule III"><BackBtn onBack={onBack} /><p className="text-[#5B4412]">Loading…</p></Panel>;
+  if ('error' in sch) return <Panel title="Schedule III"><BackBtn onBack={onBack} /><p className="text-rose-700">{sch.error}</p></Panel>;
+  const Col = ({ title, sections, total }: { title: string; sections: Array<{ title: string; heads: Array<{ label: string; amount: number }>; total: number }>; total: number }) => (
+    <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2">
+      <p className="mb-1 border-b-2 border-[#0f2038] pb-1 font-bold text-[#1B2A4A]">{title}</p>
+      {sections.map((s) => (
+        <div key={s.title} className="mb-2">
+          <div className="flex justify-between font-semibold"><span>{s.title}</span><span className="tabular-nums">{inr(s.total)}</span></div>
+          {s.heads.map((h) => <div key={h.label} className="flex justify-between pl-3 text-[12px] text-[#5B4412]"><span>{h.label}</span><span className="tabular-nums">{inr(h.amount)}</span></div>)}
+        </div>
+      ))}
+      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{inr(total)}</span></div>
+    </div>
+  );
+  return (
+    <Panel title={`Balance Sheet — Schedule III (Division I) · ${sch.asOf}`}>
+      <div className="mb-2 flex flex-wrap items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Col title="I. Equity and Liabilities" sections={sch.equityLiabilities} total={sch.totalEL} />
+        <Col title="II. Assets" sections={sch.assets} total={sch.totalAssets} />
+      </div>
+      <p className={`mt-3 text-center text-[12px] ${sch.balanced ? 'text-emerald-700' : 'text-rose-700'}`}>{sch.balanced ? 'Balanced ✓' : `Difference ₹ ${inr(Math.abs(sch.totalEL - sch.totalAssets))}`}</p>
+      <p className="mt-1 text-[11px] text-[#5B4412]">Ledger balances recast into the Companies Act, 2013 Schedule III (Division I) heads, with the period’s profit taken to Reserves & surplus. A presentation aid — your CA finalises the statutory format.</p>
+    </Panel>
+  );
+}
+
 function RatioAnalysis({ ratios, onBack, onExcel }: { ratios: Ratios | null; onBack: () => void; onExcel: () => void }) {
   if (!ratios) return <Panel title="Ratio Analysis"><BackBtn onBack={onBack} /><p className="text-[#5B4412]">Loading…</p></Panel>;
   if ('error' in ratios) return <Panel title="Ratio Analysis"><BackBtn onBack={onBack} /><p className="text-rose-700">{ratios.error}</p></Panel>;
@@ -961,6 +1006,19 @@ function GstReturnsView({ gst, label, onBack, onExcel }: { gst: GstReturns | nul
       <div className="mb-2 flex flex-wrap items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
       <RateTable title="GSTR-1 — Outward supplies (sales) by rate" rows={gst.gstr1} tot={gst.gstr1Total} />
       <RateTable title="Input Tax Credit — Inward supplies (purchases) by rate" rows={gst.itc} tot={{ taxable: b.inwardTaxable, cgst: b.inputCgst, sgst: b.inputSgst, totalTax: b.inputTax }} />
+      {gst.hsn.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1 font-bold text-[#1B2A4A]">HSN-wise summary of outward supplies (GSTR-1, Table 12)</p>
+          <table className="w-full border-collapse text-[12px]">
+            <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">HSN/SAC</th><th className="p-1 text-right">Rate %</th><th className="p-1 text-right">Qty</th><th className="p-1 text-right">Taxable value</th><th className="p-1 text-right">Tax</th></tr></thead>
+            <tbody>
+              {gst.hsn.map((r, i) => (
+                <tr key={i} className="border-b border-[#0f2038]/20"><td className="p-1">{r.hsn}</td><td className="p-1 text-right tabular-nums">{r.rate}</td><td className="p-1 text-right tabular-nums">{r.qty}</td><td className="p-1 text-right tabular-nums">{inr(r.taxable)}</td><td className="p-1 text-right tabular-nums">{inr(r.tax)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className="mb-2 rounded border-2 border-[#1B2A4A] bg-white/60 p-3 text-[12px]">
         <p className="mb-1 font-bold text-[#1B2A4A]">GSTR-3B — Net tax payable</p>
         <Row k="Output tax (on sales)" v={`₹ ${inr(b.outputTax)}`} />
