@@ -2016,6 +2016,25 @@ model ParkingSlot {
   @@index([status])
 }
 
+/// A Marketing Library collateral the team uploaded or linked (Google Drive),
+/// auto-sorted into a category by the AI at upload time. Files live in Blob (url).
+model MarketingLibraryItem {
+  id           String   @id @default(cuid())
+  title        String
+  category     String   @default("Other")
+  kind         String   @default("file") // image | pdf | excel | doc | link | other
+  url          String
+  source       String   @default("UPLOAD") // UPLOAD | DRIVE
+  fileType     String?
+  sizeBytes    Int?
+  folderPath   String? // original sub-folder when a whole folder was uploaded
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([category])
+  @@index([createdAt])
+}
+
 enum HomeLoanStatus {
   ENQUIRY
   APPLIED

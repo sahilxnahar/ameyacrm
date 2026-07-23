@@ -106,7 +106,7 @@ export function AppShell({
       {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.
           Non-interactive and very low opacity so it reads as texture, not clutter. */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden">
-        <img src="/brand/ameya-emblem.png" alt="" className="w-[min(80vw,760px)] max-w-none select-none opacity-[0.08] dark:opacity-[0.14]" />
+        <img src="/brand/watermark-mark.png" alt="" className="w-[min(74vw,640px)] max-w-none select-none opacity-[0.10] dark:opacity-[0.16]" />
       </div>
       {/* Batch 12 (a11y): the first focusable element lets a keyboard or
           screen-reader user jump straight past the sidebar to the page content. */}

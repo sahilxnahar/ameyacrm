@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       onBeforeGenerateToken: async () => {
         const ctx = await getCurrentUser();
         if (!ctx) throw new Error('You must be signed in to upload.');
-        if (!can(ctx.permissions, 'document.create')) throw new Error('You do not have permission to upload files.');
+        if (!can(ctx.permissions, 'document.create') && !can(ctx.permissions, 'marketing.manage')) throw new Error('You do not have permission to upload files.');
         return {
           addRandomSuffix: true,
           maximumSizeInBytes: 100 * 1024 * 1024, // 100 MB

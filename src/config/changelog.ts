@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.9';
+export const APP_VERSION = 'v15.11';
 
 export interface Release {
   version: string;
@@ -13,6 +13,23 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.11',
+    date: '23 Jul 2026',
+    highlights: [
+      'Marketing Library now takes uploads. Upload individual files, or a whole folder — the AI reads each file and sorts it into a category (Renders & Images, Floor Plans, Brochures, Legal, Financial, Comparisons, Presentations). Everything lands grouped and ready to view or download.',
+      'Add a Google Drive (or any web) link to view a document in place — it shows up in the library with an “Open in Drive” button, sorted into a category like everything else.',
+      'The bundled Ameya collaterals stay pinned under “Featured”; uploaded and linked items appear below, grouped by category, with delete for marketing managers.',
+    ],
+  },
+  {
+    version: 'v15.10',
+    date: '23 Jul 2026',
+    highlights: [
+      'Watermark refined — it’s now just the transparent gold Ameya medallion (no “Ameya” wordmark, no navy background), the same mark used on the documents, at a slightly higher opacity behind every screen.',
+      'Home page is now a morning cockpit — six live KPI tiles (new leads today, tasks due, approvals pending, follow-ups this week, collections due this week, who’s on site now), plus the Quick actions grid, a wider Today’s agenda, a Next 7 days card and Jump-to shortcuts. Each tile links straight to the screen behind it.',
+    ],
+  },
   {
     version: 'v15.9',
     date: '23 Jul 2026',

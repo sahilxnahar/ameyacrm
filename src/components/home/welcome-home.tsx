@@ -1,11 +1,19 @@
 'use client';
 import * as React from 'react';
 import Link from 'next/link';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight, ListChecks, BookOpen, Sparkles, QrCode, MessageSquare, LayoutDashboard, BellRing, CalendarDays, Megaphone, type LucideIcon } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight, ListChecks, BookOpen, Sparkles, QrCode, MessageSquare, LayoutDashboard, BellRing, CalendarDays, Megaphone, UserPlus, CheckSquare, Inbox, IndianRupee, HardHat, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 interface AgendaItem { id: string; title: string; kind: string; due: string; href: string }
+interface Kpi { leadsToday: number; tasksToday: number; approvals: number; collectionsDue: number; followUps: number; onSite: number }
+
+function compactInr(n: number): string {
+  if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)} Cr`;
+  if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)} L`;
+  if (n >= 1e3) return `₹${(n / 1e3).toFixed(1)}k`;
+  return `₹${n}`;
+}
 
 // WMO weather codes → a friendly label + icon.
 function weather(code: number): { label: string; Icon: typeof Sun } {
@@ -41,7 +49,7 @@ const JUMP_LINKS = [
   { href: '/notifications', label: 'Notifications' },
 ];
 
-export function WelcomeHome({ firstName, agenda }: { firstName: string; agenda: AgendaItem[] }) {
+export function WelcomeHome({ firstName, agenda, next7 = [], kpi }: { firstName: string; agenda: AgendaItem[]; next7?: AgendaItem[]; kpi?: Kpi }) {
   const [now, setNow] = React.useState<Date | null>(null);
   React.useEffect(() => {
     setNow(new Date());
@@ -117,6 +125,18 @@ export function WelcomeHome({ firstName, agenda }: { firstName: string; agenda: 
         </div>
       </div>
 
+      {/* Live KPI tiles — your morning cockpit. */}
+      {kpi && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatTile label="New leads today" value={String(kpi.leadsToday)} icon={UserPlus} href="/leads" />
+          <StatTile label="Tasks due today" value={String(kpi.tasksToday)} icon={CheckSquare} href="/tasks" />
+          <StatTile label="Approvals pending" value={String(kpi.approvals)} icon={Inbox} href="/approvals" />
+          <StatTile label="Follow-ups (7d)" value={String(kpi.followUps)} icon={BellRing} href="/reminders" />
+          <StatTile label="Collections due (7d)" value={compactInr(kpi.collectionsDue)} icon={IndianRupee} href="/billing" />
+          <StatTile label="On site now" value={String(kpi.onSite)} icon={HardHat} href="/field" />
+        </div>
+      )}
+
       {/* Quick actions — jump straight into the work that matters most. */}
       <div>
         <p className="mb-2 text-sm font-semibold text-muted-foreground">Quick actions</p>
@@ -168,21 +188,58 @@ export function WelcomeHome({ firstName, agenda }: { firstName: string; agenda: 
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-5">
-          <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><Megaphone className="h-4 w-4 text-[#A07D34]" /> Jump to</p>
-          <ul className="space-y-1">
-            {JUMP_LINKS.map((j) => (
-              <li key={j.href}>
-                <Link href={j.href} className="flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-secondary/50">
-                  <span>{j.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 rounded-lg bg-[#A07D34]/8 p-3 text-xs text-muted-foreground">Tip: press <kbd className="rounded border bg-background px-1">⌘K</kbd> anywhere to search and jump to any screen, or drag your menu into the order you like from <span className="font-medium">Customise this menu</span>.</p>
-        </Card>
+        <div className="space-y-6">
+          <Card className="p-4 sm:p-5">
+            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarDays className="h-4 w-4 text-[#A07D34]" /> Next 7 days</p>
+            {next7.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Nothing scheduled in the week ahead.</p>
+            ) : (
+              <ul className="divide-y">
+                {next7.map((a) => {
+                  const d = new Date(a.due);
+                  const when = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+                  return (
+                    <li key={a.id}>
+                      <Link href={a.href} className="flex items-center gap-2 py-2 hover:bg-secondary/40">
+                        <span className="min-w-0 flex-1 truncate text-sm">{a.title || '(untitled)'}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{when}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-4 sm:p-5">
+            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><Megaphone className="h-4 w-4 text-[#A07D34]" /> Jump to</p>
+            <ul className="space-y-1">
+              {JUMP_LINKS.map((j) => (
+                <li key={j.href}>
+                  <Link href={j.href} className="flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-secondary/50">
+                    <span>{j.label}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 rounded-lg bg-[#A07D34]/8 p-3 text-xs text-muted-foreground">Tip: press <kbd className="rounded border bg-background px-1">⌘K</kbd> anywhere to search and jump to any screen, or drag your menu into the order you like from <span className="font-medium">Customise this menu</span>.</p>
+          </Card>
+        </div>
       </div>
     </div>
+  );
+}
+
+function StatTile({ label, value, icon: Icon, href }: { label: string; value: string; icon: LucideIcon; href: string }) {
+  return (
+    <Link href={href} className="group rounded-xl border bg-card p-3 transition-colors hover:border-[#A07D34]/50 hover:bg-[#A07D34]/5">
+      <div className="mb-1 flex items-center justify-between">
+        <Icon className="h-4 w-4 text-[#A07D34]" />
+        <ArrowRight className="h-3 w-3 text-transparent transition-colors group-hover:text-muted-foreground" />
+      </div>
+      <p className="text-xl font-semibold tabular-nums text-[#1B2A4A] dark:text-foreground">{value}</p>
+      <p className="text-[11px] leading-tight text-muted-foreground">{label}</p>
+    </Link>
   );
 }
