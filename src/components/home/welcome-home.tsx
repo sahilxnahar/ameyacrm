@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import Link from 'next/link';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight, ListChecks, BookOpen, Sparkles, QrCode, MessageSquare, LayoutDashboard, BellRing, CalendarDays, Megaphone, UserPlus, CheckSquare, Inbox, IndianRupee, HardHat, type LucideIcon } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Droplets, Gauge, MapPin, Loader2, CalendarClock, ArrowRight, ListChecks, BookOpen, Sparkles, QrCode, MessageSquare, LayoutDashboard, BellRing, CalendarDays, Megaphone, UserPlus, CheckSquare, Inbox, IndianRupee, HardHat, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -49,7 +49,7 @@ const JUMP_LINKS = [
   { href: '/notifications', label: 'Notifications' },
 ];
 
-export function WelcomeHome({ firstName, agenda, next7 = [], kpi }: { firstName: string; agenda: AgendaItem[]; next7?: AgendaItem[]; kpi?: Kpi }) {
+export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = false, roleLabel = '' }: { firstName: string; agenda: AgendaItem[]; next7?: AgendaItem[]; kpi?: Kpi; needs2FA?: boolean; roleLabel?: string }) {
   const [now, setNow] = React.useState<Date | null>(null);
   React.useEffect(() => {
     setNow(new Date());
@@ -98,7 +98,10 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi }: { firstName:
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="gold-shine font-display text-3xl font-semibold leading-tight sm:text-4xl">{greeting}, {firstName}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{dateStr}{timeStr && ` · ${timeStr}`}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>{dateStr}{timeStr && ` · ${timeStr}`}</span>
+              {roleLabel && <Badge variant="secondary" className="gap-1"><ShieldCheck className="h-3 w-3" /> {roleLabel}</Badge>}
+            </p>
           </div>
           {/* Weather */}
           <div className="min-w-[190px]">
@@ -124,6 +127,18 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi }: { firstName:
           </div>
         </div>
       </div>
+
+      {/* Security nudge — shown here instead of forcing you to the security page on login. */}
+      {needs2FA && (
+        <Link href="/settings/security?enroll=1" className="flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm transition-colors hover:bg-amber-500/15">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-amber-600" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Protect your account — set up two-factor sign-in</span>
+            <span className="block text-xs text-muted-foreground">Takes a minute with any authenticator app. Recommended for everyone; required for admins.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Link>
+      )}
 
       {/* Live KPI tiles — your morning cockpit. */}
       {kpi && (

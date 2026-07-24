@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.12';
+export const APP_VERSION = 'v15.16';
 
 export interface Release {
   version: string;
@@ -13,6 +13,45 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.16',
+    date: '24 Jul 2026',
+    highlights: [
+      'Team chat messages are now encrypted at rest. Message text is stored scrambled (AES-256-GCM) in the database, so a database or backup leak exposes gibberish, not your conversations. It’s decrypted only for the people in the chat — search, mentions and read-receipts all keep working. (Older messages stay readable and become encrypted as new ones are sent.)',
+      'Chat now accepts any file — images, videos, PDFs, spreadsheets, zips, anything (up to 200 MB). Images show inline, videos and audio play right in the chat, and everything else is a one-tap download. You no longer need document permissions to share a file in a conversation.',
+      'Message previews are no longer copied into notifications, so nothing sensitive leaks out of the encrypted chat.',
+    ],
+  },
+  {
+    version: 'v15.15',
+    date: '24 Jul 2026',
+    highlights: [
+      'Sign-in now takes you straight to your Home screen. If two-factor still needs setting up, it’s a friendly reminder on Home — not a forced detour through the security page.',
+      'Home now shows your role at a glance, so you always know what you can do.',
+      'New: ask AI to make a Tally entry for you. On the Ameya Tally screen, press “Ask AI”, type something like “Paid ₹50,000 to ABC Cement by bank”, and it drafts the balanced double-entry voucher — you review it and press Post. It can even create a missing ledger on the spot. Nothing is ever written to the books without your confirmation, and every posted entry is audited exactly like a manual one.',
+    ],
+  },
+  {
+    version: 'v15.14',
+    date: '24 Jul 2026',
+    highlights: [
+      'Closing the one gap the market comparison flagged (Communications). The telephony, WhatsApp-Business, portal-lead and two-way-email engines were already built but idle — the Integrations screen (Team & Admin → Integrations) now hands you the exact webhook URL to paste and the plain steps to switch each one on.',
+      'Two-way email now appears as its own integration with a live count of messages threaded onto leads, buyers and vendors — so you can see replies are being captured, not just mail going out.',
+      'WhatsApp is shown as a proper two-way Business channel (Meta Cloud API): templates and broadcasts out, replies into a shared inbox — with the callback URL and verify-token steps spelled out. Free Meta tier, so it stays clear of the no-Google-billing rule.',
+      'Each channel shows Working / Ready-but-unused / Not-set-up honestly, so nothing rots silently.',
+    ],
+  },
+  {
+    version: 'v15.13',
+    date: '24 Jul 2026',
+    highlights: [
+      'New File Tools screen (Documents → File Tools): merge PDFs, extract PDF pages, turn images into a PDF, and convert spreadsheets between Excel, CSV, JSON and Markdown — all on your own device, with no files uploaded and no AI credits used.',
+      'Channel partners can now be paid three ways, not just a percentage: choose “% of sale”, “months of rent” (for commercial leases) or a flat fee when onboarding a partner, and the right amount shows everywhere.',
+      'Overdue reminders and emails now stop the moment work is closed — a task that’s cancelled (not only completed) no longer keeps chasing you.',
+      'Today’s Priorities is more complete — it now also lists today’s calendar events and any open work requests assigned to you.',
+      'Clearer errors and fixes: profile-photo uploads work for everyone (not just document managers), AI-import errors now say exactly what to fix (e.g. an expired AI key), the map explains whether it’s the device, the network or blocked imagery, and a very rough GPS fix now warns instead of silently recording a wrong distance.',
+    ],
+  },
   {
     version: 'v15.12',
     date: '23 Jul 2026',

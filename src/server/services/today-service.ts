@@ -5,7 +5,7 @@ import type { LeadStatus } from '@prisma/client';
 
 export type Urgency = 'overdue' | 'today' | 'soon';
 export interface TodayItem {
-  kind: 'reminder' | 'task' | 'approval' | 'followup' | 'lead' | 'payment';
+  kind: 'reminder' | 'task' | 'approval' | 'followup' | 'lead' | 'payment' | 'event' | 'workrequest';
   urgency: Urgency;
   title: string;
   detail: string;
@@ -24,7 +24,7 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
   const OPEN = { notIn: ['WON', 'LOST'] as LeadStatus[] };
   const t = (d: Date | null | undefined) => (d ? d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : undefined);
 
-  const [reminders, tasks, approvals, followups, hotCold, duePayments] = await Promise.all([
+  const [reminders, tasks, approvals, followups, hotCold, duePayments, events, workRequests] = await Promise.all([
     prisma.reminder.findMany({ where: { userId, status: 'PENDING', dueAt: { lte: weekEnd } }, orderBy: { dueAt: 'asc' }, take: 25 }),
     prisma.task.findMany({
       where: { deletedAt: null, status: { notIn: ['DONE', 'CANCELLED'] }, assignees: { some: { userId } }, dueDate: { not: null, lte: weekEnd } },
@@ -49,6 +49,18 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
       where: { status: 'OVERDUE', booking: { salesRepId: userId } }, take: 15,
       include: { booking: { select: { reference: true, lead: { select: { name: true } } } } },
     }),
+    // Calendar events on today's date that I organise or am invited to.
+    prisma.calendarEvent.findMany({
+      where: { startAt: { gte: dayStart, lte: dayEnd }, OR: [{ organizerId: userId }, { attendees: { some: { userId } } }] },
+      orderBy: { startAt: 'asc' }, take: 15,
+      select: { id: true, title: true, startAt: true, location: true, type: true },
+    }),
+    // Open inter-department work requests that land on me.
+    prisma.workRequest.findMany({
+      where: { ownerId: userId, closedAt: null, status: { notIn: ['CLOSED', 'DONE', 'CANCELLED', 'REJECTED'] } },
+      orderBy: [{ dueOn: 'asc' }], take: 15,
+      select: { id: true, reference: true, title: true, dueOn: true, status: true },
+    }),
   ]);
 
   const items: TodayItem[] = [];
@@ -61,6 +73,8 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
   for (const l of followups) items.push({ kind: 'followup', urgency: rank(l.nextFollowUp), title: `Follow up: ${l.name}`, detail: `${l.reference} · follow-up scheduled`, href: `/sales/${l.id}`, when: t(l.nextFollowUp) });
   for (const l of hotCold) items.push({ kind: 'lead', urgency: 'overdue', title: `${l.name} is going cold`, detail: `${l.reference} · hot lead, no activity 3+ days`, href: `/sales/${l.id}` });
   for (const m of duePayments) items.push({ kind: 'payment', urgency: 'overdue', title: `Collect: ${m.booking?.lead?.name ?? m.booking?.reference ?? 'payment'}`, detail: `${m.label} · Rs.${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(m.amount))} overdue`, href: '/billing', when: t(m.dueDate) });
+  for (const e of events) items.push({ kind: 'event', urgency: rank(e.startAt), title: e.title, detail: e.location ?? e.type, href: '/calendar', when: t(e.startAt) });
+  for (const w of workRequests) items.push({ kind: 'workrequest', urgency: w.dueOn ? rank(w.dueOn) : 'soon', title: w.title, detail: `${w.reference} · ${w.status.toLowerCase().replace(/_/g, ' ')}`, href: '/work-requests', when: t(w.dueOn) });
 
   const order: Record<Urgency, number> = { overdue: 0, today: 1, soon: 2 };
   return items.sort((a, b) => order[a.urgency] - order[b.urgency]);

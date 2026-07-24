@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -154,6 +154,7 @@ export const NAVIGATION: NavGroup[] = [
       // No permission: everyone sees this, and the page itself narrows the list
       // to the departments they belong to.
       { label: 'Templates', href: '/templates', icon: FileText, blurb: 'Ready-made letters and emails to reuse.' },
+      { label: 'File Tools', href: '/tools', icon: Wrench, blurb: 'Merge/split PDFs, images to PDF, and convert CSV/Excel/JSON/Markdown — on your device, no AI credits.' },
     ],
   },
   {

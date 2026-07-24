@@ -33,7 +33,7 @@ export default async function PartnersPage() {
       <PartnersView
         canManage={canManage}
         projects={projects}
-        partners={partners.map((p) => ({ id: p.id, code: p.code, firmName: p.firmName, contactName: p.contactName, phone: p.phone, email: p.email, reraNumber: p.reraNumber, panNumber: p.panNumber, gstin: p.gstin, commissionPct: Number(p.commissionPct), kycStatus: p.kycStatus, status: p.status }))}
+        partners={partners.map((p) => ({ id: p.id, code: p.code, firmName: p.firmName, contactName: p.contactName, phone: p.phone, email: p.email, reraNumber: p.reraNumber, panNumber: p.panNumber, gstin: p.gstin, commissionBasis: p.commissionBasis, commissionPct: Number(p.commissionPct), commissionMonths: p.commissionMonths == null ? null : Number(p.commissionMonths), commissionFlat: p.commissionFlat == null ? null : Number(p.commissionFlat), kycStatus: p.kycStatus, status: p.status }))}
         payouts={payouts.map((p) => ({ id: p.id, channelPartnerId: p.channelPartnerId, grossValue: Number(p.grossValue), ratePercent: Number(p.ratePercent), amount: Number(p.amount), stage: p.stage, status: p.status, dueDate: p.dueDate?.toISOString() ?? null }))}
       />
     </div>

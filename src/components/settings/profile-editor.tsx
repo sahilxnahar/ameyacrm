@@ -37,13 +37,19 @@ export function ProfileEditor({ init }: { init: ProfileInit }) {
 
   const pickPhoto = async (file: File) => {
     if (!file.type.startsWith('image/')) { toast.error('Please choose an image.'); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error('That image is over 8 MB — please pick a smaller one.'); return; }
     setUploading(true);
     try {
-      const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        clientPayload: JSON.stringify({ purpose: 'avatar' }),
+      });
       setAvatarUrl(blob.url);
       toast.success('Photo ready — remember to Save.');
-    } catch {
-      toast.error('Could not upload the photo. Try again.');
+    } catch (err) {
+      // Surface the real reason (permission, size, network) instead of a generic line.
+      toast.error(err instanceof Error ? `Could not upload the photo: ${err.message}` : 'Could not upload the photo. Try again.');
     } finally { setUploading(false); }
   };
 

@@ -1830,6 +1830,16 @@ enum BrokerageStatus {
   PAID
 }
 
+/// How a channel partner is paid. Not every deal is a percentage: a sale is a
+/// % of value, a commercial lease is usually "N months' rent + GST", and some
+/// arrangements are a flat fee. The basis decides which of the three amount
+/// fields below is the one that matters.
+enum CommissionBasis {
+  PERCENT_OF_SALE
+  MONTHS_OF_RENT
+  FLAT_FEE
+}
+
 model ChannelPartner {
   id            String               @id @default(cuid())
   code          String               @unique
@@ -1840,7 +1850,12 @@ model ChannelPartner {
   reraNumber    String?
   panNumber     String?
   gstin         String?
+  commissionBasis  CommissionBasis   @default(PERCENT_OF_SALE)
   commissionPct Decimal              @default(2) @db.Decimal(5, 2)
+  /// Months of rent, when commissionBasis is MONTHS_OF_RENT (e.g. 1.5 months).
+  commissionMonths Decimal?          @db.Decimal(5, 2)
+  /// Flat fee in rupees, when commissionBasis is FLAT_FEE.
+  commissionFlat   Decimal?          @db.Decimal(14, 2)
   kycStatus     KycStatus            @default(PENDING)
   status        ChannelPartnerStatus @default(PENDING)
   bankDetails   String?

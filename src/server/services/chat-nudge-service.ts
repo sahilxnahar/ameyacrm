@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { sendEmail } from '@/lib/email/email';
+import { decryptSafe } from '@/lib/utils/crypto';
 
 /**
  * "You have a message waiting" emails.
@@ -71,7 +72,7 @@ export async function emailNudgeNow(conversationId: string, fromUserId: string):
   if (!ids.length) return { sent: 0 };
   const users = await prisma.user.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, select: { id: true, name: true, email: true } });
   const last = await prisma.chatMessage.findFirst({ where: { conversationId, senderId: fromUserId }, orderBy: { createdAt: 'desc' }, select: { body: true } });
-  const preview = (last?.body ?? '').trim().slice(0, 140) || null;
+  const preview = decryptSafe(last?.body).trim().slice(0, 140) || null;
 
   let sent = 0;
   for (const u of users) {
@@ -110,7 +111,7 @@ export async function runChatNudges(now = new Date()): Promise<{ checked: number
     for (const m of c.members) {
       if (m.userId === last.senderId) continue; // don't email the sender
       if (m.lastReadAt && m.lastReadAt >= last.createdAt) continue; // already read
-      candidates.push({ convId: c.id, userId: m.userId, senderId: last.senderId, msgAt: last.createdAt, preview: (last.body ?? '').trim().slice(0, 140) || null });
+      candidates.push({ convId: c.id, userId: m.userId, senderId: last.senderId, msgAt: last.createdAt, preview: decryptSafe(last.body).trim().slice(0, 140) || null });
     }
   }
   if (!candidates.length) return { checked: 0, emailed: 0 };

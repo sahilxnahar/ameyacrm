@@ -7,6 +7,7 @@ import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyL
 import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 import { DEFAULT_TALLY_PREFS, type TallyPrefs } from '@/lib/tally/prefs';
+import { AiTallyAssistant } from '@/components/tally/ai-tally-assistant';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
@@ -299,7 +300,10 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
         <span>to</span>
         <input type="date" value={cto} onChange={(e) => setCto(e.target.value)} className="border border-[#0f2038]/40 bg-white px-1.5 py-0.5" />
         <button onClick={() => { if (!cfrom && !cto) return; applyPeriod(cfrom ? new Date(cfrom) : null, cto ? new Date(cto + 'T23:59:59') : null, `${cfrom || '…'} to ${cto || '…'}`); }} className="rounded bg-[#1B2A4A] px-2 py-0.5 text-white">Apply</button>
-        <span className="ml-auto font-semibold text-[#1B2A4A]">Showing: {data.period.label}{pending ? ' …' : ''}</span>
+        <span className="ml-auto flex items-center gap-2">
+          <AiTallyAssistant onPosted={() => router.refresh()} />
+          <span className="font-semibold text-[#1B2A4A]">Showing: {data.period.label}{pending ? ' …' : ''}</span>
+        </span>
       </div>
 
       <div className="flex">

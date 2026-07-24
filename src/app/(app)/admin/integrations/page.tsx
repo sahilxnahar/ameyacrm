@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getIntegrations, type Health } from '@/server/services/integrations-service';
+import { WebhookField } from '@/components/admin/webhook-field';
 
 export const metadata: Metadata = { title: 'Integrations' };
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,7 @@ export default async function IntegrationsPage() {
                     <p className="mt-2 text-xs"><span className="text-muted-foreground">Status:</span> {i.detail}</p>
                     <p className="text-xs"><span className="text-muted-foreground">Cost:</span> {i.needs}</p>
                     {i.docs && <p className="text-xs text-muted-foreground">{i.docs}</p>}
+                    {i.webhookUrl && <WebhookField url={i.webhookUrl} note={i.webhookNote} steps={i.steps} />}
                     {i.setupHref && (
                       <Link href={i.setupHref} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
                         Open <ExternalLink className="h-3 w-3" />

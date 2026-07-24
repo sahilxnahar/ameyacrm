@@ -12,11 +12,17 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-interface CP { id: string; code: string; firmName: string; contactName: string; phone: string; email: string | null; reraNumber: string | null; panNumber: string | null; gstin: string | null; commissionPct: number; kycStatus: string; status: string }
+interface CP { id: string; code: string; firmName: string; contactName: string; phone: string; email: string | null; reraNumber: string | null; panNumber: string | null; gstin: string | null; commissionBasis: string; commissionPct: number; commissionMonths: number | null; commissionFlat: number | null; kycStatus: string; status: string }
 interface Payout { id: string; channelPartnerId: string; grossValue: number; ratePercent: number; amount: number; stage: string | null; status: string; dueDate: string | null }
 interface Opt { id: string; name: string }
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const money = (n: number) => `₹${inr.format(n)}`;
+/** Human-readable commission, whichever basis the partner is on. */
+const commissionLabel = (p: Pick<CP, 'commissionBasis' | 'commissionPct' | 'commissionMonths' | 'commissionFlat'>): string => {
+  if (p.commissionBasis === 'MONTHS_OF_RENT') return p.commissionMonths ? `${p.commissionMonths} mo rent + GST` : 'Months of rent';
+  if (p.commissionBasis === 'FLAT_FEE') return p.commissionFlat ? `${money(p.commissionFlat)} flat` : 'Flat fee';
+  return `${p.commissionPct}%`;
+};
 const kycTone = (s: string) => (s === 'VERIFIED' ? 'success' : s === 'REJECTED' ? 'destructive' : 'secondary') as 'success' | 'destructive' | 'secondary';
 const stTone = (s: string) => (s === 'APPROVED' ? 'success' : s === 'SUSPENDED' ? 'destructive' : 'warning') as 'success' | 'destructive' | 'warning';
 
@@ -24,6 +30,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
   const router = useRouter();
   const [add, setAdd] = React.useState(false);
   const [sel, setSel] = React.useState<CP | null>(null);
+  const [basis, setBasis] = React.useState('PERCENT_OF_SALE');
   const [pending, start] = React.useTransition();
   const act = (fn: () => Promise<{ ok: true; id?: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
@@ -79,14 +86,14 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
       <div className="mb-3 flex justify-end">{canManage && <Button size="sm" onClick={() => setAdd(true)}><Plus className="h-4 w-4" /> Onboard partner</Button>}</div>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>Firm</TableHead><TableHead>RERA</TableHead><TableHead>Comm %</TableHead><TableHead>KYC</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Firm</TableHead><TableHead>RERA</TableHead><TableHead>Commission</TableHead><TableHead>KYC</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {partners.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">No channel partners yet.</TableCell></TableRow>}
             {partners.map((p) => (
               <TableRow key={p.id}>
                 <TableCell><p className="font-medium">{p.firmName}</p><p className="text-xs text-muted-foreground">{p.code} · {p.contactName} · {p.phone}</p></TableCell>
                 <TableCell className="text-xs">{p.reraNumber ?? '—'}</TableCell>
-                <TableCell>{p.commissionPct}%</TableCell>
+                <TableCell>{commissionLabel(p)}</TableCell>
                 <TableCell><Badge variant={kycTone(p.kycStatus)}>{p.kycStatus}</Badge></TableCell>
                 <TableCell><Badge variant={stTone(p.status)}>{p.status}</Badge></TableCell>
                 <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setSel(p)}>Manage</Button></TableCell>
@@ -107,7 +114,16 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
               <div className="space-y-1"><Label htmlFor="phone">Phone *</Label><Input id="phone" name="phone" required /></div>
               <div className="space-y-1"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" /></div>
               <div className="space-y-1"><Label htmlFor="reraNumber">RERA number</Label><Input id="reraNumber" name="reraNumber" /></div>
-              <div className="space-y-1"><Label htmlFor="commissionPct">Commission %</Label><Input id="commissionPct" name="commissionPct" type="number" step="0.1" defaultValue="2" /></div>
+              <div className="space-y-1"><Label htmlFor="commissionBasis">Commission type</Label>
+                <select id="commissionBasis" name="commissionBasis" value={basis} onChange={(e) => setBasis(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="PERCENT_OF_SALE">% of sale</option>
+                  <option value="MONTHS_OF_RENT">Months of rent</option>
+                  <option value="FLAT_FEE">Flat fee</option>
+                </select>
+              </div>
+              {basis === 'PERCENT_OF_SALE' && <div className="space-y-1"><Label htmlFor="commissionPct">Commission %</Label><Input id="commissionPct" name="commissionPct" type="number" step="0.1" defaultValue="2" /></div>}
+              {basis === 'MONTHS_OF_RENT' && <div className="space-y-1"><Label htmlFor="commissionMonths">Months of rent</Label><Input id="commissionMonths" name="commissionMonths" type="number" step="0.5" placeholder="e.g. 1.5" /></div>}
+              {basis === 'FLAT_FEE' && <div className="space-y-1"><Label htmlFor="commissionFlat">Flat fee (₹)</Label><Input id="commissionFlat" name="commissionFlat" type="number" step="1000" placeholder="e.g. 50000" /></div>}
               <div className="space-y-1"><Label htmlFor="panNumber">PAN</Label><Input id="panNumber" name="panNumber" /></div>
               <div className="space-y-1"><Label htmlFor="gstin">GSTIN</Label><Input id="gstin" name="gstin" /></div>
             </div>
@@ -125,7 +141,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
               <DialogHeader><DialogTitle className="flex items-center gap-2">{sel.firmName} <Badge variant={stTone(sel.status)}>{sel.status}</Badge> <Badge variant={kycTone(sel.kycStatus)}>KYC {sel.kycStatus}</Badge></DialogTitle></DialogHeader>
               <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                  {[['Code', sel.code], ['Contact', sel.contactName], ['Phone', sel.phone], ['Email', sel.email], ['RERA', sel.reraNumber], ['PAN', sel.panNumber], ['GSTIN', sel.gstin], ['Commission', `${sel.commissionPct}%`]].map(([k, v]) => <div key={k as string}><p className="text-[10px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{(v as string) || '—'}</p></div>)}
+                  {[['Code', sel.code], ['Contact', sel.contactName], ['Phone', sel.phone], ['Email', sel.email], ['RERA', sel.reraNumber], ['PAN', sel.panNumber], ['GSTIN', sel.gstin], ['Commission', commissionLabel(sel)]].map(([k, v]) => <div key={k as string}><p className="text-[10px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{(v as string) || '—'}</p></div>)}
                 </div>
 
                 {canManage && (

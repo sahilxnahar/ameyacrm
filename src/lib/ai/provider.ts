@@ -51,6 +51,23 @@ function worthRetrying(status: number): boolean {
   return status === 401 || status === 402 || status === 403 || status === 429 || status >= 500;
 }
 
+/**
+ * Turn a raw HTTP status into a plain, fix-it-yourself sentence. The provider's
+ * own message ("User not found") means nothing to a non-technical user — this
+ * says what actually went wrong and what to do about it.
+ */
+export function humaniseAiError(status: number, reason: string): string {
+  switch (status) {
+    case 401: return `The AI key is invalid or expired (provider said: "${reason}"). Update AI_API_KEY in Vercel → Settings → Environment Variables, then redeploy.`;
+    case 402: return `The AI account is out of credit (provider said: "${reason}"). Top up the OpenRouter account, then try again.`;
+    case 403: return `This AI key is not allowed to use the selected model (provider said: "${reason}"). Check the key's model access, or change AI_MODEL.`;
+    case 429: return `The AI provider is rate-limiting requests right now. Wait a minute and try again.`;
+    default:
+      if (status >= 500) return `The AI provider is having trouble (HTTP ${status}). This is on their side — try again shortly.`;
+      return reason;
+  }
+}
+
 /** Remembered between requests on a warm instance, so a dead key is skipped. */
 let preferredKeyIndex = 0;
 
@@ -167,7 +184,7 @@ async function callOpenAi(
         const j = JSON.parse(raw) as { error?: { message?: string } };
         if (j.error?.message) reason = j.error.message;
       } catch { /* raw text is the best we have */ }
-      return { ok: false, error: `${who.label} refused it (HTTP ${res.status}) — ${reason}`, retry: worthRetrying(res.status) };
+      return { ok: false, error: humaniseAiError(res.status, reason), retry: worthRetrying(res.status) };
     }
     const j = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }> };
     const text = j.choices?.[0]?.message?.content?.trim() ?? '';
@@ -314,7 +331,7 @@ export async function aiReadFile(
         const j = JSON.parse(raw) as { error?: { message?: string } };
         if (j.error?.message) reason = j.error.message;
       } catch { /* raw text is the best we have */ }
-      lastError = `${p.label} refused it (HTTP ${res.status}) — ${reason}`;
+      lastError = humaniseAiError(res.status, reason);
       if (!worthRetrying(res.status)) return { ok: false, error: lastError };
     } catch (e) {
       lastError = e instanceof Error ? e.message : 'The request failed.';

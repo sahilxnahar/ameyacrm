@@ -29,7 +29,10 @@ const cpSchema = z.object({
   reraNumber: z.string().max(60).optional(),
   panNumber: z.string().max(20).optional(),
   gstin: z.string().max(30).optional(),
+  commissionBasis: z.enum(['PERCENT_OF_SALE', 'MONTHS_OF_RENT', 'FLAT_FEE']).default('PERCENT_OF_SALE'),
   commissionPct: z.coerce.number().min(0).max(50).default(2),
+  commissionMonths: z.coerce.number().min(0).max(60).optional().nullable(),
+  commissionFlat: z.coerce.number().min(0).optional().nullable(),
   bankDetails: z.string().max(300).optional(),
   notes: z.string().max(500).optional(),
 });
@@ -42,7 +45,11 @@ export async function createChannelPartner(input: unknown): Promise<PartnerResul
       data: {
         code, firmName: d.firmName, contactName: d.contactName, phone: d.phone, email: d.email || null,
         reraNumber: d.reraNumber || null, panNumber: d.panNumber || null, gstin: d.gstin || null,
-        commissionPct: d.commissionPct, bankDetails: d.bankDetails || null, notes: d.notes || null, onboardedById: ctx.user.id,
+        commissionBasis: d.commissionBasis,
+        commissionPct: d.commissionBasis === 'PERCENT_OF_SALE' ? d.commissionPct : 0,
+        commissionMonths: d.commissionBasis === 'MONTHS_OF_RENT' ? (d.commissionMonths ?? null) : null,
+        commissionFlat: d.commissionBasis === 'FLAT_FEE' ? (d.commissionFlat ?? null) : null,
+        bankDetails: d.bankDetails || null, notes: d.notes || null, onboardedById: ctx.user.id,
       },
     });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'ChannelPartner', entityId: cp.id, summary: `Onboarded CP ${d.firmName} (${code})` });
