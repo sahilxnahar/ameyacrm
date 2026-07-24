@@ -24,9 +24,37 @@ export async function POST(request: Request): Promise<NextResponse> {
     const json = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async () => {
+      onBeforeGenerateToken: async (_pathname, clientPayload) => {
         const ctx = await getCurrentUser();
         if (!ctx) throw new Error('You must be signed in to upload.');
+
+        // A profile photo is not a "document" — every signed-in person may set
+        // their own avatar, even without document/marketing rights. The client
+        // flags these with { purpose: 'avatar' }; we then cap them to images and
+        // a small size so this relaxed path can't be used to smuggle big files.
+        let purpose: string | undefined;
+        try { purpose = clientPayload ? (JSON.parse(clientPayload) as { purpose?: string }).purpose : undefined; } catch { /* ignore */ }
+        if (purpose === 'avatar') {
+          return {
+            addRandomSuffix: true,
+            allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+            maximumSizeInBytes: 8 * 1024 * 1024, // 8 MB — plenty for a photo
+            tokenPayload: JSON.stringify({ userId: ctx.user.id, purpose: 'avatar' }),
+          };
+        }
+
+        // A chat attachment is not a "document" either — anyone who can use the
+        // team chat may attach a file of ANY type (image, video, PDF, zip, …),
+        // without needing document/marketing rights. No content-type restriction;
+        // a generous size cap so short videos work, still bounded against abuse.
+        if (purpose === 'chat') {
+          return {
+            addRandomSuffix: true,
+            maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — room for a short video
+            tokenPayload: JSON.stringify({ userId: ctx.user.id, purpose: 'chat' }),
+          };
+        }
+
         if (!can(ctx.permissions, 'document.create') && !can(ctx.permissions, 'marketing.manage')) throw new Error('You do not have permission to upload files.');
         return {
           addRandomSuffix: true,

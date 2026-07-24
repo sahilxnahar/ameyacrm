@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.12';
+export const APP_VERSION = 'v15.24';
 
 export interface Release {
   version: string;
@@ -13,6 +13,118 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.24',
+    date: '24 Jul 2026',
+    highlights: [
+      'Under-the-hood: added an automated test suite covering the newest features — channel-partner commission maths, at-rest chat/PII encryption, GST filing JSON, webhooks, the consent trail, personal automations and email threading. Nothing changes on screen; this just guards these features against future regressions so upgrades stay safe.',
+      'The full suite now runs on every build (nearly 400 checks), so a change that would break one of these is caught before it ships.',
+    ],
+  },
+  {
+    version: 'v15.23',
+    date: '24 Jul 2026',
+    highlights: [
+      'New consent register (Admin → Privacy & DPDP) — look someone up by email or phone and see, and change, exactly what they’ve agreed to: marketing, WhatsApp, calls and data processing. Every change is kept as an append-only trail, so a withdrawal never erases the earlier record — a defensible history for DPDPA.',
+      'Web forms and other systems can record consent automatically through the public API (POST /api/v1/consent), and marketing consent stays in step with the lead’s own flag.',
+      'Data retention is now enforced, not just declared. Once you set a retention period, a nightly sweep quietly removes dead leads (lost, long-inactive, never booked) past that period — won deals, active buyers and financial records are never touched. Daily backups now also roll off automatically after 180 days.',
+      'This version needs a small database change — run MIGRATION_v15.23_all.sql in Neon before deploying (it adds the consent table).',
+    ],
+  },
+  {
+    version: 'v15.22',
+    date: '24 Jul 2026',
+    highlights: [
+      'There’s now an iOS app path. Alongside the existing Android build, a new Capacitor project wraps the CRM for the App Store and TestFlight — so iPhone and iPad users can install it as a real app, not just a home-screen shortcut.',
+      'Both wrappers load the live app, so there’s nothing extra to maintain — the same sign-in, 2FA and push work, and the app updates the moment you deploy. Build steps are in MOBILE_APP.md (Android in android/, iOS in mobile/).',
+      'iPhone “open a CRM link in the app” (universal links) is pre-wired — drop in your Apple Team ID and it works.',
+    ],
+  },
+  {
+    version: 'v15.21',
+    date: '24 Jul 2026',
+    highlights: [
+      'New Webhooks (Admin → Webhooks) push CRM activity to Zapier, Make or any system in real time. Choose the events you care about — a lead created, a lead changing stage, a task created or finished — and we POST a signed JSON payload to your URL the instant it happens.',
+      'Every delivery is signed (HMAC-SHA256 in an x-ameya-signature header) so your receiver can be sure it came from us, and a test button lets you confirm your endpoint in one click. Dead endpoints disable themselves automatically so they never slow the CRM.',
+      'Zapier and Make can subscribe on their own through the public API (POST /api/v1/webhooks with your API token), which — together with the existing REST endpoints for leads and units — makes a proper two-way connector.',
+      'This version needs a small database change — run MIGRATION_v15.21_all.sql in Neon before deploying (it adds the Webhook table).',
+    ],
+  },
+  {
+    version: 'v15.20',
+    date: '24 Jul 2026',
+    highlights: [
+      'New GST Filing page (under Finance) turns your invoices into filing-ready JSON — no re-typing. Download a month’s GSTR-1 (B2B, B2C and HSN summary), or an individual invoice’s e-invoice (IRN) and e-way-bill JSON, then upload it to the GST / IRP / e-way-bill portal, or import into Tally.',
+      'It handles the tax split for you — CGST/SGST for a sale within your state, IGST for an inter-state sale, worked out from the buyer’s GSTIN.',
+      'Everything is generated inside the CRM and downloaded — nothing is transmitted to any portal from here, so the tool stays simple and safe. As always, have your CA review before filing.',
+    ],
+  },
+  {
+    version: 'v15.19',
+    date: '24 Jul 2026',
+    highlights: [
+      'New Shared Inbox — every email and WhatsApp conversation in one place. The whole team can see what came in, open the linked lead, customer or vendor, and reply without switching to Gmail or a phone. Find it in the sidebar under Messages.',
+      'Replies are two-way and stay on the record. Answer an email or a WhatsApp message right from the inbox; your reply is sent and saved into the same conversation, so the next person sees the full history — and lead replies are logged on the lead’s timeline automatically.',
+      'This version needs a small database change — run MIGRATION_v15.19_all.sql in Neon before deploying (it adds one column so WhatsApp replies can be stored).',
+    ],
+  },
+  {
+    version: 'v15.18',
+    date: '24 Jul 2026',
+    highlights: [
+      'Bank account numbers and PAN details are now encrypted at rest. Vendor bank account numbers and PAN, and channel-partner PAN, are stored scrambled (AES-256-GCM) in the database — so a database or backup leak exposes gibberish, not usable fraud material. They’re unscrambled automatically wherever you’re allowed to see them, so nothing looks different day-to-day.',
+      'This needed no data migration and no re-typing. Existing records stay readable and quietly become encrypted the next time they’re saved.',
+      'Semi-public identifiers (GSTIN, IFSC) stay as-is so they remain searchable, and the company’s own bank records already keep only the last four digits.',
+    ],
+  },
+  {
+    version: 'v15.17',
+    date: '24 Jul 2026',
+    highlights: [
+      'My Automations now actually run for you. The schedule automations you switch on — daily chase lists, weekly reviews, month-end checklists — quietly raise a dated task on your own list each day, using the timing and priority you set. Nobody else’s account is touched.',
+      'Everyone can now open My Automations and tailor their own. It no longer needs dashboard permission — it’s personal to your account, so any signed-in person can switch rules on and tune them.',
+      'Your automation-raised tasks never pile up. Each is created at most once a day, so a retry or a re-run of the nightly job can’t leave you with duplicates.',
+    ],
+  },
+  {
+    version: 'v15.16',
+    date: '24 Jul 2026',
+    highlights: [
+      'Team chat messages are now encrypted at rest. Message text is stored scrambled (AES-256-GCM) in the database, so a database or backup leak exposes gibberish, not your conversations. It’s decrypted only for the people in the chat — search, mentions and read-receipts all keep working. (Older messages stay readable and become encrypted as new ones are sent.)',
+      'Chat now accepts any file — images, videos, PDFs, spreadsheets, zips, anything (up to 200 MB). Images show inline, videos and audio play right in the chat, and everything else is a one-tap download. You no longer need document permissions to share a file in a conversation.',
+      'Message previews are no longer copied into notifications, so nothing sensitive leaks out of the encrypted chat.',
+    ],
+  },
+  {
+    version: 'v15.15',
+    date: '24 Jul 2026',
+    highlights: [
+      'Sign-in now takes you straight to your Home screen. If two-factor still needs setting up, it’s a friendly reminder on Home — not a forced detour through the security page.',
+      'Home now shows your role at a glance, so you always know what you can do.',
+      'New: ask AI to make a Tally entry for you. On the Ameya Tally screen, press “Ask AI”, type something like “Paid ₹50,000 to ABC Cement by bank”, and it drafts the balanced double-entry voucher — you review it and press Post. It can even create a missing ledger on the spot. Nothing is ever written to the books without your confirmation, and every posted entry is audited exactly like a manual one.',
+    ],
+  },
+  {
+    version: 'v15.14',
+    date: '24 Jul 2026',
+    highlights: [
+      'Closing the one gap the market comparison flagged (Communications). The telephony, WhatsApp-Business, portal-lead and two-way-email engines were already built but idle — the Integrations screen (Team & Admin → Integrations) now hands you the exact webhook URL to paste and the plain steps to switch each one on.',
+      'Two-way email now appears as its own integration with a live count of messages threaded onto leads, buyers and vendors — so you can see replies are being captured, not just mail going out.',
+      'WhatsApp is shown as a proper two-way Business channel (Meta Cloud API): templates and broadcasts out, replies into a shared inbox — with the callback URL and verify-token steps spelled out. Free Meta tier, so it stays clear of the no-Google-billing rule.',
+      'Each channel shows Working / Ready-but-unused / Not-set-up honestly, so nothing rots silently.',
+    ],
+  },
+  {
+    version: 'v15.13',
+    date: '24 Jul 2026',
+    highlights: [
+      'New File Tools screen (Documents → File Tools): merge PDFs, extract PDF pages, turn images into a PDF, and convert spreadsheets between Excel, CSV, JSON and Markdown — all on your own device, with no files uploaded and no AI credits used.',
+      'Channel partners can now be paid three ways, not just a percentage: choose “% of sale”, “months of rent” (for commercial leases) or a flat fee when onboarding a partner, and the right amount shows everywhere.',
+      'Overdue reminders and emails now stop the moment work is closed — a task that’s cancelled (not only completed) no longer keeps chasing you.',
+      'Today’s Priorities is more complete — it now also lists today’s calendar events and any open work requests assigned to you.',
+      'Clearer errors and fixes: profile-photo uploads work for everyone (not just document managers), AI-import errors now say exactly what to fix (e.g. an expired AI key), the map explains whether it’s the device, the network or blocked imagery, and a very rough GPS fix now warns instead of silently recording a wrong distance.',
+    ],
+  },
   {
     version: 'v15.12',
     date: '23 Jul 2026',

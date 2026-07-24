@@ -44,9 +44,12 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
   const nameOf = new Map(users.map((u) => [u.id, u.name]));
   const inScope = (id: string | null | undefined) => !userIds || (id ? userIds.includes(id) : false);
 
-  // 1 — tasks with a due date
+  // 1 — tasks with a due date.
+  // Exclude both DONE and CANCELLED: a closed task — completed OR cancelled —
+  // must never keep generating overdue notifications or escalation emails.
+  // (This mirrors the Today list, which also drops DONE and CANCELLED.)
   const tasks = await prisma.task.findMany({
-    where: { deletedAt: null, dueDate: range, status: { not: 'DONE' } },
+    where: { deletedAt: null, dueDate: range, status: { notIn: ['DONE', 'CANCELLED'] } },
     select: { id: true, reference: !light, title: !light, dueDate: true, priority: !light, status: !light, assignees: { select: { userId: true, state: true } } },
     take: 800,
   });

@@ -14,6 +14,12 @@ export interface Integration {
   needs: string;          // what it costs / what account it needs
   setupHref?: string;
   docs?: string;
+  /** The exact URL to paste into the provider to start it — the missing step
+   *  that turns a "built but idle" channel into a working one. */
+  webhookUrl?: string;
+  webhookNote?: string;
+  /** Numbered, plain-language "how to switch this on" steps. */
+  steps?: string[];
 }
 
 /**
@@ -23,7 +29,7 @@ export interface Integration {
  * otherwise is how integrations rot silently.
  */
 export async function getIntegrations(): Promise<Integration[]> {
-  const [socialCount, portalCount, chunkCount, errCount, subCount, sigCount, payCount] = await Promise.all([
+  const [socialCount, portalCount, chunkCount, errCount, subCount, sigCount, payCount, mailCount] = await Promise.all([
     prisma.socialActivity.count({ where: { notifiedAt: { not: null } } }),
     prisma.socialActivity.count({ where: { kind: 'lead', handle: { not: null } } }),
     prisma.docChunk.count(),
@@ -31,10 +37,12 @@ export async function getIntegrations(): Promise<Integration[]> {
     prisma.pushSubscription.count(),
     prisma.signatureRequest.count(),
     prisma.paymentRequest.count(),
+    prisma.mailThreadMessage.count(),
   ]);
 
   const gas = Boolean(env.GAS_WEBAPP_URL && env.GAS_SECRET);
   const smtp = env.EMAIL_PROVIDER === 'smtp' || env.EMAIL_PROVIDER === 'ses';
+  const base = (env.APP_URL || 'https://crm.ameyaheights.com').replace(/\/$/, '');
 
   return [
     {
@@ -84,6 +92,13 @@ export async function getIntegrations(): Promise<Integration[]> {
       detail: portalCount > 0 ? `${portalCount} portal enquiries captured` : gas ? 'Connector ready — add the scanPortalsOnce trigger' : 'Needs the Apps Script connector',
       needs: 'Free — reads the emails the portals already send',
       docs: 'Apps Script → scanPortalsOnce → every 15 minutes',
+      webhookUrl: `${base}/api/ingest/portal?key=YOUR_INGEST_SECRET`,
+      webhookNote: 'The parser already understands 99acres, MagicBricks, Housing, CommonFloor and NoBroker enquiry emails.',
+      steps: [
+        'In your portal account, set enquiry notifications to arrive at your Ameya inbox (most already do).',
+        'Open the Apps Script connector (Extensions → Apps Script on your linked Sheet) and enable the scanPortalsOnce trigger to run every 15 minutes.',
+        'It forwards each new enquiry email to the URL above; matched enquiries appear as leads with the portal named as the source.',
+      ],
     },
     {
       key: 'social', name: 'Social channels', category: 'Leads',
@@ -94,23 +109,53 @@ export async function getIntegrations(): Promise<Integration[]> {
       setupHref: '/marketing',
     },
     {
-      key: 'whatsapp', name: 'WhatsApp sending', category: 'Communications',
-      what: 'Automatic WhatsApp reminders and broadcasts.',
+      key: 'whatsapp', name: 'WhatsApp Business (two-way)', category: 'Communications',
+      what: 'Send reminders and template broadcasts, and capture replies into a shared inbox.',
       health: (process.env.OPENWA_API_URL || process.env.WHATSAPP_WEBHOOK_URL || process.env.WHATSAPP_TOKEN) ? 'live' : 'off',
-      detail: process.env.OPENWA_API_URL
-        ? 'OpenWA gateway connected — free-form messages, no Meta approval'
-        : process.env.WHATSAPP_WEBHOOK_URL || process.env.WHATSAPP_TOKEN
-          ? 'Gateway configured'
-          : 'Manual only — one-tap links work today',
+      detail: process.env.WHATSAPP_TOKEN
+        ? 'Meta Cloud API connected — templates + two-way inbox'
+        : process.env.OPENWA_API_URL
+          ? 'OpenWA gateway connected — free-form messages, no Meta approval'
+          : process.env.WHATSAPP_WEBHOOK_URL
+            ? 'Gateway configured'
+            : 'Manual only — one-tap links work today',
       needs: 'Self-hosted OpenWA (free), or Meta Cloud API / AiSensy / WATI / Twilio',
-      setupHref: '/admin/mobile-app',
+      setupHref: '/admin/integrations',
+      webhookUrl: `${base}/api/webhooks/whatsapp`,
+      webhookNote: 'For the Meta Cloud API: paste this as the Webhook Callback URL and use WHATSAPP_VERIFY_TOKEN as the Verify Token. Free Meta tier — not subject to your no-Google-billing rule.',
+      steps: [
+        'Create a Meta Business + WhatsApp app (free), and add WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_WABA_ID and WHATSAPP_VERIFY_TOKEN in Vercel → Environment Variables, then redeploy.',
+        'In Meta → WhatsApp → Configuration, set the Callback URL above and the Verify Token, and subscribe to the "messages" field.',
+        'Replies now land in the CRM against the matching lead/buyer; outbound reminders and template broadcasts send through the Cloud API automatically.',
+      ],
     },
     {
       key: 'telephony', name: 'Telephony & call recording', category: 'Communications',
       what: 'Recordings transcribed by AI, with budget, BHK and timeline pulled out automatically.',
       health: env.TELEPHONY_SECRET ? 'configured' : 'off',
-      detail: env.TELEPHONY_SECRET ? 'Webhook secret set — waiting for a provider' : 'The AI half is built and idle',
+      detail: env.TELEPHONY_SECRET ? 'Webhook secret set — paste the URL below into your provider' : 'The AI half is built and idle — set TELEPHONY_SECRET to switch it on',
       needs: 'Paid per minute — Exotel or Knowlarity',
+      webhookUrl: `${base}/api/telephony/webhook?key=YOUR_TELEPHONY_SECRET`,
+      webhookNote: 'Provider-agnostic — works with Exotel, Knowlarity or Twilio. Accepts JSON or form-encoded call events.',
+      steps: [
+        'Set TELEPHONY_SECRET in Vercel → Environment Variables and redeploy.',
+        'In Exotel/Knowlarity, add a call webhook (passthru/callback) pointing at the URL above, including the recording URL field.',
+        'Each call is matched to a lead by phone number and logged; if a recording is attached, the AI transcribes it and extracts budget, typology, timeline and sentiment onto the lead.',
+      ],
+    },
+    {
+      key: 'email-inbound', name: 'Two-way email', category: 'Communications',
+      what: 'Replies from leads, buyers and vendors thread onto their record — not just the mail you send out.',
+      health: mailCount > 0 ? 'live' : gas ? 'configured' : 'off',
+      detail: mailCount > 0 ? `${mailCount} messages threaded onto records` : gas ? 'Connector ready — enable the mail sync trigger' : 'Needs the Apps Script mail connector',
+      needs: 'Free — reads your own Gmail with your permission, no Cloud Console',
+      webhookUrl: `${base}/api/ingest/email?key=YOUR_INGEST_SECRET`,
+      webhookNote: 'Inbound and sent mail are matched to a lead/buyer/vendor by address and threaded; unknown senders are ignored, quoted history is stripped.',
+      steps: [
+        'Open the Apps Script connector on your linked Google Sheet.',
+        'Enable the mail-sync trigger (scan inbox + sent) to POST new messages to the URL above every few minutes.',
+        'Conversations now appear on each lead/buyer/vendor record, both directions.',
+      ],
     },
     {
       key: 'esign', name: 'E-signature', category: 'Operations',

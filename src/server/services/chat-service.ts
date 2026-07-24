@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { tallyUnread } from '@/lib/chat/unread';
+import { decryptSafe } from '@/lib/utils/crypto';
 
 export interface DirectoryUser { id: string; name: string; username: string; avatarUrl: string | null }
 export interface ConversationSummary {
@@ -69,7 +70,7 @@ export async function listConversations(userId: string): Promise<ConversationSum
       id: c.id,
       title: c.title ?? (otherUserId ? names.get(otherUserId) ?? 'Direct message' : 'Conversation'),
       otherUserId,
-      lastMessage: last?.body ?? null,
+      lastMessage: last ? decryptSafe(last.body) : null,
       lastAt: last?.createdAt ?? c.updatedAt,
       unread: unreadByConv.get(c.id) ?? 0,
     };
@@ -103,7 +104,7 @@ export async function getMessages(conversationId: string, userId: string): Promi
     id: m.id,
     senderId: m.senderId,
     senderName: m.senderId ? names.get(m.senderId) ?? 'Someone' : 'Someone',
-    body: m.body,
+    body: decryptSafe(m.body),
     createdAt: m.createdAt,
     mine: m.senderId === userId,
     read: m.senderId === userId ? readBy(m.createdAt) : true,

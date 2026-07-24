@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { getActionContext, toActionError } from './_helpers';
 import { parseMentions } from '@/lib/chat/mentions';
+import { encrypt } from '@/lib/utils/crypto';
 import { notifyUsers } from '@/lib/notify/notify';
 import { fireAndForget } from '@/lib/resilience/safely';
 import { isMember, getMessages, type ChatMessageRow } from '@/server/services/chat-service';
@@ -68,7 +69,10 @@ export async function sendMessage(conversationId: string, body: string, attachme
 
     await prisma.chatMessage.create({
       data: {
-        conversationId, senderId: me, body: text,
+        // Message text is encrypted at rest (AES-256-GCM). A DB or backup leak
+        // exposes ciphertext, not the conversation. It is decrypted on read for
+        // the people in the conversation. Empty (attachment-only) stays empty.
+        conversationId, senderId: me, body: text ? encrypt(text) : '',
         attachments: files.length ? { create: files.map((f) => ({ url: f.url, name: f.name.slice(0, 200), mimeType: f.mimeType ?? null })) } : undefined,
       },
     });
@@ -85,8 +89,10 @@ export async function sendMessage(conversationId: string, body: string, attachme
       const all = await prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true, username: true } });
       const mentioned = all.filter((u) => handles.has((u.username ?? '').toLowerCase()) && u.id !== me).map((u) => u.id);
       if (mentioned.length) {
+        // Deliberately no message preview in the notification body: chat text is
+        // encrypted at rest, so we don't copy it out into the notifications table.
         fireAndForget(
-          () => notifyUsers(mentioned, { type: 'MENTION', title: `${ctx.user.name} mentioned you`, body: text.slice(0, 140), link: `/chat?c=${conversationId}` }),
+          () => notifyUsers(mentioned, { type: 'MENTION', title: `${ctx.user.name} mentioned you`, body: 'mentioned you in a conversation — open the chat to read it.', link: `/chat?c=${conversationId}` }),
           'chat mention notify',
         );
       }

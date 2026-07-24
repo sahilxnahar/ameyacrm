@@ -81,10 +81,12 @@ export function ChatView({
     const ok: typeof files = [];
     setUploading(true);
     for (const f of list.slice(0, 5)) {
+      if (f.size > 200 * 1024 * 1024) { toast.error(`${f.name} is over 200 MB — too large to attach.`); continue; }
       try {
-        const blob = await upload(f.name, f, { access: 'public', handleUploadUrl: '/api/upload' });
+        // purpose:'chat' lets any conversation member upload any file type.
+        const blob = await upload(f.name, f, { access: 'public', handleUploadUrl: '/api/upload', clientPayload: JSON.stringify({ purpose: 'chat' }) });
         ok.push({ url: blob.url, name: f.name, mimeType: f.type || 'application/octet-stream', preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined });
-      } catch { toast.error(`Could not attach ${f.name}`); }
+      } catch (e) { toast.error(`Could not attach ${f.name}${e instanceof Error ? `: ${e.message}` : ''}`); }
     }
     setUploading(false);
     if (ok.length) setFiles((prev) => [...prev, ...ok]);
@@ -190,6 +192,10 @@ export function ChatView({
                       a.mimeType?.startsWith('image/') ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <a key={a.id} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name} className="max-h-56 rounded-lg" /></a>
+                      ) : a.mimeType?.startsWith('video/') ? (
+                        <video key={a.id} src={a.url} controls className="max-h-64 max-w-full rounded-lg" />
+                      ) : a.mimeType?.startsWith('audio/') ? (
+                        <audio key={a.id} src={a.url} controls className="max-w-full" />
                       ) : (
                         <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className={cn('flex items-center gap-1.5 rounded-md px-2 py-1 text-xs underline', m.mine ? 'bg-primary-foreground/15' : 'bg-background')}><FileText className="h-3.5 w-3.5" /> {a.name}</a>
                       )

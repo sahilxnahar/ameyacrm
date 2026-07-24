@@ -27,6 +27,27 @@ export function decrypt(payload: string): string {
   ]).toString('utf8');
 }
 
+/** Does this string look like our `iv.tag.ciphertext` format (3 base64url parts)? */
+export function looksEncrypted(value: string): boolean {
+  const parts = value.split('.');
+  return parts.length === 3 && parts.every((p) => p.length > 0 && /^[A-Za-z0-9_-]+$/.test(p));
+}
+
+/**
+ * Decrypt if the value is our ciphertext; otherwise return it unchanged.
+ *
+ * This lets a field be encrypted going forward without a risky bulk migration:
+ * rows written before encryption was switched on are still plain text and are
+ * returned as-is, while new rows decrypt normally. Any decryption error also
+ * falls back to the raw value rather than throwing — a stored message must never
+ * become unreadable because of a key mishap.
+ */
+export function decryptSafe(value: string | null | undefined): string {
+  if (!value) return '';
+  if (!looksEncrypted(value)) return value;
+  try { return decrypt(value); } catch { return value; }
+}
+
 /** SHA-256 hex — used for opaque session/device tokens (not passwords). */
 export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');

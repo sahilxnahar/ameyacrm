@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { encryptWriteArgs, decryptResult, isWriteOp } from '@/lib/security/pii-crypto';
 
 /**
  * Work out the best connection string for a serverless request.
@@ -53,8 +54,15 @@ function makePrisma() {
     query: {
       async $allOperations({ model, operation, args, query }) {
         const start = performance.now();
+        // Transparent at-rest encryption for PII (bank account numbers, PAN).
+        // Encrypt on the way in, decrypt on the way out — every call site, and
+        // every nested include, is covered here so none can be forgotten.
+        if (isWriteOp(operation)) {
+          try { encryptWriteArgs(args as Record<string, unknown>); } catch { /* never block a write on crypto */ }
+        }
         try {
-          return await query(args);
+          const out = await query(args);
+          try { return decryptResult(out); } catch { return out; }
         } finally {
           const ms = performance.now() - start;
           if (ms > SLOW_QUERY_MS) {

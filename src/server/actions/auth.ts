@@ -7,7 +7,7 @@ import { createSession, destroySession, markTrustedDevice } from '@/lib/auth/ses
 import { issueMfaTicket, readMfaTicket, clearMfaTicket } from '@/lib/auth/mfa-ticket';
 import { openSecret, verifyTotp, verifyBackupCode } from '@/lib/auth/totp';
 import { getCurrentUser } from '@/lib/auth/current-user';
-import { getSecurityPolicy, mustEnroll2FA, countryAllowed } from '@/lib/auth/policy';
+import { getSecurityPolicy, countryAllowed } from '@/lib/auth/policy';
 import { requestCountry, requestCity, countryName } from '@/lib/auth/geo';
 import { isKnownDevice, beginDeviceApproval, alertNewSignIn } from '@/lib/auth/device';
 import { getClientInfo } from '@/lib/auth/session';
@@ -87,9 +87,9 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
         await alertNewSignIn(result.user, { country, city: await requestCity(), ip: info.ip, ua: info.userAgent });
       }
 
-      // Land people on their home screen. A password that ought to be changed
-      // is surfaced as a dismissible reminder there, not a forced detour.
-      if (mustEnroll2FA(result.user, policy)) redirect('/settings/security?enroll=1');
+      // Always land people on their home screen. If two-factor still needs
+      // setting up, that is surfaced as a prominent reminder on the home page —
+      // not a forced detour that hides the whole CRM behind the security screen.
       redirect('/home');
     }
   }

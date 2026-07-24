@@ -70,11 +70,19 @@ export function FieldView({
 
   const doPunch = async (kind: 'CHECK_IN' | 'CHECK_OUT') => {
     const pos = await getPosition();
+    // A fix that is only accurate to a kilometre or more (common on a laptop, or
+    // indoors on a weak signal) can place you far from where you actually are —
+    // this is the usual cause of a wildly wrong "N km away". Record it, but warn
+    // so the distance is not mistaken for exact.
+    const acc = pos?.coords.accuracy ?? null;
+    if (acc !== null && acc > 1000) {
+      toast.warning(`Your location is only accurate to about ${acc >= 1000 ? `${(acc / 1000).toFixed(1)} km` : `${Math.round(acc)} m`}, so any distance shown is approximate. For an exact site check-in, use a phone with GPS outdoors.`);
+    }
     const payload = {
       kind, projectId: projectId || null,
       latitude: pos?.coords.latitude ?? null,
       longitude: pos?.coords.longitude ?? null,
-      accuracyM: pos?.coords.accuracy ?? null,
+      accuracyM: acc,
       at: new Date().toISOString(),
     };
 
@@ -136,6 +144,7 @@ export function FieldView({
           </Button>
         </div>
         {locating && <p className="mt-2 text-xs text-muted-foreground">Finding your location — this takes a moment.</p>}
+        {lastKind === 'CHECK_IN' && <p className="mt-2 text-xs text-warning">You are already checked in — check out first before checking in again.</p>}
         <p className="mt-2 text-xs text-muted-foreground">
           Your location is recorded only at the moment you tap. Nobody is tracked between check-in and check-out.
         </p>

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import { notify } from '@/lib/notifications/notify';
 import { sendEmail, renderTemplate } from '@/lib/email/email';
 import { nextReference } from '@/lib/utils/reference';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatch';
+import { TRIGGER_TO_EVENT } from '@/lib/webhooks/events';
 
 export type AutoTrigger = 'LEAD_CREATED' | 'LEAD_STAGE_CHANGED' | 'TASK_CREATED' | 'TASK_STATUS_CHANGED' | 'SCHEDULE';
 export interface Condition { field: string; op: string; value: string | number | boolean | Array<string | number> }
@@ -39,6 +41,13 @@ function evalCondition(data: Record<string, unknown>, c: Condition): boolean {
  * No-ops silently if the automation tables haven't been migrated yet.
  */
 export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Promise<void> {
+  // Fire any outbound webhooks subscribed to this event, alongside the rules.
+  // Non-blocking and isolated: a webhook problem never affects automations.
+  const event = TRIGGER_TO_EVENT[trigger];
+  if (event) {
+    void dispatchWebhookEvent(event, { entityType: ctx.entityType, entityId: ctx.entityId, ...ctx.data }).catch(() => undefined);
+  }
+
   let rules;
   try {
     rules = await prisma.automationRule.findMany({ where: { trigger, isActive: true } });

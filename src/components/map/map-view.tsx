@@ -26,7 +26,10 @@ export function MapView({
   const [pending, start] = React.useTransition();
   const ref = React.useRef<HTMLDivElement>(null);
   const [ready, setReady] = React.useState(false);
-  const [failed, setFailed] = React.useState(false);
+  // Distinct failure modes need distinct advice: the library, the graphics
+  // (WebGL), or the map tiles (a blocked CDN) can each fail on their own.
+  const [failure, setFailure] = React.useState<null | { kind: 'library' | 'webgl'; message: string }>(null);
+  const [tilesBlocked, setTilesBlocked] = React.useState(false);
 
   const pinned = projects.filter((p) => p.lat !== null && p.lng !== null);
 
@@ -34,23 +37,43 @@ export function MapView({
     let cancelled = false;
     let cleanup: (() => void) | undefined;
 
-    // MapLibre is bundled with the app (npm dependency), not fetched from a
-    // CDN — so it can never be blocked by a firewall, ad-blocker or CSP. We
-    // still import it lazily so the ~200 KB library only loads on this page.
+    // MapLibre itself is bundled with the app (npm dependency), not fetched from
+    // a CDN — so the *library* can't be blocked. The map TILES, however, come
+    // from OpenStreetMap's servers and CAN be blocked by a corporate firewall,
+    // and WebGL can be unavailable on old/locked-down devices. We surface those
+    // three cases separately below. Import lazily so the ~200 KB only loads here.
     import('maplibre-gl')
       .then((mod) => {
         if (cancelled || !ref.current) return;
         const maplibregl = (mod as { default?: any }).default ?? mod;
+        // WebGL is required to render the map at all.
+        if (typeof maplibregl.supported === 'function' && !maplibregl.supported()) {
+          setFailure({ kind: 'webgl', message: 'This device or browser has WebGL turned off, which the map needs. Try another browser, or enable hardware acceleration.' });
+          return;
+        }
         const centre = pinned[0] ?? { lat: 12.9716, lng: 77.5946 };   // Bengaluru
-        const map = new maplibregl.Map({
-          container: ref.current,
-          style: {
-            version: 8,
-            sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
-            layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-          },
-          center: [centre.lng as number, centre.lat as number],
-          zoom: 11,
+        let map: any;
+        try {
+          map = new maplibregl.Map({
+            container: ref.current,
+            style: {
+              version: 8,
+              // Subdomained OSM endpoints spread load and are the documented tile URLs.
+              sources: { osm: { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap contributors' } },
+              layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+            },
+            center: [centre.lng as number, centre.lat as number],
+            zoom: 11,
+          });
+        } catch (e) {
+          setFailure({ kind: 'webgl', message: e instanceof Error ? e.message : 'The map could not start on this device.' });
+          return;
+        }
+        // A tile that fails to load (blocked CDN, offline) fires an error event.
+        // We note it as a soft warning rather than tearing down the whole map.
+        map.on('error', (ev: any) => {
+          const url: string | undefined = ev?.error?.url ?? ev?.sourceId;
+          if (url && String(url).includes('tile')) setTilesBlocked(true);
         });
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
@@ -71,7 +94,7 @@ export function MapView({
         setReady(true);
         cleanup = () => map.remove();
       })
-      .catch(() => !cancelled && setFailed(true));
+      .catch((e) => !cancelled && setFailure({ kind: 'library', message: e instanceof Error ? e.message : 'The map library could not load.' }));
 
     return () => { cancelled = true; cleanup?.(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,8 +135,21 @@ export function MapView({
       <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
         <Card className="overflow-hidden">
           <div ref={ref} className="h-[560px] w-full bg-secondary" />
-          {!ready && !failed && <p className="p-3 text-center text-sm text-muted-foreground">Loading the map…</p>}
-          {failed && <p className="p-3 text-center text-sm text-destructive">The map library could not load. Check your connection and reload.</p>}
+          {!ready && !failure && <p className="p-3 text-center text-sm text-muted-foreground">Loading the map…</p>}
+          {failure && (
+            <div className="space-y-2 p-3 text-center text-sm">
+              <p className="text-destructive">
+                {failure.kind === 'webgl' ? 'The map cannot be drawn on this device. ' : 'The map could not start. '}
+                {failure.message}
+              </p>
+              <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Reload</Button>
+            </div>
+          )}
+          {ready && tilesBlocked && (
+            <p className="p-3 text-center text-xs text-warning">
+              The map is running but its imagery (from OpenStreetMap) is being blocked on this network, so tiles may be blank. Pins still work. Try another network, or ask IT to allow <code>tile.openstreetmap.org</code>.
+            </p>
+          )}
         </Card>
 
         <Card className="p-3">

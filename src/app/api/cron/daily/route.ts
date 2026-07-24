@@ -10,6 +10,8 @@ import { runOverdueEscalation } from '@/server/services/escalation-service';
 import { runOnboardingReminders } from '@/server/services/onboarding-service';
 import { runChatNudges } from '@/server/services/chat-nudge-service';
 import { runTaskDigests } from '@/server/services/task-digest-service';
+import { runPersonalAutomations } from '@/server/services/personal-automation-service';
+import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -78,6 +80,8 @@ export async function GET(req: NextRequest) {
     const stored = await putObject(`backups/ameya-crm-backup-${stamp}.json`, body, 'application/json');
     result.backup = { key: stored.key, sizeKb: Math.round(body.length / 1024) };
     await writeAudit({ action: 'EXPORT', entityType: 'Backup', summary: `Automated daily backup ${stamp}` });
+    // Roll off the snapshot that has just aged past the retention window.
+    await rotateBackups(now).catch(() => undefined);
   } catch { result.backup = 'failed'; }
 
   // 5) regenerate the AI daily briefing
@@ -94,6 +98,12 @@ export async function GET(req: NextRequest) {
 
   // 9) daily task digest — each person's open tasks with one-tap "Mark done" links
   try { result.taskDigests = await runTaskDigests(now); } catch { result.taskDigests = 'failed'; }
+
+  // 10) personal ("My Automations") schedule rules — raise each person's own daily tasks
+  try { result.personalAutomations = await runPersonalAutomations(now); } catch { result.personalAutomations = 'failed'; }
+
+  // 11) DPDPA retention sweep — remove dead leads older than the retention policy
+  try { result.retention = await runRetentionSweep(now); } catch { result.retention = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

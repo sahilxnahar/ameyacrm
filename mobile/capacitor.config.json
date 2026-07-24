@@ -1,0 +1,22 @@
+{
+  "appId": "com.ameyaheights.crm",
+  "appName": "Ameya Heights CRM",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://crm.ameyaheights.com",
+    "cleartext": false,
+    "allowNavigation": ["crm.ameyaheights.com"]
+  },
+  "ios": {
+    "contentInset": "always",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] },
+    "SplashScreen": { "launchShowDuration": 400, "backgroundColor": "#100F0D" }
+  }
+}

@@ -3,6 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { PrivacyView } from '@/components/admin/privacy-view';
+import { ConsentManager } from '@/components/admin/consent-manager';
 
 export const metadata: Metadata = { title: 'Privacy & DPDP' };
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,7 @@ export default async function PrivacyPage() {
           details: r.details, createdAt: r.createdAt.toISOString(),
         }))}
       />
+      <ConsentManager />
     </div>
   );
 }

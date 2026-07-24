@@ -15,8 +15,12 @@ follows.
 
 ### 2. Import into Vercel
 - Vercel.com → **Add New… → Project** → import your GitHub repo.
-- Framework is auto-detected as **Next.js**. Leave the build settings as-is (a `vercel.json`
-  is included that runs migrations automatically).
+- Framework is auto-detected as **Next.js**. Leave the build settings as-is.
+- **Note on migrations:** the Vercel build runs `prisma generate && next build` — it does
+  **not** run database migrations. On a brand-new database the schema is created on the first
+  `/api/setup` call (step 7). For **updates** to an existing database, you run the release's
+  `MIGRATION_*.sql` yourself in Neon — see “Updating an existing deployment” below. This is by
+  design, so a deploy can never half-apply a schema change.
 
 ### 3. Add a database (Vercel Postgres / Neon)
 - In the project, open **Storage → Create Database → Postgres** and connect it.
@@ -60,7 +64,33 @@ Optional but recommended:
   `Ameya@Heights2026`, or your `SETUP_*` overrides). Sign in and **change the password
   immediately** (you’ll be prompted).
 
-You’re live. Re-deploys are automatic on every GitHub push, and migrations re-run safely.
+You’re live. Re-deploys are automatic on every GitHub push.
+
+---
+
+## Updating an existing deployment (IMPORTANT — do this or it can break)
+
+When you deploy a new version onto a database that already has data, the code and the
+database must move together. The code is deployed by pushing to GitHub; the database is
+**not** touched by the build, so any schema change ships as a `MIGRATION_*.sql` file you run
+yourself. Skipping it makes pages that use the new columns throw errors.
+
+**Order for every update:**
+
+1. **Look at which `MIGRATION_*.sql` files are new** since your last deploy (they’re named by
+   version, e.g. `MIGRATION_v15.13_all.sql`). Every migration in this project is idempotent —
+   safe to run again — so when unsure, run the recent ones; “already exists, skipping” means
+   it was already applied.
+2. **Run them in Neon → SQL Editor, in version order, _before or immediately after_ pushing
+   the code.** For the smoothest result, run the SQL first, then push — the new code then
+   finds the columns it expects.
+3. Push the code to GitHub (Vercel auto-deploys). No `/api/setup` needed for an update — it
+   only ever creates a schema that is entirely missing, and never alters existing tables.
+
+> **This release (v15.14):** run **`MIGRATION_v15.13_all.sql`** in Neon if you have not
+> already (it adds the channel-partner commission-basis columns). v15.14 itself adds no new
+> migration. If you skip v15.13, the Partners screen, the daily cron, the briefing, search and
+> the nightly backup will error until it is run.
 
 ---
 
@@ -72,8 +102,9 @@ Blob:
 - **Storage:** Supabase Storage or Cloudflare R2 (both S3-compatible) → set
   `STORAGE_PROVIDER=s3`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
   `S3_SECRET_ACCESS_KEY`, `S3_REGION`.
-- **Build command:** `npm run vercel-build` (it also works on Netlify — runs migrations then
-  builds). **Publish/adapter:** install `@netlify/plugin-nextjs` (Netlify adds it
+- **Build command:** `npm run vercel-build` (works on Netlify too — it runs `prisma generate`
+  then builds; it does **not** run migrations, same as Vercel — see “Updating an existing
+  deployment”). **Publish/adapter:** install `@netlify/plugin-nextjs` (Netlify adds it
   automatically for Next.js).
 - Set `SESSION_SECRET`, `ENCRYPTION_KEY`, then initialize via `/api/setup` as in step 7.
 

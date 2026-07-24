@@ -1830,6 +1830,16 @@ enum BrokerageStatus {
   PAID
 }
 
+/// How a channel partner is paid. Not every deal is a percentage: a sale is a
+/// % of value, a commercial lease is usually "N months' rent + GST", and some
+/// arrangements are a flat fee. The basis decides which of the three amount
+/// fields below is the one that matters.
+enum CommissionBasis {
+  PERCENT_OF_SALE
+  MONTHS_OF_RENT
+  FLAT_FEE
+}
+
 model ChannelPartner {
   id            String               @id @default(cuid())
   code          String               @unique
@@ -1840,7 +1850,12 @@ model ChannelPartner {
   reraNumber    String?
   panNumber     String?
   gstin         String?
+  commissionBasis  CommissionBasis   @default(PERCENT_OF_SALE)
   commissionPct Decimal              @default(2) @db.Decimal(5, 2)
+  /// Months of rent, when commissionBasis is MONTHS_OF_RENT (e.g. 1.5 months).
+  commissionMonths Decimal?          @db.Decimal(5, 2)
+  /// Flat fee in rupees, when commissionBasis is FLAT_FEE.
+  commissionFlat   Decimal?          @db.Decimal(14, 2)
   kycStatus     KycStatus            @default(PENDING)
   status        ChannelPartnerStatus @default(PENDING)
   bankDetails   String?
@@ -2179,6 +2194,27 @@ model ApiToken {
   @@index([revokedAt])
 }
 
+/// An outbound webhook: the CRM POSTs a signed JSON payload to `url` whenever one
+/// of the subscribed `events` happens. This is how Zapier, Make and any custom
+/// system react to CRM activity in real time.
+model Webhook {
+  id             String    @id @default(cuid())
+  url            String
+  events         String[] // e.g. ["lead.created", "lead.stage_changed"]
+  secret         String // used to HMAC-sign each delivery (x-ameya-signature)
+  isActive       Boolean   @default(true)
+  description    String?
+  source         String    @default("manual") // manual | zapier | make | api
+  createdById    String?
+  lastStatus     Int? // HTTP status of the most recent delivery
+  lastDeliveryAt DateTime?
+  lastError      String?
+  failureCount   Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  @@index([isActive])
+}
+
 model SavedView {
   id        String   @id @default(cuid())
   name      String
@@ -2392,6 +2428,29 @@ model DataRequest {
   updatedAt    DateTime          @updatedAt
 
   @@index([status])
+}
+
+/// Append-only consent trail for DPDPA. Each row is one event (consent given or
+/// withdrawn) for one purpose against one data principal (identified by email or
+/// phone). The current state for a purpose is the most recent row — so a
+/// withdrawal never erases the earlier grant, giving a defensible audit trail.
+model ConsentRecord {
+  id           String   @id @default(cuid())
+  subjectEmail String?
+  subjectPhone String?
+  subjectName  String?
+  purpose      String // MARKETING, WHATSAPP, CALLS, DATA_PROCESSING
+  status       String // GIVEN | WITHDRAWN
+  source       String? // web-form, phone, imported, admin, api
+  leadId       String?
+  customerId   String?
+  note         String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([subjectEmail])
+  @@index([subjectPhone])
+  @@index([purpose, status])
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3035,6 +3094,7 @@ model WhatsappMessage {
   filename   String?
   handled    Boolean  @default(false)
   outcome    String?
+  direction  MailDirection @default(INBOUND) // INBOUND = they messaged us; OUTBOUND = a staff reply
   createdAt  DateTime @default(now())
 
   @@index([phone, createdAt])
