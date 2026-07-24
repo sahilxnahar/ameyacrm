@@ -25,8 +25,8 @@ export const CHANGELOG: Release[] = [
     version: 'v15.23',
     date: '24 Jul 2026',
     highlights: [
-      'New consent register (Admin → Privacy & DPDP) — look someone up by email or phone and see, and change, exactly what they’ve agreed to: marketing, WhatsApp, calls and data processing. Every change is kept as an append-only trail, so a withdrawal never erases the earlier record — a defensible history for DPDPA.',
-      'Web forms and other systems can record consent automatically through the public API (POST /api/v1/consent), and marketing consent stays in step with the lead’s own flag.',
+      'New consent register (Admin → Privacy & DPDP) — look someone up by email or phone and see, and change, exactly what they've agreed to: marketing, WhatsApp, calls and data processing. Every change is kept as an append-only trail, so a withdrawal never erases the earlier record — a defensible history for DPDPA.',
+      'Web forms and other systems can record consent automatically through the public API (POST /api/v1/consent), and marketing consent stays in step with the lead's own flag.',
       'Data retention is now enforced, not just declared. Once you set a retention period, a nightly sweep quietly removes dead leads (lost, long-inactive, never booked) past that period — won deals, active buyers and financial records are never touched. Daily backups now also roll off automatically after 180 days.',
       'This version needs a small database change — run MIGRATION_v15.23_all.sql in Neon before deploying (it adds the consent table).',
     ],
@@ -35,9 +35,9 @@ export const CHANGELOG: Release[] = [
     version: 'v15.22',
     date: '24 Jul 2026',
     highlights: [
-      'There’s now an iOS app path. Alongside the existing Android build, a new Capacitor project wraps the CRM for the App Store and TestFlight — so iPhone and iPad users can install it as a real app, not just a home-screen shortcut.',
-      'Both wrappers load the live app, so there’s nothing extra to maintain — the same sign-in, 2FA and push work, and the app updates the moment you deploy. Build steps are in MOBILE_APP.md (Android in android/, iOS in mobile/).',
-      'iPhone “open a CRM link in the app” (universal links) is pre-wired — drop in your Apple Team ID and it works.',
+      'There's now an iOS app path. Alongside the existing Android build, a new Capacitor project wraps the CRM for the App Store and TestFlight — so iPhone and iPad users can install it as a real app, not just a home-screen shortcut.',
+      'Both wrappers load the live app, so there's nothing extra to maintain — the same sign-in, 2FA and push work, and the app updates the moment you deploy. Build steps are in MOBILE_APP.md (Android in android/, iOS in mobile/).',
+      'iPhone "open a CRM link in the app" (universal links) is pre-wired — drop in your Apple Team ID and it works.',
     ],
   },
   {
@@ -54,8 +54,8 @@ export const CHANGELOG: Release[] = [
     version: 'v15.20',
     date: '24 Jul 2026',
     highlights: [
-      'New GST Filing page (under Finance) turns your invoices into filing-ready JSON — no re-typing. Download a month’s GSTR-1 (B2B, B2C and HSN summary), or an individual invoice’s e-invoice (IRN) and e-way-bill JSON, then upload it to the GST / IRP / e-way-bill portal, or import into Tally.',
-      'It handles the tax split for you — CGST/SGST for a sale within your state, IGST for an inter-state sale, worked out from the buyer’s GSTIN.',
+      'New GST Filing page (under Finance) turns your invoices into filing-ready JSON — no re-typing. Download a month's GSTR-1 (B2B, B2C and HSN summary), or an individual invoice's e-invoice (IRN) and e-way-bill JSON, then upload it to the GST / IRP / e-way-bill portal, or import into Tally.',
+      'It handles the tax split for you — CGST/SGST for a sale within your state, IGST for an inter-state sale, worked out from the buyer's GSTIN.',
       'Everything is generated inside the CRM and downloaded — nothing is transmitted to any portal from here, so the tool stays simple and safe. As always, have your CA review before filing.',
     ],
   },
@@ -64,7 +64,7 @@ export const CHANGELOG: Release[] = [
     date: '24 Jul 2026',
     highlights: [
       'New Shared Inbox — every email and WhatsApp conversation in one place. The whole team can see what came in, open the linked lead, customer or vendor, and reply without switching to Gmail or a phone. Find it in the sidebar under Messages.',
-      'Replies are two-way and stay on the record. Answer an email or a WhatsApp message right from the inbox; your reply is sent and saved into the same conversation, so the next person sees the full history — and lead replies are logged on the lead’s timeline automatically.',
+      'Replies are two-way and stay on the record. Answer an email or a WhatsApp message right from the inbox; your reply is sent and saved into the same conversation, so the next person sees the full history — and lead replies are logged on the lead's timeline automatically.',
       'This version needs a small database change — run MIGRATION_v15.19_all.sql in Neon before deploying (it adds one column so WhatsApp replies can be stored).',
     ],
   },
@@ -72,21 +72,20 @@ export const CHANGELOG: Release[] = [
     version: 'v15.18',
     date: '24 Jul 2026',
     highlights: [
-      'Bank account numbers and PAN details are now encrypted at rest. Vendor bank account numbers and PAN, and channel-partner PAN, are stored scrambled (AES-256-GCM) in the database — so a database or backup leak exposes gibberish, not usable fraud material. They’re unscrambled automatically wherever you’re allowed to see them, so nothing looks different day-to-day.',
-      'This needed no data migration and no re-typing. Existing records stay readable and quietly become encrypted the next time they’re saved.',
-      'Semi-public identifiers (GSTIN, IFSC) stay as-is so they remain searchable, and the company’s own bank records already keep only the last four digits.',
+      'Bank account numbers and PAN details are now encrypted at rest. Vendor bank account numbers and PAN, and channel-partner PAN, are stored scrambled (AES-256-GCM) in the database — so a database or backup leak exposes gibberish, not usable fraud material. They're unscrambled automatically wherever you're allowed to see them, so nothing looks different day-to-day.',
+      'This needed no data migration and no re-typing. Existing records stay readable and quietly become encrypted the next time they're saved.',
+      'Semi-public identifiers (GSTIN, IFSC) stay as-is so they remain searchable, and the company's own bank records already keep only the last four digits.',
     ],
   },
   {
     version: 'v15.17',
     date: '24 Jul 2026',
     highlights: [
-      'My Automations now actually run for you. The schedule automations you switch on — daily chase lists, weekly reviews, month-end checklists — quietly raise a dated task on your own list each day, using the timing and priority you set. Nobody else’s account is touched.',
-      'Everyone can now open My Automations and tailor their own. It no longer needs dashboard permission — it’s personal to your account, so any signed-in person can switch rules on and tune them.',
-      'Your automation-raised tasks never pile up. Each is created at most once a day, so a retry or a re-run of the nightly job can’t leave you with duplicates.',
+      'My Automations now actually run for you. The schedule automations you switch on — daily chase lists, weekly reviews, month-end checklists — quietly raise a dated task on your own list each day, using the timing and priority you set. Nobody else's account is touched.',
+      'Everyone can now open My Automations and tailor their own. It no longer needs dashboard permission — it's personal to your account, so any signed-in person can switch rules on and tune them.',
+      'Your automation-raised tasks never pile up. Each is created at most once a day, so a retry or a re-run of the nightly job can't leave you with duplicates.',
     ],
   },
-  {
     version: 'v15.16',
     date: '24 Jul 2026',
     highlights: [
