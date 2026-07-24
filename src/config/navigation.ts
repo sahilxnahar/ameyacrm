@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -47,6 +47,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Daily Briefing', href: '/briefing', icon: Sparkles, permission: 'dashboard.view', blurb: 'A short plain-English summary of what changed.' },
       { label: 'Assistant', href: '/assistant', icon: Bot, blurb: 'An AI helper for drafting, explaining and summarising.' },
       { label: 'Reminders', href: '/reminders', icon: BellRing, blurb: 'Nudges you set for yourself.' },
+      { label: 'My Automations', href: '/automations', icon: Zap, blurb: 'Switch on ready-made automations that work for you — reminders, follow-ups and checks, tailored to you.' },
       { label: 'Tasks', href: '/tasks', icon: CheckSquare, permission: 'task.view', blurb: 'Your to-dos and the ones you assigned.' },
       { label: 'Approvals', href: '/approvals', icon: Inbox, blurb: 'Things waiting for your yes or no.' },
       { label: 'Notifications', href: '/notifications', icon: Bell, blurb: 'Every alert in one inbox — filter, deep-link and mark read.' },
@@ -174,6 +175,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Team & Hierarchy', href: '/team', icon: Network, blurb: 'Who reports to whom — this sets who sees what.' },
       { label: 'Admin', href: '/admin', icon: Shield, permission: 'admin.user.view', blurb: 'Users, roles, projects and system settings.' },
       { label: 'System Health', href: '/admin/health', icon: Activity, permission: 'admin.setting.manage', blurb: 'One board: is every part of the system working, green/amber/red.' },
+      { label: 'Automations', href: '/admin/automations', icon: Zap, permission: 'admin.setting.manage', blurb: 'Company-wide automation rules — trigger, conditions, actions — and the log of every run.' },
       { label: 'Security Operations', href: '/security-ops', icon: KeyRound, permission: 'secops.view', blurb: 'Incidents and access reviews.' },
       { label: 'Decision Log', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view', blurb: 'SOPs, decisions and lessons learned.' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view', blurb: 'A record of who did what.' },

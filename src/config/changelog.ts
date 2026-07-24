@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.11';
+export const APP_VERSION = 'v15.12';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.12',
+    date: '23 Jul 2026',
+    highlights: [
+      'Automations are back in the menu — the company-wide automation engine (Team & Admin → Automations) was never removed, just unlinked; it now has a menu entry again, alongside its templates, AI builder and run log.',
+      'A brand-new My Automations screen (My Day → My Automations) with over 100 ready-made automations across every department — Sales, Marketing, Billing & Collections, Accounts, Legal, Site, Customer Care, HR, Procurement, Architecture, Management and more.',
+      'Every automation is customisable per person — switch on just the ones you want working for you, tweak the timing (due-in days) and priority, or flip a whole department on or off. Your choices are personal and never change anyone else’s.',
+    ],
+  },
   {
     version: 'v15.11',
     date: '23 Jul 2026',
