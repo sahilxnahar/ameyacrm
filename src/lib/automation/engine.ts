@@ -4,6 +4,7 @@ import { notify } from '@/lib/notifications/notify';
 import { sendEmail, renderTemplate } from '@/lib/email/email';
 import { nextReference } from '@/lib/utils/reference';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatch';
+import { dispatchConnectorEvent } from '@/server/services/connector-runtime';
 import { TRIGGER_TO_EVENT } from '@/lib/webhooks/events';
 
 export type AutoTrigger = 'LEAD_CREATED' | 'LEAD_STAGE_CHANGED' | 'TASK_CREATED' | 'TASK_STATUS_CHANGED' | 'SCHEDULE';
@@ -45,7 +46,9 @@ export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Pro
   // Non-blocking and isolated: a webhook problem never affects automations.
   const event = TRIGGER_TO_EVENT[trigger];
   if (event) {
-    void dispatchWebhookEvent(event, { entityType: ctx.entityType, entityId: ctx.entityId, ...ctx.data }).catch(() => undefined);
+    const eventData = { entityType: ctx.entityType, entityId: ctx.entityId, ...ctx.data };
+    void dispatchWebhookEvent(event, eventData).catch(() => undefined);
+    void dispatchConnectorEvent(event, eventData).catch(() => undefined);
   }
 
   let rules;
