@@ -40,6 +40,7 @@ export const NAVIGATION: NavGroup[] = [
     label: 'My Day',
     blurb: 'The screens to open every morning.',
     items: [
+      { label: 'Command Center', href: '/command-center', icon: LayoutGrid, blurb: 'The Bento overview — every urgent operational signal (MSME, sign-offs, renewals, dunning) in one card grid, with ⌘K search.' },
       { label: 'Home', href: '/home', icon: Home, blurb: 'Your welcome screen — the weather, the time and today’s agenda.' },
       { label: "Today's Priorities", href: '/today', icon: ListChecks, blurb: 'Everything due today, in one list. Start here.' },
       { label: 'Guide', href: '/guide', icon: BookOpen, blurb: 'How to use the CRM — first steps, and a walk through every feature.' },

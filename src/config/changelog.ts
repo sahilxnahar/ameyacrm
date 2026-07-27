@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.61';
+export const APP_VERSION = 'v15.62';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.62',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Command Center (My Day) — a clean, card-based Bento overview that pulls the one urgent signal from every operational engine into a single screen: MSME payments about to be disallowed, engineer sign-offs pending, buyer demands queued, vendors frozen by insolvency, permit and trademark renewals, FEMA and hearing deadlines, and the async event queue. Red tiles mean act now.',
+      'It carries the new workspace top-nav row — Overview · Sales & CRM · Site & Engineering · Finance & Tax · Legal — and a prominent ⌘K search bar that opens the existing command palette to jump to any unit, booking, voucher or customer instantly.',
+      'This is the first step of the consumer-grade UI refresh, shipped alongside the current navigation so nothing breaks — the sleek shell rolls out screen by screen from here.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.61',
     date: '27 Jul 2026',
