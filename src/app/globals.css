@@ -446,3 +446,27 @@ html[data-accent='emerald'] { --primary: 160 52% 33%; --ring: 160 52% 33%; --acc
 html[data-accent='indigo']  { --primary: 234 46% 50%; --ring: 234 46% 50%; --accent: 234 40% 60%; --brass: 234 46% 50%; --brass-deep: 234 46% 42%; --brass-light: 234 40% 62%; }
 html[data-accent='rose']    { --primary: 342 56% 45%; --ring: 342 56% 45%; --accent: 342 50% 56%; --brass: 342 56% 45%; --brass-deep: 342 56% 38%; --brass-light: 342 50% 58%; }
 html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --accent: 190 50% 44%; --brass: 190 60% 32%; --brass-deep: 190 60% 26%; --brass-light: 190 50% 46%; }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Responsive hardening (phone / tablet / small-laptop). Conservative, layout-
+   preserving guards against the commonest causes of misalignment on small and
+   mid-width screens: a long unbroken string (an email, a UTR, a URL) or an
+   oversized image forcing the whole page to scroll sideways, and text-heavy
+   table cells refusing to wrap. Nothing here restructures a layout — it only
+   lets content that is too wide wrap instead of overflowing.
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  body { overflow-wrap: break-word; }
+  img, video { max-width: 100%; height: auto; }
+  table td, table th { overflow-wrap: anywhere; }
+  /* Long links/emails inside table cells and description lists wrap cleanly. */
+  td a, td code, dd { overflow-wrap: anywhere; }
+}
+
+/* On phones, let any bare <table> that isn't already in a scroll wrapper carry
+   its own horizontal scroll instead of pushing the page wide. Layout-preserving:
+   the table still renders as a table, it just gains its own scrollbar. */
+@media (max-width: 640px) {
+  .card-elevated > table,
+  .card-surface > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}

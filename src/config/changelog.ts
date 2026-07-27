@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.31';
+export const APP_VERSION = 'v15.52';
 
 export interface Release {
   version: string;
@@ -13,6 +13,199 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.52',
+    date: '27 Jul 2026',
+    highlights: [
+      'New TDS module (Money → TDS). One screen for your whole Tax-Deducted-at-Source position: total liability accrued, total deposited to the government, and what’s still pending — with a colour-coded ledger of every deduction marked Deposited or Pending.',
+      'Smart rate calculation: a built-in calculator maps a payment to the right Indian section (194C, 194J, 194I, 194H, 194Q, 195 and more), applies the correct rate — including the higher no-PAN rate under s.206AA — respects the section threshold, and shows the TDS and net payable. Vendors can carry a default section so future payments auto-map.',
+      'Bank-account / vendor lookup: search by vendor, bank name, IFSC or account number to pull the full TDS ledger tied to that account, then tick the deducted-but-unpaid entries and mark them deposited with a challan number in one go.',
+      'This version needs a small database change — run MIGRATION_v15.52_all.sql in Neon before deploying (adds TDS section + deposit tracking to payments, and a default section on vendors).',
+    ],
+  },
+  {
+    version: 'v15.51',
+    date: '27 Jul 2026',
+    highlights: [
+      'Billing now reads at a glance. Invoices, purchase orders and vendor bills are shown as full-width, colour-coded rows instead of cramped tables — each with the party’s monogram, the number, project/due date, a status chip and the amount, with a green/red/amber accent down the left edge so paid, overdue and pending jump out.',
+      'Purchase orders waiting for your approval are tinted and keep their one-tap approve/reject buttons right on the row. Invoices still open their PDF on click.',
+      'Second of the full-width screen refreshes (after Sales & Leads), using the same shared visual language. No database change.',
+    ],
+  },
+  {
+    version: 'v15.50',
+    date: '27 Jul 2026',
+    highlights: [
+      'Sales & Leads now has a full-width List view alongside the board. Switch with the Board/List toggle at the top left: the list uses the whole screen with colour-coded rows — a monogram and name, the reference and project, source, budget, a status chip, and the owner with how long ago it was touched — so you can scan hundreds of leads at a glance instead of squinting at a pipeline.',
+      'Rows are colour-coded down the left edge (green won/booked, red lost, amber hot, blue in-progress) and open the lead on click. On a phone the row condenses to the essentials automatically.',
+      'This is the first of the full-width screen refreshes; Bookings, Billing and Inventory follow next, using the same visual language. No database change needed.',
+    ],
+  },
+  {
+    version: 'v15.49',
+    date: '27 Jul 2026',
+    highlights: [
+      'Tidy-up after the full-width change: the top bar, breadcrumb and page title now line up on the same left edge, and the faint background emblem is centred within the content area instead of drifting left behind the sidebar.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.48',
+    date: '27 Jul 2026',
+    highlights: [
+      'A visual home. Your home screen now has a “Jump to anything” launcher — big icon tiles for every part of the CRM, grouped like the sidebar and filtered to what you’re allowed to open. One glance, one tap, no menu hunting.',
+      'It fills the full width (see v15.47), so the whole system is laid out visually in front of you the moment you sign in.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.47',
+    date: '27 Jul 2026',
+    highlights: [
+      'The CRM now uses the full width of your screen. Pages were capped to a narrow centred column that left big empty margins on wide monitors; they now stretch to fill the page, so dashboards, tables and lists have room to breathe and less scrolling.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.46',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Finance Command Center (top of the Money menu). One screen with your cost of capital (total bank/NBFC debt, weighted-average interest rate, interest per month and interest due), your cash position, what’s owed to you and by you, and a 12-week cash runway with a warning if cash is forecast to run negative.',
+      'It reads your existing borrowings, bank and billing data, so it’s live the moment you open it.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.45',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Email Health screen (Team & Admin → “Email Health”). One click checks whether your outbound email actually works and, if a password-reset or 2FA email isn’t arriving, tells you exactly what to fix — wrong provider, app-password format, port/security mismatch, or a rejected sender address.',
+      'You can send a real test email to yourself and see the mail server’s exact response, so email problems stop being silent.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.44',
+    date: '27 Jul 2026',
+    highlights: [
+      'Full Gmail inbox, inside the CRM (My Day → “Gmail (IMAP)”). Reads your mailbox directly over IMAP — the list of recent emails, open any one to read it, reply, or compose a new message — all without opening Gmail. Sending uses your existing email setup; no Google Cloud Console.',
+      'To switch it on: enable IMAP in Gmail, create a Google app password, and set IMAP_USER + IMAP_PASS in Vercel (if your SMTP already uses the same mailbox, they’re reused automatically).',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.43',
+    date: '27 Jul 2026',
+    highlights: [
+      'The dashboard no longer clusters on medium screens. The “At a glance” tiles were being crushed (labels stacking one letter per line) when the Assistant panel squeezed the middle. Now the Assistant sits beside the dashboard only on very wide screens and drops below on laptops, and the tiles reflow to fit — so everything stays readable at every size.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.42',
+    date: '27 Jul 2026',
+    highlights: [
+      'Start a WhatsApp from inside the CRM. “Mail & Inbox” now has a “New WhatsApp” button — send a message to any number (with country code) via your WhatsApp connection, and it appears in the inbox alongside replies.',
+      'This completes WhatsApp send + receive: incoming messages already thread in and you could reply; now you can also start a new conversation, without opening WhatsApp separately.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.41',
+    date: '27 Jul 2026',
+    highlights: [
+      'Google Sheets & Drive, for real (Documents → “Google Sheets & Drive”). One click exports your Leads, Vendors or Bookings into a tab of your linked Google Sheet, and you can browse the files the CRM has saved to your Drive folder.',
+      'It runs through your own Apps Script connector — no Google Cloud Console — and shows a live connection status so you know it’s working.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.40',
+    date: '27 Jul 2026',
+    highlights: [
+      'The App Exchange now tells the truth. Only the apps that genuinely work end-to-end are badged “Live” (messaging, Razorpay, WhatsApp, the property portals, and Gmail/Sheets/Drive via your Apps Script). Every other app is clearly marked “Not built yet” instead of a misleading “Live / syncs both ways”.',
+      'Installing a not-built app now plainly says it only records your interest — so nothing pretends to work when it doesn’t. Tell us which apps you actually need and we build them for real, one at a time.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.39',
+    date: '27 Jul 2026',
+    highlights: [
+      'Gmail, inside the CRM — you can now write and send a brand-new email straight from “Mail & Inbox” (renamed from Shared Inbox), not just reply. Incoming mail already syncs in via your Google Apps Script connector, so this completes the loop: read, reply and compose without leaving the CRM.',
+      'The menu now says plainly that this is your email — look under My Day → “Mail & Inbox”.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.38',
+    date: '27 Jul 2026',
+    highlights: [
+      'New “My Apps” menu (under Team & Admin) — see every app you’ve installed in one place, with quick access to manage each, and a button to browse the App Exchange.',
+      'Straight talk on what apps do: “My Apps” now says plainly which connections are live and moving data (Slack, Discord, Telegram, Razorpay, property portals) versus those that are authorised but whose deeper two-way sync is still rolling out.',
+      'Fixed the floating Assistant button overlapping buttons on the page, and the notification prompt sitting on top of it — they now keep out of each other’s way, with more breathing room at the bottom of every screen.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.37',
+    date: '27 Jul 2026',
+    highlights: [
+      'A build fix so the recent updates (borrowings, the tidier Money menu, the Secret Cash Book master erase and the sign-in improvements) all deploy cleanly. No visible change on its own — deploy this one.',
+    ],
+  },
+  {
+    version: 'v15.36',
+    date: '27 Jul 2026',
+    highlights: [
+      'Secret Cash Book — a master erase for the owner. Under “Owner controls”, you can wipe the whole book in one step. Before anything is deleted it is safely backed up (encrypted), so a wipe is never final.',
+      'Only you (the owner / Super Admin) can do it, and only while the book is unlocked. You confirm by typing ERASE, and if the backup can’t be saved for any reason, nothing is deleted.',
+      'Restore any time: “Backups & restore” lists every backup with its date and entry count, and brings the entries back with one click.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.35',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Borrowings screen (under Money) for loans from banks and NBFCs. Add a facility with its rate, then record each drawdown as the money arrives — interest accrues on a reducing balance from the day of each drawdown, and repayments lower it.',
+      'See it at a glance: per lender and across everything — how much you’ve drawn, what’s outstanding, interest accrued so far, interest paid, and what interest is still due — plus your balance-weighted average rate and your interest cost per month.',
+      'The Money menu is tidier: everyday items (Billing, Money owed to us, Payments made, Borrowings, Budgets, Cash book) stay in the sidebar; the heavier accounting and funding tools (Ledger, Tally, GST, Vendor ledgers, Spend, Recurring, Secret cash book, Treasury, Capital) now live together on a new “Accounts & Books” page. Nothing was removed — just organised.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.34',
+    date: '27 Jul 2026',
+    highlights: [
+      'Sign-in takes you straight to your home screen. Two-factor is still required, but once you’ve set it up you’ll never be sent to the security page again — and if you haven’t, you now get a gentle reminder plus an email every couple of days, instead of a wall on every visit.',
+      'Forgot your password? There’s now a “Forgot your password?” link on sign-in that emails you a secure, one-time reset link.',
+      'Admins can issue a temporary password for any user (Team & Admin → Users → ⋯ → Generate temporary password). It’s shown once to share, and the user must change it at next sign-in.',
+      'A “Take a tour” button now sits in the top bar on every screen — a quick guided walkthrough of the whole CRM, for anyone, any time.',
+      'A friendly prompt now offers to turn on notifications on phone and desktop, so approvals, overdue payments and messages can reach you even when the CRM isn’t open.',
+      'Layout hardening for phones, tablets and smaller laptops so long text, images and wide tables no longer push the page sideways.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.33',
+    date: '27 Jul 2026',
+    highlights: [
+      'The Daily Briefing works again. Its AI summary was wired only to the old Google account (now blocked), so it silently never appeared — it now runs on your live AI provider (OpenRouter), the same one the rest of the app uses.',
+      'And it never comes up blank: if AI is unreachable, the briefing falls back to a clear, rule-based summary built from the same risk signals, so you always get a headline, the key risks, and three actions for the day.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.32',
+    date: '27 Jul 2026',
+    highlights: [
+      'The bank IFSC that prints on invoices and receipts is corrected to a valid 11-character code, so a transfer to it is no longer rejected. If you set company details in-app, update the IFSC there too — the saved value wins over the default.',
+      'AI now reads as “switched on” everywhere it is used. The system’s internal “is AI available?” check was still looking for the old Google key; it now recognises your OpenRouter keys, so features stop showing “connect this” when AI is in fact working.',
+      'Admin → AI health now shows your live provider, model, how many keys are in rotation, and whether a fallback provider is set — so you can confirm all your keys loaded without opening Vercel. (Keys are counted, never shown.)',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.31',
     date: '25 Jul 2026',

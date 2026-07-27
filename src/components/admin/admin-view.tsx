@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, KeyRound, Ban, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager } from '@/server/actions/admin';
+import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager, generateTemporaryPassword } from '@/server/actions/admin';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +26,18 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
   const [pending, start] = React.useTransition();
   const [userOpen, setUserOpen] = React.useState(false);
   const [deptOpen, setDeptOpen] = React.useState(false);
+  const [tempPw, setTempPw] = React.useState<{ name: string; password: string } | null>(null);
 
   const act = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
+
+  const issueTemp = (u: U) =>
+    start(async () => {
+      const r = await generateTemporaryPassword(u.id);
+      if ('error' in r) { toast.error(r.error); return; }
+      setTempPw({ name: u.name, password: r.tempPassword });
+      router.refresh();
+    });
 
   const submitUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
@@ -80,6 +89,7 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">⋯</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => act(() => forcePasswordReset(u.id), 'Password reset forced')}><KeyRound className="h-4 w-4" /> Force password reset</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => issueTemp(u)}><KeyRound className="h-4 w-4" /> Generate temporary password</DropdownMenuItem>
                       {u.status === 'ACTIVE'
                         ? <DropdownMenuItem className="text-destructive" onClick={() => act(() => setUserStatus(u.id, 'DISABLED'), 'User disabled')}><Ban className="h-4 w-4" /> Disable</DropdownMenuItem>
                         : <DropdownMenuItem onClick={() => act(() => setUserStatus(u.id, 'ACTIVE'), 'User activated')}><CheckCircle2 className="h-4 w-4" /> Activate</DropdownMenuItem>}
@@ -126,6 +136,21 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
             <div className="space-y-2"><Label htmlFor="password">Temporary password</Label><Input id="password" name="password" type="text" required placeholder="Min 8 characters" /></div>
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setUserOpen(false)}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Create user</Button></div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Temporary password — shown once */}
+      <Dialog open={!!tempPw} onOpenChange={(o) => { if (!o) setTempPw(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Temporary password</DialogTitle>
+            <DialogDescription>Share this with {tempPw?.name} over a trusted channel (in person, a call, or an end-to-end-encrypted message). They must change it on first sign-in. It will not be shown again.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-md border bg-muted px-3 py-2 text-center font-mono text-lg tracking-widest">{tempPw?.password}</code>
+            <Button type="button" variant="outline" onClick={() => { if (tempPw?.password) { navigator.clipboard?.writeText(tempPw.password).then(() => toast.success('Copied')).catch(() => undefined); } }}>Copy</Button>
+          </div>
+          <div className="flex justify-end"><Button onClick={() => setTempPw(null)}>Done</Button></div>
         </DialogContent>
       </Dialog>
 

@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Plus, X, Trash2, LockKeyhole, Download, Users, ArrowDownLeft, ArrowUpRight, FileSpreadsheet } from 'lucide-react';
-import { addSecretEntry, deleteSecretEntry, lockSecretCashBook, setSecretNominees } from '@/server/actions/secret-cashbook';
+import { Loader2, Plus, X, Trash2, LockKeyhole, Download, Users, ArrowDownLeft, ArrowUpRight, FileSpreadsheet, AlertTriangle, RotateCcw, ShieldAlert } from 'lucide-react';
+import { addSecretEntry, deleteSecretEntry, lockSecretCashBook, setSecretNominees, masterEraseSecretCashBook, listSecretCashBackups, restoreSecretCashBackup, type SCBBackupMeta } from '@/server/actions/secret-cashbook';
 import { exportXlsx } from '@/lib/export/xlsx';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,29 @@ export function SecretCashBookView({
   const [pending, start] = React.useTransition();
   const [addOpen, setAddOpen] = React.useState(false);
   const [nomOpen, setNomOpen] = React.useState(false);
+  const [eraseOpen, setEraseOpen] = React.useState(false);
+  const [eraseText, setEraseText] = React.useState('');
+  const [backups, setBackups] = React.useState<SCBBackupMeta[] | null>(null);
+
+  const doErase = () =>
+    start(async () => {
+      const r = await masterEraseSecretCashBook();
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(r.backedUp > 0 ? `Erased. ${r.backedUp} entries were backed up first.` : 'Nothing to erase.');
+      setEraseOpen(false); setEraseText(''); router.refresh();
+    });
+  const loadBackups = () =>
+    start(async () => {
+      const r = await listSecretCashBackups();
+      if ('error' in r) { toast.error(r.error); return; }
+      setBackups(r.backups);
+    });
+  const doRestore = (key: string) =>
+    start(async () => {
+      const r = await restoreSecretCashBackup(key);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(`Restored ${r.restored} entries.`); router.refresh();
+    });
 
   const add = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -155,6 +178,51 @@ export function SecretCashBookView({
       </Card>
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Badge variant="secondary" className="text-[10px]">Private</Badge> These entries are stored separately and never appear in the normal books, reports or exports.</p>
+
+      {isSuperAdmin && (
+        <Card className="border-destructive/40 p-4">
+          <div className="flex items-center gap-2 text-destructive"><ShieldAlert className="h-4 w-4" /><h3 className="font-display text-base">Owner controls</h3></div>
+          <p className="mt-1 text-xs text-muted-foreground">Only you (the owner) can use these, and only while the book is unlocked.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={loadBackups} disabled={pending}><RotateCcw className="h-4 w-4" /> Backups &amp; restore</Button>
+            <Button variant="destructive" size="sm" onClick={() => setEraseOpen(true)} disabled={pending}><Trash2 className="h-4 w-4" /> Master erase</Button>
+          </div>
+          {backups && (
+            <div className="mt-3 rounded-md border">
+              {backups.length === 0 ? (
+                <p className="p-3 text-xs text-muted-foreground">No backups yet. One is created automatically the first time you erase.</p>
+              ) : (
+                <ul className="divide-y text-sm">
+                  {backups.map((b) => (
+                    <li key={b.key} className="flex items-center justify-between gap-2 p-2.5">
+                      <span>{new Date(b.at).toLocaleString('en-IN')} · <span className="text-muted-foreground">{b.count} entries</span></span>
+                      <Button variant="outline" size="sm" onClick={() => doRestore(b.key)} disabled={pending}>Restore</Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {eraseOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Confirm master erase">
+          <Card className="w-full max-w-md p-5">
+            <div className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /><h3 className="font-display text-lg">Erase the entire Secret Cash Book?</h3></div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Every entry is backed up (encrypted) and then removed. You can bring it back any time from “Backups &amp; restore”. Type <strong>ERASE</strong> to confirm.
+            </p>
+            <input value={eraseText} onChange={(e) => setEraseText(e.target.value)} placeholder="ERASE" className={`${inputCls} mt-3`} autoFocus />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setEraseOpen(false); setEraseText(''); }}>Cancel</Button>
+              <Button variant="destructive" size="sm" onClick={doErase} disabled={pending || eraseText.trim().toUpperCase() !== 'ERASE'}>
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Back up &amp; erase
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

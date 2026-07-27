@@ -1,9 +1,8 @@
 import { SchemaWarning } from '@/components/layout/schema-warning';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/current-user';
 import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
 import { AppShell } from '@/components/layout/app-shell';
+import { TwoFactorReminder } from '@/components/layout/two-factor-reminder';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
 import { getActiveProject } from '@/server/services/active-project-service';
@@ -18,11 +17,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' } }),
   ]);
 
-  // Mandatory-2FA gate: if policy requires it and the user hasn't enrolled, force setup.
-  const pathname = (await headers()).get('x-pathname') || '';
-  if (pathname && !pathname.startsWith('/settings/security')) {
-    if (mustEnroll2FA(user, await getSecurityPolicy())) redirect('/settings/security?enroll=1');
-  }
+  // 2FA is still required, but we no longer trap people on the security page on
+  // every visit. They land on their home screen; a dismissible reminder shows
+  // here and a periodic email nudge (see the daily cron) does the enforcing.
+  // Enrolled users compute `false` and never see the reminder.
+  const needsTwoFactor = mustEnroll2FA(user, await getSecurityPolicy());
 
   return (
     <AppShell
@@ -35,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       activeProjectName={active.name}
     >
       <SchemaWarning />
+      <TwoFactorReminder show={needsTwoFactor} />
       {children}
     </AppShell>
   );

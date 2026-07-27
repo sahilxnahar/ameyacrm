@@ -34,6 +34,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       )}
 
       <LoginForm />
+      <p className="text-sm">
+        <Link href="/forgot-password" className="font-medium underline">Forgot your password?</Link>
+      </p>
       {enabled && (
         <p className="text-sm">
           New here? <Link href="/signup" className="font-medium underline">Create an account</Link>

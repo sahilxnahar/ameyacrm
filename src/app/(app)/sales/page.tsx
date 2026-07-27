@@ -33,6 +33,7 @@ export default async function SalesPage() {
     id: l.id, reference: l.reference, name: l.name, status: l.status, source: l.source,
     isNri: l.isNri, country: l.country, ownerName: l.owner?.name ?? null, projectName: l.project?.name ?? null,
     budgetMax: l.budgetMax ? Number(l.budgetMax) : null,
+    updatedAt: l.updatedAt.toISOString(),
   }));
 
   return (

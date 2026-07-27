@@ -86,6 +86,13 @@ const schema = z.object({
   SMTP_SECURE: z.string().default('false').transform((v) => v === 'true' || v === '1'),
   RESEND_API_KEY: z.string().optional(),
 
+  // Gmail inbox over IMAP (reads mail). Auth reuses the SMTP app password unless
+  // an IMAP-specific user/pass is given. Gmail: imap.gmail.com:993.
+  IMAP_HOST: z.string().default('imap.gmail.com'),
+  IMAP_PORT: z.coerce.number().default(993),
+  IMAP_USER: z.string().optional(),
+  IMAP_PASS: z.string().optional(),
+
   // WhatsApp sending gateway (optional). Any endpoint accepting { to, message }.
   WHATSAPP_WEBHOOK_URL: z.string().optional(),
   WHATSAPP_WEBHOOK_TOKEN: z.string().optional(),

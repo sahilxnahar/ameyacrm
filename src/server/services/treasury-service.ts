@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { reconcile, type StatementLineInput, type VoucherCandidate, type ReconResult } from '@/lib/treasury/reconcile';
 import { rollingForecast, type Flow, type Forecast } from '@/lib/treasury/forecast';
+import { accrueFacilityInterest, type BorrowEvent } from '@/lib/treasury/borrowing-interest';
 
 /**
  * Treasury queries, assembled server-side and handed to the client as plain
@@ -163,6 +164,58 @@ export async function loanBook(projectId?: string | null): Promise<LoanRow[]> {
       id: l.id, lender: l.lender, kind: l.kind,
       sanctionedAmount: num(l.sanctionedAmount), interestRate: numN(l.interestRate),
       drawn, repaid, interestPaid, outstanding: drawn - repaid, isActive: l.isActive,
+    };
+  });
+}
+
+export interface BorrowingEventRow { id: string; kind: string; amount: number; date: string; note: string | null }
+export interface BorrowingRow {
+  id: string;
+  lender: string;
+  kind: string;
+  sanctionedAmount: number;
+  interestRate: number | null;
+  startedOn: string | null;
+  notes: string | null;
+  isActive: boolean;
+  drawn: number;
+  repaid: number;
+  interestPaid: number;
+  outstanding: number;
+  interestAccrued: number;
+  netInterestDue: number;
+  events: BorrowingEventRow[];
+}
+
+/**
+ * Every borrowing facility with its reducing-balance interest worked out to
+ * `asOf`. Built on the same LoanFacility/LoanEvent tables the treasury screen
+ * uses — this just adds the interest maths and the event dates.
+ */
+export async function borrowingBook(asOf: Date = new Date()): Promise<BorrowingRow[]> {
+  const loans = await prisma.loanFacility.findMany({
+    orderBy: [{ isActive: 'desc' }, { lender: 'asc' }],
+    include: { events: { orderBy: { eventDate: 'asc' }, select: { id: true, kind: true, amount: true, eventDate: true, note: true } } },
+  });
+  return loans.map((l) => {
+    const evs: BorrowEvent[] = l.events.map((e) => ({ kind: e.kind as BorrowEvent['kind'], amount: num(e.amount), date: e.eventDate }));
+    const acc = accrueFacilityInterest(evs, numN(l.interestRate), asOf);
+    return {
+      id: l.id,
+      lender: l.lender,
+      kind: l.kind,
+      sanctionedAmount: num(l.sanctionedAmount),
+      interestRate: numN(l.interestRate),
+      startedOn: l.startedOn ? l.startedOn.toISOString() : null,
+      notes: l.notes ?? null,
+      isActive: l.isActive,
+      drawn: acc.drawn,
+      repaid: acc.repaid,
+      interestPaid: acc.interestPaid,
+      outstanding: acc.outstanding,
+      interestAccrued: acc.interestAccrued,
+      netInterestDue: acc.netInterestDue,
+      events: l.events.map((e) => ({ id: e.id, kind: e.kind, amount: num(e.amount), date: e.eventDate.toISOString(), note: e.note ?? null })),
     };
   });
 }

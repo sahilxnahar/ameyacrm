@@ -12,6 +12,7 @@ import { runChatNudges } from '@/server/services/chat-nudge-service';
 import { runTaskDigests } from '@/server/services/task-digest-service';
 import { runPersonalAutomations } from '@/server/services/personal-automation-service';
 import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
+import { run2faNudges } from '@/server/services/twofa-nudge-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -104,6 +105,9 @@ export async function GET(req: NextRequest) {
 
   // 11) DPDPA retention sweep — remove dead leads older than the retention policy
   try { result.retention = await runRetentionSweep(now); } catch { result.retention = 'failed'; }
+
+  // 12) 2FA nudge — email anyone still not enrolled, at most once every 2 days
+  try { result.twoFactorNudges = await run2faNudges(now); } catch { result.twoFactorNudges = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

@@ -14,6 +14,8 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Monogram, statusAccent, RecordList } from '@/components/shared/record-row';
+import { cn } from '@/lib/utils/cn';
 import { formatCurrency, formatDate, titleCase } from '@/lib/utils/format';
 
 interface Opt { id: string; name: string }
@@ -78,40 +80,67 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       </div>
 
       <TabsContent value="invoices">
-        <Card><Table>
-          <TableHeader><TableRow><TableHead>Number</TableHead><TableHead>Client</TableHead><TableHead>Project</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {invoices.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No invoices yet.</TableCell></TableRow>}
-            {invoices.map((i) => (<TableRow key={i.id}><TableCell><a href={`/api/billing/invoices/${i.id}/pdf`} target="_blank" rel="noreferrer" className="font-mono text-xs text-primary underline-offset-2 hover:underline">{i.number}</a></TableCell><TableCell className="font-medium">{i.client}</TableCell><TableCell className="text-sm text-muted-foreground">{i.project ?? '—'}</TableCell><TableCell className="text-sm">{formatDate(i.dueDate)}</TableCell><TableCell><Badge variant={statusVariant(i.status) as never}>{titleCase(i.status)}</Badge></TableCell><TableCell className="text-right font-medium tabular-nums">{formatCurrency(i.total)}</TableCell></TableRow>))}
-          </TableBody>
-        </Table></Card>
+        <RecordList empty="No invoices yet.">
+          {invoices.map((i) => (
+            <a
+              key={i.id}
+              href={`/api/billing/invoices/${i.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-muted/40', statusAccent(i.status))}
+            >
+              <Monogram name={i.client} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{i.client}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  <span className="font-mono">{i.number}</span>{i.project ? ` · ${i.project}` : ''}{i.dueDate ? ` · due ${formatDate(i.dueDate)}` : ''}
+                </div>
+              </div>
+              <Badge variant={statusVariant(i.status) as never} className="shrink-0">{titleCase(i.status)}</Badge>
+              <div className="w-24 shrink-0 text-right font-medium tabular-nums">{formatCurrency(i.total)}</div>
+            </a>
+          ))}
+        </RecordList>
       </TabsContent>
 
       <TabsContent value="pos">
-        <Card><Table>
-          <TableHeader><TableRow><TableHead>Number</TableHead><TableHead>Vendor</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Total</TableHead><TableHead></TableHead></TableRow></TableHeader>
-          <TableBody>
-            {pos.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No purchase orders yet.</TableCell></TableRow>}
-            {pos.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-mono text-xs">{p.number}</TableCell><TableCell>{p.vendor}</TableCell>
-                <TableCell><Badge variant={statusVariant(p.status) as never}>{titleCase(p.status)}</Badge></TableCell>
-                <TableCell className="text-right tabular-nums">{formatCurrency(p.total)}</TableCell>
-                <TableCell>{canApprove && p.needsMyApproval && (<div className="flex gap-1"><Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(p.id, 'APPROVED')}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(p.id, 'REJECTED')}><X className="h-4 w-4" /></Button></div>)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table></Card>
+        <RecordList empty="No purchase orders yet.">
+          {pos.map((p) => (
+            <div key={p.id} className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(p.status), p.needsMyApproval && 'bg-amber-500/5')}>
+              <Monogram name={p.vendor} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{p.vendor}</div>
+                <div className="truncate font-mono text-xs text-muted-foreground">{p.number}</div>
+              </div>
+              <Badge variant={statusVariant(p.status) as never} className="shrink-0">{titleCase(p.status)}</Badge>
+              <div className="w-24 shrink-0 text-right tabular-nums">{formatCurrency(p.total)}</div>
+              <div className="w-16 shrink-0">
+                {canApprove && p.needsMyApproval && (
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(p.id, 'APPROVED')}><Check className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(p.id, 'REJECTED')}><X className="h-4 w-4" /></Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </RecordList>
       </TabsContent>
 
       <TabsContent value="bills">
-        <Card><Table>
-          <TableHeader><TableRow><TableHead>Number</TableHead><TableHead>Vendor</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {bills.length === 0 && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No vendor bills yet.</TableCell></TableRow>}
-            {bills.map((b) => (<TableRow key={b.id}><TableCell className="font-mono text-xs">{b.number}</TableCell><TableCell>{b.vendor}</TableCell><TableCell><Badge variant={statusVariant(b.status) as never}>{titleCase(b.status)}</Badge></TableCell><TableCell className="text-right tabular-nums">{formatCurrency(b.amount)}</TableCell></TableRow>))}
-          </TableBody>
-        </Table></Card>
+        <RecordList empty="No vendor bills yet.">
+          {bills.map((b) => (
+            <div key={b.id} className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(b.status))}>
+              <Monogram name={b.vendor} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{b.vendor}</div>
+                <div className="truncate font-mono text-xs text-muted-foreground">{b.number}</div>
+              </div>
+              <Badge variant={statusVariant(b.status) as never} className="shrink-0">{titleCase(b.status)}</Badge>
+              <div className="w-24 shrink-0 text-right tabular-nums">{formatCurrency(b.amount)}</div>
+            </div>
+          ))}
+        </RecordList>
       </TabsContent>
 
       <TabsContent value="vendors">

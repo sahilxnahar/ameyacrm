@@ -7,6 +7,7 @@ import { DisplaySettings } from './display-settings';
 import { NewButton } from './new-button';
 import { UserMenu } from './user-menu';
 import { NotificationsBell } from './notifications-bell';
+import { GuidedTour } from './guided-tour';
 import type { ShellUser } from './app-shell';
 import { ProjectSwitcher, type ProjectOption } from './project-switcher';
 
@@ -23,7 +24,7 @@ export function Topbar({
   onSearch: () => void;
 }) {
   return (
-    <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:px-6">
+    <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-4 backdrop-blur sm:px-6 lg:px-8">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </Button>
@@ -44,6 +45,7 @@ export function Topbar({
         <TopLink href="/assistant" label="Assistant" desc="Draft, explain and summarise with AI" Icon={Sparkles} />
         <TopLink href="/tally" label="Ameya Tally" desc="Keyboard accounting — F4–F9, Day Book, Trial Balance, P&L" Icon={BookOpen} />
         <TopLink href="/features" label="Explore features" desc="Everything the CRM can do" Icon={LayoutGrid} />
+        <GuidedTour />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell userId={user.id} />
         <div className="hidden sm:block"><DisplaySettings /></div>

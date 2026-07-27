@@ -1083,6 +1083,7 @@ model Vendor {
   bankBranch        String?
   upiId             String?
   paymentNotes      String?
+  defaultTdsSection String? // default Indian TDS section for this vendor, e.g. 194C / 194J
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -2960,6 +2961,9 @@ model Voucher {
   retentionReleased Boolean @default(false)
   tdsAmount    Decimal? @db.Decimal(14, 2) // TDS deducted from this payment
   tdsRate      Decimal? @db.Decimal(5, 2)
+  tdsSection      String?   // Indian TDS section applied, e.g. 194C / 194J / 194I
+  tdsChallanNo    String?   // challan/BSR reference once deposited to the government
+  tdsDepositedAt  DateTime? // when the deducted TDS was actually deposited (null = pending)
   createdById  String?
   approvedById String?
   approvedAt   DateTime?
@@ -2973,6 +2977,7 @@ model Voucher {
   @@index([status])
   @@index([partyName])
   @@index([utr])
+  @@index([tdsDepositedAt])
 }
 
 /// A connected external account (WhatsApp, Meta, Google Ads …). Tokens are

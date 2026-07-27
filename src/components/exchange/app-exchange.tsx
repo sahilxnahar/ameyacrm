@@ -19,6 +19,20 @@ const TIER_TONE: Record<string, string> = {
 };
 const TIER_LABEL: Record<string, string> = { live: 'Live', beta: 'Beta', available: 'Available' };
 
+/**
+ * The connectors that genuinely move data end-to-end today. Everything else is a
+ * directory placeholder that is NOT built yet — we say so plainly rather than
+ * badge it "Live". Messaging (Slack/Discord/Telegram), Razorpay, WhatsApp (via
+ * OpenWA), the property portals (inbound leads), and Gmail/Sheets/Drive (via the
+ * Apps Script connector) are the real ones.
+ */
+const WORKING_SLUGS = new Set<string>([
+  'slack', 'discord', 'telegram', 'razorpay', 'whatsapp-business',
+  'gmail', 'google-sheets', 'google-drive',
+  '99acres', 'magicbricks', 'housing-com', 'nobroker', 'square-yards', 'sulekha', 'commonfloor', 'proptiger',
+]);
+function isWorking(slug: string): boolean { return WORKING_SLUGS.has(slug); }
+
 /** A stable, logo-free monogram tile so we ship no third-party trademarks as images. */
 function Monogram({ name }: { name: string }) {
   const initials = name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
@@ -95,9 +109,11 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
                   </div>
                   <div className="text-xs text-muted-foreground">{c.category}</div>
                 </div>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${TIER_TONE[c.tier]}`}>{TIER_LABEL[c.tier]}</span>
+                {isWorking(c.slug)
+                  ? <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Live</span>
+                  : <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Not built yet</span>}
               </div>
-              <p className="mt-2 line-clamp-2 flex-1 text-xs text-muted-foreground">{c.blurb}</p>
+              <p className="mt-2 line-clamp-2 flex-1 text-xs text-muted-foreground">{isWorking(c.slug) ? c.blurb : 'Listed in the directory — not built yet. Installing only records interest; ask us to prioritise it.'}</p>
               <div className="mt-3 flex items-center justify-between gap-2">
                 <span className="text-[10px] text-muted-foreground">{AUTH_LABEL[c.auth]}</span>
                 {inst ? (
@@ -123,14 +139,16 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
             <div className="flex items-start gap-3">
               <Monogram name={detail.name} />
               <div className="flex-1">
-                <div className="flex items-center gap-2 font-semibold">{detail.name}<span className={`rounded px-1.5 py-0.5 text-[10px] ${TIER_TONE[detail.tier]}`}>{TIER_LABEL[detail.tier]}</span></div>
+                <div className="flex items-center gap-2 font-semibold">{detail.name}{isWorking(detail.slug)
+                  ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">Live</span>
+                  : <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">Not built yet</span>}</div>
                 <div className="text-xs text-muted-foreground">{detail.category} · {AUTH_LABEL[detail.auth]}</div>
               </div>
               <button onClick={() => setDetail(null)}><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{detail.blurb}</p>
-            {detail.tier !== 'live' && (
-              <p className="mt-2 rounded-md bg-muted/60 p-2 text-xs text-muted-foreground">This connector is listed and installable. Installing reserves it and turns on the framework wiring; deeper two-way sync is being rolled out connector by connector.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{isWorking(detail.slug) ? detail.blurb : 'This app appears in the directory but is not built yet.'}</p>
+            {!isWorking(detail.slug) && (
+              <p className="mt-2 rounded-md bg-muted/60 p-2 text-xs text-muted-foreground">Not built yet. Installing only records your interest — tell us to prioritise it and we&apos;ll build it for real, one at a time.</p>
             )}
             <div className="mt-4 flex justify-end gap-2">
               {installs[detail.slug] && isConfigurable(detail.slug) && (
