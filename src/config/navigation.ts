@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator, Stamp, Box, Ruler, Ban } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator, Stamp, Box, Ruler, Ban, HeartPulse } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -126,6 +126,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Piece-Rate Billing', href: '/piece-rate', icon: Ruler, permission: 'procurement.view', blurb: 'Bill sub-contractors on measured output per sq. ft.; settling raises the payment voucher.' },
       { label: 'Sub-Contractor Registry', href: '/vendor-registry', icon: Ban, permission: 'procurement.view', blurb: 'Cross-project default registry — blacklisting a vendor deactivates them everywhere at once.' },
       { label: 'UAN Validator', href: '/uan-validator', icon: BadgeCheck, permission: 'procurement.view', blurb: 'Bulk EPF/ESI UAN validation at the security gate — an invalid UAN is flagged before the worker enters.' },
+      { label: 'BOCW Welfare Log', href: '/welfare-log', icon: HeartPulse, permission: 'procurement.view', blurb: 'Drinking water, medical, creche and sanitation evidence for labour audits — with a monthly compliance-gap flag.' },
       { label: 'Scan (QR / Barcode)', href: '/scan', icon: QrCode, permission: 'booking.view', blurb: 'Scan a unit QR or material barcode with the camera to look it up.' },
       { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create', blurb: 'Photograph progress straight from your phone.' },
       { label: 'Site Telemetry', href: '/telemetry', icon: Radio, permission: 'telemetry.view', blurb: 'Live readings from site sensors, trackers and meters.' },

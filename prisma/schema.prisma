@@ -478,6 +478,7 @@ model Project {
 
   // Group 13 — piece-rate labour (module 66)
   pieceRateEntries PieceRateEntry[]
+  welfareLogs      WelfareLog[]
 
   @@index([isActive])
 }
@@ -952,6 +953,25 @@ model VendorDefault {
 
   @@index([vendorId])
   @@index([severity])
+}
+
+// 67. BOCW labour-camp & creche welfare log. Statutory-audit evidence that the
+// site provides drinking water, medical camps, creche and sanitation. Missing a
+// required category for the month surfaces as a compliance gap.
+model WelfareLog {
+  id         String   @id @default(cuid())
+  projectId  String
+  category   String // DRINKING_WATER | MEDICAL_CAMP | CRECHE | SANITATION
+  headcount  Int?
+  note       String?
+  photoUrl   String?
+  loggedById String?
+  loggedOn   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([category])
 }
 
 // 68. EPF/ESI UAN bulk validator — pre-gate check of contractor labour UANs at

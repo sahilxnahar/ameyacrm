@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.68';
+export const APP_VERSION = 'v15.69';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.69',
+    date: '27 Jul 2026',
+    highlights: [
+      'New BOCW Labour Camp & Creche Welfare Log (Build & Site). Record the statutory welfare facilities — drinking water, medical camp, creche and sanitation — with a headcount and photo, as the evidence a labour inspector asks for.',
+      'Any required facility not logged for a project this month is flagged as a compliance gap on the screen and surfaced as a red tile on the Command Center — so a BOCW audit never finds a surprise. This completes Priority-2.',
+      'This version needs a small database change — run MIGRATION_v15.69_all.sql in Neon before deploying (adds the welfare-log table).',
+    ],
+  },
   {
     version: 'v15.68',
     date: '27 Jul 2026',
