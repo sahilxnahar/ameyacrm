@@ -17,6 +17,7 @@ import { sweepStructuralContracts } from '@/server/services/structural-contract-
 import { sweepVendorInsolvency } from '@/server/services/insolvency-service';
 import { sweepLegalDeadlines } from '@/server/services/legal-sweeps';
 import { sweepMsmeClocks } from '@/server/services/msme-service';
+import { reconcileGstr2b } from '@/server/services/gstr-service';
 import { runPersonalAutomations } from '@/server/services/personal-automation-service';
 import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
 import { run2faNudges } from '@/server/services/twofa-nudge-service';
@@ -130,6 +131,8 @@ export async function GET(req: NextRequest) {
   try { result.legalDeadlines = await sweepLegalDeadlines(now); } catch { result.legalDeadlines = 'failed'; }
 
   try { result.msme = await sweepMsmeClocks(now); } catch { result.msme = 'failed'; }
+
+  try { result.gstr = await reconcileGstr2b(); } catch { result.gstr = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

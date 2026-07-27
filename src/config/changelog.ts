@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.69';
+export const APP_VERSION = 'v15.70';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.70',
+    date: '27 Jul 2026',
+    highlights: [
+      'GSTR-2B reconciliation is now real. Upload the GSTR-2B export (CSV or Excel) by drag-and-drop and every supplier invoice is auto-matched against your vendor bills — matched, amount-mismatch, or missing — so you catch a supplier who hasn’t filed before you claim the Input Tax Credit. Mismatches surface as a red tile on the Command Center, and a daily job keeps the matching current.',
+      'New Revenue Recognition screen (Money) exposes the IND-AS 115 POCM engine that was previously backend-only — snapshot a project’s percentage of completion and see cumulative and incremental revenue, never over-recognising past 100%.',
+      'The UAN validator now takes a CSV/Excel upload as well as pasted text, using the same universal drag-and-drop file picker. An internal audit this cycle found the GSTR-2B and revenue screens missing and the file-upload path unwired on these forms — all now closed.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.69',
     date: '27 Jul 2026',

@@ -26,7 +26,7 @@ async function safe(fn: () => Promise<number>): Promise<number> {
 export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: number }> {
   const [
     msmeOverdue, demandsPending, insolvencyFrozen, tmRenewal, femaDue,
-    hearings, certPending, webhookPending, webhookFailed, estampPending, blacklisted, uanInvalid,
+    hearings, certPending, webhookPending, webhookFailed, estampPending, blacklisted, uanInvalid, gstrIssues,
   ] = await Promise.all([
     safe(() => prisma.msmePaymentClock.count({ where: { status: { in: ['OVERDUE', 'DISALLOWED'] } } })),
     safe(() => prisma.demandNotice.count({ where: { status: 'PENDING' } })),
@@ -47,6 +47,7 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     safe(() => prisma.estampCertificate.count({ where: { status: 'REQUESTED' } })),
     safe(() => prisma.vendorDefault.count({ where: { severity: 'BLACKLIST' } })),
     safe(() => prisma.labourUan.count({ where: { status: 'INVALID' } })),
+    safe(() => prisma.gstr2bLine.count({ where: { status: { in: ['MISMATCH_AMOUNT', 'MISSING_IN_2B'] } } })),
   ]);
 
   // FAR OC-risk needs a compute, so it runs as its own safe block.
@@ -68,6 +69,7 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     { key: 'hearings', label: 'Hearings ≤7d', value: hearings, href: '/appellate-litigation', tone: hearings ? 'warning' : 'success', hint: 'Arbitration + court listings' },
     { key: 'blacklist', label: 'Blacklisted vendors', value: blacklisted, href: '/vendor-registry', tone: blacklisted ? 'destructive' : 'success', hint: 'Defaulters deactivated across projects' },
     { key: 'uan', label: 'Invalid UANs', value: uanInvalid, href: '/uan-validator', tone: uanInvalid ? 'destructive' : 'success', hint: 'EPF/ESI check failed at the gate' },
+    { key: 'gstr', label: 'GSTR-2B issues', value: gstrIssues, href: '/gstr-recon', tone: gstrIssues ? 'destructive' : 'success', hint: 'Invoice mismatch / missing before ITC' },
     { key: 'estamp', label: 'e-Stamps pending', value: estampPending, href: '/estamps', tone: estampPending ? 'warning' : 'default', hint: 'Awaiting SHCIL issuance' },
     { key: 'queue', label: 'Webhook queue', value: webhookPending, href: '/admin/integration-events', tone: webhookPending ? 'warning' : 'success', hint: 'Async events awaiting processing' },
     { key: 'deadletter', label: 'Failed events', value: webhookFailed, href: '/admin/integration-events', tone: webhookFailed ? 'destructive' : 'success', hint: 'Dead-lettered — need replay' },

@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator, Stamp, Box, Ruler, Ban, HeartPulse } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator, Stamp, Box, Ruler, Ban, HeartPulse, FileSpreadsheet } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -110,6 +110,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Accounts & Books', href: '/accounts', icon: Landmark, permission: 'finance.ledger.view', blurb: 'Ledger, Tally, GST, vendor ledgers, treasury, capital — all in one place.' },
       { label: 'TDS', href: '/tds', icon: Banknote, permission: 'finance.ledger.view', blurb: 'Tax Deducted at Source — auto-rate by section, per-account ledger, and what is deducted vs deposited vs pending.' },
       { label: 'MSME 45-Day Tracker', href: '/msme-tracker', icon: Clock, permission: 'finance.ledger.view', blurb: 'Section 43B(h) countdown on every MSME supplier bill — flags overdue before it becomes a tax disallowance.' },
+      { label: 'GSTR-2B Reconciliation', href: '/gstr-recon', icon: FileSpreadsheet, permission: 'billing.view', blurb: 'Upload the GSTR-2B export and auto-match every supplier invoice against your vendor bills before claiming ITC.' },
+      { label: 'Revenue Recognition', href: '/revenue-recognition', icon: TrendingUp, permission: 'finance.ledger.view', blurb: 'IND-AS 115 POCM — recognise project revenue by percentage of completion, period by period.' },
       { label: 'Capital Gains Simulator', href: '/capital-gains', icon: Calculator, permission: 'lead.view', blurb: 'Show a buyer their Section 54 / 54F tax saving from reinvesting into an Ameya Heights home.' },
     ],
   },

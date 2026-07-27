@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RecordList } from '@/components/shared/record-row';
+import { ImportDropzone } from '@/components/import/import-dropzone';
+import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { bulkImportUans } from '@/server/actions/uan';
 
 interface Row { id: string; workerName: string; uan: string; status: string; vendor: string | null }
@@ -22,13 +24,23 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
 
   function run() {
     if (!text.trim()) { toast.error('Paste some UANs first.'); return; }
+    submit(text);
+  }
+  function submit(block: string) {
     setBusy(true);
-    bulkImportUans(text, vendorId || null).then((r) => {
+    bulkImportUans(block, vendorId || null).then((r) => {
       setBusy(false);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Validated ${r.imported} — ${r.invalid} invalid`);
       setOpen(false); location.reload();
     });
+  }
+  async function onFile(file: File) {
+    setBusy(true);
+    try {
+      const csv = await readSpreadsheetAsCsv(file);
+      submit(csv);
+    } catch { setBusy(false); toast.error('Could not read that file.'); }
   }
 
   return (
@@ -49,12 +61,13 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
                 <Label>Sub-contractor (optional)</Label>
                 <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={vendorId} onChange={(e) => setVendorId(e.target.value)}><option value="">—</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>
               </div>
+              <ImportDropzone onFile={onFile} disabled={busy} title="Drop a UAN CSV / Excel file" hint="columns: Name, UAN — or one UAN per line" />
               <div>
-                <Label>Paste roster</Label>
-                <Textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Ramesh, 123456789012\nSuresh, 100200300400'} />
+                <Label>…or paste the roster</Label>
+                <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Ramesh, 123456789012\nSuresh, 100200300400'} />
               </div>
             </div>
-            <div className="mt-2 flex justify-end"><Button onClick={run} disabled={busy}>{busy ? 'Validating…' : 'Validate roster'}</Button></div>
+            <div className="mt-2 flex justify-end"><Button onClick={run} disabled={busy}>{busy ? 'Validating…' : 'Validate pasted roster'}</Button></div>
           </DialogContent>
         </Dialog>
       </div>
