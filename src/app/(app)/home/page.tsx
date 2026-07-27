@@ -7,6 +7,7 @@ import { todayAttendance } from '@/server/actions/field-ops';
 import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { WelcomeHome } from '@/components/home/welcome-home';
+import { HomeLauncher } from '@/components/home/home-launcher';
 
 export const metadata: Metadata = { title: 'Home' };
 export const dynamic = 'force-dynamic';
@@ -53,5 +54,10 @@ export default async function HomePage() {
 
   const roleLabel = ROLE_LABELS[ctx.user.role] ?? '';
 
-  return <WelcomeHome firstName={firstName} agenda={agenda} next7={next7} kpi={kpi} needs2FA={needs2FA} roleLabel={roleLabel} />;
+  return (
+    <div className="space-y-8">
+      <WelcomeHome firstName={firstName} agenda={agenda} next7={next7} kpi={kpi} needs2FA={needs2FA} roleLabel={roleLabel} />
+      <HomeLauncher allowed={[...ctx.permissions.keys]} isSuperAdmin={ctx.permissions.isSuperAdmin} />
+    </div>
+  );
 }

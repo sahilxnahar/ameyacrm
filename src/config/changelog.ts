@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.44';
+export const APP_VERSION = 'v15.48';
 
 export interface Release {
   version: string;
@@ -13,6 +13,41 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.48',
+    date: '27 Jul 2026',
+    highlights: [
+      'A visual home. Your home screen now has a “Jump to anything” launcher — big icon tiles for every part of the CRM, grouped like the sidebar and filtered to what you’re allowed to open. One glance, one tap, no menu hunting.',
+      'It fills the full width (see v15.47), so the whole system is laid out visually in front of you the moment you sign in.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.47',
+    date: '27 Jul 2026',
+    highlights: [
+      'The CRM now uses the full width of your screen. Pages were capped to a narrow centred column that left big empty margins on wide monitors; they now stretch to fill the page, so dashboards, tables and lists have room to breathe and less scrolling.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.46',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Finance Command Center (top of the Money menu). One screen with your cost of capital (total bank/NBFC debt, weighted-average interest rate, interest per month and interest due), your cash position, what’s owed to you and by you, and a 12-week cash runway with a warning if cash is forecast to run negative.',
+      'It reads your existing borrowings, bank and billing data, so it’s live the moment you open it.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.45',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Email Health screen (Team & Admin → “Email Health”). One click checks whether your outbound email actually works and, if a password-reset or 2FA email isn’t arriving, tells you exactly what to fix — wrong provider, app-password format, port/security mismatch, or a rejected sender address.',
+      'You can send a real test email to yourself and see the mail server’s exact response, so email problems stop being silent.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.44',
     date: '27 Jul 2026',

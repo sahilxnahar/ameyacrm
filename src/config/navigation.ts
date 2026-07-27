@@ -98,6 +98,7 @@ export const NAVIGATION: NavGroup[] = [
     label: 'Money',
     blurb: 'The money you handle every day. Deeper accounting lives in Accounts & Books.',
     items: [
+      { label: 'Finance Command Center', href: '/finance', icon: Gauge, permission: 'treasury.view', blurb: 'Cost of capital, cash position, receivables/payables and a 12-week cash runway — one view.' },
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view', blurb: 'Invoices, purchase orders and vendor bills.' },
       { label: 'Money Owed To Us', href: '/receivables', icon: HandCoins, permission: 'billing.view', blurb: 'What buyers still owe, and when it is due.' },
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view', blurb: 'Money that has gone out, with UTRs.' },
@@ -174,6 +175,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Automations', href: '/admin/automations', icon: Zap, permission: 'admin.setting.manage', blurb: 'Company-wide automation rules — trigger, conditions, actions — and the log of every run.' },
       { label: 'My Apps', href: '/apps', icon: Package, permission: 'admin.setting.manage', blurb: 'The apps you have installed, and quick access to manage them.' },
       { label: 'App Exchange', href: '/app-exchange', icon: Plug, permission: 'admin.setting.manage', blurb: 'Browse and connect 140+ apps — CRM, payments, chat, storage, portals.' },
+      { label: 'Email Health', href: '/admin/email-health', icon: Mail, permission: 'admin.setting.manage', blurb: 'Test whether password-reset and 2FA emails actually send, and get told what to fix.' },
       { label: 'Developers', href: '/developers', icon: Braces, permission: 'admin.setting.manage', blurb: 'REST API playground, OpenAPI spec, sandbox test endpoint and webhook tooling.' },
       { label: 'App Packages', href: '/admin/app-packages', icon: Package, permission: 'admin.setting.manage', blurb: 'Install ready-made bundles of fields, automations and views — or author, import and export your own.' },
       { label: 'Security Operations', href: '/security-ops', icon: KeyRound, permission: 'secops.view', blurb: 'Incidents and access reviews.' },
