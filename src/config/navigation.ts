@@ -52,7 +52,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Approvals', href: '/approvals', icon: Inbox, blurb: 'Things waiting for your yes or no.' },
       { label: 'Notifications', href: '/notifications', icon: Bell, blurb: 'Every alert in one inbox — filter, deep-link and mark read.' },
       { label: 'Messages', href: '/chat', icon: MessageCircleQuestion, blurb: 'Chat with anyone by @username instead of internal email.' },
-      { label: 'Shared Inbox', href: '/inbox', icon: Inbox, permission: 'lead.view', blurb: 'Every email and WhatsApp conversation in one place — read and reply as a team.' },
+      { label: 'Mail & Inbox', href: '/inbox', icon: Inbox, permission: 'lead.view', blurb: 'Your Gmail inside the CRM — read incoming email, reply, and compose new ones, plus WhatsApp, all in one place.' },
       { label: 'Work Requests', href: '/work-requests', icon: Handshake, permission: 'workrequest.view', blurb: 'Ask another department to get something done — and track it.' },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view', blurb: 'Meetings, visits and events.' },
     ],
@@ -143,6 +143,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Files, and asking questions of them.',
     items: [
       { label: 'Documents', href: '/documents', icon: FolderOpen, permission: 'document.view', blurb: 'Every file, in folders, with permissions.' },
+      { label: 'Google Sheets & Drive', href: '/google', icon: FileText, permission: 'dashboard.view', blurb: 'Export CRM lists to your Google Sheet and browse your Drive files — via Apps Script, no Cloud Console.' },
       { label: 'Ask Documents', href: '/ask', icon: MessageCircleQuestion, permission: 'document.view', blurb: 'Ask a plain question; get the answer from your files.' },
       // No permission: everyone sees this, and the page itself narrows the list
       // to the departments they belong to.

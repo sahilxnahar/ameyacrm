@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.38';
+export const APP_VERSION = 'v15.41';
 
 export interface Release {
   version: string;
@@ -13,6 +13,33 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.41',
+    date: '27 Jul 2026',
+    highlights: [
+      'Google Sheets & Drive, for real (Documents → “Google Sheets & Drive”). One click exports your Leads, Vendors or Bookings into a tab of your linked Google Sheet, and you can browse the files the CRM has saved to your Drive folder.',
+      'It runs through your own Apps Script connector — no Google Cloud Console — and shows a live connection status so you know it’s working.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.40',
+    date: '27 Jul 2026',
+    highlights: [
+      'The App Exchange now tells the truth. Only the apps that genuinely work end-to-end are badged “Live” (messaging, Razorpay, WhatsApp, the property portals, and Gmail/Sheets/Drive via your Apps Script). Every other app is clearly marked “Not built yet” instead of a misleading “Live / syncs both ways”.',
+      'Installing a not-built app now plainly says it only records your interest — so nothing pretends to work when it doesn’t. Tell us which apps you actually need and we build them for real, one at a time.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.39',
+    date: '27 Jul 2026',
+    highlights: [
+      'Gmail, inside the CRM — you can now write and send a brand-new email straight from “Mail & Inbox” (renamed from Shared Inbox), not just reply. Incoming mail already syncs in via your Google Apps Script connector, so this completes the loop: read, reply and compose without leaving the CRM.',
+      'The menu now says plainly that this is your email — look under My Day → “Mail & Inbox”.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.38',
     date: '27 Jul 2026',

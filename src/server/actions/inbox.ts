@@ -71,6 +71,41 @@ export async function replyEmailThread(input: unknown): Promise<InboxResult> {
   } catch (err) { return toActionError(err); }
 }
 
+const emailCompose = z.object({
+  to: z.string().email('Enter a valid email address.'),
+  subject: z.string().max(300).optional(),
+  body: z.string().min(1, 'Write a message.').max(8000),
+});
+
+/** Compose and send a brand-new email (not a reply). Sends via SMTP and records it in the inbox. */
+export async function composeEmail(input: unknown): Promise<InboxResult> {
+  try {
+    const ctx = await ensure('email.send');
+    const d = emailCompose.parse(input);
+    const subject = d.subject?.trim() || '(no subject)';
+    const res = await sendEmail({ to: [d.to], subject, text: d.body });
+    if (!res.ok) return { error: `Could not send: ${res.error ?? 'email provider not configured'}` };
+
+    await prisma.mailThreadMessage.create({
+      data: {
+        externalId: `out:${randomToken(12)}`,
+        threadKey: `new:${randomToken(10)}`,
+        direction: 'OUTBOUND',
+        fromAddress: env.EMAIL_FROM,
+        toAddresses: [d.to],
+        subject,
+        bodyText: d.body.slice(0, 8000),
+        snippet: d.body.slice(0, 200),
+        sentAt: new Date(),
+        userId: ctx.user.id,
+      },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'MailThreadMessage', summary: `Composed email to ${d.to}` });
+    revalidatePath('/inbox');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}
+
 const waReply = z.object({
   phone: z.string().min(6).max(20),
   body: z.string().min(1).max(4000),

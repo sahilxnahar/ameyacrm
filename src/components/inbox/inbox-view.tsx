@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
-import { loadInboxThread, replyEmailThread, replyWhatsappThread } from '@/server/actions/inbox';
+import { loadInboxThread, replyEmailThread, replyWhatsappThread, composeEmail } from '@/server/actions/inbox';
 import type { ThreadSummary, ThreadMessage, InboxChannel } from '@/server/services/inbox-service';
 
 function timeAgo(iso: string): string {
@@ -28,8 +28,22 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
   const [reply, setReply] = React.useState('');
   const [, start] = React.useTransition();
   const [sending, setSending] = React.useState(false);
+  const [composeOpen, setComposeOpen] = React.useState(false);
+  const [cSending, setCSending] = React.useState(false);
 
   const shown = threads.filter((t) => t.channel === channel);
+
+  function compose(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setCSending(true);
+    start(async () => {
+      const res = await composeEmail({ to: String(fd.get('to') || ''), subject: String(fd.get('subject') || ''), body: String(fd.get('body') || '') });
+      setCSending(false);
+      if ('error' in res) { toast.error(res.error); return; }
+      toast.success('Email sent'); setComposeOpen(false);
+    });
+  }
 
   async function open(t: ThreadSummary) {
     setActive(t);
@@ -67,7 +81,12 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">Incoming mail (synced from Gmail) and replies live here — or start a new one.</p>
+        <Button size="sm" onClick={() => setComposeOpen(true)} className="gap-1"><Mail className="h-4 w-4" /> New email</Button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
       {/* Thread list */}
       <div className="rounded-lg border">
         <div className="flex border-b text-sm">
@@ -170,6 +189,25 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
           </div>
         )}
       </div>
+      </div>
+
+      {composeOpen && (
+        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh]" role="dialog" aria-modal="true" aria-label="Compose email">
+          <div className="w-full max-w-lg rounded-lg border bg-background p-5 shadow-xl">
+            <div className="mb-3 flex items-center gap-2"><Mail className="h-5 w-5 text-primary" /><h2 className="font-display text-lg">New email</h2></div>
+            <form onSubmit={compose} className="space-y-3">
+              <Input name="to" type="email" required placeholder="To (email address)" autoFocus />
+              <Input name="subject" placeholder="Subject" />
+              <Textarea name="body" required rows={7} placeholder="Write your message…" />
+              <p className="text-xs text-muted-foreground">Sends from {`your CRM's email address`} via your existing email setup, and appears in this inbox.</p>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setComposeOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={cSending} className="gap-1"><Send className="h-4 w-4" />{cSending ? 'Sending…' : 'Send email'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
