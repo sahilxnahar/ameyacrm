@@ -11,32 +11,46 @@ import { env } from '@/config/env';
 export interface InboxItem { uid: number; from: string; fromName: string; subject: string; date: string; seen: boolean }
 export interface FullMessage { from: string; to: string; subject: string; date: string; text: string; html: string | null }
 
-function creds(): { user: string; pass: string } | null {
+/** A resolved IMAP connection config — either a user's own, or the org fallback. */
+export interface ImapConfig { host: string; port: number; user: string; pass: string }
+
+/** The org-wide fallback mailbox from env (IMAP_* or reused SMTP_*). */
+function envCreds(): ImapConfig | null {
   const user = env.IMAP_USER || env.SMTP_USER;
   const pass = env.IMAP_PASS || env.SMTP_PASS;
   if (!user || !pass) return null;
-  return { user, pass };
+  return { host: env.IMAP_HOST, port: env.IMAP_PORT, user, pass };
 }
 
 export function imapConfigured(): boolean {
-  return creds() !== null;
+  return envCreds() !== null;
 }
 
-function makeClient(): ImapFlow | null {
-  const c = creds();
+function makeClient(config?: ImapConfig | null): ImapFlow | null {
+  const c = config ?? envCreds();
   if (!c) return null;
-  return new ImapFlow({
-    host: env.IMAP_HOST,
-    port: env.IMAP_PORT,
-    secure: true,
-    auth: { user: c.user, pass: c.pass },
-    logger: false,
-  });
+  return new ImapFlow({ host: c.host, port: c.port, secure: true, auth: { user: c.user, pass: c.pass }, logger: false });
 }
 
-export async function fetchInbox(limit = 25): Promise<{ items: InboxItem[] } | { error: string }> {
-  const client = makeClient();
-  if (!client) return { error: 'Gmail isn’t configured. Set IMAP_USER/IMAP_PASS (or reuse SMTP_USER/SMTP_PASS) in Vercel.' };
+/** Test a connection config end-to-end (connect + open INBOX). Never throws. */
+export async function testImapConnection(config: ImapConfig): Promise<{ ok: true } | { error: string }> {
+  const client = makeClient(config);
+  if (!client) return { error: 'Incomplete IMAP settings.' };
+  try {
+    await client.connect();
+    const lock = await client.getMailboxLock('INBOX');
+    lock.release();
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not connect with those settings.' };
+  } finally {
+    try { await client.logout(); } catch { /* ignore */ }
+  }
+}
+
+export async function fetchInbox(limit = 25, config?: ImapConfig | null): Promise<{ items: InboxItem[] } | { error: string }> {
+  const client = makeClient(config);
+  if (!client) return { error: 'No mailbox configured. Add your IMAP details in Email Integration, or set IMAP_USER/IMAP_PASS in Vercel.' };
   try {
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
@@ -69,9 +83,9 @@ export async function fetchInbox(limit = 25): Promise<{ items: InboxItem[] } | {
   }
 }
 
-export async function fetchMessage(uid: number): Promise<{ message: FullMessage } | { error: string }> {
-  const client = makeClient();
-  if (!client) return { error: 'Gmail isn’t configured.' };
+export async function fetchMessage(uid: number, config?: ImapConfig | null): Promise<{ message: FullMessage } | { error: string }> {
+  const client = makeClient(config);
+  if (!client) return { error: 'No mailbox configured.' };
   try {
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');

@@ -1214,6 +1214,13 @@ model User {
   joiningDate  DateTime?
   lastLoginAt  DateTime?
 
+  // Per-user IMAP inbox (module: email integration). imapPassEnc is encrypted
+  // at rest with the app ENCRYPTION_KEY; never stored or returned in plain text.
+  imapHost     String?
+  imapPort     Int?
+  imapUser     String?
+  imapPassEnc  String?
+
   // Security
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String? // AES-256-GCM encrypted TOTP secret

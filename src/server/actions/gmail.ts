@@ -1,6 +1,7 @@
 'use server';
 import { ensure, toActionError } from './_helpers';
-import { fetchInbox, fetchMessage, imapConfigured, type InboxItem, type FullMessage } from '@/lib/mail/imap';
+import { fetchInbox, fetchMessage, type InboxItem, type FullMessage } from '@/lib/mail/imap';
+import { resolveUserImap } from '@/server/services/user-imap-service';
 import { sendEmail } from '@/lib/email/email';
 import { writeAudit } from '@/lib/audit/log';
 
@@ -11,9 +12,11 @@ export type GmailSendResult = { ok: true } | { error: string };
 /** Load the most recent inbox messages over IMAP. */
 export async function loadGmailInbox(): Promise<GmailInboxResult> {
   try {
-    await ensure('email.send');
-    if (!imapConfigured()) return { ok: true, configured: false, items: [] };
-    const r = await fetchInbox(25);
+    const ctx = await ensure('email.send');
+    // Per-user first, org mailbox as fallback (module: email integration).
+    const { config } = await resolveUserImap(ctx.user.id);
+    if (!config) return { ok: true, configured: false, items: [] };
+    const r = await fetchInbox(25, config);
     if ('error' in r) return { error: r.error };
     return { ok: true, configured: true, items: r.items };
   } catch (e) {
@@ -24,8 +27,9 @@ export async function loadGmailInbox(): Promise<GmailInboxResult> {
 /** Read one message's full body. */
 export async function readGmailMessage(uid: number): Promise<GmailMessageResult> {
   try {
-    await ensure('email.send');
-    const r = await fetchMessage(uid);
+    const ctx = await ensure('email.send');
+    const { config } = await resolveUserImap(ctx.user.id);
+    const r = await fetchMessage(uid, config);
     if ('error' in r) return { error: r.error };
     return { ok: true, message: r.message };
   } catch (e) {

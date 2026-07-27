@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.70';
+export const APP_VERSION = 'v15.71';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.71',
+    date: '27 Jul 2026',
+    highlights: [
+      'Email is now per-user. New Email Integration settings (My Day) let every team member connect their own IMAP inbox — enter your email, host and app-password, test the connection, and your mail syncs into the CRM under your account rather than everyone sharing one generic mailbox.',
+      'Your app-password is encrypted at rest with the app key and never shown again. If you don’t connect your own, the CRM still falls back to the shared org mailbox, so nothing breaks for existing users. The Gmail/IMAP inbox screen now reads whichever mailbox is yours.',
+      'This version needs a small database change — run MIGRATION_v15.71_all.sql in Neon before deploying (adds encrypted per-user IMAP fields to the user record).',
+    ],
+  },
   {
     version: 'v15.70',
     date: '27 Jul 2026',
