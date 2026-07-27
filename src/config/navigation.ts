@@ -53,6 +53,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Notifications', href: '/notifications', icon: Bell, blurb: 'Every alert in one inbox — filter, deep-link and mark read.' },
       { label: 'Messages', href: '/chat', icon: MessageCircleQuestion, blurb: 'Chat with anyone by @username instead of internal email.' },
       { label: 'Mail & Inbox', href: '/inbox', icon: Inbox, permission: 'lead.view', blurb: 'Your Gmail inside the CRM — read incoming email, reply, and compose new ones, plus WhatsApp, all in one place.' },
+      { label: 'Gmail (IMAP)', href: '/gmail', icon: Mail, permission: 'email.send', blurb: 'Your full Gmail inbox over IMAP — read every email, reply and compose, inside the CRM.' },
       { label: 'Work Requests', href: '/work-requests', icon: Handshake, permission: 'workrequest.view', blurb: 'Ask another department to get something done — and track it.' },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view', blurb: 'Meetings, visits and events.' },
     ],

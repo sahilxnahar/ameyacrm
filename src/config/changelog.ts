@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.42';
+export const APP_VERSION = 'v15.44';
 
 export interface Release {
   version: string;
@@ -13,6 +13,23 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.44',
+    date: '27 Jul 2026',
+    highlights: [
+      'Full Gmail inbox, inside the CRM (My Day → “Gmail (IMAP)”). Reads your mailbox directly over IMAP — the list of recent emails, open any one to read it, reply, or compose a new message — all without opening Gmail. Sending uses your existing email setup; no Google Cloud Console.',
+      'To switch it on: enable IMAP in Gmail, create a Google app password, and set IMAP_USER + IMAP_PASS in Vercel (if your SMTP already uses the same mailbox, they’re reused automatically).',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.43',
+    date: '27 Jul 2026',
+    highlights: [
+      'The dashboard no longer clusters on medium screens. The “At a glance” tiles were being crushed (labels stacking one letter per line) when the Assistant panel squeezed the middle. Now the Assistant sits beside the dashboard only on very wide screens and drops below on laptops, and the tiles reflow to fit — so everything stays readable at every size.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.42',
     date: '27 Jul 2026',

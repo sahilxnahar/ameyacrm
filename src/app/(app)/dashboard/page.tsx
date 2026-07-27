@@ -54,7 +54,7 @@ export default async function DashboardPage() {
   const aiConfigured = activeProvider().kind !== 'none';
 
   return (
-    <div className="xl:flex xl:gap-6">
+    <div className="2xl:flex 2xl:gap-6">
       <div className="min-w-0 flex-1">
       <PageHeader title={`Good day, ${firstName}`} description="Here's what needs your attention today.">
         <Button asChild size="sm"><Link href="/tasks?new=1"><Plus className="h-4 w-4" /> New task</Link></Button>
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
 
       {/* KPI strip */}
       <CollapsibleSection id="kpis" title="At a glance">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
           <StatCard label="New leads" value={newLeads7d} icon={Users2} hint="last 7 days" />
           <StatCard label="Site visits" value={siteVisits7d} icon={CalendarCheck} hint="last 7 days" />
           <StatCard label="Lead → win rate" value={`${winRate}%`} icon={TrendingUp} tone="success" hint={`${wonLeads} of ${totalLeads}`} />
@@ -176,8 +176,8 @@ export default async function DashboardPage() {
 
       {/* Right-side assistant on the home page (desktop). Stacks below on smaller
           screens. (#1) */}
-      <aside className="mt-6 xl:mt-0 xl:w-[22rem] xl:shrink-0">
-        <div className="xl:sticky xl:top-4">
+      <aside className="mt-6 2xl:mt-0 2xl:w-[22rem] 2xl:shrink-0">
+        <div className="2xl:sticky 2xl:top-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5" /> Assistant
