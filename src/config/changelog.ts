@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.34';
+export const APP_VERSION = 'v15.35';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.35',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Borrowings screen (under Money) for loans from banks and NBFCs. Add a facility with its rate, then record each drawdown as the money arrives — interest accrues on a reducing balance from the day of each drawdown, and repayments lower it.',
+      'See it at a glance: per lender and across everything — how much you’ve drawn, what’s outstanding, interest accrued so far, interest paid, and what interest is still due — plus your balance-weighted average rate and your interest cost per month.',
+      'The Money menu is tidier: everyday items (Billing, Money owed to us, Payments made, Borrowings, Budgets, Cash book) stay in the sidebar; the heavier accounting and funding tools (Ledger, Tally, GST, Vendor ledgers, Spend, Recurring, Secret cash book, Treasury, Capital) now live together on a new “Accounts & Books” page. Nothing was removed — just organised.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.34',
     date: '27 Jul 2026',
