@@ -11,6 +11,7 @@ import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
 import { WhatsNew } from './whats-new';
 import { UpdateBanner } from '@/components/pwa/update-banner';
+import { NotificationPrompt } from '@/components/pwa/notification-prompt';
 import { MobileFab } from './mobile-fab';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { PullToRefresh } from './pull-to-refresh';
@@ -145,6 +146,7 @@ export function AppShell({
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />
       <AssistantLauncher />
+      <NotificationPrompt />
       <WhatsNew />
     </div>
   );

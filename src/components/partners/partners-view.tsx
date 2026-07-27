@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { commissionLabel as describeCommission, type CommissionBasis } from '@/lib/partners/commission';
 
 interface CP { id: string; code: string; firmName: string; contactName: string; phone: string; email: string | null; reraNumber: string | null; panNumber: string | null; gstin: string | null; commissionBasis: string; commissionPct: number; commissionMonths: number | null; commissionFlat: number | null; kycStatus: string; status: string }
 interface Payout { id: string; channelPartnerId: string; grossValue: number; ratePercent: number; amount: number; stage: string | null; status: string; dueDate: string | null }
@@ -18,11 +19,8 @@ interface Opt { id: string; name: string }
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const money = (n: number) => `₹${inr.format(n)}`;
 /** Human-readable commission, whichever basis the partner is on. */
-const commissionLabel = (p: Pick<CP, 'commissionBasis' | 'commissionPct' | 'commissionMonths' | 'commissionFlat'>): string => {
-  if (p.commissionBasis === 'MONTHS_OF_RENT') return p.commissionMonths ? `${p.commissionMonths} mo rent + GST` : 'Months of rent';
-  if (p.commissionBasis === 'FLAT_FEE') return p.commissionFlat ? `${money(p.commissionFlat)} flat` : 'Flat fee';
-  return `${p.commissionPct}%`;
-};
+const commissionLabel = (p: Pick<CP, 'commissionBasis' | 'commissionPct' | 'commissionMonths' | 'commissionFlat'>): string =>
+  describeCommission({ basis: p.commissionBasis as CommissionBasis, pct: p.commissionPct, months: p.commissionMonths, flat: p.commissionFlat }, money);
 const kycTone = (s: string) => (s === 'VERIFIED' ? 'success' : s === 'REJECTED' ? 'destructive' : 'secondary') as 'success' | 'destructive' | 'secondary';
 const stTone = (s: string) => (s === 'APPROVED' ? 'success' : s === 'SUSPENDED' ? 'destructive' : 'warning') as 'success' | 'destructive' | 'warning';
 

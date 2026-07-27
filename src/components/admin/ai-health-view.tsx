@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CheckCircle2, XCircle, MinusCircle, Loader2, Play, AlertTriangle, Database, Lock } from 'lucide-react';
+import { CheckCircle2, XCircle, MinusCircle, Loader2, Play, AlertTriangle, Database, Lock, KeyRound } from 'lucide-react';
 import { checkAiHealth, reindexEverything, catchUpSummaries } from '@/server/actions/vouchers';
 
 interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string; note?: boolean }
 
 interface Coverage { key: string; label: string; permission: string | null; note: string | null; passages: number; records: number }
 
-export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed: number; summarised: number; docs: number; coverage: Coverage[] }) {
+interface Supply { provider: string; model: string; keyCount: number; hasFallback: boolean }
+
+export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { indexed: number; summarised: number; docs: number; coverage: Coverage[]; supply: Supply }) {
   const [cov, setCov] = useState(coverage);
   const [indexing, startIndex] = useTransition();
   const [indexMsg, setIndexMsg] = useState<string | null>(null);
@@ -63,6 +65,43 @@ export function AiHealthView({ indexed, summarised, docs, coverage }: { indexed:
 
   return (
     <div className="space-y-5">
+      <div className="card-elevated p-5">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg">Provider &amp; keys</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">Read live from the server. Keys are never shown — only how many are loaded.</p>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Provider</dt>
+            <dd className="text-lg font-semibold">{supply.provider}</dd>
+            <dd className="text-xs text-muted-foreground">model {supply.model}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Keys in rotation</dt>
+            <dd className="text-2xl font-semibold tabular-nums">{supply.keyCount}</dd>
+            <dd className="text-xs text-muted-foreground">
+              {supply.keyCount === 0
+                ? 'No key loaded — set AI_API_KEY.'
+                : supply.keyCount === 1
+                  ? 'One key. Add spares in AI_API_KEYS (comma-separated).'
+                  : `${supply.keyCount} keys — one running dry rolls to the next automatically.`}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Fallback provider</dt>
+            <dd className="text-lg font-semibold">{supply.hasFallback ? 'Configured' : 'None'}</dd>
+            <dd className="text-xs text-muted-foreground">{supply.hasFallback ? 'Used only after every key above fails.' : 'Optional second provider (e.g. Groq).'}</dd>
+          </div>
+        </dl>
+        {supply.keyCount > 1 && (
+          <p className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            Extra keys only add real runway if they belong to <strong>separate</strong> provider accounts. Keys from the same account share one credit balance.
+          </p>
+        )}
+      </div>
+
       <div className="card-elevated p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

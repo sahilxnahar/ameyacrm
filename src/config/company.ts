@@ -45,7 +45,7 @@ export const COMPANY_DEFAULTS: CompanyDetails = {
   bankName: 'Kotak Mahindra Bank',
   bankAccountName: 'Ameya Heights LLP',
   bankAccountNumber: '9390000000',
-  bankIfsc: 'KKBK00008556',
+  bankIfsc: 'KKBK0008556',
   bankBranch: 'NSC Bose Road Branch, Chennai',
   upiId: '',
   phone: '',

@@ -1,10 +1,48 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
-import { generateBriefing } from '@/lib/ai/gemini';
+import { generateBriefing as geminiBriefing } from '@/lib/ai/gemini';
+import { aiChat, activeProvider } from '@/lib/ai/provider';
+import {
+  buildBriefingSignalsPrompt,
+  parseBriefingJson,
+  fallbackBriefing,
+  type BriefingContent,
+} from '@/lib/attention/briefing';
 import type { LeadStatus } from '@prisma/client';
 
 export interface RiskAlert { severity: 'high' | 'medium' | 'low'; title: string; detail: string; href: string }
 export interface Signals { metrics: Record<string, string | number>; alerts: RiskAlert[] }
+
+const BRIEF_SYSTEM =
+  'You write a crisp morning briefing for a real-estate developer\'s leadership. ' +
+  'Respond with strict JSON only. Use Indian number context (₹, lakhs/crores). Never invent figures.';
+
+/**
+ * Produce the executive summary, provider-agnostic (I2 — help, don't break).
+ *
+ * Order: the live OpenAI-compatible provider (OpenRouter) → Gemini if that is
+ * the configured one → a deterministic summary built from the rule-based alerts.
+ * It ALWAYS returns content, so the briefing dashboard is never blank just
+ * because a model is unreachable.
+ */
+export async function generateBriefingContent(signals: Signals): Promise<BriefingContent> {
+  const text = Object.entries(signals.metrics).map(([k, v]) => `- ${k}: ${v}`).join('\n');
+  const alerts = signals.alerts.map((a) => ({ severity: a.severity, title: a.title, detail: a.detail }));
+  const provider = activeProvider();
+
+  if (provider.kind === 'openai-compatible') {
+    const r = await aiChat({ prompt: buildBriefingSignalsPrompt(text), system: BRIEF_SYSTEM, temperature: 0.35, json: true });
+    if (r.ok) {
+      const parsed = parseBriefingJson(r.text);
+      if (parsed) return parsed;
+    }
+  } else if (provider.kind === 'gemini') {
+    const g = await geminiBriefing(text);
+    if (g) return g;
+  }
+
+  return fallbackBriefing(alerts);
+}
 
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const money = (n: number) => `Rs.${inr.format(Math.round(n))}`;
@@ -77,9 +115,7 @@ export async function getBriefing(force = false) {
       if (cached) return { cached, signals };
     } catch { /* table may not exist yet */ }
   }
-  const text = Object.entries(signals.metrics).map(([k, v]) => `- ${k}: ${v}`).join('\n');
-  const b = await generateBriefing(text);
-  if (!b) return { cached: null, signals };
+  const b = await generateBriefingContent(signals);
   try {
     const saved = await prisma.dailyBriefing.upsert({
       where: { forDate },

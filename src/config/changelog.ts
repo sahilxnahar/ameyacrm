@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.16';
+export const APP_VERSION = 'v15.34';
 
 export interface Release {
   version: string;
@@ -13,6 +13,181 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.34',
+    date: '27 Jul 2026',
+    highlights: [
+      'Sign-in takes you straight to your home screen. Two-factor is still required, but once you’ve set it up you’ll never be sent to the security page again — and if you haven’t, you now get a gentle reminder plus an email every couple of days, instead of a wall on every visit.',
+      'Forgot your password? There’s now a “Forgot your password?” link on sign-in that emails you a secure, one-time reset link.',
+      'Admins can issue a temporary password for any user (Team & Admin → Users → ⋯ → Generate temporary password). It’s shown once to share, and the user must change it at next sign-in.',
+      'A “Take a tour” button now sits in the top bar on every screen — a quick guided walkthrough of the whole CRM, for anyone, any time.',
+      'A friendly prompt now offers to turn on notifications on phone and desktop, so approvals, overdue payments and messages can reach you even when the CRM isn’t open.',
+      'Layout hardening for phones, tablets and smaller laptops so long text, images and wide tables no longer push the page sideways.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.33',
+    date: '27 Jul 2026',
+    highlights: [
+      'The Daily Briefing works again. Its AI summary was wired only to the old Google account (now blocked), so it silently never appeared — it now runs on your live AI provider (OpenRouter), the same one the rest of the app uses.',
+      'And it never comes up blank: if AI is unreachable, the briefing falls back to a clear, rule-based summary built from the same risk signals, so you always get a headline, the key risks, and three actions for the day.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.32',
+    date: '27 Jul 2026',
+    highlights: [
+      'The bank IFSC that prints on invoices and receipts is corrected to a valid 11-character code, so a transfer to it is no longer rejected. If you set company details in-app, update the IFSC there too — the saved value wins over the default.',
+      'AI now reads as “switched on” everywhere it is used. The system’s internal “is AI available?” check was still looking for the old Google key; it now recognises your OpenRouter keys, so features stop showing “connect this” when AI is in fact working.',
+      'Admin → AI health now shows your live provider, model, how many keys are in rotation, and whether a fallback provider is set — so you can confirm all your keys loaded without opening Vercel. (Keys are counted, never shown.)',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.31',
+    date: '25 Jul 2026',
+    highlights: [
+      'The big OAuth apps are now connectable — Slack, Google (Sheets/Drive/Calendar/Gmail), HubSpot, Zoho CRM, Salesforce, Microsoft (Teams/Outlook/OneDrive), Zoom, Dropbox, Xero and QuickBooks. Add your own app’s client id/secret, register the callback URL we show you, and click Connect to authorise — the standard secure sign-in flow.',
+      'Access and refresh tokens are stored encrypted, and the sign-in is protected against tampering with a signed, expiring state, so only a genuine round-trip completes.',
+      'This completes phase 2’s framework: messaging (Slack/Discord/Telegram), portal leads, Razorpay payments and now OAuth apps all share one install → configure → connect experience. Turning each remaining app’s data sync fully on continues from here.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.30',
+    date: '25 Jul 2026',
+    highlights: [
+      'Razorpay is now live for auto-reconciliation. Install it from the App Exchange, add your API keys (verified against Razorpay on the spot), and paste the webhook URL into your Razorpay dashboard.',
+      'When a payment is captured, the CRM matches it to the right booking milestone automatically — using the milestone or booking id you set in the payment notes — and marks it paid. Anything it can’t match with confidence is logged and finance is notified, never guessed.',
+      'Every webhook is signature-verified with your Razorpay secret, and your keys are encrypted at rest, so only genuine Razorpay events are accepted.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.29',
+    date: '25 Jul 2026',
+    highlights: [
+      'Property-portal leads now flow straight in. 99acres, MagicBricks, Housing.com, NoBroker, Square Yards, Sulekha, CommonFloor and PropTiger are live: install one from the App Exchange, hit Configure, generate its inbound URL, and paste that into the portal — enquiries then land in the CRM automatically.',
+      'It just works whatever the portal calls its fields — name, mobile, query, budget and project are recognised across formats, duplicates are merged onto the original lead (no commission fights), and your lead automations, Slack/WhatsApp alerts and webhooks all fire as usual.',
+      'Each portal gets its own secret URL you can rotate any time, so you can cut off one source without touching the others.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.28',
+    date: '25 Jul 2026',
+    highlights: [
+      'Connectors now actually work — this is phase 2 of the platform. Slack, Discord and Telegram are live end-to-end: install one from the App Exchange, hit Configure, paste your webhook/bot details, choose which events to announce, and Test it — then the CRM posts there automatically when a lead arrives, a deal is won, or a task is created.',
+      'Credentials are kept safe. Any secret you enter (a webhook URL, a bot token) is encrypted at rest and never shown back to you in full — only a masked placeholder.',
+      'Under the hood this is a reusable connector runtime: the same install → configure → test → auto-send flow will light up more connectors (payments, sheets, portals) in the coming releases.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.27',
+    date: '25 Jul 2026',
+    highlights: [
+      'New App Packages (Admin → App Packages) — install ready-made bundles that set up several things at once: custom fields, automations, saved views and connectors, all in one click. Starter packs include an NRI Sales Kit, Collections Booster, Channel Partner Pack, Site Safety Pack and Compliance Starter.',
+      'Now you can extend the CRM yourself, no code needed. Author your own package, export it (and your current fields + automations) as a shareable JSON file, and import one to reproduce a setup on another workspace — the foundation of building and sharing your own apps on Ameya.',
+      'Everything is reversible: removing a package cleans up what it added, and any custom-field values you already captured are kept. Imported automations always arrive switched off so you can review them first.',
+      'This version needs a small database change — run MIGRATION_v15.27_all.sql in Neon before deploying (it adds the app-package installs table).',
+    ],
+  },
+  {
+    version: 'v15.26',
+    date: '25 Jul 2026',
+    highlights: [
+      'New Developers area (Admin → Developers) — an interactive API playground where you can browse every REST endpoint, fill in parameters, and run a real request with your token, seeing the live response and a ready-to-copy curl command.',
+      'The API is now self-documenting: a machine-readable OpenAPI 3.1 spec is published at /api/v1/openapi, so tools like Postman, Insomnia and code generators can import the whole API automatically.',
+      'A safe sandbox endpoint (GET /api/v1/ping) lets partners and integrators test their token, auth and connectivity without touching any data — the recommended first call when building on Ameya.',
+      'No database change needed for this one.',
+    ],
+  },
+  {
+    version: 'v15.25',
+    date: '25 Jul 2026',
+    highlights: [
+      'New App Exchange (Admin → App Exchange) — a browsable directory of 140+ connectors across 13 categories: chat (Slack, Teams, WhatsApp), payments (Razorpay, Stripe, Tally), CRM, marketing, storage, real-estate portals, telephony and more. Search, filter by category, and install with one click.',
+      'A couple of dozen are live end-to-end today (WhatsApp, Gmail, Google Sheets/Drive/Calendar, Razorpay, Stripe, Twilio, Exotel, Zapier, Make, webhooks, REST API and more); the rest are listed and installable, and the framework lights up their wiring over time.',
+      'This is the foundation of the new platform: installs are tracked per workspace and can be enabled, disabled or removed at any time. Deeper two-way integrations, the developer sandbox and installable app packages are coming in the next releases.',
+      'This version needs a small database change — run MIGRATION_v15.25_all.sql in Neon before deploying (it adds the connector-installs table).',
+    ],
+  },
+  {
+    version: 'v15.24',
+    date: '24 Jul 2026',
+    highlights: [
+      'Under-the-hood: added an automated test suite covering the newest features — channel-partner commission maths, at-rest chat/PII encryption, GST filing JSON, webhooks, the consent trail, personal automations and email threading. Nothing changes on screen; this just guards these features against future regressions so upgrades stay safe.',
+      'The full suite now runs on every build (nearly 400 checks), so a change that would break one of these is caught before it ships.',
+    ],
+  },
+  {
+    version: 'v15.23',
+    date: '24 Jul 2026',
+    highlights: [
+      'New consent register (Admin → Privacy & DPDP) — look someone up by email or phone and see, and change, exactly what they’ve agreed to: marketing, WhatsApp, calls and data processing. Every change is kept as an append-only trail, so a withdrawal never erases the earlier record — a defensible history for DPDPA.',
+      'Web forms and other systems can record consent automatically through the public API (POST /api/v1/consent), and marketing consent stays in step with the lead’s own flag.',
+      'Data retention is now enforced, not just declared. Once you set a retention period, a nightly sweep quietly removes dead leads (lost, long-inactive, never booked) past that period — won deals, active buyers and financial records are never touched. Daily backups now also roll off automatically after 180 days.',
+      'This version needs a small database change — run MIGRATION_v15.23_all.sql in Neon before deploying (it adds the consent table).',
+    ],
+  },
+  {
+    version: 'v15.22',
+    date: '24 Jul 2026',
+    highlights: [
+      'There’s now an iOS app path. Alongside the existing Android build, a new Capacitor project wraps the CRM for the App Store and TestFlight — so iPhone and iPad users can install it as a real app, not just a home-screen shortcut.',
+      'Both wrappers load the live app, so there’s nothing extra to maintain — the same sign-in, 2FA and push work, and the app updates the moment you deploy. Build steps are in MOBILE_APP.md (Android in android/, iOS in mobile/).',
+      'iPhone “open a CRM link in the app” (universal links) is pre-wired — drop in your Apple Team ID and it works.',
+    ],
+  },
+  {
+    version: 'v15.21',
+    date: '24 Jul 2026',
+    highlights: [
+      'New Webhooks (Admin → Webhooks) push CRM activity to Zapier, Make or any system in real time. Choose the events you care about — a lead created, a lead changing stage, a task created or finished — and we POST a signed JSON payload to your URL the instant it happens.',
+      'Every delivery is signed (HMAC-SHA256 in an x-ameya-signature header) so your receiver can be sure it came from us, and a test button lets you confirm your endpoint in one click. Dead endpoints disable themselves automatically so they never slow the CRM.',
+      'Zapier and Make can subscribe on their own through the public API (POST /api/v1/webhooks with your API token), which — together with the existing REST endpoints for leads and units — makes a proper two-way connector.',
+      'This version needs a small database change — run MIGRATION_v15.21_all.sql in Neon before deploying (it adds the Webhook table).',
+    ],
+  },
+  {
+    version: 'v15.20',
+    date: '24 Jul 2026',
+    highlights: [
+      'New GST Filing page (under Finance) turns your invoices into filing-ready JSON — no re-typing. Download a month’s GSTR-1 (B2B, B2C and HSN summary), or an individual invoice’s e-invoice (IRN) and e-way-bill JSON, then upload it to the GST / IRP / e-way-bill portal, or import into Tally.',
+      'It handles the tax split for you — CGST/SGST for a sale within your state, IGST for an inter-state sale, worked out from the buyer’s GSTIN.',
+      'Everything is generated inside the CRM and downloaded — nothing is transmitted to any portal from here, so the tool stays simple and safe. As always, have your CA review before filing.',
+    ],
+  },
+  {
+    version: 'v15.19',
+    date: '24 Jul 2026',
+    highlights: [
+      'New Shared Inbox — every email and WhatsApp conversation in one place. The whole team can see what came in, open the linked lead, customer or vendor, and reply without switching to Gmail or a phone. Find it in the sidebar under Messages.',
+      'Replies are two-way and stay on the record. Answer an email or a WhatsApp message right from the inbox; your reply is sent and saved into the same conversation, so the next person sees the full history — and lead replies are logged on the lead’s timeline automatically.',
+      'This version needs a small database change — run MIGRATION_v15.19_all.sql in Neon before deploying (it adds one column so WhatsApp replies can be stored).',
+    ],
+  },
+  {
+    version: 'v15.18',
+    date: '24 Jul 2026',
+    highlights: [
+      'Bank account numbers and PAN details are now encrypted at rest. Vendor bank account numbers and PAN, and channel-partner PAN, are stored scrambled (AES-256-GCM) in the database — so a database or backup leak exposes gibberish, not usable fraud material. They’re unscrambled automatically wherever you’re allowed to see them, so nothing looks different day-to-day.',
+      'This needed no data migration and no re-typing. Existing records stay readable and quietly become encrypted the next time they’re saved.',
+      'Semi-public identifiers (GSTIN, IFSC) stay as-is so they remain searchable, and the company’s own bank records already keep only the last four digits.',
+    ],
+  },
+  {
+    version: 'v15.17',
+    date: '24 Jul 2026',
+    highlights: [
+      'My Automations now actually run for you. The schedule automations you switch on — daily chase lists, weekly reviews, month-end checklists — quietly raise a dated task on your own list each day, using the timing and priority you set. Nobody else’s account is touched.',
+      'Everyone can now open My Automations and tailor their own. It no longer needs dashboard permission — it’s personal to your account, so any signed-in person can switch rules on and tune them.',
+      'Your automation-raised tasks never pile up. Each is created at most once a day, so a retry or a re-run of the nightly job can’t leave you with duplicates.',
+    ],
+  },
   {
     version: 'v15.16',
     date: '24 Jul 2026',

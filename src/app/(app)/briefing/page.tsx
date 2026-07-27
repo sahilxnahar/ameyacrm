@@ -40,7 +40,7 @@ export default async function BriefingPage() {
         </Card>
       ) : (
         <Card className="mb-6 p-6 text-center text-sm text-muted-foreground">
-          {isGeminiEnabled() ? 'No briefing generated yet today — hit Refresh above.' : 'Set GEMINI_API_KEY in Vercel to enable the AI summary. The risk signals below work regardless.'}
+          {isGeminiEnabled() ? 'No briefing generated yet today — hit Refresh above.' : 'Connect an AI provider (set AI_API_KEY for OpenRouter, or GEMINI_API_KEY) to enable the AI summary. The risk signals below work regardless.'}
         </Card>
       )}
 

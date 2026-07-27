@@ -5,11 +5,13 @@ import { prisma } from '@/lib/db/prisma';
 import { breachVerdict } from '@/lib/auth/breach';
 import { getSecurityPolicy } from '@/lib/auth/policy';
 import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
+import { generateTempPassword } from '@/lib/auth/temp-password';
 import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
 import { ensure, toActionError } from './_helpers';
 
 export type AdminResult = { ok: true; id: string; message?: string } | { error: string };
+export type TempPasswordResult = { ok: true; id: string; tempPassword: string } | { error: string };
 
 const userSchema = z.object({
   name: z.string().min(2).max(160),
@@ -88,6 +90,35 @@ export async function forcePasswordReset(userId: string): Promise<AdminResult> {
     await notify({ userId, type: 'SYSTEM', title: 'Password reset required', body: 'An administrator requires you to set a new password.', link: '/settings/security' });
     revalidatePath('/admin');
     return { ok: true, id: userId };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+/**
+ * Set a fresh temporary password for a user and return it once to the admin.
+ *
+ * The plaintext is generated here, hashed before storage, and never persisted
+ * in the clear. The user must change it at next login (`mustChangePassword`),
+ * and all their existing sessions are revoked so an old session cannot skip the
+ * change. The admin shares the password with the user over a trusted channel.
+ */
+export async function generateTemporaryPassword(userId: string): Promise<TempPasswordResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!target) return { error: 'That user no longer exists.' };
+
+    const tempPassword = generateTempPassword();
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(tempPassword), passwordChangedAt: new Date(), mustChangePassword: true },
+    });
+    await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await writeAudit({ actorId: ctx.user.id, action: 'PASSWORD_CHANGE', entityType: 'User', entityId: userId, summary: 'Issued a temporary password' });
+    await notify({ userId, type: 'SYSTEM', title: 'Your password was reset', body: 'An administrator set a temporary password. Sign in with it and choose a new one.', link: '/settings/security' });
+    revalidatePath('/admin');
+    return { ok: true, id: userId, tempPassword };
   } catch (err) {
     return toActionError(err);
   }

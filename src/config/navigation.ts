@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -52,6 +52,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Approvals', href: '/approvals', icon: Inbox, blurb: 'Things waiting for your yes or no.' },
       { label: 'Notifications', href: '/notifications', icon: Bell, blurb: 'Every alert in one inbox — filter, deep-link and mark read.' },
       { label: 'Messages', href: '/chat', icon: MessageCircleQuestion, blurb: 'Chat with anyone by @username instead of internal email.' },
+      { label: 'Shared Inbox', href: '/inbox', icon: Inbox, permission: 'lead.view', blurb: 'Every email and WhatsApp conversation in one place — read and reply as a team.' },
       { label: 'Work Requests', href: '/work-requests', icon: Handshake, permission: 'workrequest.view', blurb: 'Ask another department to get something done — and track it.' },
       { label: 'Calendar', href: '/calendar', icon: Calendar, permission: 'calendar.view', blurb: 'Meetings, visits and events.' },
     ],
@@ -106,6 +107,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
       { label: 'Ledger', href: '/ledger', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'The full accounting record.' },
       { label: 'Ameya Tally', href: '/tally', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'A keyboard-driven Tally-style accounting app — vouchers (F4–F9), Day Book, Trial Balance, P&L and Balance Sheet.' },
+      { label: 'GST Filing', href: '/gst-filing', icon: FileJson, permission: 'finance.ledger.view', blurb: 'Filing-ready JSON from your invoices — GSTR-1, e-invoice and e-way-bill. Download and upload to the portal or Tally.' },
       { label: 'Vendor Ledgers', href: '/ledgers', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'One ledger per payee — import payments, save bank details, merge duplicates.' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view', blurb: 'What you planned to spend, versus actual.' },
       { label: 'Cash Flow & Treasury', href: '/treasury', icon: Banknote, permission: 'treasury.view', blurb: 'Bank position, reconciliation and forecast.' },
@@ -177,6 +179,9 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Admin', href: '/admin', icon: Shield, permission: 'admin.user.view', blurb: 'Users, roles, projects and system settings.' },
       { label: 'System Health', href: '/admin/health', icon: Activity, permission: 'admin.setting.manage', blurb: 'One board: is every part of the system working, green/amber/red.' },
       { label: 'Automations', href: '/admin/automations', icon: Zap, permission: 'admin.setting.manage', blurb: 'Company-wide automation rules — trigger, conditions, actions — and the log of every run.' },
+      { label: 'App Exchange', href: '/app-exchange', icon: Plug, permission: 'admin.setting.manage', blurb: 'Connect 140+ apps — CRM, payments, chat, storage, portals — from one directory.' },
+      { label: 'Developers', href: '/developers', icon: Braces, permission: 'admin.setting.manage', blurb: 'REST API playground, OpenAPI spec, sandbox test endpoint and webhook tooling.' },
+      { label: 'App Packages', href: '/admin/app-packages', icon: Package, permission: 'admin.setting.manage', blurb: 'Install ready-made bundles of fields, automations and views — or author, import and export your own.' },
       { label: 'Security Operations', href: '/security-ops', icon: KeyRound, permission: 'secops.view', blurb: 'Incidents and access reviews.' },
       { label: 'Decision Log', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view', blurb: 'SOPs, decisions and lessons learned.' },
       { label: 'Audit Trail', href: '/audit', icon: ScrollText, permission: 'audit.view', blurb: 'A record of who did what.' },

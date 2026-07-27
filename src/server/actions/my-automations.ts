@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
-import { ensure, toActionError } from './_helpers';
+import { getActionContext, toActionError } from './_helpers';
 import { readMyAutomationPrefs } from '@/lib/automation/my-prefs';
 
 export type MyAutoResult = { ok: true } | { error: string };
@@ -18,7 +18,7 @@ const prefSchema = z.object({
 /** Save this user's personal choice for one automation (on/off + optional tweaks). */
 export async function saveMyAutomation(input: unknown): Promise<MyAutoResult> {
   try {
-    const ctx = await ensure('dashboard.view'); // any signed-in user may tailor their own
+    const ctx = await getActionContext(); // any signed-in user may tailor their own
     const d = prefSchema.parse(input);
     const row = await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { automationPrefs: true } });
     const current = readMyAutomationPrefs(row?.automationPrefs);
@@ -32,7 +32,7 @@ export async function saveMyAutomation(input: unknown): Promise<MyAutoResult> {
 /** Turn a whole department's automations on or off for this user in one go. */
 export async function setMyAutomationsForKeys(keys: string[], on: boolean): Promise<MyAutoResult> {
   try {
-    const ctx = await ensure('dashboard.view');
+    const ctx = await getActionContext();
     const clean = z.array(z.string().max(80)).max(400).parse(keys);
     const row = await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { automationPrefs: true } });
     const current = readMyAutomationPrefs(row?.automationPrefs);

@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound,
   UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles,
-  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet, FolderKanban,
+  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet, FolderKanban, Webhook, Braces, Package,
 } from 'lucide-react';
 
 export interface AdminTool {
@@ -34,6 +34,10 @@ export const ADMIN_GROUPS: AdminGroup[] = [
       { href: '/admin/security', icon: Lock, title: 'Security Policy', desc: 'Enforce 2FA and login rules', keywords: 'password 2fa mfa country' },
       { href: '/admin/security-center', icon: ShieldAlert, title: 'Security Center', desc: 'Logins, sessions, backup', keywords: 'sessions devices audit breach' },
       { href: '/admin/api-tokens', icon: KeyRound, title: 'API Tokens', desc: 'Programmatic access', keywords: 'api key integration token' },
+      { href: '/admin/webhooks', icon: Webhook, title: 'Webhooks', desc: 'Push events to Zapier, Make or custom systems', keywords: 'webhook zapier make integromat event realtime' },
+      { href: '/app-exchange', icon: Plug, title: 'App Exchange', desc: 'Connect 140+ apps — CRM, payments, chat, storage', keywords: 'connector integration marketplace app exchange slack razorpay salesforce zapier' },
+      { href: '/developers', icon: Braces, title: 'Developers', desc: 'REST API playground, OpenAPI spec, sandbox', keywords: 'api rest openapi sdk playground sandbox developer webhook token' },
+      { href: '/admin/app-packages', icon: Package, title: 'App Packages', desc: 'Install, author, import and export bundles', keywords: 'package bundle extension extensibility install import export template kit' },
     ],
   },
   {

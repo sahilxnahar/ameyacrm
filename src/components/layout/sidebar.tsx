@@ -9,6 +9,7 @@ import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, us
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { NAVIGATION, type NavItem } from '@/config/navigation';
+import { APP_VERSION } from '@/config/changelog';
 import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
 import { applyOrder, applyGroupOrder, type NavPrefs } from '@/lib/nav/prefs';
 import { RecentNav } from './recent-nav';
@@ -320,7 +321,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
-          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · v15.12</p>
+          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · {APP_VERSION}</p>
         </div>
       </aside>
     </>
