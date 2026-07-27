@@ -17,7 +17,7 @@ export const CHANGELOG: Release[] = [
     version: 'v15.52',
     date: '27 Jul 2026',
     highlights: [
-      'New TDS module (Money → TDS). One screen for your whole Tax-Deducted-at-Source position: total liability accrued, total deposited to the government, and what’s still pending — with a colour-coded ledger of every deduction marked Deposited or Pending.',
+      'New TDS module (Money → TDS). One screen for your whole Tax-Deducted-at-Source position: total liability accrued, total deposited to the government, and what's still pending — with a colour-coded ledger of every deduction marked Deposited or Pending.',
       'Smart rate calculation: a built-in calculator maps a payment to the right Indian section (194C, 194J, 194I, 194H, 194Q, 195 and more), applies the correct rate — including the higher no-PAN rate under s.206AA — respects the section threshold, and shows the TDS and net payable. Vendors can carry a default section so future payments auto-map.',
       'Bank-account / vendor lookup: search by vendor, bank name, IFSC or account number to pull the full TDS ledger tied to that account, then tick the deducted-but-unpaid entries and mark them deposited with a challan number in one go.',
       'This version needs a small database change — run MIGRATION_v15.52_all.sql in Neon before deploying (adds TDS section + deposit tracking to payments, and a default section on vendors).',
@@ -27,7 +27,7 @@ export const CHANGELOG: Release[] = [
     version: 'v15.51',
     date: '27 Jul 2026',
     highlights: [
-      'Billing now reads at a glance. Invoices, purchase orders and vendor bills are shown as full-width, colour-coded rows instead of cramped tables — each with the party’s monogram, the number, project/due date, a status chip and the amount, with a green/red/amber accent down the left edge so paid, overdue and pending jump out.',
+      'Billing now reads at a glance. Invoices, purchase orders and vendor bills are shown as full-width, colour-coded rows instead of cramped tables — each with the party's monogram, the number, project/due date, a status chip and the amount, with a green/red/amber accent down the left edge so paid, overdue and pending jump out.',
       'Purchase orders waiting for your approval are tinted and keep their one-tap approve/reject buttons right on the row. Invoices still open their PDF on click.',
       'Second of the full-width screen refreshes (after Sales & Leads), using the same shared visual language. No database change.',
     ],
