@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.57';
+export const APP_VERSION = 'v15.58';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.58',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Structural Contracts & CLM (Build & Site). Track each structural contractor’s contract, its defect-liability period, and the independent-engineer certification per month — and an uncertified month automatically blocks that contractor’s RA-bill payment, enforced server-side so it can’t be skipped.',
+      'New Vendor Insolvency Monitor (Money). Flag a vendor pulled into NCLT / IBC proceedings; a vendor in CIRP or under a s.14 moratorium is frozen the instant you save the flag, and their advances are refused at settlement until it clears — the moratorium enforced in code.',
+      'Both gates layer onto the existing labour-compliance gate on the same payment action, so a single RA-bill settlement now checks EPF/ESI, engineer certification, and insolvency together. Modules 82 and 87 of the Legal, IP & Litigation group.',
+      'This version needs a small database change — run MIGRATION_v15.58_all.sql in Neon before deploying (adds the structural-contract, engineer-certification and vendor-insolvency tables).',
+    ],
+  },
   {
     version: 'v15.57',
     date: '27 Jul 2026',

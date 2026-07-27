@@ -457,7 +457,8 @@ model Project {
   budgets   Budget[]
 
   // Group 16 — legal/IP
-  trademarks Trademark[]
+  trademarks          Trademark[]
+  structuralContracts StructuralContract[]
 
   @@index([isActive])
 }
@@ -516,6 +517,97 @@ model TrademarkEvent {
   trademark Trademark @relation(fields: [trademarkId], references: [id], onDelete: Cascade)
 
   @@index([trademarkId])
+}
+
+// ── Module 82. Structural Contract & CLM Engine ─────────────────────────────
+// A structural contractor's contract, its defect-liability period, and the
+// independent-engineer certification that GATES payment (same document-gate
+// philosophy as the v15.54 labour-compliance gate). Money still lands on Voucher.
+enum StructuralContractStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  TERMINATED
+  CLOSED
+}
+
+model StructuralContract {
+  id                 String                   @id @default(cuid())
+  projectId          String
+  vendorId           String
+  title              String
+  contractNo         String                   @unique
+  status             StructuralContractStatus @default(DRAFT)
+  liabilityClause    String?
+  defectLiabilityEnd DateTime?
+  dailyReportReqd    Boolean                  @default(true)
+  startOn            DateTime?
+  endOn              DateTime?
+  value              Decimal?                 @db.Decimal(16, 2)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  project Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vendor  Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  certs   EngineerCertification[]
+
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([endOn])
+}
+
+model EngineerCertification {
+  id            String    @id @default(cuid())
+  contractId    String
+  vendorId      String
+  period        String // "YYYY-MM" or an RA-bill stage key
+  certifiedById String?
+  certifiedAt   DateTime?
+  isCleared     Boolean   @default(false) // false ⇒ payment blocked for this period
+  remarks       String?
+  createdAt     DateTime  @default(now())
+
+  contract StructuralContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, period])
+  @@index([vendorId])
+  @@index([isCleared])
+}
+
+// ── Module 87. NCLT & Vendor Insolvency Monitor ─────────────────────────────
+// Flags a vendor pulled into IBC proceedings. When a case sits in CIRP/moratorium
+// with freezeAdvances, the worker deactivates the vendor and the payment action
+// refuses new advances — the s.14 moratorium enforced in code.
+enum InsolvencyStage {
+  FLAGGED
+  CIRP_ADMITTED
+  MORATORIUM
+  RESOLUTION
+  LIQUIDATION
+  CLOSED
+}
+
+model VendorInsolvencyCase {
+  id             String          @id @default(cuid())
+  vendorId       String
+  stage          InsolvencyStage @default(FLAGGED)
+  ncltBench      String?
+  cirpRef        String?
+  irpName        String?
+  admittedOn     DateTime?
+  freezeAdvances Boolean         @default(true)
+  claimFiledInr  Decimal?        @db.Decimal(16, 2)
+  claimFiledOn   DateTime?
+  remarks        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([stage])
 }
 
 /// Somebody who works with a department without it being their main one.
@@ -1362,6 +1454,10 @@ model Vendor {
 
   purchaseOrders PurchaseOrder[]
   vendorBills    VendorBill[]
+
+  // Group 16 — legal
+  structuralContracts StructuralContract[]
+  insolvencyCases     VendorInsolvencyCase[]
 
   @@index([isActive])
 }

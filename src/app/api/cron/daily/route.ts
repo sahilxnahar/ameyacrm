@@ -13,6 +13,8 @@ import { runTaskDigests } from '@/server/services/task-digest-service';
 import { processPendingWebhooks } from '@/server/services/webhook-worker';
 import { runDemandCycle } from '@/server/services/demand-service';
 import { sweepTrademarkRenewals } from '@/server/services/trademark-service';
+import { sweepStructuralContracts } from '@/server/services/structural-contract-service';
+import { sweepVendorInsolvency } from '@/server/services/insolvency-service';
 import { runPersonalAutomations } from '@/server/services/personal-automation-service';
 import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
 import { run2faNudges } from '@/server/services/twofa-nudge-service';
@@ -118,6 +120,10 @@ export async function GET(req: NextRequest) {
   try { result.demands = await runDemandCycle(); } catch { result.demands = 'failed'; }
 
   try { result.trademarks = await sweepTrademarkRenewals(now); } catch { result.trademarks = 'failed'; }
+
+  try { result.structuralContracts = await sweepStructuralContracts(now); } catch { result.structuralContracts = 'failed'; }
+
+  try { result.vendorInsolvency = await sweepVendorInsolvency(); } catch { result.vendorInsolvency = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

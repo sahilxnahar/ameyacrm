@@ -6,6 +6,8 @@ import { writeAudit } from '@/lib/audit/log';
 import { notify } from '@/lib/notifications/notify';
 import { computeRaBill } from '@/lib/construction/ra-bill';
 import { vendorComplianceStatus, monthKey } from '@/server/services/labour-compliance-service';
+import { vendorAdvanceFrozen } from '@/server/services/insolvency-service';
+import { structuralCertificationGate } from '@/server/services/structural-contract-service';
 import { ensure, toActionError } from './_helpers';
 
 export type RaResult = { ok: true; id?: string } | { error: string };
@@ -116,6 +118,14 @@ export async function settleRaBill(id: string): Promise<RaResult> {
       const month = monthKey(bill.periodTo ?? bill.createdAt);
       const gate = await vendorComplianceStatus(bill.vendorId, month);
       if (gate.blocked) return { error: `Payment blocked — ${gate.reason} Record and verify the challans in Labour Compliance first.` };
+
+      // NCLT gate (#87): a vendor under an IBC moratorium cannot be paid an advance.
+      const freeze = await vendorAdvanceFrozen(bill.vendorId);
+      if (freeze.blocked) return { error: `Payment blocked — ${freeze.reason} Clear the insolvency flag before settling.` };
+
+      // Structural certification gate (#82): the period must be IE-certified.
+      const cert = await structuralCertificationGate(bill.vendorId, month);
+      if (cert.blocked) return { error: `Payment blocked — ${cert.reason} Record the engineer certification first.` };
     }
 
     const vendor = bill.vendorId ? await prisma.vendor.findUnique({ where: { id: bill.vendorId }, select: { name: true } }) : null;
