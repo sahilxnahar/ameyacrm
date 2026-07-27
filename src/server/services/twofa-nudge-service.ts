@@ -1,11 +1,12 @@
 import 'server-only';
+import type { RoleName } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { sendEmail } from '@/lib/email/email';
 import { getSecurityPolicy } from '@/lib/auth/policy';
 
 const KEY = 'security.2fa-nudge'; // one Setting row holds { userId: lastSentISO }
-const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+const ADMIN_ROLES: RoleName[] = ['SUPER_ADMIN', 'ADMIN'];
 
 /**
  * Email everyone who still hasn't enabled 2FA, at most once every `everyDays`

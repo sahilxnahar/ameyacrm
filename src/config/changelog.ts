@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.36';
+export const APP_VERSION = 'v15.37';
 
 export interface Release {
   version: string;
@@ -13,6 +13,13 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.37',
+    date: '27 Jul 2026',
+    highlights: [
+      'A build fix so the recent updates (borrowings, the tidier Money menu, the Secret Cash Book master erase and the sign-in improvements) all deploy cleanly. No visible change on its own — deploy this one.',
+    ],
+  },
   {
     version: 'v15.36',
     date: '27 Jul 2026',
