@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.41';
+export const APP_VERSION = 'v15.42';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.42',
+    date: '27 Jul 2026',
+    highlights: [
+      'Start a WhatsApp from inside the CRM. “Mail & Inbox” now has a “New WhatsApp” button — send a message to any number (with country code) via your WhatsApp connection, and it appears in the inbox alongside replies.',
+      'This completes WhatsApp send + receive: incoming messages already thread in and you could reply; now you can also start a new conversation, without opening WhatsApp separately.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.41',
     date: '27 Jul 2026',

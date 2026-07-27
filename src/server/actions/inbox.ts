@@ -106,6 +106,36 @@ export async function composeEmail(input: unknown): Promise<InboxResult> {
   } catch (err) { return toActionError(err); }
 }
 
+const waCompose = z.object({
+  phone: z.string().min(6, 'Enter a phone number with country code.').max(20),
+  body: z.string().min(1, 'Write a message.').max(4000),
+});
+
+/** Send a brand-new WhatsApp message to any number (via OpenWA) and record it. */
+export async function composeWhatsapp(input: unknown): Promise<InboxResult> {
+  try {
+    const ctx = await ensure('email.send');
+    const d = waCompose.parse(input);
+    const res = await sendWhatsappText(d.phone, d.body);
+    if (!res.ok) return { error: `Could not send: ${res.error}` };
+
+    await prisma.whatsappMessage.create({
+      data: {
+        externalId: res.id || `out:${randomToken(12)}`,
+        phone: d.phone,
+        kind: 'text',
+        body: d.body.slice(0, 2000),
+        handled: true,
+        direction: 'OUTBOUND',
+        userId: ctx.user.id,
+      },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'WhatsappMessage', summary: `Sent WhatsApp to ${d.phone}` });
+    revalidatePath('/inbox');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}
+
 const waReply = z.object({
   phone: z.string().min(6).max(20),
   body: z.string().min(1).max(4000),
