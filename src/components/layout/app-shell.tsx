@@ -137,7 +137,7 @@ export function AppShell({
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes
             the app feel responsive and alive (U14). Honours reduced-motion. */}
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-8">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-24">
           <div key={pathname} className="animate-in">{children}</div>
         </main>
       </div>

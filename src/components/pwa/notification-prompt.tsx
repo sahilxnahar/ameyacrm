@@ -71,7 +71,7 @@ export function NotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-sm sm:inset-x-auto sm:right-4 sm:bottom-4">
+    <div className="fixed inset-x-3 bottom-[calc(8.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-sm sm:inset-x-auto sm:right-4 sm:bottom-[8.5rem]">
       <div className="card-elevated flex items-start gap-3 rounded-lg border bg-background p-4 shadow-xl">
         <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary"><BellRing className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">

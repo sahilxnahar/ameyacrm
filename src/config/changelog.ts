@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.37';
+export const APP_VERSION = 'v15.38';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.38',
+    date: '27 Jul 2026',
+    highlights: [
+      'New “My Apps” menu (under Team & Admin) — see every app you’ve installed in one place, with quick access to manage each, and a button to browse the App Exchange.',
+      'Straight talk on what apps do: “My Apps” now says plainly which connections are live and moving data (Slack, Discord, Telegram, Razorpay, property portals) versus those that are authorised but whose deeper two-way sync is still rolling out.',
+      'Fixed the floating Assistant button overlapping buttons on the page, and the notification prompt sitting on top of it — they now keep out of each other’s way, with more breathing room at the bottom of every screen.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.37',
     date: '27 Jul 2026',
