@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.48';
+export const APP_VERSION = 'v15.49';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.49',
+    date: '27 Jul 2026',
+    highlights: [
+      'Tidy-up after the full-width change: the top bar, breadcrumb and page title now line up on the same left edge, and the faint background emblem is centred within the content area instead of drifting left behind the sidebar.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.48',
     date: '27 Jul 2026',

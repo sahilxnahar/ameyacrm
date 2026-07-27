@@ -24,7 +24,7 @@ export function Topbar({
   onSearch: () => void;
 }) {
   return (
-    <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:px-6">
+    <header className="app-topbar sticky top-0 z-30 flex items-center gap-2 border-b bg-background/85 px-4 backdrop-blur sm:px-6 lg:px-8">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </Button>

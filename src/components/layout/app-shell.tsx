@@ -106,7 +106,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-background">
       {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.
           Non-interactive and very low opacity so it reads as texture, not clutter. */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden">
+      <div aria-hidden className={`pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <img src="/brand/watermark-mark.png" alt="" className="w-[min(74vw,640px)] max-w-none select-none opacity-[0.10] dark:opacity-[0.16]" />
       </div>
       {/* Batch 12 (a11y): the first focusable element lets a keyboard or
@@ -137,7 +137,7 @@ export function AppShell({
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes
             the app feel responsive and alive (U14). Honours reduced-motion. */}
-        <main id="main" tabIndex={-1} className="w-full max-w-none flex-1 px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-24 2xl:px-10">
+        <main id="main" tabIndex={-1} className="w-full max-w-none flex-1 px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-24">
           <div key={pathname} className="animate-in">{children}</div>
         </main>
       </div>
