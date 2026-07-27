@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.60';
+export const APP_VERSION = 'v15.61';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.61',
+    date: '27 Jul 2026',
+    highlights: [
+      'New MSME 45-Day Tracker (Money). Every MSME supplier bill runs a live Section 43B(h) countdown and flips to Overdue on its own before the 45-day (or 15-day) window closes — so a late payment never quietly turns into a disallowed tax deduction.',
+      'New Capital Gains Simulator (Sales). A front-office calculator that shows a prospective buyer their Section 54 / 54F tax saving from reinvesting sale proceeds into an Ameya Heights home — figures update live and a scenario can be saved to share.',
+      'New Khata & EC Vault plus an IND-AS 115 POCM revenue-recognition engine and GSTR-2B reconciliation scaffolding. This is Group 10 (modules 51–55) of the 51–80 build; more groups follow.',
+      'This version needs a small database change — run MIGRATION_v15.61_all.sql in Neon before deploying (adds the revenue-recognition, GSTR-2B, MSME-clock, khata and capital-gains tables).',
+    ],
+  },
   {
     version: 'v15.60',
     date: '27 Jul 2026',

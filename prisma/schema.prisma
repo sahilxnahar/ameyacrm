@@ -466,6 +466,10 @@ model Project {
   estamps             EstampCertificate[]
   litigations         LitigationEscalation[]
 
+  // Group 10 — advanced financial & taxation (modules 51–55)
+  revenueRecognitions RevenueRecognition[]
+  khataRecords        KhataRecord[]
+
   @@index([isActive])
 }
 
@@ -900,6 +904,132 @@ model LitigationEscalation {
   @@index([forum])
   @@index([status])
   @@index([nextHearingOn])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 10 — Advanced Financial & Taxation (Modules 51–55)
+// Extend, never fork: reads Booking/Voucher; money still lands on Voucher.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 51. IND-AS 115 POCM revenue recognition snapshot.
+model RevenueRecognition {
+  id                String   @id @default(cuid())
+  projectId         String
+  period            String // "YYYY-MM"
+  costToDate        Decimal  @db.Decimal(16, 2)
+  totalEstCost      Decimal  @db.Decimal(16, 2)
+  pocmPercent       Decimal  @db.Decimal(6, 3)
+  totalContractVal  Decimal  @db.Decimal(16, 2)
+  revenueToDate     Decimal  @db.Decimal(16, 2)
+  revenueThisPeriod Decimal  @db.Decimal(16, 2)
+  createdAt         DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, period])
+  @@index([projectId])
+}
+
+// 52. GSTR-2A/2B reconciliation line.
+enum GstMatchStatus {
+  UNMATCHED
+  MATCHED
+  MISMATCH_AMOUNT
+  MISSING_IN_2B
+  MISSING_IN_BOOKS
+}
+
+model Gstr2bLine {
+  id            String         @id @default(cuid())
+  period        String
+  supplierGstin String
+  invoiceNo     String
+  invoiceDate   DateTime?
+  taxableValue  Decimal        @db.Decimal(14, 2)
+  igst          Decimal        @default(0) @db.Decimal(12, 2)
+  cgst          Decimal        @default(0) @db.Decimal(12, 2)
+  sgst          Decimal        @default(0) @db.Decimal(12, 2)
+  vendorBillId  String?
+  status        GstMatchStatus @default(UNMATCHED)
+  createdAt     DateTime       @default(now())
+
+  @@unique([supplierGstin, invoiceNo, period])
+  @@index([status])
+  @@index([vendorBillId])
+}
+
+// 53. MSME 45-day payment clock (S.43B(h)).
+enum MsmeClockStatus {
+  ON_TIME
+  DUE_SOON
+  OVERDUE
+  DISALLOWED
+  PAID
+}
+
+model MsmePaymentClock {
+  id            String          @id @default(cuid())
+  vendorId      String
+  vendorBillId  String          @unique
+  udyamNo       String?
+  billDate      DateTime
+  dueDate       DateTime
+  amount        Decimal         @db.Decimal(14, 2)
+  status        MsmeClockStatus @default(ON_TIME)
+  paidVoucherId String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([dueDate])
+}
+
+// 54. Khata / EC vault.
+enum KhataType {
+  A_KHATA
+  B_KHATA
+  E_KHATA
+  NONE
+}
+
+model KhataRecord {
+  id           String    @id @default(cuid())
+  projectId    String?
+  unitId       String?
+  khataType    KhataType @default(NONE)
+  pid          String?
+  khataNo      String?
+  assessmentNo String?
+  ownerName    String?
+  lastEcOn     DateTime?
+  ecClear      Boolean   @default(false)
+  remarks      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([unitId])
+  @@index([khataType])
+}
+
+// 55. Capital-gains exemption scenario (S.54 / 54F).
+model CapitalGainScenario {
+  id             String   @id @default(cuid())
+  leadId         String?
+  saleValue      Decimal  @db.Decimal(16, 2)
+  indexedCost    Decimal  @db.Decimal(16, 2)
+  section        String
+  reinvestAmount Decimal  @db.Decimal(16, 2)
+  exemptGain     Decimal  @db.Decimal(16, 2)
+  taxSaved       Decimal  @db.Decimal(16, 2)
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([leadId])
 }
 
 /// Somebody who works with a department without it being their main one.
@@ -1753,6 +1883,9 @@ model Vendor {
   structuralContracts StructuralContract[]
   insolvencyCases     VendorInsolvencyCase[]
   adrCases            AdrCase[]
+
+  // Group 10 — MSME 45-day clocks (module 53)
+  msmeClocks MsmePaymentClock[]
 
   @@index([isActive])
 }

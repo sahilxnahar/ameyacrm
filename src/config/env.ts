@@ -55,6 +55,14 @@ const schema = z.object({
   CAUSELIST_FEED_KEY: z.string().optional(),
   IBBI_FEED_URL: z.string().optional(),          // optional IBBI/CIRP feed (#87)
   IBBI_FEED_KEY: z.string().optional(),
+
+  // Group 10 — advanced financial & taxation (modules 51–55)
+  MSME_DEFAULT_DUE_DAYS: z.coerce.number().int().positive().default(45), // S.43B(h) window
+  MSME_ALERT_DAYS: z.coerce.number().int().nonnegative().default(7),     // warn before overdue
+  GST_GSP_PROVIDER: z.string().optional(),        // cleartax | mastersindia | taxpro | manual (#52)
+  GST_GSP_BASE_URL: z.string().optional(),
+  GST_GSP_API_KEY: z.string().optional(),
+  GSTR2B_WEBHOOK_SECRET: z.string().optional(),   // async 2B-pull callback signature
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),

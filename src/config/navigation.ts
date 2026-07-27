@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -108,6 +108,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
       { label: 'Accounts & Books', href: '/accounts', icon: Landmark, permission: 'finance.ledger.view', blurb: 'Ledger, Tally, GST, vendor ledgers, treasury, capital — all in one place.' },
       { label: 'TDS', href: '/tds', icon: Banknote, permission: 'finance.ledger.view', blurb: 'Tax Deducted at Source — auto-rate by section, per-account ledger, and what is deducted vs deposited vs pending.' },
+      { label: 'MSME 45-Day Tracker', href: '/msme-tracker', icon: Clock, permission: 'finance.ledger.view', blurb: 'Section 43B(h) countdown on every MSME supplier bill — flags overdue before it becomes a tax disallowance.' },
+      { label: 'Capital Gains Simulator', href: '/capital-gains', icon: Calculator, permission: 'lead.view', blurb: 'Show a buyer their Section 54 / 54F tax saving from reinvesting into an Ameya Heights home.' },
     ],
   },
   {
@@ -138,6 +140,7 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
       { label: 'Title Chain Vault', href: '/title-vault', icon: ScrollText, permission: 'land.view', blurb: 'The 30-year chain of title — deeds, mutation extracts, EC and RTC — digitised and verifiable in one register.' },
+      { label: 'Khata & EC Vault', href: '/khata-vault', icon: FileText, permission: 'land.view', blurb: 'A-Khata / B-Khata bifurcation, BBMP PID mapping and the encumbrance-certificate register.' },
       { label: 'Heir Mapper (JDA)', href: '/heir-mapper', icon: Users2, permission: 'land.view', blurb: 'Landowner genealogy and relinquishment deeds, so a JDA is signed by every rightful heir.' },
       { label: 'Land Conversion', href: '/land-conversion', icon: MapPin, permission: 'land.view', blurb: 'Agricultural-to-residential conversion — RTC, DC scrutiny, fee and the alienation order, stage by stage.' },
       { label: 'Arbitration & ADR', href: '/arbitration', icon: Scale, permission: 'land.view', blurb: 'Conciliation notices, arbitrator appointments, hearings and settlements — with the next hearing always in view.' },
