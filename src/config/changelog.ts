@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.58';
+export const APP_VERSION = 'v15.59';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.59',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Title Chain & Link Document Vault (Land, Lease & Legal). Digitise the 30-year chain of title — mother deed, sale/gift/partition deeds, mutation extracts, EC and RTC/pahani — in one verifiable register, so title due-diligence is a single screen instead of a box of scans.',
+      'New JDA Heir Mapper. Map the landowner genealogy and undivided shares behind a joint-development agreement, and record each relinquishment deed — so the JDA is executed by every rightful heir and no succession claim surfaces after signing.',
+      'New Land Conversion (ALN) tracker. Move each agricultural parcel through RTC verification, DC scrutiny, the conversion fee and the alienation order, stage by stage — so nothing is built before it is legally converted. Modules 84, 85 and 88 of the Legal group.',
+      'This version needs a small database change — run MIGRATION_v15.59_all.sql in Neon before deploying (adds the title-chain, landowner and land-conversion tables).',
+    ],
+  },
   {
     version: 'v15.58',
     date: '27 Jul 2026',

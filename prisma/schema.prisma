@@ -459,6 +459,9 @@ model Project {
   // Group 16 — legal/IP
   trademarks          Trademark[]
   structuralContracts StructuralContract[]
+  titleChain          TitleChainEntry[]
+  landowners          Landowner[]
+  landConversions     LandConversion[]
 
   @@index([isActive])
 }
@@ -607,6 +610,107 @@ model VendorInsolvencyCase {
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@index([vendorId])
+  @@index([stage])
+}
+
+// ── Module 84. Title Chain & Link Document Vault ────────────────────────────
+enum LinkDocKind {
+  MOTHER_DEED
+  SALE_DEED
+  GIFT_DEED
+  PARTITION_DEED
+  MUTATION_EXTRACT
+  ENCUMBRANCE_CERT
+  RTC_PAHANI
+  CONVERSION_ORDER
+  WILL
+  COURT_DECREE
+  OTHER
+}
+
+model TitleChainEntry {
+  id           String       @id @default(cuid())
+  projectId    String?
+  landParcelId String?
+  kind         LinkDocKind
+  fromParty    String?
+  toParty      String?
+  documentNo   String?
+  registeredOn DateTime?
+  sroOffice    String?
+  periodFrom   Int?
+  periodTo     Int?
+  documentId   String?
+  isVerified   Boolean      @default(false)
+  remarks      String?
+  createdAt    DateTime     @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([landParcelId])
+  @@index([kind])
+  @@index([registeredOn])
+}
+
+// ── Module 85. JDA Succession & Legal-Heir Mapper ───────────────────────────
+model Landowner {
+  id               String    @id @default(cuid())
+  projectId        String?
+  name             String
+  relationToRoot   String?
+  parentId         String?
+  isDeceased       Boolean   @default(false)
+  shareNum         Int?
+  shareDen         Int?
+  relinquished     Boolean   @default(false)
+  relinquishDeedNo String?
+  relinquishOn     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  project  Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  parent   Landowner?  @relation("HeirTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Landowner[] @relation("HeirTree")
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+// ── Module 88. Land Conversion & ALN Tracker ────────────────────────────────
+enum ConversionStage {
+  APPLIED
+  RTC_VERIFIED
+  DC_SCRUTINY
+  FEE_DEMANDED
+  FEE_PAID
+  DC_ORDER_ISSUED
+  KHATA_UPDATED
+  REJECTED
+}
+
+model LandConversion {
+  id            String          @id @default(cuid())
+  projectId     String?
+  landParcelId  String?
+  surveyNo      String
+  village       String?
+  taluk         String?
+  extentAcres   Decimal?        @db.Decimal(12, 4)
+  fromUse       String          @default("AGRICULTURAL")
+  toUse         String          @default("RESIDENTIAL")
+  stage         ConversionStage @default(APPLIED)
+  dcOrderNo     String?
+  conversionFee Decimal?        @db.Decimal(16, 2)
+  feeVoucherId  String?
+  appliedOn     DateTime?
+  orderOn       DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
   @@index([stage])
 }
 

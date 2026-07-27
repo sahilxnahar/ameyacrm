@@ -137,6 +137,9 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Ownership, tenancies and statutory duties.',
     items: [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
+      { label: 'Title Chain Vault', href: '/title-vault', icon: ScrollText, permission: 'land.view', blurb: 'The 30-year chain of title — deeds, mutation extracts, EC and RTC — digitised and verifiable in one register.' },
+      { label: 'Heir Mapper (JDA)', href: '/heir-mapper', icon: Users2, permission: 'land.view', blurb: 'Landowner genealogy and relinquishment deeds, so a JDA is signed by every rightful heir.' },
+      { label: 'Land Conversion', href: '/land-conversion', icon: MapPin, permission: 'land.view', blurb: 'Agricultural-to-residential conversion — RTC, DC scrutiny, fee and the alienation order, stage by stage.' },
       { label: 'Litigation & Renewals', href: '/litigation', icon: Gavel, permission: 'land.view', blurb: 'Court matters with full hearing history, and EC / Khata renewal alerts.' },
       { label: 'IP & Trademarks', href: '/ip-registry', icon: BadgeCheck, permission: 'document.view', blurb: 'Brand marks, TM classes and statuses, with the 10-year renewal computed and flagged automatically.' },
       { label: 'Vendor Insolvency', href: '/vendor-insolvency', icon: Gavel, permission: 'finance.ledger.view', blurb: 'NCLT / IBC monitor — freezes advances to a vendor under a moratorium automatically.' },
