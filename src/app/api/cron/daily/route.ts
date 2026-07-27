@@ -15,6 +15,7 @@ import { runDemandCycle } from '@/server/services/demand-service';
 import { sweepTrademarkRenewals } from '@/server/services/trademark-service';
 import { sweepStructuralContracts } from '@/server/services/structural-contract-service';
 import { sweepVendorInsolvency } from '@/server/services/insolvency-service';
+import { sweepLegalDeadlines } from '@/server/services/legal-sweeps';
 import { runPersonalAutomations } from '@/server/services/personal-automation-service';
 import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
 import { run2faNudges } from '@/server/services/twofa-nudge-service';
@@ -124,6 +125,8 @@ export async function GET(req: NextRequest) {
   try { result.structuralContracts = await sweepStructuralContracts(now); } catch { result.structuralContracts = 'failed'; }
 
   try { result.vendorInsolvency = await sweepVendorInsolvency(); } catch { result.vendorInsolvency = 'failed'; }
+
+  try { result.legalDeadlines = await sweepLegalDeadlines(now); } catch { result.legalDeadlines = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

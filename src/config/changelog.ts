@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.59';
+export const APP_VERSION = 'v15.60';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.60',
+    date: '27 Jul 2026',
+    highlights: [
+      'The Legal, IP & Litigation group is complete. New this release: the NRI / FEMA Gateway (FATCA + FEMA for foreign buyers, each inward remittance carrying its 90-day reporting deadline), the Arbitration & ADR docket, e-Stamping (SHCIL-ready, manual until the API is live), and the REAT & High Court appellate docket.',
+      'Hearings and FEMA deadlines are swept daily so nothing is missed; e-stamp certificate numbers land automatically through the webhook bus once SHCIL is connected. Settlements and stamp duty converge on vouchers like every other money event.',
+      'This completes modules 81–90 — trademark registry, structural-contract & NCLT payment gates, title-chain vault, heir mapper, land conversion, and now NRI/FEMA, arbitration, e-stamping and appellate litigation.',
+      'This version needs a small database change — run MIGRATION_v15.60_all.sql in Neon before deploying (adds the NRI, remittance, ADR, e-stamp and appellate-litigation tables).',
+    ],
+  },
   {
     version: 'v15.59',
     date: '27 Jul 2026',

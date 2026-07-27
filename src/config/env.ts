@@ -40,6 +40,21 @@ const schema = z.object({
   TELEPHONY_SECRET: z.string().optional(), // guards the telephony (call-recording) webhook
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(), // verifies Razorpay webhook signatures
   IOT_INGEST_SECRET: z.string().optional(), // guards the /api/iot/ingest sensor endpoint
+
+  // Legal group (modules 81–90). All optional — the modules work on manual entry
+  // + computed deadlines; these only wire up the optional external feeds.
+  ESTAMP_PROVIDER: z.string().optional(),        // shcil | ksps | manual (#89)
+  ESTAMP_API_URL: z.string().optional(),
+  ESTAMP_API_KEY: z.string().optional(),
+  ESTAMP_MERCHANT_ID: z.string().optional(),
+  ESTAMP_CALLBACK_SECRET: z.string().optional(), // verifies the SHCIL e-stamp webhook
+  FIRC_WEBHOOK_SECRET: z.string().optional(),    // AD-bank FIRC webhook (#83)
+  IPWATCH_API_URL: z.string().optional(),        // optional TM-watch feed (#81)
+  IPWATCH_API_KEY: z.string().optional(),
+  CAUSELIST_FEED_URL: z.string().optional(),     // optional cause-list feed (#86,#90)
+  CAUSELIST_FEED_KEY: z.string().optional(),
+  IBBI_FEED_URL: z.string().optional(),          // optional IBBI/CIRP feed (#87)
+  IBBI_FEED_KEY: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),

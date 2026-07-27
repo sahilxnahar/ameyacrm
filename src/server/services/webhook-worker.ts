@@ -27,6 +27,7 @@ export async function processPendingWebhooks(limit = 50): Promise<WorkerResult> 
         case 'RAZORPAY': await handleRazorpayPayment(event); break;
         case 'WHATSAPP': await handleWhatsAppInbound(event); break;
         case 'IOT_GATE': await handleIotGate(event); break;
+        case 'ESTAMP': await handleEstampIssued(event); break;
         default: /* no specialised handler — acknowledge and move on */ break;
       }
       await prisma.webhookEvent.update({ where: { id: event.id }, data: { status: 'DONE' } });
@@ -80,6 +81,18 @@ async function handleRazorpayPayment(event: { id: string; payload: unknown }): P
     });
   }
   await writeAudit({ action: 'CREATE', entityType: 'Voucher', entityId: voucher.id, summary: `Razorpay ₹${rupees} collected → 70/30 escrow (voucher ${voucher.number})` });
+}
+
+/** SHCIL confirms an e-stamp certificate was generated (module #89). */
+async function handleEstampIssued(event: { id: string; payload: unknown }): Promise<void> {
+  const p = (event.payload ?? {}) as Record<string, unknown>;
+  const providerRef = String(p.txnId ?? p.providerRef ?? '');
+  if (!providerRef) return;
+  const certificateNo = p.certificateNo != null ? String(p.certificateNo) : null;
+  await prisma.estampCertificate.updateMany({
+    where: { providerRef },
+    data: { status: 'GENERATED', certificateNo, issuedOn: new Date(), webhookEventId: event.id },
+  });
 }
 
 async function handleWhatsAppInbound(_event: { id: string; payload: unknown }): Promise<void> {

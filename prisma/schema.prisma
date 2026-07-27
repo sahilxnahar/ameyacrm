@@ -462,6 +462,9 @@ model Project {
   titleChain          TitleChainEntry[]
   landowners          Landowner[]
   landConversions     LandConversion[]
+  adrCases            AdrCase[]
+  estamps             EstampCertificate[]
+  litigations         LitigationEscalation[]
 
   @@index([isActive])
 }
@@ -712,6 +715,191 @@ model LandConversion {
 
   @@index([projectId])
   @@index([stage])
+}
+
+// ── Module 83. Cross-Border Legal & NRI KYC Gateway (FATCA / FEMA) ───────────
+enum NriComplianceStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model NriComplianceProfile {
+  id              String              @id @default(cuid())
+  leadId          String?
+  bookingId       String?
+  taxResidency    String
+  fatcaDeclared   Boolean             @default(false)
+  fatcaFormRef    String?
+  femaCategory    String?
+  passportNo      String?
+  overseasAddress String?
+  status          NriComplianceStatus @default(PENDING)
+  verifiedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  remittances ForeignRemittance[]
+
+  @@index([leadId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+model ForeignRemittance {
+  id            String    @id @default(cuid())
+  profileId     String
+  bookingId     String?
+  voucherId     String?
+  amountForeign Decimal   @db.Decimal(16, 2)
+  currency      String
+  amountInr     Decimal   @db.Decimal(16, 2)
+  fireReference String?
+  receivedOn    DateTime?
+  reportDueOn   DateTime?
+  reportedOn    DateTime?
+  createdAt     DateTime  @default(now())
+
+  profile NriComplianceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([bookingId])
+  @@index([reportDueOn])
+}
+
+// ── Module 86. Arbitration & ADR Docket ─────────────────────────────────────
+enum AdrStage {
+  NOTICE_ISSUED
+  CONCILIATION
+  ARBITRATOR_APPOINTED
+  PLEADINGS
+  HEARINGS
+  AWARD
+  SETTLED
+  CHALLENGED
+  CLOSED
+}
+
+model AdrCase {
+  id                  String    @id @default(cuid())
+  projectId           String?
+  vendorId            String?
+  bookingId           String?
+  title               String
+  refNo               String    @unique
+  stage               AdrStage  @default(NOTICE_ISSUED)
+  claimant            String
+  respondent          String
+  arbitrator          String?
+  claimAmount         Decimal?  @db.Decimal(16, 2)
+  nextHearingOn       DateTime?
+  settlementVoucherId String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  project Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  vendor  Vendor?    @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  events  AdrEvent[]
+
+  @@index([projectId])
+  @@index([vendorId])
+  @@index([stage])
+  @@index([nextHearingOn])
+}
+
+model AdrEvent {
+  id         String   @id @default(cuid())
+  caseId     String
+  kind       String
+  note       String?
+  occurredOn DateTime @default(now())
+
+  case AdrCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+// ── Module 89. E-Stamping & Franking (SHCIL) Integration ────────────────────
+enum EstampStatus {
+  REQUESTED
+  GENERATED
+  USED
+  CANCELLED
+  FAILED
+}
+
+model EstampCertificate {
+  id               String       @id @default(cuid())
+  bookingId        String?
+  projectId        String?
+  purpose          String
+  considerationInr Decimal?     @db.Decimal(16, 2)
+  dutyInr          Decimal      @db.Decimal(14, 2)
+  certificateNo    String?      @unique
+  status           EstampStatus @default(REQUESTED)
+  providerRef      String?
+  firstParty       String?
+  secondParty      String?
+  issuedOn         DateTime?
+  voucherId        String?
+  webhookEventId   String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+// ── Module 90. REAT & High Court Litigation Escalation ──────────────────────
+enum LitForum {
+  RERA_AUTHORITY
+  REAT
+  HIGH_COURT
+  SUPREME_COURT
+}
+
+enum LitStatus {
+  FILED
+  ADMITTED
+  INTERIM_ORDER
+  ARGUMENTS
+  RESERVED
+  DISPOSED
+  APPEALED
+}
+
+model LitigationEscalation {
+  id                String    @id @default(cuid())
+  projectId         String?
+  bookingId         String?
+  parentMatterId    String?
+  forum             LitForum
+  caseNo            String?
+  title             String
+  status            LitStatus @default(FILED)
+  counselName       String?
+  counselAssignedOn DateTime?
+  interimOrder      String?
+  reliefSought      String?
+  disputedInr       Decimal?  @db.Decimal(16, 2)
+  nextHearingOn     DateTime?
+  filedOn           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  project Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  parent  LitigationEscalation?  @relation("EscalationChain", fields: [parentMatterId], references: [id], onDelete: SetNull)
+  appeals LitigationEscalation[] @relation("EscalationChain")
+
+  @@index([projectId])
+  @@index([forum])
+  @@index([status])
+  @@index([nextHearingOn])
 }
 
 /// Somebody who works with a department without it being their main one.
@@ -1461,6 +1649,8 @@ model Booking {
   salesRep User?              @relation("BookingSalesRep", fields: [salesRepId], references: [id], onDelete: SetNull)
   payments PaymentMilestone[]
   demandNotices DemandNotice[]
+  nriProfiles NriComplianceProfile[]
+  estamps     EstampCertificate[]
 
   @@index([status])
   @@index([bookedAt])
@@ -1562,6 +1752,7 @@ model Vendor {
   // Group 16 — legal
   structuralContracts StructuralContract[]
   insolvencyCases     VendorInsolvencyCase[]
+  adrCases            AdrCase[]
 
   @@index([isActive])
 }
