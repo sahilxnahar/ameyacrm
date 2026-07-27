@@ -29,6 +29,13 @@ export async function decideApprovalStep(stepId: string, decision: 'APPROVED' | 
         await prisma.materialRequest.update({ where: { id: entityId }, data: { status: finalStatus === 'APPROVED' ? 'APPROVED' : 'REJECTED' } }).catch(() => {});
       } else if (entityType === 'PURCHASE_ORDER') {
         await prisma.purchaseOrder.update({ where: { id: entityId }, data: { status: finalStatus === 'APPROVED' ? 'APPROVED' : 'CANCELLED' } }).catch(() => {});
+      } else if (entityType === 'RA_BILL') {
+        await prisma.raBill.update({
+          where: { id: entityId },
+          data: finalStatus === 'APPROVED'
+            ? { status: 'CERTIFIED', certifiedById: ctx.user.id, certifiedAt: new Date() }
+            : { status: 'REJECTED' },
+        }).catch(() => {});
       }
     }
     await notify({ userId: step.request.requesterId, type: 'APPROVAL', title: `Your ${step.request.entityType.toLowerCase().replace('_', ' ')} was ${decision.toLowerCase()}`, link: '/approvals' });

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.52';
+export const APP_VERSION = 'v15.54';
 
 export interface Release {
   version: string;
@@ -13,6 +13,26 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.54',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Labour Compliance gate (Build & Site). Flag a vendor as a labour vendor and their RA-bill payments are automatically blocked until that month’s EPF and ESI challans are recorded and verified — no more paying ahead of statutory dues.',
+      'Track each vendor’s EPF/ESI challan by month with a clear Cleared / Blocked badge; verifying both releases the payment gate instantly. The block is enforced server-side at settlement, so it can’t be skipped.',
+      'This is the reusable “document gate” pattern the ERP will reuse for buyer 194-IA and possession NOCs. Phase 1 of the construction ERP continues.',
+      'This version needs a small database change — run MIGRATION_v15.54_all.sql in Neon before deploying (adds the compliance-doc table + a vendor flag).',
+    ],
+  },
+  {
+    version: 'v15.53',
+    date: '27 Jul 2026',
+    highlights: [
+      'New RA Bills module (Build & Site) — contractor running-account billing done right. Enter the certified gross value and the CRM works out the 1% BOCW labour cess, retention, and TDS (auto-mapped to 194C, higher rate if no PAN) and shows the exact net payable live as you type.',
+      'Certification runs through the existing approval engine: submit a bill to your certifiers in order (Site Engineer → Independent Engineer → Finance); once certified it can be paid in one click, which raises the payment voucher carrying the TDS and retention automatically.',
+      'A summary board shows bills awaiting certification, certified-but-unpaid value, cess accrued and retention held. This is Phase 1 of the construction ERP build.',
+      'This version needs a small database change — run MIGRATION_v15.53_all.sql in Neon before deploying (adds the RA-bill tables).',
+    ],
+  },
   {
     version: 'v15.52',
     date: '27 Jul 2026',

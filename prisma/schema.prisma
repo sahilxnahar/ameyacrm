@@ -168,6 +168,95 @@ enum ApprovalEntity {
   DRAWING
   LEAVE
   GENERIC
+  RA_BILL
+}
+
+enum RaBillStatus {
+  DRAFT      // being prepared
+  PENDING    // submitted for IE certification / approval
+  CERTIFIED  // certified — cleared to pay
+  PAID       // settled via a voucher
+  REJECTED
+}
+
+/// A contractor Running-Account (RA) bill against a works contract. Certified by
+/// the Independent Engineer through the shared approval engine, carries the 1%
+/// BOCW labour cess, retention and TDS, and is settled by a Voucher.
+model RaBill {
+  id           String       @id @default(cuid())
+  number       String       @unique // RA-1001
+  billNo       Int          @default(1) // running-account sequence for this contract (RA-1, RA-2…)
+  contractId   String?
+  vendorId     String? // the contractor
+  projectId    String?
+  periodFrom   DateTime?
+  periodTo     DateTime?
+
+  grossValue       Decimal  @default(0) @db.Decimal(16, 2) // value of work certified in this bill
+  previousPaid     Decimal  @default(0) @db.Decimal(16, 2) // cumulative paid on earlier RA bills
+  deductions       Decimal  @default(0) @db.Decimal(16, 2) // ad-hoc deductions (advances, penalties)
+  cessPercent      Decimal  @default(1) @db.Decimal(5, 2)  // BOCW labour cess %
+  cessAmount       Decimal  @default(0) @db.Decimal(16, 2) // derived
+  retentionPercent Decimal  @default(5) @db.Decimal(5, 2)
+  retentionAmount  Decimal  @default(0) @db.Decimal(16, 2)
+  tdsSection       String? // Indian TDS section, usually 194C
+  tdsRate          Decimal? @db.Decimal(5, 2)
+  tdsAmount        Decimal  @default(0) @db.Decimal(16, 2)
+  netPayable       Decimal  @default(0) @db.Decimal(16, 2) // what the contractor actually receives
+
+  status        RaBillStatus @default(DRAFT)
+  certifiedById String?
+  certifiedAt   DateTime?
+  voucherId     String? // settlement voucher
+  narration     String?
+  createdById   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  lines RaBillLine[]
+
+  @@index([status])
+  @@index([vendorId])
+  @@index([projectId])
+  @@index([contractId])
+}
+
+/// A monthly statutory compliance document for a labour vendor (EPF / ESI
+/// challan). The payment gate blocks a vendor's RA-bill settlement when the
+/// relevant month's challan isn't recorded and verified. Reusable "doc-gate".
+model ComplianceDoc {
+  id           String    @id @default(cuid())
+  vendorId     String
+  kind         String // EPF | ESI | OTHER
+  periodMonth  String // 'YYYY-MM'
+  challanNo    String?
+  amount       Decimal?  @db.Decimal(14, 2)
+  status       String    @default("PENDING") // PENDING | UPLOADED | VERIFIED
+  fileId       String?
+  note         String?
+  uploadedById String?
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([vendorId, kind, periodMonth])
+  @@index([vendorId])
+  @@index([status])
+}
+
+model RaBillLine {
+  id          String  @id @default(cuid())
+  raBillId    String
+  description String
+  unit        String? // cum, sqm, nos, MT
+  qty         Decimal @default(0) @db.Decimal(14, 3)
+  rate        Decimal @default(0) @db.Decimal(14, 2)
+  amount      Decimal @default(0) @db.Decimal(16, 2)
+
+  raBill RaBill @relation(fields: [raBillId], references: [id], onDelete: Cascade)
+
+  @@index([raBillId])
 }
 
 enum FolderVisibility {
@@ -1084,6 +1173,7 @@ model Vendor {
   upiId             String?
   paymentNotes      String?
   defaultTdsSection String? // default Indian TDS section for this vendor, e.g. 194C / 194J
+  requiresLabourCompliance Boolean @default(false) // labour vendor — block payment without EPF/ESI challan
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
