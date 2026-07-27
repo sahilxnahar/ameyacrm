@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.35';
+export const APP_VERSION = 'v15.36';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.36',
+    date: '27 Jul 2026',
+    highlights: [
+      'Secret Cash Book — a master erase for the owner. Under “Owner controls”, you can wipe the whole book in one step. Before anything is deleted it is safely backed up (encrypted), so a wipe is never final.',
+      'Only you (the owner / Super Admin) can do it, and only while the book is unlocked. You confirm by typing ERASE, and if the backup can’t be saved for any reason, nothing is deleted.',
+      'Restore any time: “Backups & restore” lists every backup with its date and entry count, and brings the entries back with one click.',
+      'No database change needed for this one.',
+    ],
+  },
   {
     version: 'v15.35',
     date: '27 Jul 2026',
