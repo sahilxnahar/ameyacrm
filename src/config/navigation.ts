@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -101,6 +101,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Finance Command Center', href: '/finance', icon: Gauge, permission: 'treasury.view', blurb: 'Cost of capital, cash position, receivables/payables and a 12-week cash runway — one view.' },
       { label: 'Billing', href: '/billing', icon: Receipt, permission: 'billing.view', blurb: 'Invoices, purchase orders and vendor bills.' },
       { label: 'Money Owed To Us', href: '/receivables', icon: HandCoins, permission: 'billing.view', blurb: 'What buyers still owe, and when it is due.' },
+      { label: 'Payment Demands', href: '/demands', icon: BellRing, permission: 'billing.view', blurb: 'Due & overdue instalments turned into automatic WhatsApp + email reminders; dunning that chases itself.' },
       { label: 'Payments Made', href: '/payments', icon: BadgeIndianRupee, permission: 'finance.ledger.view', blurb: 'Money that has gone out, with UTRs.' },
       { label: 'Borrowings', href: '/borrowings', icon: Banknote, permission: 'treasury.view', blurb: 'Bank & NBFC loans — drawdowns, outstanding and interest.' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view', blurb: 'What you planned to spend, versus actual.' },
@@ -136,6 +137,7 @@ export const NAVIGATION: NavGroup[] = [
     items: [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
       { label: 'Litigation & Renewals', href: '/litigation', icon: Gavel, permission: 'land.view', blurb: 'Court matters with full hearing history, and EC / Khata renewal alerts.' },
+      { label: 'IP & Trademarks', href: '/ip-registry', icon: BadgeCheck, permission: 'document.view', blurb: 'Brand marks, TM classes and statuses, with the 10-year renewal computed and flagged automatically.' },
       { label: 'Statutory Calendar', href: '/statutory', icon: Scale, permission: 'statutory.view', blurb: 'Filing and renewal dates you must not miss.' },
       { label: 'Governance & Risk', href: '/governance', icon: ShieldCheck, permission: 'governance.view', blurb: 'The risk register, contracts and insurance.' },
       { label: 'Lease', href: '/lease', icon: KeyRound, permission: 'lease.view', blurb: 'Tenants, rent schedule and maintenance.' },

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.54';
+export const APP_VERSION = 'v15.57';
 
 export interface Release {
   version: string;
@@ -13,6 +13,36 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.57',
+    date: '27 Jul 2026',
+    highlights: [
+      'New IP & Trademark Registry (Land, Lease & Legal). Keep every brand mark, its Nice class and its status — Filed, Objected, Registered and so on — in one register, firm-wide or per project.',
+      'The 10-year renewal is worked out for you the moment you enter a registration date, and a mark flips itself to “Renewal due” as the deadline nears (checked automatically every day) — so a trademark never lapses because a diary reminder was missed.',
+      'A summary board shows what is registered, what needs renewal, and what is under objection or opposition. This is the first module of the Legal, IP & Litigation group (81–90).',
+      'This version needs a small database change — run MIGRATION_v15.57_all.sql in Neon before deploying (adds the trademark register tables).',
+    ],
+  },
+  {
+    version: 'v15.56',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Payment Demands screen (Money). Every buyer instalment that is due within a week — or already overdue — is turned into a reminder automatically and sent over WhatsApp and email, so collections chase themselves instead of a person chasing a spreadsheet.',
+      'Demands are raised once per instalment (no double-texting the same buyer), and the moment a milestone is paid the reminder closes itself — the money still lands on the payment schedule and voucher, never on a second table.',
+      'A live board shows outstanding demanded value, what is awaiting dispatch, sent and paid — with “Run demand cycle” and “Re-send pending” for a manual push, and a one-click cancel. Runs every day via the cron, and skips anyone with no phone or email so you can chase them by hand.',
+      'This version needs a small database change — run MIGRATION_v15.56_all.sql in Neon before deploying (adds the demand-notice table).',
+    ],
+  },
+  {
+    version: 'v15.55',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Integration Events bus (Team & Admin → System health). Every third-party webhook — Razorpay payments, IoT sensors, WhatsApp — now lands in a durable queue, is acknowledged in under 200 ms, and is processed out-of-band, so a slow or flaky partner API can never freeze the CRM.',
+      'Razorpay collections post themselves: a captured payment automatically raises the receipt voucher and splits it 70/30 into the RERA and general escrow accounts, with the bank UTR carried through — no manual entry, and it can’t double-post.',
+      'A live board shows Pending / Processed / Failed events and total IoT readings, with a one-click “Run worker now” for admins. Failed events retry up to 3× then park for manual replay. This is the core integration layer (module #50) the rest of the PropTech build sits on.',
+      'This version needs a small database change — run MIGRATION_v15.55_all.sql in Neon before deploying (adds the webhook-event queue, asset/IoT-reading and escrow-split tables).',
+    ],
+  },
   {
     version: 'v15.54',
     date: '27 Jul 2026',

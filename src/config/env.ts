@@ -38,6 +38,8 @@ const schema = z.object({
   CRON_SECRET: z.string().optional(), // guards Vercel Cron endpoints
   INGEST_SECRET: z.string().optional(), // guards the public lead-ingestion webhook
   TELEPHONY_SECRET: z.string().optional(), // guards the telephony (call-recording) webhook
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(), // verifies Razorpay webhook signatures
+  IOT_INGEST_SECRET: z.string().optional(), // guards the /api/iot/ingest sensor endpoint
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),

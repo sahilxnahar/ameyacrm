@@ -10,6 +10,9 @@ import { runOverdueEscalation } from '@/server/services/escalation-service';
 import { runOnboardingReminders } from '@/server/services/onboarding-service';
 import { runChatNudges } from '@/server/services/chat-nudge-service';
 import { runTaskDigests } from '@/server/services/task-digest-service';
+import { processPendingWebhooks } from '@/server/services/webhook-worker';
+import { runDemandCycle } from '@/server/services/demand-service';
+import { sweepTrademarkRenewals } from '@/server/services/trademark-service';
 import { runPersonalAutomations } from '@/server/services/personal-automation-service';
 import { runRetentionSweep, rotateBackups } from '@/server/services/retention-service';
 import { run2faNudges } from '@/server/services/twofa-nudge-service';
@@ -108,6 +111,13 @@ export async function GET(req: NextRequest) {
 
   // 12) 2FA nudge — email anyone still not enrolled, at most once every 2 days
   try { result.twoFactorNudges = await run2faNudges(now); } catch { result.twoFactorNudges = 'failed'; }
+
+  // drain any pending third-party webhook events (belt-and-braces alongside /api/cron/worker)
+  try { result.webhookQueue = await processPendingWebhooks(100); } catch { result.webhookQueue = 'failed'; }
+
+  try { result.demands = await runDemandCycle(); } catch { result.demands = 'failed'; }
+
+  try { result.trademarks = await sweepTrademarkRenewals(now); } catch { result.trademarks = 'failed'; }
 
   return NextResponse.json({ ok: true, ...result });
 }

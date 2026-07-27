@@ -259,6 +259,81 @@ model RaBillLine {
   @@index([raBillId])
 }
 
+// ── Core Integration Layer (module #50): the durable async event bus ─────────
+enum WebhookStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+/// Every inbound third-party event (Razorpay, WhatsApp, IoT, bank) lands here
+/// first, is acked in milliseconds, and is processed out-of-band by the worker.
+/// Idempotent on (provider, externalId) so a retry is a no-op.
+model WebhookEvent {
+  id           String        @id @default(cuid())
+  provider     String // RAZORPAY | WHATSAPP | IOT_GATE | BANKBAZAAR | …
+  externalId   String
+  type         String
+  payload      Json
+  status       WebhookStatus @default(PENDING)
+  retryCount   Int           @default(0)
+  errorMessage String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([status, createdAt])
+}
+
+/// Unified IoT hub — one Asset + reading pair for cranes, solar, STP, cameras,
+/// gates (modules 10/16/18/19/31/32/33/34/48). Sensors post to /api/iot/ingest.
+model Asset {
+  id           String   @id @default(cuid())
+  projectId    String?
+  name         String
+  kind         String // TELEMATICS | SOLAR | STP | CAMERA | GATE | PARKING
+  serialNumber String   @unique
+  createdAt    DateTime @default(now())
+
+  readings IotReading[]
+
+  @@index([projectId])
+}
+
+model IotReading {
+  id         String   @id @default(cuid())
+  assetId    String
+  metric     String // fuel_liters | solar_kwh | stp_ph | footfall_count | ppm
+  value      Decimal  @db.Decimal(14, 4)
+  rawPayload Json?
+  recordedAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, metric, recordedAt])
+}
+
+enum EscrowAccountType {
+  RERA_70
+  GENERAL_30
+}
+
+/// Buyer payment split into the mandatory 70% RERA escrow and 30% general
+/// account (module #1). Booking-scoped; the matching money is a Voucher.
+model BookingEscrowSplit {
+  id             String            @id @default(cuid())
+  bookingId      String
+  webhookEventId String?
+  voucherId      String?
+  accountType    EscrowAccountType
+  amount         Decimal           @db.Decimal(16, 2)
+  utrNumber      String?
+  createdAt      DateTime          @default(now())
+
+  @@index([bookingId])
+}
+
 enum FolderVisibility {
   PRIVATE
   DEPARTMENT
@@ -381,7 +456,66 @@ model Project {
   issues    IssueLog[]
   budgets   Budget[]
 
+  // Group 16 — legal/IP
+  trademarks Trademark[]
+
   @@index([isActive])
+}
+
+// ── Module 81. Brand Identity & Trademark Registry ──────────────────────────
+// A firm-wide (projectId null) or project-scoped register of marks. Renewal is
+// computed in-app: a registered mark falls due 10 years after registration. The
+// daily worker raises a task ahead of every renewal / actionable deadline.
+enum TrademarkStatus {
+  FILED
+  FORMALITIES_CHK
+  EXAMINATION
+  OBJECTED
+  OPPOSED
+  ACCEPTED_ADVERTISED
+  REGISTERED
+  ABANDONED
+  REFUSED
+  RENEWAL_DUE
+}
+
+model Trademark {
+  id            String          @id @default(cuid())
+  projectId     String?
+  mark          String
+  applicationNo String?         @unique
+  niceClass     Int             @default(37) // 37 = construction
+  status        TrademarkStatus @default(FILED)
+  proprietor    String
+  filedOn       DateTime?
+  registeredOn  DateTime?
+  renewalDueOn  DateTime? // registeredOn + 10y; worker watches this
+  objectionText String?
+  deadlineOn    DateTime? // next actionable deadline (reply / opposition / renewal)
+  agentName     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  project Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  events  TrademarkEvent[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([renewalDueOn])
+  @@index([deadlineOn])
+}
+
+model TrademarkEvent {
+  id          String    @id @default(cuid())
+  trademarkId String
+  kind        String
+  note        String?
+  occurredOn  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  trademark Trademark @relation(fields: [trademarkId], references: [id], onDelete: Cascade)
+
+  @@index([trademarkId])
 }
 
 /// Somebody who works with a department without it being their main one.
@@ -1130,6 +1264,7 @@ model Booking {
   unit     Unit?              @relation(fields: [unitId], references: [id], onDelete: SetNull)
   salesRep User?              @relation("BookingSalesRep", fields: [salesRepId], references: [id], onDelete: SetNull)
   payments PaymentMilestone[]
+  demandNotices DemandNotice[]
 
   @@index([status])
   @@index([bookedAt])
@@ -1146,10 +1281,56 @@ model PaymentMilestone {
   createdAt DateTime      @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  demands DemandNotice[]
 
   @@index([bookingId])
   @@index([dueDate])
   @@index([status])
+}
+
+// ─── Payment demand & dunning (module #4) ────────────────────────────────────
+// A demand notice is a dispatched reminder for a due/overdue PaymentMilestone.
+// It never holds money itself — the money spine stays PaymentMilestone/Voucher.
+// Generation is idempotent (one active demand per milestone per kind) so the
+// out-of-band worker can re-run every day without spamming the buyer.
+
+enum DemandKind {
+  UPCOMING
+  OVERDUE
+}
+
+enum DemandStatus {
+  PENDING
+  SENT
+  PAID
+  CANCELLED
+}
+
+model DemandNotice {
+  id            String       @id @default(cuid())
+  number        String       @unique // DL-1001
+  bookingId     String
+  milestoneId   String?
+  kind          DemandKind   @default(OVERDUE)
+  status        DemandStatus @default(PENDING)
+  amount        Decimal      @db.Decimal(14, 2)
+  dueDate       DateTime?
+  label         String
+  channel       String? // requested: whatsapp / email / both
+  sentVia       String? // channels actually delivered, comma-separated
+  sentAt        DateTime?
+  reminderCount Int          @default(0)
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  booking   Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  milestone PaymentMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  @@unique([milestoneId, kind]) // idempotent generation per milestone per kind
+  @@index([bookingId])
+  @@index([status])
+  @@index([dueDate])
 }
 
 // ─── Billing ────────────────────────────────────────────────────────────────

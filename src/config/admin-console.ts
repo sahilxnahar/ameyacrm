@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ShieldCheck, Mail, Palette, Zap, Lock, ShieldAlert, Percent, SlidersHorizontal, KeyRound,
   UserPlus, Network, Bug, Building2, Smartphone, Upload, Plug, Type, Store, Sparkles,
-  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet, FolderKanban, Webhook, Braces, Package,
+  Landmark, Link2, MessageSquare, Gauge, Users2, FileText, Wallet, FolderKanban, Webhook, Braces, Package, Radio,
 } from 'lucide-react';
 
 export interface AdminTool {
@@ -80,6 +80,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
       { href: '/admin/performance', icon: Gauge, title: 'Performance', desc: 'Measure why a page feels slow', keywords: 'slow speed latency database pooling' },
       { href: '/admin/errors', icon: Bug, title: 'Errors', desc: 'What has crashed, and how often', keywords: 'crash exception log' },
       { href: '/admin/integrations', icon: Plug, title: 'Integrations', desc: 'What is connected and what is working', keywords: 'status health connected' },
+      { href: '/admin/integration-events', icon: Radio, title: 'Integration Events', desc: 'The async webhook bus — Razorpay, IoT, WhatsApp', keywords: 'webhook event bus razorpay iot escrow queue worker async' },
       { href: '/admin/feedback', icon: MessageSquare, title: 'Feedback', desc: 'What people told us about the app', keywords: 'feedback suggestion complaint rating' },
     ],
   },
