@@ -125,6 +125,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: '4D BIM Sync', href: '/bim-sync', icon: Box, permission: 'procurement.view', blurb: 'Link the 3D model to real site progress — completing a slab or phase can trigger the linked buyer payment demand automatically.' },
       { label: 'Piece-Rate Billing', href: '/piece-rate', icon: Ruler, permission: 'procurement.view', blurb: 'Bill sub-contractors on measured output per sq. ft.; settling raises the payment voucher.' },
       { label: 'Sub-Contractor Registry', href: '/vendor-registry', icon: Ban, permission: 'procurement.view', blurb: 'Cross-project default registry — blacklisting a vendor deactivates them everywhere at once.' },
+      { label: 'UAN Validator', href: '/uan-validator', icon: BadgeCheck, permission: 'procurement.view', blurb: 'Bulk EPF/ESI UAN validation at the security gate — an invalid UAN is flagged before the worker enters.' },
       { label: 'Scan (QR / Barcode)', href: '/scan', icon: QrCode, permission: 'booking.view', blurb: 'Scan a unit QR or material barcode with the camera to look it up.' },
       { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create', blurb: 'Photograph progress straight from your phone.' },
       { label: 'Site Telemetry', href: '/telemetry', icon: Radio, permission: 'telemetry.view', blurb: 'Live readings from site sensors, trackers and meters.' },

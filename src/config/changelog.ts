@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.67';
+export const APP_VERSION = 'v15.68';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.68',
+    date: '27 Jul 2026',
+    highlights: [
+      'New EPF/ESI UAN Bulk Validator (Build & Site). Paste a contractor’s labour roster and every 12-digit Universal Account Number is format-checked instantly — an invalid UAN is flagged before the worker is let through the gate, so EPF/ESI coverage is confirmed at the checkpoint, not discovered in an audit.',
+      'Re-pasting a roster updates rather than duplicates, and invalid UANs surface as a red tile on the Command Center. Ready for a live EPFO/GSP (Karza/Signzy) confirmation layer when you connect one. This is Priority-2 module #68.',
+      'This version needs a small database change — run MIGRATION_v15.68_all.sql in Neon before deploying (adds the labour-UAN table).',
+    ],
+  },
   {
     version: 'v15.67',
     date: '27 Jul 2026',

@@ -954,6 +954,30 @@ model VendorDefault {
   @@index([severity])
 }
 
+// 68. EPF/ESI UAN bulk validator — pre-gate check of contractor labour UANs at
+// the security checkpoint. Format-validated in-app; an optional GSP (Karza/Signzy)
+// confirms live. A worker whose UAN is INVALID is flagged before entry.
+enum UanStatus {
+  PENDING
+  VALID
+  INVALID
+}
+
+model LabourUan {
+  id         String    @id @default(cuid())
+  vendorId   String?
+  workerName String
+  uan        String    @unique
+  status     UanStatus @default(PENDING)
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  @@index([vendorId])
+  @@index([status])
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // GROUP 11 — Local Authority & Urban Planning (Module 56)
 // 56. BBMP/BDA plan-sanction & deviation. Sanctioned vs as-built FAR/FSI, with an
@@ -2008,6 +2032,7 @@ model Vendor {
 
   // Group 13 — sub-contractor default registry (module 69)
   defaults VendorDefault[]
+  labourUans LabourUan[]
 
   @@index([isActive])
 }

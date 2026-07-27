@@ -68,6 +68,11 @@ const schema = z.object({
   APS_CLIENT_ID: z.string().optional(),
   APS_CLIENT_SECRET: z.string().optional(),
   APS_BUCKET_KEY: z.string().optional(),
+
+  // Group 13 — EPF/ESI UAN live verification (Karza / Signzy GSP, module 68)
+  UAN_VERIFY_PROVIDER: z.string().optional(), // karza | signzy | manual
+  UAN_VERIFY_BASE_URL: z.string().optional(),
+  UAN_VERIFY_API_KEY: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),
