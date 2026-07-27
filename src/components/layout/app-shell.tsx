@@ -2,17 +2,17 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
-import { Topbar } from './topbar';
+import { TopBar } from './top-bar';
+import { BrandWatermark } from './brand-watermark';
 import { Breadcrumbs } from './breadcrumbs';
 import { CommandPalette } from './command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
-import { MobileNav } from './mobile-nav';
+import { MobileDock } from './mobile-dock';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
 import { WhatsNew } from './whats-new';
 import { UpdateBanner } from '@/components/pwa/update-banner';
 import { NotificationPrompt } from '@/components/pwa/notification-prompt';
-import { MobileFab } from './mobile-fab';
 import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
 import { PullToRefresh } from './pull-to-refresh';
 import type { NavPrefs } from '@/lib/nav/prefs';
@@ -105,10 +105,9 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-background">
       {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.
-          Non-interactive and very low opacity so it reads as texture, not clutter. */}
-      <div aria-hidden className={`pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
-        <img src="/brand/watermark-mark.png" alt="" className="w-[min(74vw,640px)] max-w-none select-none opacity-[0.10] dark:opacity-[0.16]" />
-      </div>
+          Centralised in <BrandWatermark/>; mirrors the sidebar rail offset so it
+          stays optically centred whether the rail is open or collapsed. */}
+      <BrandWatermark variant="workspace" padClassName={rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'} />
       {/* Batch 12 (a11y): the first focusable element lets a keyboard or
           screen-reader user jump straight past the sidebar to the page content. */}
       <a
@@ -132,7 +131,8 @@ export function AppShell({
       />
       <div className={`relative z-10 flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <UpdateBanner />
-        <Topbar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
+        {/* Ameya OS desktop Top-Bar (md+). On phones the Mobile Dock takes over. */}
+        <TopBar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
         <OfflineOutbox />
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes
@@ -141,8 +141,8 @@ export function AppShell({
           <div key={pathname} className="animate-in">{children}</div>
         </main>
       </div>
-      <MobileFab allowed={allowed} isSuperAdmin={isSuperAdmin} />
-      <MobileNav allowed={allowed} isSuperAdmin={isSuperAdmin} onMore={() => setMobileOpen(true)} />
+      {/* Ameya OS mobile Dock (< md) — Launchpad · Search · Quick-Upload · Alerts. */}
+      <MobileDock onSearch={() => setPaletteOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />
       <AssistantLauncher />

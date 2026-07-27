@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { ocRisk } from '@/lib/planning/far';
 import { getWelfareCompliance } from '@/server/services/welfare-service';
+import { getDueDiligenceExpiry } from '@/server/services/due-diligence-service';
 
 /**
  * Command-Center aggregation (new UI, Bento dashboard). One cheap parallel sweep
@@ -56,6 +57,7 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     return rows.filter((r) => ocRisk(Number(r.sanctionedFar), Number(r.builtFar)) === 'AT_RISK').length;
   });
   const welfareGaps = await safe(async () => (await getWelfareCompliance()).gapCount);
+  const ddExpiring = await safe(async () => (await getDueDiligenceExpiry()).expiringSoon);
 
   const tiles: AlertTile[] = [
     { key: 'msme', label: 'MSME overdue', value: msmeOverdue, href: '/msme-tracker', tone: msmeOverdue ? 'destructive' : 'success', hint: 'S.43B(h) tax-disallowance risk' },
@@ -64,6 +66,7 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     { key: 'insolvency', label: 'Vendors frozen', value: insolvencyFrozen, href: '/vendor-insolvency', tone: insolvencyFrozen ? 'destructive' : 'success', hint: 'IBC moratorium — advances blocked' },
     { key: 'far', label: 'OC at risk', value: ocAtRisk, href: '/plan-sanction', tone: ocAtRisk ? 'destructive' : 'success', hint: 'FAR deviation over tolerance' },
     { key: 'welfare', label: 'BOCW gaps', value: welfareGaps, href: '/welfare-log', tone: welfareGaps ? 'destructive' : 'success', hint: 'Welfare facilities unlogged this month' },
+    { key: 'duediligence', label: 'DD expiring', value: ddExpiring, href: '/due-diligence', tone: ddExpiring ? 'warning' : 'success', hint: 'NOC / EC nearing expiry' },
     { key: 'tm', label: 'Trademark renewals', value: tmRenewal, href: '/ip-registry', tone: tmRenewal ? 'warning' : 'success', hint: '10-year TM renewal approaching' },
     { key: 'fema', label: 'FEMA reports due', value: femaDue, href: '/nri-gateway', tone: femaDue ? 'warning' : 'success', hint: '90-day inward-remittance reporting' },
     { key: 'hearings', label: 'Hearings ≤7d', value: hearings, href: '/appellate-litigation', tone: hearings ? 'warning' : 'success', hint: 'Arbitration + court listings' },

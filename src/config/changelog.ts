@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.71';
+export const APP_VERSION = 'v15.73';
 
 export interface Release {
   version: string;
@@ -13,6 +13,25 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.73',
+    date: '27 Jul 2026',
+    highlights: [
+      'Ameya OS shell, phase 1. A new desktop Top-Bar carries the Ameya Heights logo mark, the project selector, a universal Upload button and ⌘K search; on phones it gives way to a fixed bottom Dock with four big touch targets — Launchpad, Search, Quick-Upload and Alerts — sized for one-handed use on site.',
+      'The brand watermark is now a reusable component with a crisp high-resolution variant for official document and report views (RA bills, demand letters, certifier sign-offs) alongside the faint workspace texture — brand identity stays 100% intact across every screen.',
+      'The transition is additive: the existing sidebar remains the desktop navigation fallback, so all 187 screens keep working exactly as before while the new shell rolls in. No database change needed for this version.',
+    ],
+  },
+  {
+    version: 'v15.72',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Pan-India Due Diligence & RERA Vault (Land, Lease & Legal). A searchable directory of every state and local authority portal — RERA, land records (Bhoomi, Mahabhulekh, Patta Chitta, Apna Khata, MP Bhulekh), registration (Kaveri, IGR, TNREGINET), and town-planning/municipal/hill bodies (DTCP, CMDA, PMRDA, PMC/PCMC, BDA, BBMP, BMRDA, IDA, DDA, HACA) — across Tamil Nadu, Madhya Pradesh, Rajasthan, Maharashtra, Karnataka and Delhi/NCR.',
+      'Click any authority to open its official portal in a new tab, then drag the downloaded PDF (or photograph it on mobile) straight into the vault, filed against a project with its record type, reference and validity. Type “CMDA”, “Kodaikanal HACA” or “Indore Bhulekh” to filter instantly.',
+      'Encumbrance certificates and town-planning approvals are watched for expiry — anything past its validity, or older than six months without one, surfaces as a yellow tile on the Command Center for the liaison team. Reachable from ⌘K and the Launchpad.',
+      'This version needs a small database change — run MIGRATION_v15.72_all.sql in Neon before deploying (adds the due-diligence record table and record-type enum).',
+    ],
+  },
   {
     version: 'v15.71',
     date: '27 Jul 2026',

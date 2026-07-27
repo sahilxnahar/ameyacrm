@@ -149,6 +149,7 @@ export const NAVIGATION: NavGroup[] = [
     blurb: 'Ownership, tenancies and statutory duties.',
     items: [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
+      { label: 'Legal & Due Diligence', href: '/due-diligence', icon: Landmark, permission: 'land.view', blurb: 'Pan-India authority directory (RERA, land records, DTCP/CMDA/PMRDA/BDA, HACA) with a click-out and a drag-in document vault per project.' },
       { label: 'Title Chain Vault', href: '/title-vault', icon: ScrollText, permission: 'land.view', blurb: 'The 30-year chain of title — deeds, mutation extracts, EC and RTC — digitised and verifiable in one register.' },
       { label: 'Khata & EC Vault', href: '/khata-vault', icon: FileText, permission: 'land.view', blurb: 'A-Khata / B-Khata bifurcation, BBMP PID mapping and the encumbrance-certificate register.' },
       { label: 'Plan Sanction & FAR', href: '/plan-sanction', icon: Building2, permission: 'land.view', blurb: 'As-built vs sanctioned FAR/FSI, with an automatic Occupancy-Certificate risk flag on over-deviation.' },

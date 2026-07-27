@@ -1,0 +1,171 @@
+'use client';
+import * as React from 'react';
+import { toast } from 'sonner';
+import { upload } from '@vercel/blob/client';
+import { Landmark, Search, ExternalLink, UploadCloud, ChevronDown, ShieldAlert, FileCheck2, Trash2, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { StatCard } from '@/components/layout/stat-card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { RecordList } from '@/components/shared/record-row';
+import { DD_DIRECTORY, authorityMatches, type Authority } from '@/config/dd-authorities';
+import { saveDueDiligenceRecord, verifyDueDiligenceRecord, deleteDueDiligenceRecord, type DueDiligenceInput } from '@/server/actions/due-diligence';
+
+const RECORD_TYPES = ['RERA_CERTIFICATE', 'ENCUMBRANCE_CERTIFICATE', 'LAND_RECORD_ROR', 'COURT_CLEARANCE', 'TOWN_PLANNING_APPROVAL', 'MUNICIPAL_SANCTION', 'HILL_AREA_CLEARANCE', 'MASTER_PLAN_EXTRACT'];
+const KIND_TONE: Record<string, string> = { RERA: 'bg-emerald-500/10 text-emerald-600', Land: 'bg-amber-500/10 text-amber-600', Registration: 'bg-blue-500/10 text-blue-600', Planning: 'bg-violet-500/10 text-violet-600', Municipal: 'bg-slate-500/10 text-slate-600', Hill: 'bg-teal-500/10 text-teal-600' };
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> = { VERIFIED: 'success', PENDING: 'warning', REJECTED: 'destructive', EXPIRED: 'destructive' };
+
+interface Rec { id: string; project: string; recordType: string; state: string; region: string | null; authorityName: string; reference: string | null; documentUrl: string | null; validUntil: string | null; status: string; expiring: boolean }
+
+export function DueDiligenceView({ records, projects }: { records: Rec[]; projects: { id: string; name: string }[] }) {
+  const [q, setQ] = React.useState('');
+  const [openState, setOpenState] = React.useState<string | null>(DD_DIRECTORY[0]?.state ?? null);
+  const [fileFor, setFileFor] = React.useState<{ authority: Authority; state: string } | null>(null);
+
+  const term = q.trim();
+  const dir = DD_DIRECTORY.map((s) => ({
+    ...s,
+    authorities: s.authorities.filter((a) => !term || authorityMatches({ ...a, state: s.state }, term)),
+  })).filter((s) => s.authorities.length);
+
+  const expiringCount = records.filter((r) => r.expiring).length;
+
+  function verify(id: string, status: 'VERIFIED' | 'REJECTED') { verifyDueDiligenceRecord(id, status).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(`Marked ${status.toLowerCase()}`); location.reload(); }); }
+  function remove(id: string) { deleteDueDiligenceRecord(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Removed'); location.reload(); }); }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <StatCard label="Records on file" value={records.length} icon={FileCheck2} />
+        <StatCard label="Expiring / stale" value={expiringCount} icon={ShieldAlert} tone={expiringCount ? 'warning' : 'success'} />
+        <StatCard label="Authorities mapped" value={DD_DIRECTORY.reduce((n, s) => n + s.authorities.length, 0)} icon={Landmark} />
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search authorities — e.g. CMDA, Kodaikanal HACA, Indore Bhulekh, PMRDA" className="pl-9" />
+      </div>
+
+      {/* Directory — accordion by state */}
+      <div className="space-y-2">
+        {dir.map((s) => {
+          const open = openState === s.state || !!term;
+          return (
+            <div key={s.state} className="overflow-hidden rounded-lg border">
+              <button className="flex w-full items-center justify-between bg-muted/30 px-4 py-3 text-left" onClick={() => setOpenState(open && !term ? null : s.state)}>
+                <span className="text-sm font-semibold">{s.state} <span className="ml-1 font-normal text-muted-foreground">· {s.blurb}</span></span>
+                <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+              </button>
+              {open ? (
+                <div className="divide-y">
+                  {s.authorities.map((a) => (
+                    <div key={a.name} className="flex items-center gap-3 px-4 py-2.5">
+                      <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium', KIND_TONE[a.kind] ?? 'bg-muted text-muted-foreground')}>{a.kind}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{a.name}{a.region ? <span className="ml-1 text-xs text-muted-foreground">· {a.region}</span> : ''}</div>
+                        {a.note ? <div className="truncate text-xs text-muted-foreground">{a.note}</div> : null}
+                      </div>
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
+                        Open portal <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <Button size="sm" variant="secondary" className="shrink-0 gap-1" onClick={() => setFileFor({ authority: a, state: s.state })}>
+                        <UploadCloud className="h-3.5 w-3.5" /> File
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* The vault */}
+      <div>
+        <div className="mb-2 text-sm font-medium">Vault — filed records</div>
+        <RecordList empty="No records filed yet. Open a portal, download the document, then click File to drop it into the vault.">
+          {records.map((r) => (
+            <div key={r.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+              {r.expiring ? <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" /> : null}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{r.recordType.replace(/_/g, ' ')} <span className="text-xs text-muted-foreground">· {r.authorityName}</span></div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {r.project} · {r.state}{r.region ? `, ${r.region}` : ''}{r.reference ? ` · ${r.reference}` : ''}{r.validUntil ? ` · valid to ${new Date(r.validUntil).toLocaleDateString('en-IN')}` : ''}
+                </div>
+              </div>
+              {r.documentUrl ? <a href={r.documentUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs text-primary hover:underline">PDF</a> : null}
+              <Badge variant={STATUS_TONE[r.status] ?? 'secondary'} className="shrink-0">{r.status}</Badge>
+              {r.status !== 'VERIFIED' ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => verify(r.id, 'VERIFIED')}>Verify</Button> : null}
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          ))}
+        </RecordList>
+      </div>
+
+      {fileFor ? <FileDialog projects={projects} authority={fileFor.authority} state={fileFor.state} onClose={() => setFileFor(null)} /> : null}
+    </div>
+  );
+}
+
+function FileDialog({ projects, authority, state, onClose }: { projects: { id: string; name: string }[]; authority: Authority; state: string; onClose: () => void }) {
+  const [saving, setSaving] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+  const [over, setOver] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [form, setForm] = React.useState<DueDiligenceInput>({ projectId: '', recordType: 'RERA_CERTIFICATE', state, authorityName: authority.name, region: authority.region ?? null });
+  function set<K extends keyof DueDiligenceInput>(k: K, v: DueDiligenceInput[K]) { setForm((f) => ({ ...f, [k]: v })); }
+
+  async function take(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
+      set('documentUrl', blob.url);
+      toast.success(`${file.name} uploaded`);
+    } catch { toast.error('Upload failed.'); } finally { setUploading(false); }
+  }
+  function submit() {
+    if (!form.projectId) { toast.error('Pick a project.'); return; }
+    setSaving(true);
+    saveDueDiligenceRecord(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Filed to vault'); onClose(); location.reload(); });
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>File from {authority.name}</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <Label>Project *</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={form.projectId} onChange={(e) => set('projectId', e.target.value)}><option value="">Select…</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+          </div>
+          <div className="col-span-2">
+            <Label>Record type</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={form.recordType} onChange={(e) => set('recordType', e.target.value)}>{RECORD_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>
+          </div>
+          <div><Label>Reference no.</Label><Input value={form.reference ?? ''} onChange={(e) => set('reference', e.target.value)} /></div>
+          <div><Label>Valid until</Label><Input type="date" value={form.validUntil ?? ''} onChange={(e) => set('validUntil', e.target.value)} /></div>
+          <div className="col-span-2">
+            <Label>Document</Label>
+            <div
+              role="button" tabIndex={0}
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+              onDragLeave={() => setOver(false)}
+              onDrop={(e) => { e.preventDefault(); setOver(false); take(e.dataTransfer.files?.[0]); }}
+              className={cn('flex min-h-[5rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed p-3 text-center text-sm text-muted-foreground', over && 'border-primary bg-primary/5')}
+            >
+              {uploading ? <><Loader2 className="h-5 w-5 animate-spin" /> Uploading…</> : form.documentUrl ? <><FileCheck2 className="h-5 w-5 text-emerald-500" /> Uploaded — drop another to replace</> : <><UploadCloud className="h-5 w-5" /> Drag the downloaded PDF here, or tap to choose / photograph</>}
+              <input ref={inputRef} type="file" accept="application/pdf,image/*" capture="environment" className="hidden" onChange={(e) => take(e.target.files?.[0] ?? undefined)} />
+            </div>
+          </div>
+          <div className="col-span-2"><Label>Note</Label><Input value={form.note ?? ''} onChange={(e) => set('note', e.target.value)} /></div>
+        </div>
+        <div className="mt-2 flex justify-end"><Button onClick={submit} disabled={saving || uploading}>{saving ? 'Filing…' : 'File to vault'}</Button></div>
+      </DialogContent>
+    </Dialog>
+  );
+}

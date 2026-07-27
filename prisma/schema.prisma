@@ -473,6 +473,9 @@ model Project {
   // Group 11 — local planning (module 56)
   planSanctions PlanSanction[]
 
+  // Pan-India due-diligence vault
+  dueDiligenceRecords DueDiligenceRecord[]
+
   // Group 12 — 4D BIM (module 61)
   bimModels BimModel[]
 
@@ -996,6 +999,53 @@ model LabourUan {
 
   @@index([vendorId])
   @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pan-India Due Diligence & RERA Vault. A record fetched from a state/local
+// authority portal, stored against a Project. Extend, never fork: FK to Project.
+// ═══════════════════════════════════════════════════════════════════════════
+enum RecordType {
+  RERA_CERTIFICATE
+  ENCUMBRANCE_CERTIFICATE
+  LAND_RECORD_ROR
+  COURT_CLEARANCE
+  TOWN_PLANNING_APPROVAL
+  MUNICIPAL_SANCTION
+  HILL_AREA_CLEARANCE
+  MASTER_PLAN_EXTRACT
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+model DueDiligenceRecord {
+  id                 String             @id @default(cuid())
+  projectId          String
+  unitId             String?
+  vendorId           String?
+  recordType         RecordType
+  state              String
+  region             String?
+  authorityName      String
+  reference          String?
+  documentUrl        String?
+  validUntil         DateTime?
+  verificationStatus VerificationStatus @default(PENDING)
+  note               String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([recordType])
+  @@index([verificationStatus])
+  @@index([validUntil])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
