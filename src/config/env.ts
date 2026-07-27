@@ -63,6 +63,11 @@ const schema = z.object({
   GST_GSP_BASE_URL: z.string().optional(),
   GST_GSP_API_KEY: z.string().optional(),
   GSTR2B_WEBHOOK_SECRET: z.string().optional(),   // async 2B-pull callback signature
+
+  // Group 12 — 4D BIM viewer (Autodesk Platform Services / Forge, module 61)
+  APS_CLIENT_ID: z.string().optional(),
+  APS_CLIENT_SECRET: z.string().optional(),
+  APS_BUCKET_KEY: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(), // Google Sheets sync
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEETS_ID: z.string().optional(),

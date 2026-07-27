@@ -12,7 +12,7 @@ export default async function DemandsPage() {
   const [rows, pending, sent, paid, agg] = await Promise.all([
     prisma.demandNotice.findMany({
       orderBy: [{ status: 'asc' }, { dueDate: 'asc' }], take: 200,
-      include: { booking: { select: { lead: { select: { name: true } }, unit: { select: { code: true } } } } },
+      include: { booking: { select: { lead: { select: { id: true, name: true, preferredLang: true } }, unit: { select: { code: true } } } } },
     }).catch(() => []),
     prisma.demandNotice.count({ where: { status: 'PENDING' } }).catch(() => 0),
     prisma.demandNotice.count({ where: { status: 'SENT' } }).catch(() => 0),
@@ -30,6 +30,7 @@ export default async function DemandsPage() {
           amount: Number(d.amount), dueDate: d.dueDate ? d.dueDate.toISOString() : null,
           sentVia: d.sentVia, reminderCount: d.reminderCount, lastError: d.lastError,
           buyer: d.booking.lead?.name ?? '—', unit: d.booking.unit?.code ?? null,
+          leadId: d.booking.lead?.id ?? null, lang: d.booking.lead?.preferredLang ?? 'en',
         }))}
       />
     </div>

@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   HardHat,
   MailPlus,
-  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator } from 'lucide-react';
+  Wallet, BadgeIndianRupee, HandCoins, Camera, Gauge, FileText, BookOpen, Target, Landmark, Banknote, GanttChartSquare, PiggyBank, Scale, Package, ShieldCheck, Leaf, HelpCircle, Bot, Radio, Activity, Bell, PieChart, Repeat, LockKeyhole, Home, MessageSquarePlus, Car, Gavel, QrCode, Zap, Wrench, FileJson, Plug, Braces, BadgeCheck, Clock, Calculator, Stamp, Box, Ruler, Ban } from 'lucide-react';
 import type { PermissionKey } from '@/lib/rbac/permissions';
 
 export interface NavItem {
@@ -121,6 +121,10 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'RA Bills', href: '/ra-bills', icon: HardHat, permission: 'procurement.view', blurb: 'Contractor running-account bills — IE certification, 1% BOCW cess, retention and TDS, settled in a click.' },
       { label: 'Labour Compliance', href: '/labour-compliance', icon: ShieldCheck, permission: 'procurement.view', blurb: 'EPF / ESI challans by month — blocks a labour vendor’s payment until verified.' },
       { label: 'Structural Contracts', href: '/structural-contracts', icon: HardHat, permission: 'procurement.view', blurb: 'Structural CLM — defect-liability periods and independent-engineer certification that gates each payment.' },
+      { label: 'Certifier Portal', href: '/certifier-portal', icon: Stamp, permission: 'procurement.view', blurb: 'The independent-engineer sign-off queue — clear a month’s certification in one click to release that contractor’s RA-bill payment.' },
+      { label: '4D BIM Sync', href: '/bim-sync', icon: Box, permission: 'procurement.view', blurb: 'Link the 3D model to real site progress — completing a slab or phase can trigger the linked buyer payment demand automatically.' },
+      { label: 'Piece-Rate Billing', href: '/piece-rate', icon: Ruler, permission: 'procurement.view', blurb: 'Bill sub-contractors on measured output per sq. ft.; settling raises the payment voucher.' },
+      { label: 'Sub-Contractor Registry', href: '/vendor-registry', icon: Ban, permission: 'procurement.view', blurb: 'Cross-project default registry — blacklisting a vendor deactivates them everywhere at once.' },
       { label: 'Scan (QR / Barcode)', href: '/scan', icon: QrCode, permission: 'booking.view', blurb: 'Scan a unit QR or material barcode with the camera to look it up.' },
       { label: 'Site Photos', href: '/site-photos', icon: Camera, permission: 'document.create', blurb: 'Photograph progress straight from your phone.' },
       { label: 'Site Telemetry', href: '/telemetry', icon: Radio, permission: 'telemetry.view', blurb: 'Live readings from site sensors, trackers and meters.' },
@@ -142,6 +146,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Land & Approvals', href: '/land', icon: Landmark, permission: 'land.view', blurb: 'Parcels, title chain and government approvals.' },
       { label: 'Title Chain Vault', href: '/title-vault', icon: ScrollText, permission: 'land.view', blurb: 'The 30-year chain of title — deeds, mutation extracts, EC and RTC — digitised and verifiable in one register.' },
       { label: 'Khata & EC Vault', href: '/khata-vault', icon: FileText, permission: 'land.view', blurb: 'A-Khata / B-Khata bifurcation, BBMP PID mapping and the encumbrance-certificate register.' },
+      { label: 'Plan Sanction & FAR', href: '/plan-sanction', icon: Building2, permission: 'land.view', blurb: 'As-built vs sanctioned FAR/FSI, with an automatic Occupancy-Certificate risk flag on over-deviation.' },
       { label: 'Heir Mapper (JDA)', href: '/heir-mapper', icon: Users2, permission: 'land.view', blurb: 'Landowner genealogy and relinquishment deeds, so a JDA is signed by every rightful heir.' },
       { label: 'Land Conversion', href: '/land-conversion', icon: MapPin, permission: 'land.view', blurb: 'Agricultural-to-residential conversion — RTC, DC scrutiny, fee and the alienation order, stage by stage.' },
       { label: 'Arbitration & ADR', href: '/arbitration', icon: Scale, permission: 'land.view', blurb: 'Conciliation notices, arbitrator appointments, hearings and settlements — with the next hearing always in view.' },

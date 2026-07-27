@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.62';
+export const APP_VERSION = 'v15.67';
 
 export interface Release {
   version: string;
@@ -13,6 +13,52 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.67',
+    date: '27 Jul 2026',
+    highlights: [
+      'Payment reminders now speak the buyer’s language. Set a buyer’s preferred language — English, हिन्दी, ಕನ್ನಡ or தமிழ் — right on the Payment Demands screen, and every WhatsApp and email reminder to them goes out in it, using reviewed templates (not risky live translation) for the four core languages.',
+      'For any other language an AI translation is attempted, and if that ever fails the message falls back to English — so a translation hiccup can never stop a reminder going out. This completes Priority-1 module #6 — all six Core engines are now shipped and green.',
+      'This version needs a small database change — run MIGRATION_v15.67_all.sql in Neon before deploying (adds a preferred-language field to the buyer record).',
+    ],
+  },
+  {
+    version: 'v15.66',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Piece-Rate Labour Billing (Build & Site). Bill specialised sub-contractors on measured output — square feet plastered, tiled, waterproofed — rather than fixed attendance. Enter quantity × rate and settle in a click, which raises the payment voucher on the money spine (no parallel table). A frozen or deactivated vendor can’t be settled.',
+      'New Sub-Contractor Default Registry. A cross-project record of abandonment, QA failures, delays and safety lapses; flagging a vendor as blacklisted deactivates them across every project at once, and blacklisted vendors surface as a red tile on the Command Center.',
+      'Priority-1 module #5 of the Core 6 — with this, five of the six Core engines are shipped (only the multilingual WhatsApp layer remains).',
+      'This version needs a small database change — run MIGRATION_v15.66_all.sql in Neon before deploying (adds the piece-rate and vendor-default tables).',
+    ],
+  },
+  {
+    version: 'v15.65',
+    date: '27 Jul 2026',
+    highlights: [
+      'New 4D BIM & Construction Timeline Sync (Build & Site). Register a 3D model per tower and break it into construction phases; mark a phase complete — a slab cast, a floor topped out — and if it’s wired to a buyer payment milestone, that milestone is brought due so the dunning engine raises the demand automatically. Physical progress becomes a cash-flow trigger.',
+      'Each model shows a live progress bar, and demand-linked phases are called out. Optional Autodesk Platform Services (Forge) viewer URN per model. Priority-1 module #4 of the Core 6.',
+      'This version needs a small database change — run MIGRATION_v15.65_all.sql in Neon before deploying (adds the BIM model and phase tables).',
+    ],
+  },
+  {
+    version: 'v15.64',
+    date: '27 Jul 2026',
+    highlights: [
+      'New Independent Certifier Portal (Build & Site). A dedicated queue showing every active structural contract awaiting an independent engineer’s monthly sign-off — clear a month in one click and that contractor’s RA-bill payment is released, all through the same certification gate the settlement action already enforces server-side.',
+      'Pending sign-offs surface on the Command Center and the portal is reachable from ⌘K. No new database tables — this is a purpose-built lens over the existing certification engine. Priority-1 module #3 of the Core 6.',
+      'No database change needed for this version.',
+    ],
+  },
+  {
+    version: 'v15.63',
+    date: '27 Jul 2026',
+    highlights: [
+      'New BBMP / BDA Plan Sanction & FAR Tracker (Land, Lease & Legal). Record the sanctioned FAR/FSI and update the as-built figure as slabs are cast — the deviation percentage recomputes instantly and the Occupancy Certificate is flagged “at risk” the moment built FAR pushes past the tolerance, so a deviation is caught during construction rather than at OC application.',
+      'OC-at-risk sanctions surface straight onto the Command Center as a red tile, and the screen is reachable from ⌘K. This is Priority-1 module #2 of the Core 6.',
+      'This version needs a small database change — run MIGRATION_v15.63_all.sql in Neon before deploying (adds the plan-sanction table).',
+    ],
+  },
   {
     version: 'v15.62',
     date: '27 Jul 2026',

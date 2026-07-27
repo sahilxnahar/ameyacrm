@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RecordList } from '@/components/shared/record-row';
 import { formatCurrency } from '@/lib/utils/format';
-import { runDemands, resendPendingDemands, cancelDemand } from '@/server/actions/demands';
+import { runDemands, resendPendingDemands, cancelDemand, setBuyerLanguage } from '@/server/actions/demands';
+import { DEMAND_LANGS } from '@/lib/i18n/demand-templates';
 
 interface Row {
   id: string; number: string; label: string; kind: string; status: string;
   amount: number; dueDate: string | null; sentVia: string | null;
   reminderCount: number; lastError: string | null; buyer: string; unit: string | null;
+  leadId: string | null; lang: string;
 }
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> = {
@@ -45,6 +47,12 @@ export function DemandsView({ counts, rows }: { counts: { pending: number; sent:
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Demand cancelled');
       location.reload();
+    });
+  }
+  function changeLang(leadId: string, lang: string) {
+    setBuyerLanguage(leadId, lang).then((r) => {
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Buyer language set — future reminders will use it');
     });
   }
 
@@ -80,6 +88,16 @@ export function DemandsView({ counts, rows }: { counts: { pending: number; sent:
               </div>
             </div>
             <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(d.amount)}</span>
+            {d.leadId ? (
+              <select
+                className="hidden h-7 shrink-0 rounded border bg-background px-1 text-xs sm:block"
+                value={d.lang}
+                title="Buyer's reminder language"
+                onChange={(e) => changeLang(d.leadId!, e.target.value)}
+              >
+                {DEMAND_LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+              </select>
+            ) : null}
             <Badge variant={STATUS_TONE[d.status] ?? 'secondary'} className="shrink-0">{d.status}</Badge>
             {d.status !== 'PAID' && d.status !== 'CANCELLED' ? (
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => cancel(d.id)} title="Cancel demand"><X className="h-4 w-4" /></Button>

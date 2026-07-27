@@ -470,6 +470,15 @@ model Project {
   revenueRecognitions RevenueRecognition[]
   khataRecords        KhataRecord[]
 
+  // Group 11 — local planning (module 56)
+  planSanctions PlanSanction[]
+
+  // Group 12 — 4D BIM (module 61)
+  bimModels BimModel[]
+
+  // Group 13 — piece-rate labour (module 66)
+  pieceRateEntries PieceRateEntry[]
+
   @@index([isActive])
 }
 
@@ -904,6 +913,72 @@ model LitigationEscalation {
   @@index([forum])
   @@index([status])
   @@index([nextHearingOn])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 13 — Piece-Rate Labour + Sub-Contractor Default Registry (Modules 66, 69)
+// Piece-rate billing raises a Voucher (money on the spine); the default registry
+// is cross-project so a vendor's history follows them everywhere.
+// ═══════════════════════════════════════════════════════════════════════════
+model PieceRateEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  vendorId    String?
+  workItem    String
+  unit        String   @default("SQFT")
+  quantity    Decimal  @db.Decimal(14, 3)
+  ratePerUnit Decimal  @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(14, 2)
+  measuredOn  DateTime @default(now())
+  voucherId   String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([vendorId])
+}
+
+model VendorDefault {
+  id         String   @id @default(cuid())
+  vendorId   String
+  projectId  String?
+  kind       String // ABANDONMENT | QA_FAILURE | DELAY | FINANCIAL | SAFETY
+  severity   String   @default("MEDIUM") // LOW | MEDIUM | HIGH | BLACKLIST
+  note       String?
+  reportedOn DateTime @default(now())
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([severity])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 11 — Local Authority & Urban Planning (Module 56)
+// 56. BBMP/BDA plan-sanction & deviation. Sanctioned vs as-built FAR/FSI, with an
+// OC-clearance gate: a deviation over tolerance risks the Occupancy Certificate.
+// ═══════════════════════════════════════════════════════════════════════════
+model PlanSanction {
+  id             String    @id @default(cuid())
+  projectId      String
+  sanctionNo     String?
+  authority      String    @default("BBMP") // BBMP | BDA | BMRDA
+  sanctionedFar  Decimal   @db.Decimal(6, 3)
+  builtFar       Decimal   @default(0) @db.Decimal(6, 3)
+  sanctionedArea Decimal?  @db.Decimal(14, 2)
+  builtArea      Decimal?  @db.Decimal(14, 2)
+  deviationPct   Decimal   @default(0) @db.Decimal(6, 3)
+  ocApplied      Boolean   @default(false)
+  ocReceived     Boolean   @default(false)
+  ocNumber       String?
+  sanctionedOn   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1668,6 +1743,7 @@ model Lead {
   name             String
   email            String?
   phone            String?
+  preferredLang    String?         // demand/WhatsApp language: en | hi | kn | ta (module #6)
   source           LeadSource      @default(WEBSITE)
   status           LeadStatus      @default(NEW)
   score            Int             @default(0)
@@ -1798,10 +1874,53 @@ model PaymentMilestone {
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   demands DemandNotice[]
+  bimPhases BimPhase[]
 
   @@index([bookingId])
   @@index([dueDate])
   @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROUP 12 — 4D BIM & Construction Timeline Sync (Module 61)
+// Links a 3D model (APS/Forge urn) to construction phases; completing a phase can
+// trip its linked PaymentMilestone due so the dunning engine raises the demand —
+// physical progress → cash-flow trigger. Extend, never fork: money stays on the
+// PaymentMilestone/Voucher spine.
+// ═══════════════════════════════════════════════════════════════════════════
+model BimModel {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  urn         String? // APS/Forge translated urn (viewer)
+  discipline  String? // ARCH | STRUCT | MEP
+  version     Int      @default(1)
+  progressPct Decimal  @default(0) @db.Decimal(6, 3)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phases  BimPhase[]
+
+  @@index([projectId])
+}
+
+model BimPhase {
+  id            String    @id @default(cuid())
+  bimModelId    String
+  label         String // "Tower A — 5th slab"
+  elementIds    String? // model element ids (comma/JSON)
+  plannedOn     DateTime?
+  actualOn      DateTime?
+  milestoneId   String? // linked buyer PaymentMilestone (cash-flow trigger)
+  triggersDemand Boolean  @default(false)
+  createdAt     DateTime  @default(now())
+
+  bimModel  BimModel          @relation(fields: [bimModelId], references: [id], onDelete: Cascade)
+  milestone PaymentMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  @@index([bimModelId])
+  @@index([milestoneId])
 }
 
 // ─── Payment demand & dunning (module #4) ────────────────────────────────────
@@ -1886,6 +2005,9 @@ model Vendor {
 
   // Group 10 — MSME 45-day clocks (module 53)
   msmeClocks MsmePaymentClock[]
+
+  // Group 13 — sub-contractor default registry (module 69)
+  defaults VendorDefault[]
 
   @@index([isActive])
 }

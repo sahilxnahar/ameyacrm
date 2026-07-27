@@ -25,6 +25,17 @@ export async function resendPendingDemands(): Promise<{ ok: true; dispatched: nu
   } catch (err) { return toActionError(err); }
 }
 
+/** Set a buyer's preferred demand/WhatsApp language (module #6): en | hi | kn | ta. */
+export async function setBuyerLanguage(leadId: string, lang: string): Promise<{ ok: true } | { error: string }> {
+  try {
+    await ensure('booking.manage');
+    const value = ['en', 'hi', 'kn', 'ta'].includes(lang) ? lang : 'en';
+    await prisma.lead.update({ where: { id: leadId }, data: { preferredLang: value } });
+    revalidatePath('/demands');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}
+
 export async function cancelDemand(id: string): Promise<{ ok: true } | { error: string }> {
   try {
     await ensure('booking.manage');

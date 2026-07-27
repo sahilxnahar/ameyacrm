@@ -5,6 +5,8 @@ import { sendWhatsappText, toWaNumber } from '@/server/services/whatsapp-service
 import { sendEmail } from '@/lib/email/email';
 import { formatCurrency } from '@/lib/utils/format';
 import { classifyDemandKind, endOfDay, addDays, DEMAND_UPCOMING_WINDOW_DAYS } from '@/lib/finance/demand-window';
+import { demandMessageIn, isDemandLang } from '@/lib/i18n/demand-templates';
+import { aiChat } from '@/lib/ai/provider';
 
 /**
  * Payment demand & dunning (module #4). Turns due/overdue PaymentMilestone rows
@@ -58,12 +60,27 @@ export async function generateDemandNotices(now = new Date()): Promise<GenerateR
   return { overdue, upcoming, created };
 }
 
-function demandMessage(name: string, label: string, amount: string, kind: string, due: Date | null): string {
-  const when = due ? due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'the agreed date';
-  const lead = kind === 'OVERDUE'
-    ? `This is a reminder that your payment towards *${label}* of *${amount}* was due on ${when} and is now overdue.`
-    : `This is a gentle reminder that your payment towards *${label}* of *${amount}* falls due on ${when}.`;
-  return `Dear ${name},\n\n${lead}\n\nKindly arrange the payment at your earliest convenience. For any assistance, please reach out to our accounts team.\n\n— Ameya Heights`;
+/**
+ * Build the demand message in the buyer's preferred language (module #6). Uses a
+ * reviewed template for en/hi/kn/ta; if the buyer prefers some other language, an
+ * AI translation is attempted and, on any failure, we fall back to English — the
+ * send is never blocked by a translation problem (non-stop).
+ */
+async function demandMessageLocalised(name: string, label: string, amount: string, kind: string, due: Date | null, preferredLang: string | null): Promise<string> {
+  const whenStr = due ? due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'the agreed date';
+  const vars = { name, label, amount, whenStr, overdue: kind === 'OVERDUE' };
+  const lang = isDemandLang(preferredLang) ? preferredLang : 'en';
+  if (lang !== 'en' || !preferredLang || isDemandLang(preferredLang)) {
+    return demandMessageIn(lang, vars);
+  }
+  // Non-templated language → best-effort AI translation, English on failure.
+  const english = demandMessageIn('en', vars);
+  try {
+    const r = await aiChat({ system: 'You are a professional translator for a real-estate developer. Translate the message faithfully; keep the *asterisk* emphasis and the sign-off. Return only the translation.', prompt: `Translate to language code "${preferredLang}":\n\n${english}` });
+    return r.ok && r.text.trim() ? r.text.trim() : english;
+  } catch {
+    return english;
+  }
 }
 
 export interface DispatchResult { dispatched: number; failed: number; skipped: number }
@@ -74,7 +91,7 @@ export async function dispatchPendingDemands(limit = 100): Promise<DispatchResul
   try {
     pending = await prisma.demandNotice.findMany({
       where: { status: 'PENDING' }, take: limit, orderBy: { createdAt: 'asc' },
-      include: { booking: { select: { lead: { select: { name: true, phone: true, email: true } } } } },
+      include: { booking: { select: { lead: { select: { name: true, phone: true, email: true, preferredLang: true } } } } },
     });
   } catch {
     return { dispatched: 0, failed: 0, skipped: 0 };
@@ -84,7 +101,7 @@ export async function dispatchPendingDemands(limit = 100): Promise<DispatchResul
     const lead = d.booking.lead;
     const name = lead?.name ?? 'Customer';
     const amount = formatCurrency(Number(d.amount));
-    const message = demandMessage(name, d.label, amount, d.kind, d.dueDate);
+    const message = await demandMessageLocalised(name, d.label, amount, d.kind, d.dueDate, lead?.preferredLang ?? null);
     const sent: string[] = [];
     let lastError: string | null = null;
 
