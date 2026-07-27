@@ -17,11 +17,11 @@ export const CHANGELOG: Release[] = [
     version: 'v15.34',
     date: '27 Jul 2026',
     highlights: [
-      'Sign-in takes you straight to your home screen. Two-factor is still required, but once you've set it up you'll never be sent to the security page again — and if you haven't, you now get a gentle reminder plus an email every couple of days, instead of a wall on every visit.',
-      'Forgot your password? There's now a "Forgot your password?" link on sign-in that emails you a secure, one-time reset link.',
-      'Admins can issue a temporary password for any user (Team & Admin → Users → ⋯ → Generate temporary password). It's shown once to share, and the user must change it at next sign-in.',
-      'A "Take a tour" button now sits in the top bar on every screen — a quick guided walkthrough of the whole CRM, for anyone, any time.',
-      'A friendly prompt now offers to turn on notifications on phone and desktop, so approvals, overdue payments and messages can reach you even when the CRM isn't open.',
+      'Sign-in takes you straight to your home screen. Two-factor is still required, but once you’ve set it up you’ll never be sent to the security page again — and if you haven’t, you now get a gentle reminder plus an email every couple of days, instead of a wall on every visit.',
+      'Forgot your password? There’s now a “Forgot your password?” link on sign-in that emails you a secure, one-time reset link.',
+      'Admins can issue a temporary password for any user (Team & Admin → Users → ⋯ → Generate temporary password). It’s shown once to share, and the user must change it at next sign-in.',
+      'A “Take a tour” button now sits in the top bar on every screen — a quick guided walkthrough of the whole CRM, for anyone, any time.',
+      'A friendly prompt now offers to turn on notifications on phone and desktop, so approvals, overdue payments and messages can reach you even when the CRM isn’t open.',
       'Layout hardening for phones, tablets and smaller laptops so long text, images and wide tables no longer push the page sideways.',
       'No database change needed for this one.',
     ],
@@ -40,11 +40,12 @@ export const CHANGELOG: Release[] = [
     date: '27 Jul 2026',
     highlights: [
       'The bank IFSC that prints on invoices and receipts is corrected to a valid 11-character code, so a transfer to it is no longer rejected. If you set company details in-app, update the IFSC there too — the saved value wins over the default.',
-      'AI now reads as "switched on" everywhere it is used. The system's internal "is AI available?" check was still looking for the old Google key; it now recognises your OpenRouter keys, so features stop showing "connect this" when AI is in fact working.',
+      'AI now reads as “switched on” everywhere it is used. The system’s internal “is AI available?” check was still looking for the old Google key; it now recognises your OpenRouter keys, so features stop showing “connect this” when AI is in fact working.',
       'Admin → AI health now shows your live provider, model, how many keys are in rotation, and whether a fallback provider is set — so you can confirm all your keys loaded without opening Vercel. (Keys are counted, never shown.)',
       'No database change needed for this one.',
     ],
   },
+  {
     version: 'v15.31',
     date: '25 Jul 2026',
     highlights: [

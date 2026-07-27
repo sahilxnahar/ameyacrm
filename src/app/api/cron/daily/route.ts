@@ -108,5 +108,6 @@ export async function GET(req: NextRequest) {
 
   // 12) 2FA nudge — email anyone still not enrolled, at most once every 2 days
   try { result.twoFactorNudges = await run2faNudges(now); } catch { result.twoFactorNudges = 'failed'; }
+
   return NextResponse.json({ ok: true, ...result });
 }
