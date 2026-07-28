@@ -26,7 +26,7 @@ interface AppDef {
 
 const CORE_APPS: AppDef[] = [
   { id: 'finance', title: 'Finance & Tax', subtitle: 'GST · MSME · TDS · vouchers', href: '/finance', icon: Wallet, accent: 'text-emerald-500', keywords: 'gst msme gstr tds money finance tax revenue' },
-  { id: 'siteops', title: 'Site Ops & 4D BIM', subtitle: 'Daily progress · certifications', href: '/bim-sync', icon: HardHat, accent: 'text-amber-500', keywords: 'bim site construction structural certifier ra bill slab' },
+  { id: 'siteops', title: 'Site Ops & 4D BIM', subtitle: 'Daily progress · certifications', href: '/site-ops', icon: HardHat, accent: 'text-amber-500', keywords: 'bim site construction structural certifier ra bill slab daily log diary weather labour photos' },
   { id: 'legal', title: 'Legal & Due Diligence', subtitle: 'RERA · land records · litigation', href: '/due-diligence', icon: Scale, accent: 'text-violet-500', keywords: 'legal rera due diligence land record ip trademark litigation vault' },
   { id: 'vendor', title: 'Vendor & Labour', subtitle: 'BOCW · piece-rate · UAN', href: '/vendor-registry', icon: Users2, accent: 'text-blue-500', keywords: 'vendor labour bocw welfare uan piece rate sub-contractor' },
   { id: 'sales', title: 'Sales & CRM', subtitle: 'Leads · bookings · allocations', href: '/sales', icon: UserRound, accent: 'text-rose-500', keywords: 'sales crm leads bookings customers allocations demands' },

@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import Link from 'next/link';
-import { Search, ArrowUpRight, Building2, Users2, HardHat, Wallet, Scale, LayoutGrid, ShieldAlert } from 'lucide-react';
+import { Search, ArrowUpRight, Building2, Users2, HardHat, Wallet, Scale, LayoutGrid, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { AlertTile } from '@/server/services/command-center-service';
 
@@ -29,13 +29,19 @@ const TONE_NUM: Record<AlertTile['tone'], string> = {
 };
 
 export function BentoCommandCenter({ tiles, urgent, firstName }: { tiles: AlertTile[]; urgent: number; firstName: string }) {
+  const [showAll, setShowAll] = React.useState(false);
+
   // Fire the existing global Cmd+K palette (listens on window keydown).
   function openPalette() {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
   }
 
-  // Bento sizing: the first two tiles span wider for visual rhythm.
-  const span = (i: number) => (i === 0 ? 'sm:col-span-2' : i === 3 ? 'sm:row-span-2' : '');
+  // Declutter: by default surface only the signals that actually need attention
+  // (a non-zero count). The dozen "all clear" tiles are hidden behind a toggle so
+  // the grid reads as a short, scannable to-do list rather than a wall of zeros.
+  const attention = tiles.filter((t) => t.value > 0);
+  const clearCount = tiles.length - attention.length;
+  const visible = showAll ? tiles : attention;
 
   return (
     <div className="space-y-6">
@@ -66,25 +72,49 @@ export function BentoCommandCenter({ tiles, urgent, firstName }: { tiles: AlertT
         </div>
       </div>
 
-      {/* Bento alert grid */}
-      <div className="grid auto-rows-[minmax(7rem,auto)] grid-cols-2 gap-3 sm:grid-cols-4">
-        {tiles.map((t, i) => (
-          <Link
-            key={t.key}
-            href={t.href}
-            className={cn('group flex flex-col justify-between rounded-xl p-4 ring-1 transition-all hover:shadow-md hover:-translate-y-0.5', TONE_RING[t.tone], span(i))}
-          >
-            <div className="flex items-start justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </div>
-            <div>
-              <div className={cn('text-3xl font-bold tabular-nums', TONE_NUM[t.tone])}>{t.value}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{t.hint}</div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* All-clear state — nothing needs attention and the person hasn't asked to
+          see every signal. A single calm card beats a grid of a dozen green zeros. */}
+      {visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border bg-emerald-500/5 px-6 py-10 text-center ring-1 ring-emerald-500/20">
+          <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+          <div>
+            <div className="text-sm font-semibold">All clear across every engine.</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">Nothing needs your attention right now. {tiles.length} signals are being watched.</div>
+          </div>
+          <button onClick={() => setShowAll(true)} className="mt-1 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted">
+            Show all {tiles.length} signals
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Uniform alert grid — every tile is an equal, gap-free target. */}
+          <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {visible.map((t) => (
+              <Link
+                key={t.key}
+                href={t.href}
+                className={cn('group flex min-h-[7rem] flex-col justify-between rounded-xl p-4 ring-1 transition-all hover:shadow-md hover:-translate-y-0.5', TONE_RING[t.tone])}
+              >
+                <div className="flex items-start justify-between">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.label}</span>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                <div>
+                  <div className={cn('text-3xl font-bold tabular-nums', TONE_NUM[t.tone])}>{t.value}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{t.hint}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Toggle the calm, all-clear tiles in and out. */}
+          {clearCount > 0 ? (
+            <button onClick={() => setShowAll((v) => !v)} className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              {showAll ? `Hide ${clearCount} all-clear signal${clearCount > 1 ? 's' : ''}` : `Show ${clearCount} all-clear signal${clearCount > 1 ? 's' : ''}`}
+            </button>
+          ) : null}
+        </>
+      )}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Building2 className="h-3.5 w-3.5" /> Ameya Heights Command Center — live across every operational engine. Tiles refresh on load; the async worker keeps the numbers honest.

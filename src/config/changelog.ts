@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.77';
+export const APP_VERSION = 'v15.81';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.81',
+    date: '28 Jul 2026',
+    highlights: [
+      'The whole workspace now breathes. Every page is capped to a comfortable reading width and centred, so on a wide monitor content no longer sprawls edge-to-edge — consistent gutters, less clutter, easier to scan.',
+      'The Command Center Alerts board is calmer by default: it now shows only the signals that actually need your attention instead of a wall of green zeros. When everything is clear you get a single “All clear across every engine” card, and a one-tap toggle reveals all the watched signals whenever you want the full picture.',
+      'Site Ops (Daily Log) is now reachable — the field diary for weather, labour headcount, notes and milestone-tagged progress photos is live under Build & Site and from the Site Ops launcher tile.',
+      'This version needs a small database change — run MIGRATION_v15.81_all.sql in Neon before deploying (adds the Daily Site Log and Site Photo tables; safe to run more than once). If you already ran MIGRATION_v15.80_all.sql, this is a harmless no-op.',
+    ],
+  },
   {
     version: 'v15.77',
     date: '28 Jul 2026',
