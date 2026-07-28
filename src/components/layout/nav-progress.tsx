@@ -67,7 +67,7 @@ export function NavProgress() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px]"
+      className="pointer-events-none fixed inset-x-0 top-0 z-max h-[3px]"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div

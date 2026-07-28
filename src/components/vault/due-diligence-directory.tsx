@@ -50,8 +50,10 @@ export function DueDiligenceDirectory({ records, projects }: { records: DdRecord
         break;
       }
     }
+    // Re-prime on live deep-link changes within the same mounted instance:
+    // navigating ?authority / ?action / ?projectId re-fires state expansion + uploader priming.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [params.get('authority'), params.get('action'), params.get('projectId')]);
 
   // Scroll a deep-linked record into view.
   React.useEffect(() => {

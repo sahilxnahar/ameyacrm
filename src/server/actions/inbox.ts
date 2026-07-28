@@ -33,7 +33,7 @@ export async function replyEmailThread(input: unknown): Promise<InboxResult> {
   try {
     const ctx = await ensure('email.send');
     const d = emailReply.parse(input);
-    const res = await sendEmail({ to: [d.to], subject: d.subject, text: d.body });
+    const res = await sendEmail({ to: [d.to], subject: d.subject, text: d.body }, { asUserId: ctx.user.id });
     if (!res.ok) return { error: `Could not send: ${res.error ?? 'email provider not configured'}` };
 
     // Carry the party links forward from an existing message so the reply stays
@@ -83,7 +83,7 @@ export async function composeEmail(input: unknown): Promise<InboxResult> {
     const ctx = await ensure('email.send');
     const d = emailCompose.parse(input);
     const subject = d.subject?.trim() || '(no subject)';
-    const res = await sendEmail({ to: [d.to], subject, text: d.body });
+    const res = await sendEmail({ to: [d.to], subject, text: d.body }, { asUserId: ctx.user.id });
     if (!res.ok) return { error: `Could not send: ${res.error ?? 'email provider not configured'}` };
 
     await prisma.mailThreadMessage.create({

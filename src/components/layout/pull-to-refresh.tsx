@@ -68,7 +68,7 @@ export function PullToRefresh() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center lg:hidden"
+      className="pointer-events-none fixed inset-x-0 top-0 z-dock flex justify-center lg:hidden"
       style={{ transform: `translateY(${Math.max(8, pull)}px)`, opacity: Math.min(1, pull / 60) }}
       aria-hidden
     >

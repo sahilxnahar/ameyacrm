@@ -44,7 +44,7 @@ export async function sendGmail(input: { to: string; subject?: string; body: str
     const to = (input.to || '').trim();
     if (!to) return { error: 'Enter a recipient email.' };
     if (!input.body?.trim()) return { error: 'Write a message.' };
-    const res = await sendEmail({ to: [to], subject: input.subject?.trim() || '(no subject)', text: input.body });
+    const res = await sendEmail({ to: [to], subject: input.subject?.trim() || '(no subject)', text: input.body }, { asUserId: ctx.user.id });
     if (!res.ok) return { error: `Could not send: ${res.error ?? 'email provider not configured'}` };
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Email', summary: `Sent email to ${to}` });
     return { ok: true };

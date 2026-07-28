@@ -13,13 +13,13 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-popover bg-black/60 backdrop-blur-sm data-[state=open]:animate-fade-in" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
         // On phones this behaves as a bottom sheet: full width, rounded top only,
         // and never taller than the screen so the buttons stay reachable.
-        'fixed z-50 grid gap-4 border bg-card shadow-lg data-[state=open]:animate-fade-in',
+        'fixed z-popover grid gap-4 border bg-card shadow-lg data-[state=open]:animate-fade-in',
         'inset-x-0 bottom-0 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         'sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:pb-6',
         className,

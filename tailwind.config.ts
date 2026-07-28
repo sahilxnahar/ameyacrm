@@ -6,6 +6,27 @@ const config: Config = {
   theme: {
     container: { center: true, padding: '1.5rem', screens: { '2xl': '1400px' } },
     extend: {
+      // Single source of truth for stacking order. Every fixed/absolute overlay in
+      // Ameya OS uses one of these tokens instead of an ad-hoc z-50, so layers are
+      // strictly ordered and can never collide (the "zero overlap" mandate).
+      //
+      // Key rule: the always-mounted floating chrome (dock, FABs, launcher, banners)
+      // lives BELOW the popover layer, so it can never cover an open dialog or menu.
+      // Dialogs and dropdowns share the `popover` layer on purpose — they portal to
+      // <body> and Radix orders nested ones by DOM order (a Select opened inside a
+      // Dialog still renders above it). Coach marks sit above everything interactive.
+      //   content < top-bar < dock < drawer < popover(dialogs+menus) < modal < coach < toast < max
+      zIndex: {
+        sticky: '30',            // desktop top-bar
+        dock: '40',              // mobile dock, pull-to-refresh, FABs, launcher, banners
+        'drawer-backdrop': '44', // mobile sidebar scrim (over the dock)
+        drawer: '45',            // mobile sidebar panel
+        popover: '50',           // dialogs, dropdowns, project switcher, quick-create, menus
+        modal: '60',             // reserved for feature-level full modals migrating off z-[60]
+        coach: '70',             // guided tour, what's-new (above modals)
+        toast: '80',             // notifications
+        max: '100',              // nav progress bar — always on top
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

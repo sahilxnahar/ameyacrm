@@ -18,7 +18,7 @@ export async function sendLeadEmail(input: unknown): Promise<CommResult> {
     const lead = await prisma.lead.findUnique({ where: { id: d.leadId }, select: { id: true, name: true, email: true } });
     if (!lead) return { error: 'Lead not found.' };
     if (!lead.email) return { error: 'This lead has no email address.' };
-    const res = await sendEmail({ to: [lead.email], subject: d.subject, text: d.body });
+    const res = await sendEmail({ to: [lead.email], subject: d.subject, text: d.body }, { asUserId: ctx.user.id });
     if (!res.ok) return { error: `Could not send: ${res.error ?? 'email provider not configured'}` };
     await prisma.leadActivity.create({ data: { leadId: lead.id, userId: ctx.user.id, type: 'EMAIL', subject: d.subject, notes: d.body.slice(0, 2000) } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Lead', entityId: lead.id, summary: `Emailed ${lead.email}` });

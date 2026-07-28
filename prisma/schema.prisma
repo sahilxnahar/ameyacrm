@@ -1284,6 +1284,16 @@ model User {
   imapUser     String?
   imapPassEnc  String?
 
+  // Per-user OUTBOUND sending (module: email integration). The CRM sends mail AS
+  // the signed-in user (fixes the shared hi@/no-reply sender). The SMTP credential
+  // reuses imapPassEnc (the same Gmail app password works for IMAP + SMTP); these
+  // optional fields only override the derived SMTP endpoint. sendAsSelf lets a user
+  // opt back into the shared org sender. Fully additive — nothing breaks if unset.
+  smtpHost     String?
+  smtpPort     Int?
+  smtpSecure   Boolean?
+  sendAsSelf   Boolean   @default(true)
+
   // Security
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String? // AES-256-GCM encrypted TOTP secret

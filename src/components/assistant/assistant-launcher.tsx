@@ -17,7 +17,7 @@ export function AssistantLauncher() {
           onClick={() => setOpen(true)}
           aria-label="Open the AI assistant"
           title="AI assistant"
-          className="focus-ring fixed right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 lg:right-6"
+          className="focus-ring fixed right-4 z-sticky flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 lg:right-6"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
         >
           <Sparkles className="h-6 w-6" />
@@ -26,9 +26,9 @@ export function AssistantLauncher() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent" onClick={() => setOpen(false)} aria-hidden />
+          <div className="fixed inset-0 z-dock bg-black/40 sm:bg-transparent" onClick={() => setOpen(false)} aria-hidden />
           <div
-            className="fixed inset-x-0 bottom-0 z-50 flex h-[85vh] flex-col rounded-t-2xl border-t bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-6 sm:h-[70vh] sm:w-[400px] sm:rounded-2xl sm:border"
+            className="fixed inset-x-0 bottom-0 z-popover flex h-[85vh] flex-col rounded-t-2xl border-t bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-6 sm:h-[70vh] sm:w-[400px] sm:rounded-2xl sm:border"
             style={{ bottom: 'env(safe-area-inset-bottom)' }}
             role="dialog"
             aria-label="AI assistant"

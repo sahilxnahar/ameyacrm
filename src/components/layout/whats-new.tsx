@@ -34,7 +34,7 @@ export function WhatsNew() {
   if (!release) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+    <div className="fixed inset-0 z-coach flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div className="w-full max-w-md rounded-xl border bg-card p-5 shadow-2xl">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">

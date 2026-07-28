@@ -35,13 +35,13 @@ export function FeedbackWidget() {
         type="button"
         aria-label="Send feedback"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-lg transition-colors hover:text-foreground lg:bottom-4 lg:right-4"
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-dock flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-lg transition-colors hover:text-foreground lg:bottom-4 lg:right-4"
       >
         <MessageSquarePlus className="h-5 w-5" />
       </button>
 
       {open && (
-        <div className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-3 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border bg-popover p-4 text-popover-foreground shadow-2xl lg:bottom-16 lg:right-4">
+        <div className="fixed bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-3 z-popover w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border bg-popover p-4 text-popover-foreground shadow-2xl lg:bottom-16 lg:right-4">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold">Send feedback</p>
             <button aria-label="Close" onClick={() => setOpen(false)} className="rounded p-0.5 text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>

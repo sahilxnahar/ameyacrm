@@ -57,7 +57,7 @@ export function ProjectSwitcher({ projects, activeId, activeName, canAdd }: { pr
       </button>
 
       {open && (
-        <div className="absolute left-0 z-50 mt-1 w-64 overflow-hidden rounded-lg border bg-card shadow-lg">
+        <div className="absolute left-0 z-popover mt-1 w-64 overflow-hidden rounded-lg border bg-card shadow-lg">
           <p className="border-b px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Working on
           </p>

@@ -82,7 +82,7 @@ export function DisplaySettings() {
         <SlidersHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-60 rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
+        <div className="absolute right-0 top-11 z-popover w-60 rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold"><Sparkles className="h-3.5 w-3.5" /> Quick view</p>
           <div className="mb-3 grid grid-cols-2 gap-1">
             <button onClick={() => applyPreset('l', 'spacious')}

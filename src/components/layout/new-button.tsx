@@ -50,7 +50,7 @@ export function NewButton({ allowed, isSuperAdmin }: { allowed: Set<string>; isS
         <span className="hidden sm:inline">New</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-56 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg">
+        <div className="absolute right-0 top-11 z-popover w-56 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg">
           {items.map((i) => {
             const Icon = i.icon;
             return (

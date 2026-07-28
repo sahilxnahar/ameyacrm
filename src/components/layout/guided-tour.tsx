@@ -78,7 +78,7 @@ export function GuidedTour() {
       </button>
 
       {open && current && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-3 sm:items-center" role="dialog" aria-modal="true" aria-label="Guided tour">
+        <div className="fixed inset-0 z-coach flex items-end justify-center bg-black/40 p-3 sm:items-center" role="dialog" aria-modal="true" aria-label="Guided tour">
           <div className="card-elevated w-full max-w-md rounded-lg bg-background p-5 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div>
