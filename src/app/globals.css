@@ -463,8 +463,11 @@ html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --acc
 @layer base {
   body { overflow-wrap: break-word; }
   img, video { max-width: 100%; height: auto; }
-  table td, table th { overflow-wrap: anywhere; }
-  /* Long links/emails inside table cells and description lists wrap cleanly. */
+  /* break-word (not anywhere): long unbreakable strings still wrap, but a normal
+     word never breaks mid-character, so table columns keep their natural minimum
+     width instead of collapsing to ~1 character and stacking text vertically. */
+  table td, table th { overflow-wrap: break-word; }
+  /* Genuinely long links/emails/code inside cells may break anywhere. */
   td a, td code, dd { overflow-wrap: anywhere; }
 }
 

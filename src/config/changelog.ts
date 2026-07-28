@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.84';
+export const APP_VERSION = 'v15.85';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.85',
+    date: '28 Jul 2026',
+    highlights: [
+      'Fixed a table layout bug where columns could collapse to a single character wide and stack their text vertically — most visible on the Documents list (Owner / Size / Changed). Tables now keep sensible column widths on every screen; genuinely long values like emails or reference numbers still wrap cleanly. This applies to every table in the app.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.84',
     date: '28 Jul 2026',

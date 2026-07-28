@@ -69,7 +69,7 @@ export function FileGrid({
       <div className="table-scroll">
         <table className="w-full text-sm">
           <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr><th className="w-8 p-2" /><th className="p-2">Name</th><th className="p-2">Owner</th><th className="p-2 text-right">Size</th><th className="p-2">Changed</th><th className="p-2" /></tr>
+            <tr><th className="w-8 p-2" /><th className="p-2">Name</th><th className="whitespace-nowrap p-2">Owner</th><th className="whitespace-nowrap p-2 text-right">Size</th><th className="whitespace-nowrap p-2">Changed</th><th className="p-2" /></tr>
           </thead>
           <tbody>
             {documents.map((d) => {
@@ -105,9 +105,9 @@ export function FileGrid({
                       )}
                     </span>
                   </td>
-                  <td className="p-2 text-xs text-muted-foreground">{d.ownerName ?? '—'}</td>
-                  <td className="p-2 text-right text-xs text-muted-foreground tabular">{d.size ? readableSize(d.size) : '—'}</td>
-                  <td className="p-2 text-xs text-muted-foreground">{format(new Date(d.updatedAt), 'd MMM')}</td>
+                  <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">{d.ownerName ?? '—'}</td>
+                  <td className="whitespace-nowrap p-2 text-right text-xs text-muted-foreground tabular">{d.size ? readableSize(d.size) : '—'}</td>
+                  <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">{format(new Date(d.updatedAt), 'd MMM')}</td>
                   <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
                     <span className="flex justify-end gap-1">
                       {canManage && (
