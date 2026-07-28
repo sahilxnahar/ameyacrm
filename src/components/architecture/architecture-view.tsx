@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDate, titleCase } from '@/lib/utils/format';
+import { DropZone } from '@/components/shared/drop-zone';
+import { DocumentPreview } from '@/components/shared/document-preview';
 
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 const ISTATUS = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
@@ -31,7 +33,17 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [d, setD] = React.useState<null | 'drawing' | 'rfi' | 'issue' | 'consultant'>(null);
-  const close = () => setD(null);
+  const drawingFileRef = React.useRef<HTMLInputElement>(null);
+  const [drawingPreview, setDrawingPreview] = React.useState<{ url: string; name: string; mime: string } | null>(null);
+  const clearDrawingPreview = () => setDrawingPreview((p) => { if (p) URL.revokeObjectURL(p.url); return null; });
+  // Accept a chosen or dropped drawing: load it into the form's file input (so
+  // submit sends it) and show it inline so you can see what you're filing.
+  const takeDrawingFile = (file: File | undefined) => {
+    if (!file) return;
+    if (drawingFileRef.current) { const dt = new DataTransfer(); dt.items.add(file); drawingFileRef.current.files = dt.files; }
+    setDrawingPreview((p) => { if (p) URL.revokeObjectURL(p.url); return { url: URL.createObjectURL(file), name: file.name, mime: file.type || 'application/octet-stream' }; });
+  };
+  const close = () => { setD(null); clearDrawingPreview(); };
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
 
@@ -132,7 +144,14 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
             </div>
             <div className="space-y-2"><Label htmlFor="title">Title</Label><Input id="title" name="title" required /></div>
             <div className="space-y-2"><Label htmlFor="projectId">Project</Label><select id="projectId" name="projectId" className={selectCls} defaultValue=""><option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-            <div className="space-y-2"><Label htmlFor="file">Drawing file (optional)</Label><Input id="file" name="file" type="file" /></div>
+            <div className="space-y-2">
+              <Label htmlFor="file">Drawing file (optional)</Label>
+              <DropZone onFiles={(files) => takeDrawingFile(files[0])} overlayLabel="Drop the drawing" className="border border-dashed border-input p-2">
+                <Input ref={drawingFileRef} id="file" name="file" type="file" onChange={(e) => takeDrawingFile(e.target.files?.[0])} />
+                <span className="ml-1 text-xs text-muted-foreground">or drag a file here</span>
+              </DropZone>
+              {drawingPreview && <DocumentPreview url={drawingPreview.url} name={drawingPreview.name} mime={drawingPreview.mime} heightClass="h-48" />}
+            </div>
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={close}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Create</Button></div>
           </form>
         </DialogContent>

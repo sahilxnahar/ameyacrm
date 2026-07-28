@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropZone } from '@/components/shared/drop-zone';
+import { DocumentPreview } from '@/components/shared/document-preview';
 import { cn } from '@/lib/utils/cn';
 
 interface Unit { id: string; code: string; projectId: string; tower: string | null; floor: number | null; typology: string | null; area: number; price: number; status: string; facing: string | null }
@@ -257,10 +259,13 @@ export function FloorPlanView({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="img">Plan image</Label>
-              <input id="img" type="file" accept="image/*" className="text-sm"
-                onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+              <DropZone onFiles={(files) => files[0] && uploadImage(files[0])} disabled={uploading} overlayLabel="Drop the plan image" className="border border-dashed border-input p-2">
+                <input id="img" type="file" accept="image/*" className="text-sm"
+                  onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
+                <span className="ml-2 text-xs text-muted-foreground">or drag an image here</span>
+              </DropZone>
               {uploading && <p className="flex items-center gap-1.5 text-xs"><Loader2 className="h-3 w-3 animate-spin" /> uploading…</p>}
-              {imageUrl && <p className="flex items-center gap-1.5 text-xs text-success"><ImageUp className="h-3 w-3" /> ready</p>}
+              {imageUrl && !uploading && <DocumentPreview url={imageUrl} name="Plan image" mime="image/*" heightClass="h-48" />}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>

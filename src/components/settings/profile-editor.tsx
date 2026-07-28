@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { initials } from '@/lib/utils/format';
+import { DropZone } from '@/components/shared/drop-zone';
 
 export interface ProfileInit {
   name: string;
@@ -68,7 +69,7 @@ export function ProfileEditor({ init }: { init: ProfileInit }) {
     <Card className="max-w-2xl">
       <CardContent className="space-y-5 p-5 sm:p-6">
         {/* Photo */}
-        <div className="flex items-center gap-4">
+        <DropZone onFiles={(files) => { if (files[0]) void pickPhoto(files[0]); }} disabled={uploading} overlayLabel="Drop a photo" className="flex items-center gap-4 p-1">
           <Avatar className="h-20 w-20">
             {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
             <AvatarFallback className="text-xl">{initials(name || init.name)}</AvatarFallback>
@@ -79,8 +80,9 @@ export function ProfileEditor({ init }: { init: ProfileInit }) {
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {avatarUrl ? 'Change photo' : 'Add photo'}
             </Button>
             {avatarUrl && <button onClick={() => setAvatarUrl('')} className="ml-2 text-xs text-muted-foreground hover:text-destructive">Remove</button>}
+            <p className="mt-1 text-xs text-muted-foreground">or drag a photo onto here</p>
           </div>
-        </div>
+        </DropZone>
 
         {/* Editable fields */}
         <div className="grid gap-4 sm:grid-cols-2">

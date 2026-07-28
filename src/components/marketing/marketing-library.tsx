@@ -6,6 +6,7 @@ import { upload } from '@vercel/blob/client';
 import { Upload, FolderUp, Link2, ImageIcon, FileText, FileSpreadsheet, Box, Sparkles, Download, ExternalLink, Trash2, Loader2 } from 'lucide-react';
 import { addMarketingLibraryItems, addMarketingDriveLink, deleteMarketingLibraryItem } from '@/server/actions/marketing-library';
 import { MARKETING_CATEGORIES, type LibraryItem } from '@/lib/marketing/library';
+import { DropZone } from '@/components/shared/drop-zone';
 import type { Collateral } from '@/config/marketing-collaterals';
 
 const KIND_ICON: Record<string, typeof FileText> = { image: ImageIcon, pdf: FileText, excel: FileSpreadsheet, doc: FileText, html: Box, link: Link2, brand: Sparkles, other: FileText };
@@ -71,7 +72,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
   return (
     <div className="space-y-6">
       {canManage && (
-        <div className="rounded-xl border border-[#A07D34]/40 bg-[#A07D34]/5 p-4">
+        <DropZone onFiles={(files) => void doUpload(files)} disabled={!!busy} overlayLabel="Drop files to add to the library" className="rounded-xl border border-[#A07D34]/40 bg-[#A07D34]/5 p-4">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => filesRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63] disabled:opacity-50"><Upload className="h-4 w-4" /> Upload files</button>
             <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-[#1B2A4A] hover:bg-white disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
@@ -83,10 +84,11 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
             <label className="text-xs">Title<br /><input value={driveTitle} onChange={(e) => setDriveTitle(e.target.value)} placeholder="What is it?" className="w-52 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
             <button onClick={addDrive} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-[#1B2A4A] hover:bg-white disabled:opacity-50"><Link2 className="h-4 w-4" /> Add link</button>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">Tip: you can also drag files straight onto this panel.</p>
           <input ref={filesRef} type="file" multiple hidden onChange={(e) => doUpload(e.target.files)} />
           {/* @ts-expect-error non-standard folder-picker attributes */}
           <input ref={folderRef} type="file" hidden webkitdirectory="" directory="" multiple onChange={(e) => doUpload(e.target.files)} />
-        </div>
+        </DropZone>
       )}
 
       {/* Featured (bundled) */}

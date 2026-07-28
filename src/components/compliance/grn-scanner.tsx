@@ -3,6 +3,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { extractGrnFromImage, createGoodsReceipt, type GrnExtract } from '@/server/actions/compliance';
+import { DropZone } from '@/components/shared/drop-zone';
+import { DocumentPreview } from '@/components/shared/document-preview';
 
 type Form = {
   vendorName: string; materialName: string; poReference: string; unit: string;
@@ -23,16 +25,19 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [scanned, setScanned] = React.useState(false);
-  const [preview, setPreview] = React.useState<string | null>(null);
+  const [preview, setPreview] = React.useState<{ url: string; mime: string; name: string } | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const clearPreview = () => setPreview((p) => { if (p) URL.revokeObjectURL(p.url); return null; });
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file || reading) return;
     setReading(true); setScanned(false);
+    // Inline preview for both images and PDFs, via a local object URL.
+    clearPreview();
+    setPreview({ url: URL.createObjectURL(file), mime: file.type || 'application/octet-stream', name: file.name });
     try {
       const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
-      if (file.type.startsWith('image/')) setPreview(dataUrl);
       const base64 = dataUrl.includes(',') ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl;
       const r = await extractGrnFromImage({ dataBase64: base64, mimeType: file.type, filename: file.name });
       if ('error' in r) { toast.error(r.error); return; }
@@ -53,7 +58,7 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
     try {
       const r = await createGoodsReceipt({ ...form, projectId: projectId ?? '' });
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Goods receipt recorded.'); setForm(EMPTY); setScanned(false); setPreview(null); setOpen(false); router.refresh();
+      toast.success('Goods receipt recorded.'); setForm(EMPTY); setScanned(false); clearPreview(); setOpen(false); router.refresh();
     } finally { setSaving(false); }
   };
 
@@ -70,11 +75,12 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
 
       {open && (
         <div className="mt-3 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" onChange={onFile} disabled={reading} className="text-sm" />
+          <DropZone onFiles={(files) => void handleFile(files[0])} disabled={reading} overlayLabel="Drop the challan to scan" className="flex flex-wrap items-center gap-2 border border-dashed border-[#A07D34]/40 p-2">
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" onChange={(e) => void handleFile(e.target.files?.[0])} disabled={reading} className="text-sm" />
+            <span className="text-xs text-muted-foreground">or drag the challan here</span>
             {reading && <span className="text-xs text-[#A07D34]">Reading the document…</span>}
-          </div>
-          {preview && <img src={preview} alt="GRN preview" className="max-h-40 rounded border border-slate-200" />}
+          </DropZone>
+          {preview && <DocumentPreview url={preview.url} name={preview.name} mime={preview.mime} heightClass="h-40" />}
 
           {(scanned || reading) && (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -94,7 +100,7 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
           {scanned && (
             <div className="flex items-center gap-2">
               <button onClick={save} disabled={saving} className="rounded bg-[#1B2A4A] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save goods receipt'}</button>
-              <button onClick={() => { setForm(EMPTY); setScanned(false); setPreview(null); }} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-white">Clear</button>
+              <button onClick={() => { setForm(EMPTY); setScanned(false); clearPreview(); }} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-white">Clear</button>
               <span className="text-xs text-muted-foreground">Always check the figures — OCR can misread a smudged challan.</span>
             </div>
           )}

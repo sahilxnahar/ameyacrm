@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.82';
+export const APP_VERSION = 'v15.83';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.83',
+    date: '28 Jul 2026',
+    highlights: [
+      'Drag-and-drop now works on every remaining place you attach a file — your profile photo, a floor-plan image, an architecture drawing, a vendor payment proof, the marketing library, and the AI goods-receipt scanner. You can still click to browse exactly as before; dragging is just an added shortcut.',
+      'Those attachments now open right there too: the payment proof, the drawing, the floor plan and the GRN scan all show an inline preview (images render, PDFs embed) so you can see what you attached before saving — the GRN scanner now previews PDF challans, not just photos.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.82',
     date: '28 Jul 2026',

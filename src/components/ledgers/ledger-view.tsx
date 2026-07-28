@@ -9,6 +9,8 @@ import { EXPENSE_CATEGORIES } from '@/config/expense-categories';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { exportXlsx } from '@/lib/export/xlsx';
 import { ImportDropzone } from '@/components/import/import-dropzone';
+import { DropZone } from '@/components/shared/drop-zone';
+import { DocumentPreview } from '@/components/shared/document-preview';
 import type { LedgerRow, LedgerDetail } from '@/server/services/vendor-ledger-service';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -295,6 +297,15 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
     setUploadingId(null); setProofTarget(null);
   };
 
+  // Add-a-payment form: drag-drop + inline preview for the payment proof.
+  const paymentProofRef = React.useRef<HTMLInputElement>(null);
+  const [proofPreview, setProofPreview] = React.useState<{ url: string; name: string; mime: string } | null>(null);
+  const takePaymentProof = (file: File | undefined) => {
+    if (!file) return;
+    if (paymentProofRef.current) { const dt = new DataTransfer(); dt.items.add(file); paymentProofRef.current.files = dt.files; }
+    setProofPreview((p) => { if (p) URL.revokeObjectURL(p.url); return { url: URL.createObjectURL(file), name: file.name, mime: file.type || 'application/octet-stream' }; });
+  };
+
   if (detail) {
     const d = detail;
     return (
@@ -365,7 +376,12 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                   </label>
                   <div className="sm:col-span-2"><Field label="Description — what was this payment for?"><Input name="note" maxLength={500} placeholder="e.g. Advance for RCC slab casting, 3rd floor Tower B — steel + labour" /></Field><p className="mt-1 text-[11px] text-muted-foreground">This prints on the receipt as the payment description.</p></div>
                   <div className="sm:col-span-2">
-                    <Field label="Payment proof (screenshot / bank PDF)"><Input name="proof" type="file" accept="image/*,.pdf" className="py-1" /></Field>
+                    <Field label="Payment proof (screenshot / bank PDF)">
+                      <DropZone onFiles={(files) => takePaymentProof(files[0])} overlayLabel="Drop the proof" className="border border-dashed border-input p-1">
+                        <Input ref={paymentProofRef} name="proof" type="file" accept="image/*,.pdf" className="py-1" onChange={(e) => takePaymentProof(e.target.files?.[0])} />
+                      </DropZone>
+                    </Field>
+                    {proofPreview && <DocumentPreview url={proofPreview.url} name={proofPreview.name} mime={proofPreview.mime} heightClass="h-40" />}
                   </div>
                   {d.vendor.phone && (
                     <label className="flex items-center gap-2 text-sm sm:col-span-2">
