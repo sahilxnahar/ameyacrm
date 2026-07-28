@@ -35,7 +35,7 @@ export function TopBar({
   onSearch: () => void;
 }) {
   return (
-    <header className="app-topbar sticky top-0 z-30 hidden items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:flex sm:px-6 lg:px-8">
+    <header className="app-topbar sticky top-0 z-30 hidden items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:flex sm:px-6 lg:px-8 print:!hidden">
       {/* Tablet menu button — the sidebar is a drawer below lg. */}
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label="Open menu">
         <Menu className="h-5 w-5" />

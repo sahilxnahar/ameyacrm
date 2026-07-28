@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Landmark, Search, ExternalLink, UploadCloud, ChevronDown, ShieldAlert, FileCheck2, Trash2 } from 'lucide-react';
@@ -129,6 +130,7 @@ export function DueDiligenceDirectory({ records, projects }: { records: DdRecord
                 </div>
               </div>
               {r.documentUrl ? <a href={r.documentUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs text-primary hover:underline">PDF</a> : null}
+              <Link href={`/due-diligence/${r.id}`} className="shrink-0 text-xs text-primary hover:underline">View</Link>
               <Badge variant={STATUS_TONE[r.status] ?? 'secondary'} className="shrink-0">{r.status}</Badge>
               {r.status !== 'VERIFIED' ? <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => verify(r.id, 'VERIFIED')}>Verify</Button> : null}
               <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4" /></Button>

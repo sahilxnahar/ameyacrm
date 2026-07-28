@@ -129,7 +129,7 @@ export function AppShell({
         onToggleRail={toggleRail}
         onClose={() => setMobileOpen(false)}
       />
-      <div className={`relative z-10 flex min-w-0 flex-1 flex-col transition-[padding] duration-200 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
+      <div className={`relative z-10 flex min-w-0 flex-1 flex-col transition-[padding] duration-200 print:!pl-0 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <UpdateBanner />
         {/* Ameya OS desktop Top-Bar (md+). On phones the Mobile Dock takes over. */}
         <TopBar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />

@@ -470,3 +470,33 @@ html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --acc
   .card-elevated > table,
   .card-surface > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* ─── Print / legal-grade document output ──────────────────────────────────────
+   When a user prints an Encumbrance Certificate, RERA doc or any vault record,
+   strip the app chrome (top-bar, dock, sidebar, breadcrumbs, floating launchers)
+   and render a pristine, high-contrast, ink-friendly page fit for court or a
+   certifier. Utilities like `print:hidden` / `print:block` handle per-element
+   cases; this is the global reset. */
+@media print {
+  /* Kill floating / fixed helpers that Tailwind print: variants don't reach. */
+  [data-print-hide],
+  .app-topbar,
+  .app-drawer-head { display: none !important; }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Give printed content the full page — no sidebar gutter, no bottom dock pad. */
+  main#main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Legal documents should not break a record card across pages. */
+  .print-document { break-inside: avoid; }
+
+  /* Never print a raw link URL after anchors inside a document view. */
+  .print-document a[href]::after { content: '' !important; }
+}

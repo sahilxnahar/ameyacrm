@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.76';
+export const APP_VERSION = 'v15.77';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.77',
+    date: '28 Jul 2026',
+    highlights: [
+      'A dedicated, print-ready record view for the vault. Open any due-diligence record to a clean document — Ameya Heights letterhead, all the details, verification status and a signatory line — then hit Print: the top-bar, dock, sidebar and watermark texture all drop away and you get a crisp, high-contrast, legal-grade page fit for a court or certifier, with a high-resolution brand watermark behind it.',
+      'Polished pulse skeletons now hold the layout for the Launchpad and the vault while they load, so there’s no jump or flash as data arrives.',
+      'Under the hood: reusable print utilities strip app chrome on print across the whole product, so any official document view exports cleanly. No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.76',
     date: '28 Jul 2026',

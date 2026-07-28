@@ -189,7 +189,7 @@ export function Sidebar({
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex max-w-[92vw] flex-col border-r bg-card shadow-2xl transition-[width,transform] duration-200 lg:max-w-none lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex max-w-[92vw] flex-col border-r bg-card shadow-2xl transition-[width,transform] duration-200 lg:max-w-none lg:shadow-none lg:translate-x-0 print:!hidden',
           customising ? 'w-[19rem] lg:w-[19rem]' : rail ? 'w-[17rem] lg:w-[4.5rem]' : 'w-[18rem] lg:w-72',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}

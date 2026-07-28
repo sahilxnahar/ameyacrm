@@ -54,7 +54,7 @@ export function BrandWatermark({ variant = 'workspace', padClassName, className 
     <div
       aria-hidden
       className={cn(
-        'pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden',
+        'pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden print:hidden',
         padClassName,
         className,
       )}
