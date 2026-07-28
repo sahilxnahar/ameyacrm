@@ -482,6 +482,7 @@ model Project {
   // Group 13 — piece-rate labour (module 66)
   pieceRateEntries PieceRateEntry[]
   welfareLogs      WelfareLog[]
+  dailySiteLogs    DailySiteLog[]
 
   @@index([isActive])
 }
@@ -1413,6 +1414,7 @@ model User {
   assignedRfis        RFI[]                @relation("RFIAssignee")
   raisedIssues        IssueLog[]           @relation("IssueRaisedBy")
   assignedIssues      IssueLog[]           @relation("IssueAssignee")
+  dailySiteLogs       DailySiteLog[]       @relation("SiteLogAuthor")
 
   @@index([status])
   @@index([departmentId])
@@ -2968,6 +2970,46 @@ model ConstructionUpdate {
   createdAt   DateTime @default(now())
 
   @@index([projectId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Phase 6 — Site Ops & 4D BIM (field engineering).
+//  Additive, alongside ConstructionUpdate / ProgressUpdate / SiteReading — none of
+//  those are touched. A DailySiteLog is one day's field diary for a project
+//  (weather, labour headcount, notes); SitePhoto rows hang off it and are grouped
+//  by date + milestone tag to build the chronological "4D BIM" progress view.
+// ════════════════════════════════════════════════════════════════════════════
+model DailySiteLog {
+  id         String   @id @default(cuid())
+  date       DateTime
+  weather    String
+  laborCount Int      @default(0)
+  notes      String?  @db.Text
+  projectId  String
+  authorId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User?       @relation("SiteLogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  photos  SitePhoto[]
+
+  @@index([projectId, date])
+  @@index([authorId])
+}
+
+model SitePhoto {
+  id             String   @id @default(cuid())
+  url            String
+  milestoneTag   String
+  capturedAt     DateTime @default(now())
+  dailySiteLogId String
+  createdAt      DateTime @default(now())
+
+  dailySiteLog DailySiteLog @relation(fields: [dailySiteLogId], references: [id], onDelete: Cascade)
+
+  @@index([dailySiteLogId])
+  @@index([milestoneTag])
 }
 
 // ════════════════════════════════════════════════════════════════════════════
