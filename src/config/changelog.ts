@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.83';
+export const APP_VERSION = 'v15.84';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.84',
+    date: '28 Jul 2026',
+    highlights: [
+      'The whole interface now adapts to your screen automatically. Text and spacing scale smoothly with the display — a touch tighter on a phone or 11" tablet, comfortable on a 13" laptop, and larger and roomier on a 27" monitor — instead of only jumping at fixed breakpoints. Your own text-size choice (Small / Medium / Large) still applies on top.',
+      'Fixed the crowded top bar. At in-between widths the shortcut labels were squeezing the search box until it collided with the project name. The Messages / Assistant / Tally / Explore shortcuts now stay as clean icons until there’s genuinely room for their labels, so the search bar keeps its space and nothing overlaps.',
+      'Wide monitors use more of the screen — content now stretches to a larger, still-comfortable width so a 27" display isn’t mostly empty margins.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.83',
     date: '28 Jul 2026',

@@ -138,7 +138,7 @@ export function AppShell({
         {/* Keyed by route so page content eases in on every navigation — makes
             the app feel responsive and alive (U14). Honours reduced-motion. */}
         <main id="main" tabIndex={-1} className="w-full max-w-none flex-1 px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-24">
-          <div key={pathname} className="animate-in mx-auto w-full max-w-screen-2xl">{children}</div>
+          <div key={pathname} className="animate-in mx-auto w-full max-w-[1800px]">{children}</div>
         </main>
       </div>
       {/* Ameya OS mobile Dock (< md) — Launchpad · Search · Quick-Upload · Alerts. */}

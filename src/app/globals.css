@@ -383,9 +383,14 @@
    Applied as attributes on <html> by display-settings, read here. Set before
    first paint by an inline script in the root layout, so there is no flash.
    ──────────────────────────────────────────────────────────────────────────── */
-html[data-text-scale='s'] { font-size: 14px; }
-html[data-text-scale='m'] { font-size: 16px; }
-html[data-text-scale='l'] { font-size: 18px; }
+/* Fluid root type: the whole UI is sized in rem, so scaling the root font-size
+   with the viewport makes every screen — phone, 11" tablet, 13" laptop, 27"
+   monitor — adapt automatically, not just snap at breakpoints. Each personal
+   text-size choice keeps its character but breathes a little with the screen.
+   min at phone width, max on large desktops; ~16px around a laptop. */
+html[data-text-scale='s'] { font-size: clamp(13px, 12.6px + 0.18vw, 15px); }
+html[data-text-scale='m'] { font-size: clamp(15px, 14.1px + 0.28vw, 17px); }
+html[data-text-scale='l'] { font-size: clamp(17px, 16.1px + 0.30vw, 19.5px); }
 
 /* ────────────────────────────────────────────────────────────────────────────
    Density (U1). Comfortable is the baseline — no overrides. Compact tightens the

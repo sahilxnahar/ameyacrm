@@ -45,7 +45,7 @@ export function TopBar({
       <Link href="/command-center" aria-label="Ameya Heights — Launchpad" className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1 py-1">
         <img src="/brand/mark-gold-dark.svg" alt="" className="hidden h-6 w-6 select-none dark:block" />
         <img src="/brand/mark-gold-light.svg" alt="" className="h-6 w-6 select-none dark:hidden" />
-        <span className="hidden text-sm font-semibold tracking-tight xl:inline">Ameya&nbsp;Heights</span>
+        <span className="hidden text-sm font-semibold tracking-tight 2xl:inline">Ameya&nbsp;Heights</span>
       </Link>
 
       {/* Dynamic project selector banner. */}
@@ -56,12 +56,12 @@ export function TopBar({
       {/* ⌘K Spotlight search. */}
       <button
         onClick={onSearch}
-        className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-md border bg-secondary/50 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary sm:px-3 sm:max-w-md"
+        className="flex h-9 min-w-[4.5rem] flex-1 items-center gap-2 rounded-md border bg-secondary/50 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary sm:px-3 sm:max-w-md"
         aria-label="Open search (Command-K)"
       >
-        <Search className="h-4 w-4" />
+        <Search className="h-4 w-4 shrink-0" />
         <span className="truncate">Search or jump to…</span>
-        <kbd className="ml-auto hidden rounded border bg-background px-1.5 text-[10px] sm:inline">⌘K</kbd>
+        <kbd className="ml-auto hidden shrink-0 rounded border bg-background px-1.5 text-[10px] lg:inline">⌘K</kbd>
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -73,7 +73,7 @@ export function TopBar({
           className="focus-ring inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <UploadCloud className="h-4 w-4 shrink-0" />
-          <span className="hidden text-xs font-medium xl:inline">Upload</span>
+          <span className="hidden text-xs font-medium 2xl:inline">Upload</span>
         </Link>
 
         <TopLink href="/chat" label="Messages" desc="Chat anyone in the company by @username" Icon={MessageSquare} />
@@ -102,7 +102,7 @@ function TopLink({ href, label, desc, Icon }: { href: string; label: string; des
       className="focus-ring hidden h-9 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:inline-flex"
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="hidden text-xs font-medium xl:inline">{label}</span>
+      <span className="hidden text-xs font-medium 2xl:inline">{label}</span>
     </Link>
   );
 }
