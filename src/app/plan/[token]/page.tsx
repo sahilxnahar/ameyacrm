@@ -72,22 +72,24 @@ export default async function PublicPlanPage({ params }: { params: Promise<{ tok
         ))}
       </div>
 
-      <table className="mt-4 w-full text-sm">
+      <div className="table-scroll mt-4">
+      <table className="w-full text-sm">
         <thead className="border-b text-left text-xs uppercase tracking-wider text-[#5E584C]">
-          <tr><th className="py-2">Home</th><th>Type</th><th className="text-right">Carpet area</th><th>Facing</th><th>Status</th></tr>
+          <tr><th className="py-2">Home</th><th>Type</th><th className="whitespace-nowrap text-right">Carpet area</th><th className="whitespace-nowrap">Facing</th><th className="whitespace-nowrap">Status</th></tr>
         </thead>
         <tbody>
           {plan.pins.map((p) => (
             <tr key={p.id} className="border-b last:border-0">
               <td className="py-2 font-medium">{p.unit.code}</td>
               <td>{p.unit.typology}</td>
-              <td className="text-right tabular">{Number(p.unit.carpetAreaSqft).toLocaleString('en-IN')} sqft</td>
-              <td>{p.unit.facing ?? '—'}</td>
-              <td>{p.unit.status.toLowerCase()}</td>
+              <td className="whitespace-nowrap text-right tabular">{Number(p.unit.carpetAreaSqft).toLocaleString('en-IN')} sqft</td>
+              <td className="whitespace-nowrap">{p.unit.facing ?? '—'}</td>
+              <td className="whitespace-nowrap">{p.unit.status.toLowerCase()}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       <p className="mt-4 text-xs text-[#5E584C]">
         Availability shown at the time of viewing and subject to change. For prices and payment plans please speak to our sales team.

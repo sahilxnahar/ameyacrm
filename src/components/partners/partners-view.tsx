@@ -193,7 +193,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
                     </div>
                   ))}
                   {canManage && (
-                    <form onSubmit={submitPayout} className="mt-3 grid grid-cols-4 gap-2">
+                    <form onSubmit={submitPayout} className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <Input name="grossValue" type="number" placeholder="Deal value ₹" required className="col-span-2" />
                       <Input name="ratePercent" type="number" step="0.1" placeholder={`${sel.commissionPct}%`} />
                       <Input name="dueDate" type="date" />

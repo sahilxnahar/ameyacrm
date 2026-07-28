@@ -166,7 +166,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                     <LabeledNum id="plc" label="PLC" /><LabeledNum id="floorRise" label="Floor rise" />
                     <LabeledNum id="parking" label="Car parking" /><LabeledNum id="club" label="Club & amenities" />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <div className="space-y-1"><Label htmlFor="gstPercent">GST %</Label><Input id="gstPercent" name="gstPercent" type="number" min="0" max="28" step="0.1" defaultValue="5" /></div>
                     <LabeledNum id="stamp" label="Stamp duty" /><LabeledNum id="registration" label="Registration" />
                   </div>

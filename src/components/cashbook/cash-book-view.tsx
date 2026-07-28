@@ -192,7 +192,7 @@ export function CashBookView({
                     <div className="space-y-1.5"><Label htmlFor="materialName">Material</Label>
                       <Input id="materialName" name="materialName" required placeholder="OPC 53 grade cement" />
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       <div className="space-y-1.5"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" step="0.001" min="0" /></div>
                       <div className="space-y-1.5"><Label htmlFor="unit">Unit</Label>
                         <select id="unit" name="unit" className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm">

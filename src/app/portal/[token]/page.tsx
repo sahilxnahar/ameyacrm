@@ -59,15 +59,15 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
           {booking.payments.length > 0 && (
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between text-sm"><span className="font-medium">Payment schedule</span><span className="text-muted-foreground">Paid {formatCurrency(paid)} of {formatCurrency(totalDue)}</span></div>
-              <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <tbody>
                     {booking.payments.map((p) => (
                       <tr key={p.id} className="border-b last:border-0">
                         <td className="p-2">{p.label}</td>
-                        <td className="p-2 text-muted-foreground">{p.dueDate ? formatDate(p.dueDate.toISOString()) : '—'}</td>
-                        <td className="p-2 text-right font-medium">{formatCurrency(Number(p.amount))}</td>
-                        <td className="p-2 text-right"><span className={`rounded-full px-2 py-0.5 text-xs ${p.status === 'PAID' ? 'bg-emerald-500/15 text-emerald-700' : p.status === 'OVERDUE' ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}>{p.status}</span></td>
+                        <td className="whitespace-nowrap p-2 text-muted-foreground">{p.dueDate ? formatDate(p.dueDate.toISOString()) : '—'}</td>
+                        <td className="whitespace-nowrap p-2 text-right font-medium">{formatCurrency(Number(p.amount))}</td>
+                        <td className="whitespace-nowrap p-2 text-right"><span className={`rounded-full px-2 py-0.5 text-xs ${p.status === 'PAID' ? 'bg-emerald-500/15 text-emerald-700' : p.status === 'OVERDUE' ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}>{p.status}</span></td>
                       </tr>
                     ))}
                   </tbody>

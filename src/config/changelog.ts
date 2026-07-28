@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.85';
+export const APP_VERSION = 'v15.86';
 
 export interface Release {
   version: string;
@@ -13,6 +13,14 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.86',
+    date: '28 Jul 2026',
+    highlights: [
+      'A full sweep for the same family of layout problems, so screens hold up from a phone to a 27" monitor without surprises. Fixed: the public floor-plan and buyer-portal tables now scroll instead of crushing or clipping on a phone; the AI bill-import line items, partner payout form, inventory PDF options and cash-book entry form now stack neatly on small screens instead of squeezing their fields.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.85',
     date: '28 Jul 2026',

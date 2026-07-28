@@ -148,13 +148,13 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
                 <div className="space-y-1"><Label>Project</Label><select value={head.projectId} onChange={(e) => setHead({ ...head, projectId: e.target.value })} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
               </div>
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_60px_84px_58px_32px] gap-2 text-[11px] font-medium text-muted-foreground"><span>Description</span><span>Qty</span><span>Price</span><span>GST%</span><span /></div>
+                <div className="hidden grid-cols-[1fr_60px_84px_58px_32px] gap-2 text-[11px] font-medium text-muted-foreground sm:grid"><span>Description</span><span>Qty</span><span>Price</span><span>GST%</span><span /></div>
                 {items.map((it, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_60px_84px_58px_32px] gap-2">
-                    <Input value={it.description} onChange={(e) => patch(idx, 'description', e.target.value)} />
-                    <Input value={it.quantity} onChange={(e) => patch(idx, 'quantity', e.target.value)} />
-                    <Input value={it.rate} onChange={(e) => patch(idx, 'rate', e.target.value)} />
-                    <Input value={it.gstRate} onChange={(e) => patch(idx, 'gstRate', e.target.value)} />
+                  <div key={idx} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_60px_84px_58px_32px]">
+                    <Input className="col-span-2 sm:col-span-1" value={it.description} onChange={(e) => patch(idx, 'description', e.target.value)} placeholder="Description" />
+                    <Input value={it.quantity} onChange={(e) => patch(idx, 'quantity', e.target.value)} placeholder="Qty" />
+                    <Input value={it.rate} onChange={(e) => patch(idx, 'rate', e.target.value)} placeholder="Price" />
+                    <Input value={it.gstRate} onChange={(e) => patch(idx, 'gstRate', e.target.value)} placeholder="GST %" />
                     <Button type="button" variant="ghost" size="icon" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
