@@ -1,15 +1,34 @@
 import { SchemaWarning } from '@/components/layout/schema-warning';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/current-user';
 import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
 import { AppShell } from '@/components/layout/app-shell';
+import { GuestShell } from '@/components/layout/guest-shell';
 import { TwoFactorReminder } from '@/components/layout/two-factor-reminder';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';
 
+// Routes a GUEST / preview account may reach. Everything else redirects to the
+// sample-data showcase. Default-DENY: if a screen isn't on this list it is never
+// reachable, so no real-data page can render for a guest even by direct URL.
+const GUEST_ALLOW = ['/preview'];
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, permissions } = await requireAuth();
+
+  // Guest / preview accounts get a sealed, data-free experience. We return here
+  // BEFORE any real query (projects, nav prefs, active project) runs, so a guest
+  // request never even fetches real company data.
+  if (user.role === 'GUEST') {
+    const pathname = (await headers()).get('x-pathname') ?? '';
+    const allowed = GUEST_ALLOW.some((p) => pathname === p || pathname.startsWith(p + '/'));
+    if (!allowed) redirect('/preview');
+    return <GuestShell name={user.name}>{children}</GuestShell>;
+  }
+
   const row = await getNavPrefsRow(user.id);
   const navPrefs = readPrefs(row?.navPrefs);
   const [active, projects] = await Promise.all([

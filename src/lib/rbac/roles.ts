@@ -54,7 +54,11 @@ export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
     'billing.view', 'material.view', 'calendar.view', 'report.view',
     'marketing.view', 'lease.view', 'architecture.view',
   ],
-  GUEST: ['dashboard.view', 'task.view', 'calendar.view'],
+  // GUEST = sealed preview account. No data permissions at all: the app layout
+  // confines a guest to the sample-data showcase (/preview) and every server
+  // action is refused for this role. Zero here means that even if the route
+  // guard were ever bypassed, no real-data page could render.
+  GUEST: [],
 };
 
 /** Expand wildcard patterns to concrete permission keys. */

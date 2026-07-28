@@ -12,6 +12,13 @@ export class ForbiddenError extends Error {}
 export async function getActionContext(): Promise<AuthContext> {
   const ctx = await getCurrentUser();
   if (!ctx) throw new AuthError('You must be signed in.');
+  // Hard read-only guarantee for preview/guest accounts. Every mutation in the
+  // app funnels through here (directly or via `ensure`), so a GUEST can never
+  // write, no matter how the request is crafted or what permissions are set.
+  // Sign-out is exempt because it reads the session directly, not this helper.
+  if (ctx.user.role === 'GUEST') {
+    throw new ForbiddenError('This is a read-only preview account — changes are disabled.');
+  }
   return ctx;
 }
 

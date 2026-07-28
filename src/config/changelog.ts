@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.86';
+export const APP_VERSION = 'v15.87';
 
 export interface Release {
   version: string;
@@ -13,6 +13,15 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.87',
+    date: '28 Jul 2026',
+    highlights: [
+      'New: a shareable Guest / preview account. Set any user’s role to “Guest” in Admin and you can hand that login to anyone — a prospect, a partner, an investor — to show off the whole platform safely.',
+      'A guest sees a polished product showcase with sample data only (no real leads, money, documents, customers or email are ever loaded) and a complete map of every module. It’s sealed three ways: guests can only reach the preview screen, every server action is refused for a guest so nothing can be changed, and the Guest role carries no data permissions at all.',
+      'No database change needed for this version. To make a preview login: Admin → Users → add a user → set role to Guest → share the credentials.',
+    ],
+  },
   {
     version: 'v15.86',
     date: '28 Jul 2026',
