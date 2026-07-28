@@ -138,6 +138,7 @@ export function DailyLogForm({
           onUploaded={(f) => addPhoto({ url: f.url, name: f.name })}
           label="Photograph the site"
           hint="tap to open the camera — add as many as you need"
+          preview={false}
         />
         {photos.length > 0 ? (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

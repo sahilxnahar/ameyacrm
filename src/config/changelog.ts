@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.81';
+export const APP_VERSION = 'v15.82';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.82',
+    date: '28 Jul 2026',
+    highlights: [
+      'Uploaded documents now open right where you upload them. A new inline viewer shows the actual file — images render, PDFs embed in the page, and everything else gets a one-tap open/download — so you can see what you attached without leaving the screen. It appears automatically under the standard uploader (e.g. filing a record in the Due Diligence vault).',
+      'Import a bill and you now see the original bill side-by-side with what the AI read off it — check the vendor, GST and line items against the source before saving, instead of trusting a filename.',
+      'The bulk Import wizard now takes a file, not just a paste. Drag in a CSV or Excel file (or paste as before) and it shows a real table preview of your first rows — so you can confirm the columns line up before mapping and importing.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.81',
     date: '28 Jul 2026',

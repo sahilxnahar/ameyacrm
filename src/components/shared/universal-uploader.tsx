@@ -4,6 +4,7 @@ import { upload } from '@vercel/blob/client';
 import { toast } from 'sonner';
 import { UploadCloud, Loader2, FileCheck2, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { DocumentPreview } from './document-preview';
 
 /**
  * <UniversalUploader /> — one reusable client uploader used everywhere a file is
@@ -30,6 +31,8 @@ export interface UniversalUploaderProps {
   className?: string;
   label?: string;
   hint?: string;
+  preview?: boolean;               // show an inline preview of the uploaded file (default: true)
+  previewHeightClass?: string;     // Tailwind max-height for the preview frame
 }
 
 const DEFAULT_MIME = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -52,12 +55,15 @@ export function UniversalUploader({
   className,
   label = 'Drag a PDF or photo here',
   hint = 'or tap to choose / photograph — PDF, JPEG, PNG',
+  preview = true,
+  previewHeightClass,
 }: UniversalUploaderProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const seen = React.useRef<Set<string>>(new Set());
   const [over, setOver] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState<string | null>(null);
+  const [last, setLast] = React.useState<{ url: string; name: string; mime: string } | null>(null);
 
   React.useEffect(() => {
     if (autoActivate) {
@@ -86,7 +92,9 @@ export function UniversalUploader({
       const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/upload' });
       seen.current.add(dupeKey);
       setDone(file.name);
-      onUploaded({ url: blob.url, name: file.name, mime: file.type || 'application/octet-stream', size: file.size });
+      const mime = file.type || 'application/octet-stream';
+      setLast({ url: blob.url, name: file.name, mime });
+      onUploaded({ url: blob.url, name: file.name, mime, size: file.size });
       toast.success(`${file.name} uploaded`);
     } catch {
       toast.error('Upload failed — please try again.');
@@ -96,6 +104,7 @@ export function UniversalUploader({
   }, [allowedMime, busy, maxBytes, onUploaded]);
 
   return (
+    <div className="space-y-2">
     <div
       role="button"
       tabIndex={0}
@@ -135,6 +144,10 @@ export function UniversalUploader({
         className="hidden"
         onChange={(e) => { void take(e.target.files?.[0] ?? undefined); e.currentTarget.value = ''; }}
       />
+    </div>
+    {preview && last ? (
+      <DocumentPreview url={last.url} name={last.name} mime={last.mime} heightClass={previewHeightClass ?? (compact ? 'h-40' : 'h-64')} />
+    ) : null}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { Loader2, ClipboardPaste, Eye, Upload, CheckCircle2, XCircle, AlertTriangle, ArrowRight } from 'lucide-react';
 import { runImport, type ImportResult, type RowResult } from '@/server/actions/bulk-import';
 import { parseTable, autoMap } from '@/lib/import/parse';
+import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
+import { ImportDropzone } from '@/components/import/import-dropzone';
 import type { ImportKind } from '@/lib/import/schemas';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -51,6 +53,14 @@ export function ImportWizard({
 
   const missingRequired = kind.fields.filter((f) => f.required && map[f.key] === undefined);
 
+  // Upload a CSV/Excel file instead of pasting — reads it to CSV text so the
+  // rest of the wizard (mapping, preview, dry-run) works exactly the same.
+  const onFile = (f: File) => {
+    readSpreadsheetAsCsv(f)
+      .then((csv) => { setText(csv); toast.success(`Loaded ${f.name}`); })
+      .catch(() => toast.error('Could not read that file. Try a .csv or .xlsx.'));
+  };
+
   const go = (dryRun: boolean) =>
     start(async () => {
       const res = await runImport(kindKey, projectId || null, rows, dryRun);
@@ -94,6 +104,15 @@ export function ImportWizard({
           </Button>
         </div>
 
+        <div className="mt-3">
+          <ImportDropzone onFile={onFile} disabled={pending} />
+          <div className="my-3 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">or paste</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </div>
+
         <div className="mt-3 space-y-1.5">
           <Label htmlFor="paste">Paste your rows — include the header row</Label>
           <Textarea id="paste" rows={7} value={text} onChange={(e) => setText(e.target.value)}
@@ -105,6 +124,35 @@ export function ImportWizard({
             </p>
           )}
         </div>
+
+        {parsed.headers.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            <Label>Preview</Label>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/50">
+                  <tr>
+                    {parsed.headers.map((h, i) => (
+                      <th key={i} className="whitespace-nowrap px-2.5 py-1.5 font-medium">{h || `Column ${i + 1}`}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsed.rows.slice(0, 8).map((r, ri) => (
+                    <tr key={ri} className="border-t">
+                      {parsed.headers.map((_, ci) => (
+                        <td key={ci} className="max-w-[16rem] truncate px-2.5 py-1.5 text-muted-foreground" title={r[ci] ?? ''}>{r[ci] ?? ''}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {parsed.rows.length > 8 && (
+              <p className="text-[11px] text-muted-foreground">Showing the first 8 of {parsed.rows.length} rows.</p>
+            )}
+          </div>
+        )}
       </Card>
 
       {parsed.headers.length > 0 && (

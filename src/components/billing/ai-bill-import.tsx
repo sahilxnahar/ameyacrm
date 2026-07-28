@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DocumentPreview } from '@/components/shared/document-preview';
 
 interface Item { description: string; quantity: string; rate: string; gstRate: string }
 const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
@@ -26,8 +27,13 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [dropName, setDropName] = React.useState('');
   const [over, setOver] = React.useState(false);
+  // A local object-URL of the chosen bill so it previews inline next to the
+  // extracted fields — the source and the reading sit side by side. Revoked on
+  // reset so we never leak blob URLs.
+  const [src, setSrc] = React.useState<{ url: string; name: string; mime: string } | null>(null);
 
-  const reset = () => { setStage('upload'); setItems([]); setDropName(''); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
+  const clearSrc = () => setSrc((s) => { if (s) URL.revokeObjectURL(s.url); return null; });
+  const reset = () => { setStage('upload'); setItems([]); setDropName(''); clearSrc(); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
   const close = () => { setOpen(false); reset(); };
   const patch = (i: number, k: keyof Item, v: string) => setItems((arr) => arr.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
 
@@ -35,6 +41,8 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
     e.preventDefault(); const fd = new FormData(e.currentTarget); const file = fd.get('file');
     if (!(file instanceof File) || !file.size) { toast.error('Choose a file first.'); return; }
     if (looksLikeSpreadsheet(file.name)) { toast.error('That is a spreadsheet — import it in Vendor Ledgers, not here.'); return; }
+    clearSrc();
+    setSrc({ url: URL.createObjectURL(file), name: file.name, mime: file.type || 'application/octet-stream' });
     start(async () => {
       const r = await extractBill(fd);
       if ('error' in r) { toast.error(r.error); return; }
@@ -126,6 +134,13 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
           )}
           {stage === 'review' && (
             <div className="space-y-4">
+              {src ? (
+                <div className="space-y-1">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Source bill</span>
+                  <DocumentPreview url={src.url} name={src.name} mime={src.mime} heightClass="h-56" />
+                  <p className="text-[11px] text-muted-foreground">Check the reading below against the original above before saving.</p>
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1"><Label>Company / vendor</Label><Input value={head.clientName} onChange={(e) => setHead({ ...head, clientName: e.target.value })} /></div>
                 <div className="space-y-1"><Label>GST number</Label><Input value={head.clientGstin} onChange={(e) => setHead({ ...head, clientGstin: e.target.value })} /></div>
