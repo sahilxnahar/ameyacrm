@@ -47,11 +47,12 @@ export function ProgressTimeline({ logs }: { logs: TimelineLog[] }) {
 
   // Group by calendar day, preserving the incoming newest-first order.
   const groups: { day: string; logs: TimelineLog[] }[] = [];
-  const index = new Map<string, number>();
+  const index = new Map<string, { day: string; logs: TimelineLog[] }>();
   for (const log of logs) {
     const k = dayKey(log.date);
-    if (!index.has(k)) { index.set(k, groups.length); groups.push({ day: k, logs: [] }); }
-    groups[index.get(k)!].logs.push(log);
+    let group = index.get(k);
+    if (!group) { group = { day: k, logs: [] }; index.set(k, group); groups.push(group); }
+    group.logs.push(log);
   }
 
   return (
@@ -60,7 +61,7 @@ export function ProgressTimeline({ logs }: { logs: TimelineLog[] }) {
         <section key={g.day} className="space-y-3">
           <div className="sticky top-14 z-[1] -mx-1 flex items-center gap-2 bg-background/85 px-1 py-1 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">{fmtDay(g.logs[0].date)}</h2>
+            <h2 className="text-sm font-semibold">{fmtDay(g.day)}</h2>
           </div>
 
           {g.logs.map((log) => (
