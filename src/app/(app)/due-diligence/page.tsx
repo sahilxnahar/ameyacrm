@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import * as React from 'react';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
-import { DueDiligenceView } from '@/components/legal/due-diligence-view';
+import { DueDiligenceDirectory } from '@/components/vault/due-diligence-directory';
 
 export const metadata: Metadata = { title: 'Due Diligence & RERA Vault' };
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export default async function DueDiligencePage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Pan-India Due Diligence & RERA Vault" description="A directory of every state and local authority portal — RERA, land records, registration, town planning, municipal and hill-area bodies — with a one-click jump to the official site and a drag-in vault to file the fetched record against a project." />
-      <DueDiligenceView projects={projects}
+      <React.Suspense fallback={null}>
+      <DueDiligenceDirectory projects={projects}
         records={records.map((r) => ({
           id: r.id, project: r.project?.name ?? '—', recordType: r.recordType, state: r.state, region: r.region,
           authorityName: r.authorityName, reference: r.reference, documentUrl: r.documentUrl,
@@ -29,6 +31,7 @@ export default async function DueDiligencePage() {
             return r.createdAt.getTime() < now - 182 * 864e5;
           })(),
         }))} />
+      </React.Suspense>
     </div>
   );
 }

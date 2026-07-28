@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.73';
+export const APP_VERSION = 'v15.76';
 
 export interface Release {
   version: string;
@@ -13,6 +13,33 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.76',
+    date: '28 Jul 2026',
+    highlights: [
+      '⌘K now knows the government portals. Type “CMDA”, “Bhoomi”, “K-RERA” or “MP Bhulekh” and the palette offers two actions per authority — Open the official portal in a new tab, or File a record from it, which jumps straight into the vault with the right authority expanded and the upload box already active.',
+      'Due-diligence expiry alerts are now click-through. The Command Center tile for an expiring encumbrance certificate or town-planning approval links directly to that exact record in the vault, which highlights and scrolls to it — no hunting. Powered by the same URL-parameter routing between palette, alerts and the vault.',
+      'No database change needed for this version.',
+    ],
+  },
+  {
+    version: 'v15.75',
+    date: '27 Jul 2026',
+    highlights: [
+      'The Due Diligence Vault now covers far more record types — fire NOC, airport-height and environment clearances, water and electricity approvals, and the Tamil-Nadu land set (patta, chitta, adangal, FMB, survey sketch, NA order) alongside the existing RERA, EC and land-title records.',
+      'A new reusable uploader powers the vault: drag-and-drop on desktop, native camera/photo-library on mobile, strict PDF/JPEG/PNG validation, duplicate detection and clean toasts — no layout shift. The Command Palette and alert tiles can now deep-link straight into it (e.g. open a specific authority with the upload box already active) via URL parameters.',
+      'This version needs a small database change — run MIGRATION_v15.75_all.sql in Neon before deploying (adds the new record-type values).',
+    ],
+  },
+  {
+    version: 'v15.74',
+    date: '27 Jul 2026',
+    highlights: [
+      'Ameya OS Launchpad, phase 2. The Command Center now opens on an app grid — the Core 8: Finance & Tax, Site Ops & 4D BIM, Legal & Due Diligence, Vendor & Labour, Sales & CRM, Procurement & Inventory, Corporate Approvals and System Settings — each a big touch target with a live red badge counting what needs attention in that domain.',
+      'Type to filter apps instantly (press “/” to focus), and the Bento alert board sits right below. Badges roll up the real signals — GST/MSME issues, pending sign-offs, labour gaps, buyer demands, material gates, corporate approvals — so the number on a card is the number of things waiting for you.',
+      'No database change needed for this version.',
+    ],
+  },
   {
     version: 'v15.73',
     date: '27 Jul 2026',

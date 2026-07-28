@@ -2,9 +2,10 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
-import { Loader2, CornerDownLeft } from 'lucide-react';
+import { Loader2, CornerDownLeft, ExternalLink, UploadCloud } from 'lucide-react';
 import { NAVIGATION } from '@/config/navigation';
 import { SEARCH_ALIASES } from '@/config/search-aliases';
+import { DD_AUTHORITIES_FLAT, authorityMatches } from '@/config/dd-authorities';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { searchRecords, type CommandHit } from '@/server/actions/search';
 
@@ -68,6 +69,7 @@ export function CommandPalette({
   }, [q]);
 
   const go = (href: string) => { onOpenChange(false); router.push(href); };
+  const openPortal = (url: string) => { onOpenChange(false); if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener,noreferrer'); };
   const canSee = (perm?: string) => !perm || isSuperAdmin || allowed.has(perm);
 
   const term = q.trim().toLowerCase();
@@ -87,6 +89,14 @@ export function CommandPalette({
     .filter((i): i is NonNullable<typeof i> => Boolean(i) && canSee(i?.permission))
     .slice(0, 5);
 
+  // Government-authority actions: "Open CMDA", "Upload RERA Certificate to …".
+  // Only when the user has land access and has typed something meaningful.
+  const authorityHits = React.useMemo(() => {
+    if (term.length < 2 || !canSee('land.view')) return [];
+    return DD_AUTHORITIES_FLAT.filter((a) => authorityMatches(a, term)).slice(0, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [term, isSuperAdmin]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0">
@@ -104,7 +114,7 @@ export function CommandPalette({
             {loading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
           </div>
           <Command.List className="max-h-96 overflow-y-auto p-2">
-            {navGroups.length === 0 && hits.length === 0 && !loading && (
+            {navGroups.length === 0 && hits.length === 0 && authorityHits.length === 0 && !loading && (
               <Command.Empty className="p-4 text-sm text-muted-foreground">No results.</Command.Empty>
             )}
 
@@ -155,6 +165,34 @@ export function CommandPalette({
                 })}
               </Command.Group>
             ))}
+
+            {authorityHits.length > 0 && (
+              <Command.Group
+                heading="Authorities & portals"
+                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+              >
+                {authorityHits.map((a) => (
+                  <React.Fragment key={`auth-${a.state}-${a.name}`}>
+                    <Command.Item
+                      value={`auth-open:${a.name}`}
+                      onSelect={() => openPortal(a.url)}
+                      className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-foreground aria-selected:bg-secondary"
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1"><span className="block truncate">Open {a.name}</span><span className="block truncate text-[11px] text-muted-foreground">{a.state}{a.region ? ` · ${a.region}` : ''} — official portal</span></span>
+                    </Command.Item>
+                    <Command.Item
+                      value={`auth-upload:${a.name}`}
+                      onSelect={() => go(`/due-diligence?authority=${encodeURIComponent(a.name)}&action=upload`)}
+                      className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-foreground aria-selected:bg-secondary"
+                    >
+                      <UploadCloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1"><span className="block truncate">File a record from {a.name}</span><span className="block truncate text-[11px] text-muted-foreground">Opens the vault with the upload box ready</span></span>
+                    </Command.Item>
+                  </React.Fragment>
+                ))}
+              </Command.Group>
+            )}
 
             {hits.length > 0 && (
               <Command.Group

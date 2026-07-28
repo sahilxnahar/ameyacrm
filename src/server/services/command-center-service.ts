@@ -57,7 +57,8 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     return rows.filter((r) => ocRisk(Number(r.sanctionedFar), Number(r.builtFar)) === 'AT_RISK').length;
   });
   const welfareGaps = await safe(async () => (await getWelfareCompliance()).gapCount);
-  const ddExpiring = await safe(async () => (await getDueDiligenceExpiry()).expiringSoon);
+  const dd = await getDueDiligenceExpiry().catch(() => ({ expiringSoon: 0, deepLink: null as string | null }));
+  const ddExpiring = dd.expiringSoon;
 
   const tiles: AlertTile[] = [
     { key: 'msme', label: 'MSME overdue', value: msmeOverdue, href: '/msme-tracker', tone: msmeOverdue ? 'destructive' : 'success', hint: 'S.43B(h) tax-disallowance risk' },
@@ -66,7 +67,7 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
     { key: 'insolvency', label: 'Vendors frozen', value: insolvencyFrozen, href: '/vendor-insolvency', tone: insolvencyFrozen ? 'destructive' : 'success', hint: 'IBC moratorium — advances blocked' },
     { key: 'far', label: 'OC at risk', value: ocAtRisk, href: '/plan-sanction', tone: ocAtRisk ? 'destructive' : 'success', hint: 'FAR deviation over tolerance' },
     { key: 'welfare', label: 'BOCW gaps', value: welfareGaps, href: '/welfare-log', tone: welfareGaps ? 'destructive' : 'success', hint: 'Welfare facilities unlogged this month' },
-    { key: 'duediligence', label: 'DD expiring', value: ddExpiring, href: '/due-diligence', tone: ddExpiring ? 'warning' : 'success', hint: 'NOC / EC nearing expiry' },
+    { key: 'duediligence', label: 'DD expiring', value: ddExpiring, href: dd.deepLink ?? '/due-diligence', tone: ddExpiring ? 'warning' : 'success', hint: 'NOC / EC nearing expiry' },
     { key: 'tm', label: 'Trademark renewals', value: tmRenewal, href: '/ip-registry', tone: tmRenewal ? 'warning' : 'success', hint: '10-year TM renewal approaching' },
     { key: 'fema', label: 'FEMA reports due', value: femaDue, href: '/nri-gateway', tone: femaDue ? 'warning' : 'success', hint: '90-day inward-remittance reporting' },
     { key: 'hearings', label: 'Hearings ≤7d', value: hearings, href: '/appellate-litigation', tone: hearings ? 'warning' : 'success', hint: 'Arbitration + court listings' },
@@ -80,4 +81,55 @@ export async function getCommandCenter(): Promise<{ tiles: AlertTile[]; urgent: 
 
   const urgent = tiles.filter((t) => t.tone === 'destructive').reduce((n, t) => n + t.value, 0);
   return { tiles, urgent };
+}
+
+/**
+ * Per-app badge rollups for the Ameya OS Launchpad's Core 8 cards. One parallel
+ * sweep; every count is independently caught, so a not-yet-migrated feature reads
+ * as 0 rather than throwing. Keyed by the Launchpad app id.
+ */
+export type LaunchpadBadges = Record<
+  'finance' | 'siteops' | 'legal' | 'vendor' | 'sales' | 'procurement' | 'approvals' | 'settings',
+  number
+>;
+
+export async function getLaunchpadBadges(): Promise<LaunchpadBadges> {
+  const now = Date.now();
+  const [
+    msmeOverdue, gstrIssues, certPending, welfareGaps, uanInvalid, blacklisted,
+    demandsPending, materialPending, approvalsPending, webhookFailed,
+    tmRenewal, hearings,
+  ] = await Promise.all([
+    safe(() => prisma.msmePaymentClock.count({ where: { status: { in: ['OVERDUE', 'DISALLOWED'] } } })),
+    safe(() => prisma.gstr2bLine.count({ where: { status: { in: ['MISMATCH_AMOUNT', 'MISSING_IN_2B'] } } })),
+    safe(() => prisma.engineerCertification.count({ where: { isCleared: false } })),
+    safe(async () => (await getWelfareCompliance()).gapCount),
+    safe(() => prisma.labourUan.count({ where: { status: 'INVALID' } })),
+    safe(() => prisma.vendorDefault.count({ where: { severity: 'BLACKLIST' } })),
+    safe(() => prisma.demandNotice.count({ where: { status: 'PENDING' } })),
+    safe(() => prisma.materialRequest.count({ where: { status: 'SUBMITTED' } })),
+    safe(() => prisma.approvalRequest.count({ where: { status: 'PENDING' } })),
+    safe(() => prisma.webhookEvent.count({ where: { status: 'FAILED' } })),
+    safe(() => prisma.trademark.count({ where: { status: 'RENEWAL_DUE' } })),
+    safe(async () => {
+      const soon = new Date(now + 7 * 864e5);
+      const [a, l] = await Promise.all([
+        prisma.adrCase.count({ where: { nextHearingOn: { not: null, lte: soon }, stage: { notIn: ['SETTLED', 'CLOSED'] } } }),
+        prisma.litigationEscalation.count({ where: { nextHearingOn: { not: null, lte: soon }, status: { not: 'DISPOSED' } } }),
+      ]);
+      return a + l;
+    }),
+  ]);
+  const ddExpiring = await safe(async () => (await getDueDiligenceExpiry()).expiringSoon);
+
+  return {
+    finance: msmeOverdue + gstrIssues,
+    siteops: certPending,
+    legal: ddExpiring + tmRenewal + hearings,
+    vendor: welfareGaps + uanInvalid + blacklisted,
+    sales: demandsPending,
+    procurement: materialPending,
+    approvals: approvalsPending,
+    settings: webhookFailed,
+  };
 }
