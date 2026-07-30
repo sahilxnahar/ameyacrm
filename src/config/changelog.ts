@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.87';
+export const APP_VERSION = 'v15.91';
 
 export interface Release {
   version: string;

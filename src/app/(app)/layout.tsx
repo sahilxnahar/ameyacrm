@@ -43,14 +43,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Enrolled users compute `false` and never see the reminder.
   const needsTwoFactor = mustEnroll2FA(user, await getSecurityPolicy());
 
-  // F-21 / F-10: loop-safe enforcement. The security page is exempt so users can
-  // actually fix these there without redirecting onto itself.
+  // F-21 / F-10: loop-SAFE enforcement.
+  // Only redirect when we can positively confirm the current path AND that it is
+  // not already the security page. If the x-pathname header is absent for any
+  // reason (proxy/edge quirk), we DO NOT redirect — availability wins over
+  // enforcement, and a missing header must never cause a redirect loop. Users are
+  // still nudged by the on-screen reminder below. Turn on hard 2FA via ENFORCE_2FA.
   const pathname = (await headers()).get('x-pathname') ?? '';
+  const knownPath = pathname.startsWith('/');
   const onSecurity = pathname.startsWith('/settings/security');
-  if (!onSecurity) {
-    // Forced password change is enforced unconditionally (only set intentionally).
+  if (knownPath && !onSecurity) {
     if (user.mustChangePassword) redirect('/settings/security?force=1');
-    // Mandatory 2FA is enforced only when the org has switched it on (ENFORCE_2FA).
     if (needsTwoFactor && env.ENFORCE_2FA) redirect('/settings/security?enroll=1');
   }
 
