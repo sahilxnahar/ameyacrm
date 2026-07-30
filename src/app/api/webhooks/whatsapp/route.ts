@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { env } from '@/config/env';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { handleIncoming, type Incoming } from '@/server/services/whatsapp-inbox-service';
 import { logError } from '@/lib/monitoring/log-error';
@@ -27,10 +28,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: 'verification failed' }, { status: 403 });
 }
 
-/** Is this really from Meta? Signed with the app secret. */
+/** Is this really from Meta? Signed with the app secret. Fail CLOSED (F-07): an
+ *  unset secret means we cannot verify, so we reject rather than trust. */
 function signatureValid(raw: string, header: string | null): boolean {
   const secret = process.env.META_APP_SECRET;
-  if (!secret) return true;          // nothing to check against yet
+  if (!secret) return false;         // cannot verify -> do not trust
   if (!header?.startsWith('sha256=')) return false;
   const mine = createHmac('sha256', secret).update(raw).digest('hex');
   const theirs = header.slice(7);
@@ -39,6 +41,12 @@ function signatureValid(raw: string, header: string | null): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // Kill-switch: the inbound webhook stays disabled until an operator turns it on
+  // AND a signing secret is configured. Keeps WhatsApp safely off for now.
+  if (!env.WHATSAPP_ENABLED || !env.META_APP_SECRET) {
+    return NextResponse.json({ error: 'whatsapp webhook disabled' }, { status: 503 });
+  }
+
   const raw = await req.text();
 
   if (!signatureValid(raw, req.headers.get('x-hub-signature-256'))) {

@@ -9,7 +9,7 @@ import bcrypt from 'bcryptjs';
 const COST = 12;
 
 export const passwordPolicy = {
-  minLength: 8,
+  minLength: 12,
   requireUpper: false,
   requireLower: false,
   requireNumber: false,

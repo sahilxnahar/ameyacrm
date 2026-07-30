@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { authenticateApiToken } from '@/lib/api/token-auth';
+import { authenticateApiToken, hasScope } from '@/lib/api/token-auth';
 
 export const dynamic = 'force-dynamic';
 

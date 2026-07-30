@@ -93,6 +93,13 @@ export async function erasePersonalData(email: string, reason: string): Promise<
 
     await prisma.paymentRequest.updateMany({ where: { payeeEmail: e }, data: { payeeEmail: null, payeePhone: null } });
 
+    // F-27: the discovery step (gatherPersonalData) also finds the subject in
+    // social-activity messages, which the erase step previously left untouched —
+    // leaving the person re-identifiable after a "right to be forgotten" request.
+    // (Bookings carry no PII of their own; they resolve through the lead, which is
+    // erased above.)
+    await prisma.socialActivity.updateMany({ where: { message: { contains: e, mode: 'insensitive' } }, data: { message: '[erased at request]' } }).catch(() => undefined);
+
     await writeAudit({
       actorId: ctx.user.id, action: 'DELETE', entityType: 'Setting',
       summary: `DPDP erasure for ${e}: ${leads.length} leads, ${customers.length} buyers. Reason: ${reason.slice(0, 200)}`,

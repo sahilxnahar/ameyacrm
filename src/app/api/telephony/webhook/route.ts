@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireHeaderSecret } from '@/lib/security/require-secret';
 import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -11,9 +12,8 @@ export const maxDuration = 30;
  *  lead and logs a CALL activity with the recording URL. Auth: `x-telephony-key` header or `?key=`.
  *  Accepts JSON or form-encoded bodies (providers vary). */
 export async function POST(req: NextRequest) {
-  const secret = env.TELEPHONY_SECRET;
-  const key = req.headers.get('x-telephony-key') || req.nextUrl.searchParams.get('key');
-  if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const denied = requireHeaderSecret(req, 'x-telephony-key', env.TELEPHONY_SECRET);
+  if (denied) return denied;
 
   let b: Record<string, unknown> = {};
   try {

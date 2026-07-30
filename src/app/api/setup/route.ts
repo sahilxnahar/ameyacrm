@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { safeEqual } from '@/lib/utils/crypto';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { bootstrap } from '@/server/services/bootstrap';
@@ -18,7 +19,8 @@ export async function GET() {
  * Visit this once after deploying — no terminal required.
  */
 export async function POST(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret') ?? req.headers.get('x-setup-secret');
+  // Header-only secret (F-33: never accept it via query string where it leaks to logs).
+  const secret = req.headers.get('x-setup-secret') ?? '';
   // The tables may not exist yet on a brand-new database — treat that as "not initialized".
   let userCount = 0;
   try {
@@ -26,8 +28,8 @@ export async function POST(req: NextRequest) {
   } catch {
     userCount = 0;
   }
-  if (userCount > 0 && (!env.SETUP_SECRET || secret !== env.SETUP_SECRET)) {
-    return NextResponse.json({ error: 'Already initialized. Provide ?secret=SETUP_SECRET to re-run.' }, { status: 403 });
+  if (userCount > 0 && (!env.SETUP_SECRET || !safeEqual(secret, env.SETUP_SECRET))) {
+    return NextResponse.json({ error: 'Already initialized. Send the x-setup-secret header to re-run.' }, { status: 403 });
   }
   const result = await bootstrap();
   return NextResponse.json({

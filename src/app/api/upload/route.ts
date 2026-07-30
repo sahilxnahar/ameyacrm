@@ -27,6 +27,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         const ctx = await getCurrentUser();
         if (!ctx) throw new Error('You must be signed in to upload.');
+        // F-25: the sealed preview / read-only roles must never be able to mint an
+        // upload token via the relaxed avatar/chat paths (which skip document rights).
+        if (ctx.user.role === 'GUEST' || ctx.user.role === 'READ_ONLY') {
+          throw new Error('Your account cannot upload files.');
+        }
 
         // A profile photo is not a "document" — every signed-in person may set
         // their own avatar, even without document/marketing rights. The client
@@ -50,7 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (purpose === 'chat') {
           return {
             addRandomSuffix: true,
-            maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — room for a short video
+            maximumSizeInBytes: 64 * 1024 * 1024, // 64 MB — room for a short clip, bounded against abuse
             tokenPayload: JSON.stringify({ userId: ctx.user.id, purpose: 'chat' }),
           };
         }

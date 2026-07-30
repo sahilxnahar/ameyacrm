@@ -25,3 +25,15 @@ export async function leadScope(ctx: AuthContext): Promise<Record<string, unknow
   const ids = await teamUserIds(ctx.user.id);
   return ids.length > 1 ? { ownerId: { in: ids } } : { ownerId: ctx.user.id };
 }
+
+/**
+ * Object-level authorization for a single lead (F-12). Confirms the lead exists
+ * AND is within the caller's hierarchy scope before any mutation. Throws so the
+ * action's try/catch returns a clean "not permitted" rather than silently
+ * mutating another team's record by id.
+ */
+export async function assertLeadInScope(ctx: AuthContext, leadId: string): Promise<void> {
+  const scope = await leadScope(ctx);
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, ...scope }, select: { id: true } });
+  if (!lead) throw new Error('You do not have access to that lead.');
+}

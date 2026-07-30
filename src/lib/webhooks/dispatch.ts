@@ -1,4 +1,5 @@
 import 'server-only';
+import { assertPublicUrl } from '@/lib/security/ssrf';
 import { createHmac } from 'node:crypto';
 import { prisma } from '@/lib/db/prisma';
 import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
@@ -30,6 +31,8 @@ export async function dispatchWebhookEvent(event: WebhookEventKey, data: Record<
   await Promise.all(hooks.map(async (h) => {
     const signature = createHmac('sha256', h.secret).update(body).digest('hex');
     try {
+      // F-28: never let an admin-stored webhook URL point at an internal address.
+      await assertPublicUrl(h.url);
       const res = await fetchWithTimeout(h.url, {
         method: 'POST',
         headers: {

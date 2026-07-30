@@ -18,7 +18,7 @@ export async function callerIp(): Promise<string> {
  * allowed — a database hiccup should not take sign-in down. Rate limiting is
  * there to blunt abuse, not to be a second point of failure.
  */
-export async function checkRate(bucket: string, limit: number, windowSec: number): Promise<RateResult> {
+export async function checkRate(bucket: string, limit: number, windowSec: number, failClosed = false): Promise<RateResult> {
   try {
     const now = Date.now();
     const windowStart = new Date(Math.floor(now / (windowSec * 1000)) * windowSec * 1000);
@@ -34,6 +34,10 @@ export async function checkRate(bucket: string, limit: number, windowSec: number
     const retryAfterSec = Math.max(1, Math.ceil((windowStart.getTime() + windowSec * 1000 - now) / 1000));
     return { allowed: row.count <= limit, remaining, retryAfterSec };
   } catch {
+    // F-08: auth-critical buckets fail CLOSED — a database blip must not silently
+    // disable brute-force protection. (If the DB is down the app is unusable
+    // anyway, so denying the throttled action costs no real availability.)
+    if (failClosed) return { allowed: false, remaining: 0, retryAfterSec: windowSec };
     return { allowed: true, remaining: limit, retryAfterSec: 0 };
   }
 }

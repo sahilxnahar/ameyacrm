@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireBearerSecret } from '@/lib/security/require-secret';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { putObject } from '@/lib/storage/storage';
@@ -9,10 +10,8 @@ export const maxDuration = 60;
 
 /** Nightly automated backup — writes a JSON snapshot to object storage. */
 export async function GET(req: NextRequest) {
-  const secret = env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
-  const key = req.nextUrl.searchParams.get('key');
-  if (secret && auth !== `Bearer ${secret}` && key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const denied = requireBearerSecret(req, env.CRON_SECRET);
+  if (denied) return denied;
 
   const [users, projects, units, leads, bookings, payments, customers, partners, invoices] = await Promise.all([
     prisma.user.findMany({ select: { id: true, name: true, username: true, email: true, role: true, status: true, createdAt: true } }),

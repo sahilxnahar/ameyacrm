@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireHeaderSecret } from '@/lib/security/require-secret';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -32,9 +33,8 @@ const schema = z.object({
  * ever considered, so this grants nobody anything they did not already have.
  */
 export async function POST(req: NextRequest) {
-  const secret = env.INGEST_SECRET;
-  const key = req.nextUrl.searchParams.get('key') ?? req.headers.get('x-ingest-key');
-  if (secret && key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const denied = requireHeaderSecret(req, 'x-ingest-key', env.INGEST_SECRET);
+  if (denied) return denied;
 
   try {
     const d = schema.parse(await req.json());
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, stored, failed, folder: folder?.name ?? null, by: user.name });
   } catch (e) {
     await logError(e, { path: '/api/ingest/email-attachment' });
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'failed' }, { status: 400 });
+    return NextResponse.json({ error: 'Could not process the attachment.' }, { status: 400 }); // F-26: no raw error to client
   }
 }
 

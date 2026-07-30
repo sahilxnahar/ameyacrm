@@ -10,7 +10,7 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
@@ -41,7 +41,18 @@ const nextConfig = {
     // imports at build time.
     optimizePackageImports: ['lucide-react'],
   },
-  images: { remotePatterns: [{ protocol: 'https', hostname: '**' }] },
+  // F-11: the image optimizer is no longer an open proxy for any HTTPS host.
+  // Restrict to the object store (uploads) and identity-avatar providers actually
+  // embedded by the app. Add hostnames here if a new legitimate source appears.
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
+      { protocol: 'https', hostname: '*.gravatar.com' },
+      { protocol: 'https', hostname: 'crm.ameyaheights.com' },
+    ],
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

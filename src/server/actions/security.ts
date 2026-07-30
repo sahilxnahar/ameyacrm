@@ -89,6 +89,9 @@ export async function changePassword(input: unknown): Promise<SecurityResult> {
     await prisma.$transaction([
       prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash, passwordChangedAt: new Date(), mustChangePassword: false } }),
       prisma.passwordHistory.create({ data: { userId: user.id, passwordHash: user.passwordHash } }),
+      // F-30: changing the password evicts every OTHER active session, so a
+      // suspected-compromise password change actually logs the attacker out.
+      prisma.session.updateMany({ where: { userId: user.id, revokedAt: null, id: { not: ctx.sessionId } }, data: { revokedAt: new Date() } }),
     ]);
     await writeAudit({ actorId: user.id, action: 'PASSWORD_CHANGE', entityType: 'User', entityId: user.id, summary: 'User changed password' });
     revalidatePath('/settings/security');

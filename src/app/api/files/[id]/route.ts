@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { getObjectStream, signedDownloadUrl } from '@/lib/storage/storage';
 import { writeAudit } from '@/lib/audit/log';
-import { lockedFolderIds } from '@/server/services/folder-access-service';
+import { lockedFolderIds, canOpenFolder } from '@/server/services/folder-access-service';
 
 /** Secure, audited file access for ANY type. ?download=1 forces a download; default previews inline. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +27,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (inLocked) {
       await writeAudit({ actorId: ctx.user.id, action: 'VIEW', entityType: 'FileObject', entityId: file.id, summary: `Blocked — ${file.originalName} is in a restricted folder` });
       return NextResponse.json({ error: 'This document is in a restricted folder.' }, { status: 403 });
+    }
+  }
+
+  // F-14: positive object-level authorization. If the file is filed under one or
+  // more documents, the caller must actually be able to open one of those folders
+  // (or own/have uploaded the file) — not merely hold the global download
+  // permission. Orphan files (avatars, chat, ad-hoc uploads with no document) keep
+  // the prior behaviour so those flows do not break.
+  const links = await prisma.documentVersion.findMany({
+    where: { fileId: file.id },
+    select: { document: { select: { folderId: true, ownerId: true } } },
+  });
+  if (links.length) {
+    const ownsFile = file.uploadedById === ctx.user.id;
+    const ownsDoc = links.some((l) => l.document?.ownerId === ctx.user.id);
+    let canOpen = ownsFile || ownsDoc;
+    if (!canOpen) {
+      for (const l of links) {
+        if (await canOpenFolder(ctx, l.document?.folderId ?? null)) { canOpen = true; break; }
+      }
+    }
+    if (!canOpen) {
+      await writeAudit({ actorId: ctx.user.id, action: 'VIEW', entityType: 'FileObject', entityId: file.id, summary: `Blocked — ${file.originalName} is outside the caller's accessible folders` });
+      return NextResponse.json({ error: 'You do not have access to this file.' }, { status: 403 });
     }
   }
 

@@ -13,7 +13,7 @@ import { isKnownDevice, beginDeviceApproval, alertNewSignIn } from '@/lib/auth/d
 import { getClientInfo } from '@/lib/auth/session';
 import { writeAudit } from '@/lib/audit/log';
 import { checkRate, callerIp } from '@/lib/security/rate-limit';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { sendEmail } from '@/lib/email/email';
 
 const loginSchema = z.object({
@@ -31,8 +31,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   // from a single machine; the second stops one password being tried against
   // many accounts from many machines.
   const ip = await callerIp();
-  const byIp = await checkRate(`login:ip:${ip}`, 20, 300);
-  const byUser = await checkRate(`login:user:${parsed.data.identifier.toLowerCase()}`, 10, 300);
+  const byIp = await checkRate(`login:ip:${ip}`, 20, 300, true);
+  const byUser = await checkRate(`login:user:${parsed.data.identifier.toLowerCase()}`, 10, 300, true);
   if (!byIp.allowed || !byUser.allowed) {
     await writeAudit({ action: 'LOGIN_FAILED', summary: `Rate limited from ${ip}` }).catch(() => undefined);
     return { error: 'Too many attempts. Please wait a few minutes and try again.' };
@@ -48,7 +48,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     case 'pending':
       return { error: 'This account is not active yet. Confirm your email, then wait for an administrator to approve access if you are outside the company domain.' };
     case 'locked':
-      return { error: `Account locked. Try again after ${result.retryAt.toLocaleTimeString()}.` };
+      return { error: 'Too many failed attempts for this account. Please try again later.' }; // F-22: do not leak the exact unlock time
     case 'needs_2fa':
       await issueMfaTicket(result.user.id);
       redirect('/two-factor');
@@ -104,6 +104,15 @@ const twoFactorSchema = z.object({
 export async function verifyTwoFactorAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const userId = await readMfaTicket();
   if (!userId) return { error: 'Your verification session expired. Please sign in again.' };
+
+  // F-06: throttle the second factor. Without this a stolen password + reusable
+  // MFA ticket allows unlimited code guessing (TOTP window, emailed code, backup).
+  const ip = await callerIp();
+  const gate2fa = await checkRate(`2fa:verify:${userId}`, 6, 300, true);
+  const gate2faIp = await checkRate(`2fa:verify:ip:${ip}`, 30, 300, true);
+  if (!gate2fa.allowed || !gate2faIp.allowed) {
+    return { error: 'Too many verification attempts. Please sign in again.' };
+  }
 
   const parsed = twoFactorSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'Enter the 6-digit code from your authenticator app.' };
@@ -175,13 +184,13 @@ export async function sendEmailSignInCodeAction(): Promise<ActionState> {
   const userId = await readMfaTicket();
   if (!userId) return { error: 'Your verification session expired. Please sign in again.' };
 
-  const gate = await checkRate(`mfa:email:${userId}`, 5, 900);
+  const gate = await checkRate(`mfa:email:${userId}`, 5, 900, true);
   if (!gate.allowed) return { error: 'Too many codes requested. Please wait fifteen minutes.' };
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
   if (!user) return { error: 'Please sign in again.' };
 
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(randomInt(100000, 1000000)); // F-06: CSPRNG, not Math.random
   await prisma.deviceApproval.create({
     data: {
       userId: user.id,

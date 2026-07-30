@@ -103,6 +103,10 @@ const schema = z.object({
   // to match what you type into Meta's webhook screen.
   WHATSAPP_VERIFY_TOKEN: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
+  // Master kill-switch for the inbound WhatsApp webhook. Off by default so the
+  // endpoint stays disabled (503) until an operator has WhatsApp/Meta access and
+  // a verified signing secret. Set WHATSAPP_ENABLED=true to turn it on.
+  WHATSAPP_ENABLED: z.string().default('false').transform((v) => v === 'true' || v === '1'),
 
   // The simple way in. A System User token from Meta never expires and skips
   // the whole OAuth dance, which needs App Review for some permissions.

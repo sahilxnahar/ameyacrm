@@ -101,6 +101,13 @@ export async function getReportData() {
 export function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return '';
   const headers = Object.keys(rows[0]!);
-  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // F-18: neutralise spreadsheet formula injection — a cell that begins with
+  // = + - @ (or tab/CR) is prefixed with an apostrophe so Excel/Sheets treat it
+  // as text, not a formula, when a staff member opens the export.
+  const esc = (v: unknown) => {
+    let s = String(v ?? '');
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   return [headers.join(','), ...rows.map((r) => headers.map((h) => esc(r[h])).join(','))].join('\n');
 }

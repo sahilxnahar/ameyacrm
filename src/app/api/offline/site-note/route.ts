@@ -51,6 +51,6 @@ export async function POST(req: NextRequest) {
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Task', entityId: task.id, summary: `Site note ${task.reference} (written offline)` });
     return NextResponse.json({ ok: true, id: task.id, reference: task.reference });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Could not save the note.' }, { status: 400 });
+    return NextResponse.json({ error: 'Could not save the note.' }, { status: 400 }); // F-26: no raw error to client
   }
 }

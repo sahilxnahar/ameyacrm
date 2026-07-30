@@ -29,6 +29,11 @@ export async function createUser(input: unknown): Promise<AdminResult> {
   try {
     const ctx = await ensure('admin.user.manage');
     const d = userSchema.parse(input);
+    // F-05: creating a user must respect role hierarchy — an ADMIN cannot mint an
+    // ADMIN or SUPER_ADMIN through this path (only setUserRole was guarded before).
+    if (!canAssignRole(ctx.user.role, d.role)) {
+      return { error: 'You cannot create an account with a role at or above your own.' };
+    }
     const pwErrors = validatePasswordStrength(d.password);
     const policy = await getSecurityPolicy();
     if (policy.breachCheck) {
@@ -181,7 +186,7 @@ export async function setUserDepartment(userId: string, departmentId: string | n
 //  Changing somebody's role
 // ════════════════════════════════════════════════════════════════════════════
 
-import { checkRoleChange, type RoleValue } from '@/lib/auth/role-change';
+import { checkRoleChange, type RoleValue, canAssignRole } from '@/lib/auth/role-change';
 import { ASSIGNABLE_ROLES } from '@/config/roles';
 export type { RoleValue };
 

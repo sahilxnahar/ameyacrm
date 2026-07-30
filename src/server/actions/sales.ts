@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { assertLeadInScope } from '@/lib/rbac/scope';
 import { revalidatePath } from 'next/cache';
 import type { LeadStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
@@ -57,6 +58,7 @@ export async function createLead(input: unknown): Promise<SalesResult> {
 export async function moveLeadStage(leadId: string, status: LeadStatus): Promise<SalesResult> {
   try {
     const ctx = await ensure('lead.update');
+    await assertLeadInScope(ctx, leadId);
     const before = await prisma.lead.findUnique({ where: { id: leadId }, select: { status: true } });
     const lead = await prisma.lead.update({ where: { id: leadId }, data: { status } });
     await prisma.leadActivity.create({ data: { leadId, userId: ctx.user.id, type: 'NOTE', subject: `Stage → ${status}` } });
@@ -78,8 +80,9 @@ const activitySchema = z.object({
 
 export async function logLeadActivity(input: unknown): Promise<SalesResult> {
   try {
-    const ctx = await getActionContext();
+    const ctx = await ensure('lead.update');
     const d = activitySchema.parse(input);
+    await assertLeadInScope(ctx, d.leadId);
     await prisma.leadActivity.create({ data: { leadId: d.leadId, userId: ctx.user.id, type: d.type, subject: d.subject, notes: d.notes } });
     revalidatePath(`/sales/${d.leadId}`);
     return { ok: true, id: d.leadId };
@@ -146,6 +149,7 @@ export async function markMilestonePaid(milestoneId: string): Promise<SalesResul
 export async function scheduleFollowUp(leadId: string, at: string): Promise<SalesResult> {
   try {
     const ctx = await ensure('lead.update');
+    await assertLeadInScope(ctx, leadId);
     if (!at) return { error: 'Pick a date & time.' };
     await prisma.lead.update({ where: { id: leadId }, data: { nextFollowUp: new Date(at) } });
     await prisma.leadActivity.create({ data: { leadId, userId: ctx.user.id, type: 'MEETING', subject: 'Follow-up scheduled', scheduledAt: new Date(at) } });
@@ -180,6 +184,7 @@ export async function cancelBooking(input: unknown): Promise<SalesResult> {
 export async function scoreLead(leadId: string): Promise<SalesResult> {
   try {
     const ctx = await ensure('lead.update');
+    await assertLeadInScope(ctx, leadId);
     if (!isGeminiEnabled()) return { error: 'Gemini API key is not configured (set GEMINI_API_KEY).' };
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { project: { select: { name: true } }, activities: { orderBy: { occurredAt: 'desc' }, take: 8, select: { type: true, subject: true, notes: true } } } });
     if (!lead) return { error: 'Lead not found.' };
@@ -204,6 +209,7 @@ export async function scoreLead(leadId: string): Promise<SalesResult> {
 export async function setLeadTemperature(leadId: string, temperature: 'HOT' | 'WARM' | 'COLD'): Promise<SalesResult> {
   try {
     const ctx = await ensure('lead.update');
+    await assertLeadInScope(ctx, leadId);
     await prisma.lead.update({ where: { id: leadId }, data: { temperature } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Lead', entityId: leadId, summary: `Marked ${temperature.toLowerCase()}` });
     revalidatePath(`/sales/${leadId}`); revalidatePath('/sales');

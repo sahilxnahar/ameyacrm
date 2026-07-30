@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireBearerSecret } from '@/lib/security/require-secret';
 import { env } from '@/config/env';
 import { runOverdueEscalation } from '@/server/services/escalation-service';
 import { runOnboardingReminders } from '@/server/services/onboarding-service';
@@ -26,12 +27,8 @@ export const maxDuration = 60;
  * in the database, so nobody gets messaged twice.
  */
 export async function GET(req: NextRequest) {
-  const secret = env.CRON_SECRET;
-  const auth = req.headers.get('authorization');
-  const key = req.nextUrl.searchParams.get('key');
-  if (secret && auth !== `Bearer ${secret}` && key !== secret) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+    const denied = requireBearerSecret(req, env.CRON_SECRET);
+  if (denied) return denied;
 
   try {
     const result = await runOverdueEscalation();

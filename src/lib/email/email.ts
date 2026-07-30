@@ -28,7 +28,7 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
       const { config, source } = await resolveUserSmtp(opts.asUserId);
       if (config && source === 'user') {
         if (env.EMAIL_PROVIDER === 'console') {
-          console.info('📧 [email:console:as-user]', { ...payload, from: config.from });
+          console.info('📧 [email:console:as-user]', { to: payload.to, subject: payload.subject, from: config.from }); // F-38: never log the body/links/OTP
           return { ok: true };
         }
         const transport = nodemailer.createTransport({
@@ -43,7 +43,7 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
 
     switch (env.EMAIL_PROVIDER) {
       case 'console':
-        console.info('📧 [email:console]', { ...payload, from: env.EMAIL_FROM });
+        console.info('📧 [email:console]', { to: payload.to, subject: payload.subject, from: env.EMAIL_FROM }); // F-38: never log the body/links/OTP
         return { ok: true };
 
       case 'resend': {

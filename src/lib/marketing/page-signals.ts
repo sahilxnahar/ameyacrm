@@ -1,3 +1,4 @@
+import { assertPublicUrl } from '@/lib/security/ssrf';
 /**
  * Pull the marketing-relevant facts out of a web page.
  *
@@ -66,24 +67,25 @@ const allOf = (html: string, tag: string): string[] =>
 export async function readPage(rawUrl: string, timeoutMs = 15000): Promise<PageSignals | { error: string }> {
   let url: URL;
   try {
-    url = new URL(rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`);
+    // F-02: reject private/loopback/link-local targets (SSRF) before any fetch.
+    url = await assertPublicUrl(rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`);
   } catch {
-    return { error: `"${rawUrl}" is not a web address I can read.` };
+    return { error: `"${rawUrl}" is not a public web address I can read.` };
   }
-  if (!/^https?:$/.test(url.protocol)) return { error: 'Only http and https addresses can be checked.' };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: {
-        // Identify honestly; some sites block unknown agents outright.
-        'User-Agent': 'AmeyaHeightsCRM/1.0 (+https://crm.ameyaheights.com) marketing-audit',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    });
+    // redirect:'manual' — a public URL must not be allowed to 302 into an internal
+    // address. We follow at most a few hops, re-validating each Location.
+    let current = url;
+    let res = await fetch(current.toString(), { signal: controller.signal, redirect: 'manual', headers: { 'User-Agent': 'AmeyaHeightsCRM/1.0 (+https://crm.ameyaheights.com) marketing-audit', Accept: 'text/html,application/xhtml+xml' } });
+    for (let hop = 0; hop < 4 && res.status >= 300 && res.status < 400; hop++) {
+      const loc = res.headers.get('location');
+      if (!loc) break;
+      current = await assertPublicUrl(new URL(loc, current).toString());
+      res = await fetch(current.toString(), { signal: controller.signal, redirect: 'manual', headers: { 'User-Agent': 'AmeyaHeightsCRM/1.0 (+https://crm.ameyaheights.com) marketing-audit', Accept: 'text/html,application/xhtml+xml' } });
+    }
     const html = await res.text();
     if (!res.ok) return { error: `${url.hostname} replied ${res.status}. The page could not be read.` };
     if (!html || html.length < 200) return { error: `${url.hostname} returned almost nothing — it may need JavaScript to render.` };

@@ -43,7 +43,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
             </>
           ) : (
             <p className="break-words text-sm text-muted-foreground">
-              {raw ? raw.slice(0, 300) : 'Something went wrong loading this screen.'} Your other screens are unaffected.
+              {drift ? (raw.slice(0, 200)) : 'Something went wrong loading this screen.'} Your other screens are unaffected.
             </p>
           )}
           <div className="flex gap-2 pt-1">

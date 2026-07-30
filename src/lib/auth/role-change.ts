@@ -15,6 +15,20 @@ export interface RoleChangeRequest {
 }
 
 /**
+ * May `actorRole` create/assign an account with `newRole`? (F-05)
+ * A SUPER_ADMIN may assign any role; everyone else may only assign a role
+ * strictly below their own rank — so an ADMIN can never mint an ADMIN or
+ * SUPER_ADMIN via the create-user path that bypasses checkRoleChange.
+ */
+export function canAssignRole(actorRole: string, newRole: string): boolean {
+  if (!ROLE_ORDER.includes(newRole as RoleValue)) return false;
+  if (actorRole === 'SUPER_ADMIN') return true;
+  const ai = ROLE_ORDER.indexOf(actorRole as RoleValue);
+  const ni = ROLE_ORDER.indexOf(newRole as RoleValue);
+  return ai >= 0 && ni > ai; // strictly lower privilege than the actor
+}
+
+/**
  * May this role change go ahead?
  *
  * Kept separate from the database work so the rules can be tested directly.

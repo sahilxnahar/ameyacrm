@@ -55,7 +55,11 @@ export function toActionError(err: unknown): { error: string } {
           'The code has been deployed but the migration has not been run yet — open Neon and run the MIGRATION SQL for this version, then reload.',
       };
     }
-    return { error: m };
+    // F-26: do NOT return the raw exception message to the client — Prisma and
+    // runtime errors leak table/column names and internal detail. Log server-side,
+    // show a generic message. (The migration-drift case above stays friendly.)
+    console.error('[action:error]', m);
+    return { error: 'Something went wrong. Please try again.' };
   }
   return { error: 'Something went wrong. Please try again.' };
 }
