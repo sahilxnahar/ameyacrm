@@ -20,8 +20,8 @@ const schema = z.object({
 export async function cpRegisterLead(input: unknown): Promise<{ ok: true } | { error: string }> {
   try {
     const d = schema.parse(input);
-    const cp = await prisma.channelPartner.findUnique({ where: { portalToken: d.token }, select: { id: true, status: true, firmName: true } });
-    if (!cp || cp.status === 'SUSPENDED') return { error: 'This partner portal link is invalid or has been suspended.' };
+    const cp = await prisma.channelPartner.findUnique({ where: { portalToken: d.token }, select: { id: true, status: true, firmName: true, portalTokenExpiresAt: true } });
+    if (!cp || cp.status === 'SUSPENDED' || (cp.portalTokenExpiresAt && cp.portalTokenExpiresAt < new Date())) return { error: 'This partner portal link is invalid, expired or has been suspended.' };
 
     const email = d.email ? d.email.toLowerCase() : null;
     const existing = await prisma.lead.findFirst({

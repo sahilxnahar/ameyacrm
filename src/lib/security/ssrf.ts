@@ -23,7 +23,19 @@ function isPrivateIp(ip: string): boolean {
   const low = ip.toLowerCase();
   if (low === '::1' || low === '::') return true;
   if (low.startsWith('fe80') || low.startsWith('fc') || low.startsWith('fd')) return true; // link-local / ULA
-  if (low.startsWith('::ffff:')) return isPrivateIp(low.slice(7));                          // mapped v4
+  // IPv4-mapped IPv6 in ALL forms: dotted (::ffff:127.0.0.1) AND hex (::ffff:7f00:1).
+  const mapped = low.match(/^::ffff:(.+)$/);
+  if (mapped) {
+    const rest = mapped[1] ?? '';
+    if (rest.includes('.')) return isPrivateIp(rest);
+    const hx = rest.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hx) {
+      const a = parseInt(hx[1] ?? '0', 16), b = parseInt(hx[2] ?? '0', 16);
+      return isPrivateIp(`${a >> 8}.${a & 255}.${b >> 8}.${b & 255}`);
+    }
+    return true; // unrecognised mapped form → treat as unsafe
+  }
+  if (low.startsWith('64:ff9b:')) return true; // NAT64 (may embed a private v4)
   return false;
 }
 

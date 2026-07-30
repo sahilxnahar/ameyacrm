@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { authenticateApiToken } from '@/lib/api/token-auth';
+import { authenticateApiToken, hasScope } from '@/lib/api/token-auth';
 import { CONSENT_PURPOSE_KEYS } from '@/lib/privacy/consent';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const auth = await authenticateApiToken(req);
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!hasScope(auth, 'write')) return NextResponse.json({ error: 'this token is read-only (write scope required)' }, { status: 403 });
 
   let body: Record<string, unknown>;
   try { body = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }

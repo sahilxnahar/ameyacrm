@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import type { AuthContext } from '@/types/auth';
 import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
@@ -121,9 +122,22 @@ export async function removeFolderPermission(id: string): Promise<DocResult> {
   } catch (err) { return toActionError(err); }
 }
 
+/** Object-level guard (audit fix): the caller must be able to open the document's
+ *  current folder (and any target folder). Mirrors the moveDocuments deny-list. */
+async function assertDocAccess(ctx: AuthContext, documentId: string, targetFolderId?: string): Promise<boolean> {
+  const { lockedFolderIds } = await import('@/server/services/folder-access-service');
+  const locked = await lockedFolderIds(ctx);
+  if (!locked.length) return true;
+  const doc = await prisma.document.findUnique({ where: { id: documentId }, select: { folderId: true } });
+  if (doc?.folderId && locked.includes(doc.folderId)) return false;
+  if (targetFolderId && locked.includes(targetFolderId)) return false;
+  return true;
+}
+
 export async function updateDocumentExpiry(documentId: string, expiresAt: string | null): Promise<DocResult> {
   try {
     const ctx = await ensure('document.update');
+    if (!(await assertDocAccess(ctx, documentId))) return { error: 'You do not have access to this document.' };
     await prisma.document.update({ where: { id: documentId }, data: { expiresAt: expiresAt ? new Date(expiresAt) : null } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Document', entityId: documentId, summary: expiresAt ? `Expiry set ${expiresAt}` : 'Expiry cleared' });
     revalidatePath('/documents');
@@ -134,7 +148,8 @@ export async function updateDocumentExpiry(documentId: string, expiresAt: string
 /** Re-run (or run) the AI summary for a document on demand. */
 export async function summarizeDocument(documentId: string): Promise<DocResult> {
   try {
-    await ensure('document.update');
+    const ctx = await ensure('document.update');
+    if (!(await assertDocAccess(ctx, documentId))) return { error: 'You do not have access to this document.' };
     if (!isGeminiEnabled()) return { error: 'Gemini API key is not configured (set GEMINI_API_KEY).' };
     const doc = await prisma.document.findUnique({ where: { id: documentId }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { file: true } } } });
     const file = doc?.versions[0]?.file;
@@ -223,6 +238,7 @@ export async function registerUploadedDocument(input: unknown): Promise<DocResul
 export async function renameDocument(documentId: string, title: string): Promise<DocResult> {
   try {
     const ctx = await ensure('document.update');
+    if (!(await assertDocAccess(ctx, documentId))) return { error: 'You do not have access to this document.' };
     const clean = String(title || '').trim().slice(0, 200);
     if (clean.length < 1) return { error: 'Give the document a name.' };
     await prisma.document.update({ where: { id: documentId }, data: { title: clean } });
@@ -235,6 +251,7 @@ export async function renameDocument(documentId: string, title: string): Promise
 export async function moveDocument(documentId: string, folderId: string): Promise<DocResult> {
   try {
     const ctx = await ensure('document.update');
+    if (!(await assertDocAccess(ctx, documentId, folderId))) return { error: 'You cannot move this document to or from a restricted folder.' };
     const folder = await prisma.folder.findUnique({ where: { id: folderId }, select: { id: true, name: true } });
     if (!folder) return { error: 'Target folder not found.' };
     await prisma.document.update({ where: { id: documentId }, data: { folderId } });
@@ -248,6 +265,7 @@ export async function moveDocument(documentId: string, folderId: string): Promis
 export async function sendDocumentToDrive(documentId: string): Promise<DocResult> {
   try {
     const ctx = await ensure('document.update');
+    if (!(await assertDocAccess(ctx, documentId))) return { error: 'You do not have access to this document.' };
     if (!isDriveConfigured()) return { error: 'Google Drive is not connected. Add the service-account keys and GOOGLE_DRIVE_FOLDER_ID in Vercel.' };
     const doc = await prisma.document.findUnique({ where: { id: documentId }, include: { versions: { orderBy: { version: 'desc' }, take: 1, include: { file: true } } } });
     const file = doc?.versions[0]?.file;

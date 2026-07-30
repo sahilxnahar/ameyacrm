@@ -118,8 +118,9 @@ export async function confirmPayment(token: string, payerReference: string): Pro
   try {
     const ref = String(payerReference || '').trim().slice(0, 80);
     if (ref.length < 3) return { error: 'Enter the transaction / UTR reference.' };
-    const pr = await prisma.paymentRequest.findUnique({ where: { token }, select: { id: true, status: true, reference: true, requestedById: true, payeeName: true } });
+    const pr = await prisma.paymentRequest.findUnique({ where: { token }, select: { id: true, status: true, reference: true, requestedById: true, payeeName: true, tokenExpiresAt: true } });
     if (!pr) return { error: 'This payment link is not valid.' };
+    if (pr.tokenExpiresAt && pr.tokenExpiresAt < new Date()) return { error: 'This payment link has expired. Please ask for a fresh one.' };
     if (pr.status === 'CANCELLED') return { error: 'This request has been cancelled.' };
     await prisma.paymentRequest.update({ where: { id: pr.id }, data: { status: 'CONFIRMED', payerReference: ref } });
     if (pr.requestedById) {

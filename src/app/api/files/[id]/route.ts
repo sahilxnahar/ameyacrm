@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { getObjectStream, signedDownloadUrl } from '@/lib/storage/storage';
 import { writeAudit } from '@/lib/audit/log';
-import { lockedFolderIds, canOpenFolder } from '@/server/services/folder-access-service';
+import { lockedFolderIds, getFolderTree } from '@/server/services/folder-access-service';
 
 /** Secure, audited file access for ANY type. ?download=1 forces a download; default previews inline. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,9 +44,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const ownsDoc = links.some((l) => l.document?.ownerId === ctx.user.id);
     let canOpen = ownsFile || ownsDoc;
     if (!canOpen) {
-      for (const l of links) {
-        if (await canOpenFolder(ctx, l.document?.folderId ?? null)) { canOpen = true; break; }
-      }
+      const tree = await getFolderTree(ctx);
+      // Explicit allow-set: a document whose folder is restricted OR soft-deleted
+      // (and therefore absent from the tree) is NOT openable. Only a null-folder
+      // "loose" file keeps the permissive default.
+      const openable = new Set(tree.filter((f) => f.canOpen).map((f) => f.id));
+      canOpen = links.some((l) => {
+        const fid = l.document?.folderId ?? null;
+        return fid === null ? true : openable.has(fid);
+      });
     }
     if (!canOpen) {
       await writeAudit({ actorId: ctx.user.id, action: 'VIEW', entityType: 'FileObject', entityId: file.id, summary: `Blocked — ${file.originalName} is outside the caller's accessible folders` });

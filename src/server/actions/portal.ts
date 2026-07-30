@@ -17,8 +17,8 @@ const snagSchema = z.object({
 export async function submitSnag(input: unknown): Promise<{ ok: true } | { error: string }> {
   try {
     const d = snagSchema.parse(input);
-    const customer = await prisma.customer.findUnique({ where: { portalToken: d.token }, select: { id: true, isActive: true, name: true } });
-    if (!customer || !customer.isActive) return { error: 'This portal link is invalid or has been disabled.' };
+    const customer = await prisma.customer.findUnique({ where: { portalToken: d.token }, select: { id: true, isActive: true, name: true, portalTokenExpiresAt: true } });
+    if (!customer || !customer.isActive || (customer.portalTokenExpiresAt && customer.portalTokenExpiresAt < new Date())) return { error: 'This portal link is invalid, expired or has been disabled.' };
 
     // Classify → route to the right person (structural/services → certifying
     // engineer; finishing → site supervisor), and start the SLA clock.

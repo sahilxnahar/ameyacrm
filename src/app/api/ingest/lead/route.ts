@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireHeaderSecret } from '@/lib/security/require-secret';
 import type { LeadSource } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -22,9 +23,8 @@ export async function POST(req: NextRequest) {
   const over = await limitOr429(`ingest:lead:${await callerIp()}`, 120, 60);
   if (over) return over;
 
-  const secret = env.INGEST_SECRET;
-  const key = req.headers.get('x-ingest-key') || req.nextUrl.searchParams.get('key');
-  if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const denied = requireHeaderSecret(req, 'x-ingest-key', env.INGEST_SECRET);
+  if (denied) return denied;
 
   let body: Record<string, unknown>;
   try { body = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }

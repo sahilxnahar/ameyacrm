@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireHeaderSecret } from '@/lib/security/require-secret';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { limitOr429, callerIp } from '@/lib/security/rate-limit';
@@ -24,9 +25,8 @@ export async function POST(req: NextRequest) {
   const over = await limitOr429(`ingest:drive:${await callerIp()}`, 30, 60);
   if (over) return over;
 
-  const secret = env.INGEST_SECRET;
-  const key = req.headers.get('x-ingest-key') || req.nextUrl.searchParams.get('key');
-  if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const denied = requireHeaderSecret(req, 'x-ingest-key', env.INGEST_SECRET);
+  if (denied) return denied;
 
   let files: DriveFile[] = [];
   try {

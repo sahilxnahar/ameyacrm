@@ -35,6 +35,7 @@ export async function dispatchWebhookEvent(event: WebhookEventKey, data: Record<
       await assertPublicUrl(h.url);
       const res = await fetchWithTimeout(h.url, {
         method: 'POST',
+        redirect: 'manual', // F-28: never follow a redirect into an internal address
         headers: {
           'content-type': 'application/json',
           'x-ameya-event': event,

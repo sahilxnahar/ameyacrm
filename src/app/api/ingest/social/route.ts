@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { requireHeaderSecret } from '@/lib/security/require-secret';
 import type { SocialChannel, LeadSource } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -19,9 +20,8 @@ const CH: Record<string, SocialChannel> = {
 /** Universal social/marketing capture. New lead / inquiry / subscriber / comment / DM / follower from any
  *  platform (pushed via Zapier/Make/IFTTT free tiers or native webhooks). Auth: INGEST_SECRET. */
 export async function POST(req: NextRequest) {
-  const secret = env.INGEST_SECRET;
-  const key = req.headers.get('x-ingest-key') || req.nextUrl.searchParams.get('key');
-  if (!secret || key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const denied = requireHeaderSecret(req, 'x-ingest-key', env.INGEST_SECRET);
+  if (denied) return denied;
 
   let b: Record<string, unknown>;
   try { b = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }

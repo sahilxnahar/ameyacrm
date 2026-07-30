@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { canAssignRole } from '@/lib/auth/role-change';
 import { randomBytes } from 'node:crypto';
 import { addHours } from 'date-fns';
 import { revalidatePath } from 'next/cache';
@@ -161,6 +162,7 @@ export async function verifyEmailToken(token: string): Promise<{ outcome: Verify
 export async function approveAccessRequest(id: string, role: RoleName) {
   try {
     const ctx = await ensure('admin.user.manage');
+    if (!canAssignRole(ctx.user.role, role)) return { error: 'You cannot approve an account at or above your own role.' };
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return { error: 'Request not found.' };
     await prisma.user.update({ where: { id }, data: { status: 'ACTIVE', role, approvedAt: new Date(), approvedById: ctx.user.id } });
