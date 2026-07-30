@@ -46,7 +46,7 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
 
     const pr = await prisma.paymentRequest.create({
       data: {
-        reference, token, payeeName: d.payeeName, payeeEmail: splitEmails(d.payeeEmail).join(', ') || null, payeePhone: d.payeePhone || null,
+        reference, token, tokenExpiresAt: new Date(Date.now() + 90*864e5), payeeName: d.payeeName, payeeEmail: splitEmails(d.payeeEmail).join(', ') || null, payeePhone: d.payeePhone || null,
         amount: d.amount, description: d.description, dueDate: d.dueDate ? new Date(d.dueDate) : null,
         customerId: d.customerId || null, requestedById: ctx.user.id, requestedByName: ctx.user.name,
       },

@@ -86,7 +86,7 @@ export async function toggleShare(id: string, isPublic: boolean): Promise<PlanRe
     const plan = await prisma.floorPlan.findUnique({ where: { id }, select: { shareToken: true } });
     await prisma.floorPlan.update({
       where: { id },
-      data: { isPublic, shareToken: isPublic ? plan?.shareToken ?? randomBytes(16).toString('hex') : plan?.shareToken },
+      data: { isPublic, shareToken: isPublic ? plan?.shareToken ?? randomBytes(16).toString('hex') : plan?.shareToken, shareTokenExpiresAt: isPublic ? new Date(Date.now() + 180*864e5) : null },
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Project', entityId: id, summary: isPublic ? 'Shared a floor plan publicly' : 'Stopped sharing a floor plan' });
     revalidatePath('/floor-plans');

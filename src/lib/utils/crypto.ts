@@ -2,8 +2,23 @@ import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { env } from '@/config/env';
 
+// F-35: surface a weak ENCRYPTION_KEY once at startup. We deliberately do NOT
+// change the derivation here (that would make all existing ciphertext — 2FA
+// secrets, mailbox passwords — unreadable; rotating the key requires a dedicated
+// re-encryption migration). This is an early-warning only.
+let keyWarned = false;
+function assertKeyStrength(): void {
+  if (keyWarned) return;
+  keyWarned = true;
+  const k = env.ENCRYPTION_KEY ?? '';
+  if (k.length < 32 || /^(build-time-placeholder|please-change|changeme|secret)/i.test(k)) {
+    console.warn('[crypto] ENCRYPTION_KEY looks weak or placeholder — use a 32-byte random value in production.');
+  }
+}
+
 /** 32-byte key derived deterministically from ENCRYPTION_KEY. */
 function key(): Buffer {
+  assertKeyStrength();
   return createHash('sha256').update(env.ENCRYPTION_KEY).digest();
 }
 
@@ -45,7 +60,9 @@ export function looksEncrypted(value: string): boolean {
 export function decryptSafe(value: string | null | undefined): string {
   if (!value) return '';
   if (!looksEncrypted(value)) return value;
-  try { return decrypt(value); } catch { return value; }
+  // F-36: a value that LOOKS encrypted but fails to decrypt indicates tampering
+  // or a key mismatch — log it (observability) before the back-compat fallback.
+  try { return decrypt(value); } catch { console.warn('[crypto] decryptSafe: ciphertext failed to decrypt (tamper or key mismatch)'); return value; }
 }
 
 /** SHA-256 hex — used for opaque session/device tokens (not passwords). */

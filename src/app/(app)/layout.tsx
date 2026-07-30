@@ -10,6 +10,7 @@ import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';
+import { env } from '@/config/env';
 
 // Routes a GUEST / preview account may reach. Everything else redirects to the
 // sample-data showcase. Default-DENY: if a screen isn't on this list it is never
@@ -41,6 +42,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // here and a periodic email nudge (see the daily cron) does the enforcing.
   // Enrolled users compute `false` and never see the reminder.
   const needsTwoFactor = mustEnroll2FA(user, await getSecurityPolicy());
+
+  // F-21 / F-10: loop-safe enforcement. The security page is exempt so users can
+  // actually fix these there without redirecting onto itself.
+  const pathname = (await headers()).get('x-pathname') ?? '';
+  const onSecurity = pathname.startsWith('/settings/security');
+  if (!onSecurity) {
+    // Forced password change is enforced unconditionally (only set intentionally).
+    if (user.mustChangePassword) redirect('/settings/security?force=1');
+    // Mandatory 2FA is enforced only when the org has switched it on (ENFORCE_2FA).
+    if (needsTwoFactor && env.ENFORCE_2FA) redirect('/settings/security?enroll=1');
+  }
 
   return (
     <AppShell

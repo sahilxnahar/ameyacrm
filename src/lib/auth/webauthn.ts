@@ -16,6 +16,17 @@ const CHALLENGE_COOKIE = 'ah_wa_ch';
  * environment variable.
  */
 export async function relyingParty(): Promise<{ rpID: string; origin: string }> {
+  // F-37: pin the relying party to server configuration (APP_URL) rather than
+  // client-controlled Host / X-Forwarded-Host headers, so the anti-phishing
+  // binding cannot be influenced by a spoofed header. Fall back to the request
+  // host only for local development where APP_URL may be unset.
+  const appUrl = (env.APP_URL ?? '').trim();
+  if (appUrl && !/localhost|127\.0\.0\.1/.test(appUrl)) {
+    try {
+      const u = new URL(appUrl);
+      return { rpID: u.hostname, origin: `${u.protocol}//${u.host}` };
+    } catch { /* fall through to header-derived dev default */ }
+  }
   const h = await headers();
   const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000';
   const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');

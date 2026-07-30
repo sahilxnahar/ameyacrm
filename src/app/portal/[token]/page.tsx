@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: 'Your Home · Ameya Heights', robots:
 export default async function PortalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const customer = await prisma.customer.findUnique({ where: { portalToken: token } });
-  if (!customer || !customer.isActive) {
+  if (!customer || !customer.isActive || (customer.portalTokenExpiresAt && customer.portalTokenExpiresAt < new Date())) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
         <h1 className="font-display text-2xl font-semibold text-brass">Ameya Heights</h1>

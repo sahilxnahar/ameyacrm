@@ -27,6 +27,16 @@ export async function leadScope(ctx: AuthContext): Promise<Record<string, unknow
 }
 
 /**
+ * Booking visibility by hierarchy (F-13). Managers / admins (lead.assign) see all;
+ * everyone else is limited to bookings they or their reports own.
+ */
+export async function bookingScope(ctx: AuthContext): Promise<Record<string, unknown>> {
+  if (can(ctx.permissions, 'lead.assign')) return {};
+  const ids = await teamUserIds(ctx.user.id);
+  return ids.length > 1 ? { salesRepId: { in: ids } } : { salesRepId: ctx.user.id };
+}
+
+/**
  * Object-level authorization for a single lead (F-12). Confirms the lead exists
  * AND is within the caller's hierarchy scope before any mutation. Throws so the
  * action's try/catch returns a clean "not permitted" rather than silently

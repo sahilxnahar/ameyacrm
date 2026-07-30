@@ -42,11 +42,15 @@ export async function requestPasswordReset(identifier: string): Promise<ResetReq
     if (!user) return generic;
 
     const token = `pwr_${randomBytes(24).toString('hex')}`;
+    const tokenHash = createHash('sha256').update(token).digest('hex');
     await prisma.deviceApproval.create({
       data: {
         userId: user.id,
-        token,
-        codeHash: createHash('sha256').update(token).digest('hex'),
+        // F-29: never persist the raw token. The emailed link carries the raw
+        // token; the DB stores only its SHA-256 so a DB/backup/log leak cannot be
+        // replayed to seize the reset.
+        token: tokenHash,
+        codeHash: tokenHash,
         deviceHash: DEVICE_HASH,
         expiresAt: new Date(Date.now() + TTL_MIN * 60 * 1000),
       },
@@ -88,8 +92,10 @@ export async function completePasswordReset(token: string, password: string): Pr
   if (pwErrors.length) return { error: `Password needs: ${pwErrors.join(', ')}.` };
 
   try {
+    // F-29: look the token up by its hash, not the raw value.
+    const tHash = createHash('sha256').update(t).digest('hex');
     const row = await prisma.deviceApproval.findFirst({
-      where: { token: t, deviceHash: DEVICE_HASH, usedAt: null, expiresAt: { gt: new Date() } },
+      where: { codeHash: tHash, deviceHash: DEVICE_HASH, usedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     });
     if (!row) return { error: 'This reset link is invalid or has expired. Request a new one.' };

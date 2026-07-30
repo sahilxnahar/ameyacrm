@@ -3,6 +3,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Eye, LogOut, Loader2 } from 'lucide-react';
 import { logoutAction } from '@/server/actions/auth';
+import { clearSensitiveClientData } from '@/lib/offline/clear-on-logout';
 
 /**
  * A deliberately minimal shell for GUEST / preview accounts. It does NOT render
@@ -25,7 +26,7 @@ export function GuestShell({ name, children }: { name: string; children: React.R
         </span>
         <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">Signed in as {name} · sample data · read-only</span>
         <button
-          onClick={() => start(async () => { await logoutAction(); })}
+          onClick={() => start(async () => { clearSensitiveClientData(); await logoutAction(); })}
           disabled={pending}
           className="focus-ring inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-secondary"
         >

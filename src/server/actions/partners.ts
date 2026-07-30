@@ -14,7 +14,7 @@ export async function regenCpPortalToken(id: string): Promise<{ ok: true; token:
   try {
     const ctx = await ensure('booking.manage');
     const token = randomBytes(20).toString('hex');
-    await prisma.channelPartner.update({ where: { id }, data: { portalToken: token } });
+    await prisma.channelPartner.update({ where: { id }, data: { portalToken: token, portalTokenExpiresAt: new Date(Date.now() + 180*864e5) } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'ChannelPartner', entityId: id, summary: 'Generated CP portal link' });
     revalidatePath('/partners');
     return { ok: true, token };

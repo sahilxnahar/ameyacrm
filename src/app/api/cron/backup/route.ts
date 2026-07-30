@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { putObject } from '@/lib/storage/storage';
 import { writeAudit } from '@/lib/audit/log';
+import { encrypt, randomToken } from '@/lib/utils/crypto';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -21,11 +22,14 @@ export async function GET(req: NextRequest) {
     prisma.channelPartner.findMany(), prisma.invoice.findMany({ include: { items: true } }),
   ]);
   const bundle = { exportedAt: new Date().toISOString(), users, projects, units, leads, bookings, payments, customers, partners, invoices };
-  const body = Buffer.from(JSON.stringify(bundle), 'utf8');
+  // F-16: encrypt the PII bundle at rest with the app ENCRYPTION_KEY and give the
+  // object a random, non-enumerable key — so a leaked/mis-scoped bucket does not
+  // hand an attacker a plaintext, predictably-named full-database export.
+  const body = Buffer.from(encrypt(JSON.stringify(bundle)), 'utf8');
   const stamp = new Date().toISOString().slice(0, 10);
   let stored: string | null = null;
   try {
-    const res = await putObject(`backups/ameya-crm-backup-${stamp}.json`, body, 'application/json');
+    const res = await putObject(`backups/ameya-crm-backup-${stamp}-${randomToken(8)}.json.enc`, body, 'application/octet-stream');
     stored = res.key;
   } catch { /* storage may be unconfigured */ }
   await writeAudit({ action: 'EXPORT', entityType: 'Backup', summary: `Automated backup ${stamp} (${(body.length / 1024).toFixed(0)} KB)` });

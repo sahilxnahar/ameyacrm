@@ -12,7 +12,7 @@ export default async function PayPage({ params }: { params: Promise<{ token: str
   const { token } = await params;
   const pr = await prisma.paymentRequest.findUnique({ where: { token } });
 
-  if (!pr || pr.status === 'CANCELLED') {
+  if (!pr || pr.status === 'CANCELLED' || (pr.tokenExpiresAt && pr.tokenExpiresAt < new Date())) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
         <h1 className="font-display text-2xl font-semibold text-brass">Ameya Heights</h1>

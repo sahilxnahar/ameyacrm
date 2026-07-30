@@ -19,6 +19,7 @@ export interface VendorPortalData {
 export async function getVendorPortal(token: string): Promise<VendorPortalData | null> {
   const access = await prisma.vendorPortalAccess.findUnique({ where: { token } });
   if (!access) return null;
+  if (access.tokenExpiresAt && access.tokenExpiresAt < new Date()) return null; // F-24: link expired
   const vendor = await prisma.vendor.findUnique({ where: { id: access.vendorId }, select: { name: true, gstin: true, email: true, phone: true } });
   if (!vendor) return null;
 

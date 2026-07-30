@@ -16,7 +16,7 @@ export async function generateVendorPortalToken(vendorId: string): Promise<Vendo
     const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, name: true } });
     if (!vendor) return { error: 'That vendor no longer exists.' };
     const token = randomBytes(24).toString('base64url');
-    await prisma.vendorPortalAccess.upsert({ where: { vendorId }, update: { token }, create: { vendorId, token } });
+    await prisma.vendorPortalAccess.upsert({ where: { vendorId }, update: { token, tokenExpiresAt: new Date(Date.now() + 90*864e5) }, create: { vendorId, token, tokenExpiresAt: new Date(Date.now() + 90*864e5) } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Vendor', entityId: vendorId, summary: `Generated a portal link for ${vendor.name}` });
     return { ok: true, token };
   } catch (e) { return toActionError(e); }

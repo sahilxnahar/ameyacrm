@@ -66,14 +66,14 @@ export async function createCustomer(input: unknown): Promise<CustResult> {
       const bk = await prisma.booking.findUnique({ where: { id: d.bookingId }, include: { unit: { select: { projectId: true } } } });
       projectId = bk?.unit?.projectId ?? null;
     }
-    const c = await prisma.customer.create({ data: { name: d.name, email: d.email || null, phone: d.phone || null, bookingId: d.bookingId || null, projectId, portalToken: newToken(), onboardedById: ctx.user.id } });
+    const c = await prisma.customer.create({ data: { name: d.name, email: d.email || null, phone: d.phone || null, bookingId: d.bookingId || null, projectId, portalToken: newToken(), portalTokenExpiresAt: new Date(Date.now() + 180*864e5), onboardedById: ctx.user.id } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Customer', entityId: c.id, summary: `Onboarded buyer ${d.name}` });
     revalidatePath('/customers');
     return { ok: true, id: c.id, token: c.portalToken };
   } catch (err) { return toActionError(err); }
 }
 export async function regenPortalToken(id: string): Promise<CustResult> {
-  try { const ctx = await ensure('booking.manage'); const c = await prisma.customer.update({ where: { id }, data: { portalToken: newToken() } }); await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Customer', entityId: id, summary: 'Regenerated portal link' }); revalidatePath('/customers'); return { ok: true, token: c.portalToken }; } catch (err) { return toActionError(err); }
+  try { const ctx = await ensure('booking.manage'); const c = await prisma.customer.update({ where: { id }, data: { portalToken: newToken(), portalTokenExpiresAt: new Date(Date.now() + 180*864e5) } }); await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Customer', entityId: id, summary: 'Regenerated portal link' }); revalidatePath('/customers'); return { ok: true, token: c.portalToken }; } catch (err) { return toActionError(err); }
 }
 export async function setCustomerActive(id: string, isActive: boolean): Promise<CustResult> {
   try { const ctx = await ensure('booking.manage'); await prisma.customer.update({ where: { id }, data: { isActive } }); await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Customer', entityId: id, summary: `Portal ${isActive ? 'enabled' : 'disabled'}` }); revalidatePath('/customers'); return { ok: true }; } catch (err) { return toActionError(err); }

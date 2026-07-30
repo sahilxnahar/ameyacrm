@@ -107,6 +107,10 @@ const schema = z.object({
   // endpoint stays disabled (503) until an operator has WhatsApp/Meta access and
   // a verified signing secret. Set WHATSAPP_ENABLED=true to turn it on.
   WHATSAPP_ENABLED: z.string().default('false').transform((v) => v === 'true' || v === '1'),
+  // F-10: hard-enforce mandatory 2FA at the app shell. OFF by default so turning
+  // it on is a deliberate, announced rollout (post-grace users without 2FA are
+  // redirected to enrol) rather than a surprise lock-out on deploy.
+  ENFORCE_2FA: z.string().default('false').transform((v) => v === 'true' || v === '1'),
 
   // The simple way in. A System User token from Meta never expires and skips
   // the whole OAuth dance, which needs App Review for some permissions.

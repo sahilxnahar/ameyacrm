@@ -33,7 +33,7 @@ export default async function PublicPlanPage({ params }: { params: Promise<{ tok
     </div>
   );
 
-  if (!plan || !plan.isPublic) {
+  if (!plan || !plan.isPublic || (plan.shareTokenExpiresAt && plan.shareTokenExpiresAt < new Date())) {
     return shell(<p className="py-10 text-center text-sm text-[#14120E]">This plan is not available. Please ask for a fresh link.</p>);
   }
 

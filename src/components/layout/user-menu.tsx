@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useTransition } from 'react';
 import { logoutAction } from '@/server/actions/auth';
+import { clearSensitiveClientData } from '@/lib/offline/clear-on-logout';
 import { initials } from '@/lib/utils/format';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -51,7 +52,7 @@ export function UserMenu({ user }: { user: ShellUser }) {
           disabled={signingOut}
           onSelect={(e) => {
             e.preventDefault();
-            startSignOut(async () => { await logoutAction(); });
+            startSignOut(async () => { clearSensitiveClientData(); await logoutAction(); });
           }}
         >
           <LogOut className="h-4 w-4" /> {signingOut ? 'Signing out…' : 'Sign out'}
