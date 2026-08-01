@@ -9,6 +9,7 @@ import { CommandPalette } from './command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
 import { MobileDock } from './mobile-dock';
 import { SubNav } from './sub-nav';
+import { DemoBanner } from './demo-banner';
 import type { TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
@@ -38,6 +39,7 @@ export function AppShell({
   projects,
   activeProjectId,
   activeProjectName,
+  isGuest = false,
   children,
 }: {
   user: ShellUser;
@@ -48,6 +50,8 @@ export function AppShell({
   projects: ProjectOption[];
   activeProjectId: string | null;
   activeProjectName: string;
+  /** Demo mode: swaps the module row for the demo's own, and shows the banner. */
+  isGuest?: boolean;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -135,9 +139,10 @@ export function AppShell({
       />
       <div className={`relative z-10 flex min-w-0 flex-1 flex-col transition-[padding] duration-200 print:!pl-0 ${rail ? 'lg:pl-[4.5rem]' : 'lg:pl-72'}`}>
         <UpdateBanner />
+        {isGuest && <DemoBanner />}
         {/* Ameya OS desktop Top-Bar (md+). On phones the Mobile Dock takes over. */}
         <TopBar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
-        <SubNav allowed={allowed} isSuperAdmin={isSuperAdmin} prefs={topNavPrefs} />
+        <SubNav allowed={allowed} isSuperAdmin={isSuperAdmin} prefs={topNavPrefs} isGuest={isGuest} />
         <OfflineOutbox />
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes

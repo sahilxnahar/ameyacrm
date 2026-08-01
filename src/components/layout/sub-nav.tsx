@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { NavCustomiser } from './nav-customiser';
 import { EMPTY_TOP_NAV_PREFS, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
+import { DEMO_NAV } from '@/lib/guest/guest-mode';
 
 /**
  * Ameya OS secondary navigation — the row directly beneath the Top-Bar.
@@ -44,9 +45,42 @@ const ITEMS: Item[] = [
 ];
 
 export function SubNav({
-  allowed, isSuperAdmin, prefs = EMPTY_TOP_NAV_PREFS,
-}: { allowed: Set<string>; isSuperAdmin: boolean; prefs?: TopNavPrefs }) {
+  allowed, isSuperAdmin, prefs = EMPTY_TOP_NAV_PREFS, isGuest = false,
+}: { allowed: Set<string>; isSuperAdmin: boolean; prefs?: TopNavPrefs; isGuest?: boolean }) {
   const pathname = usePathname() || '';
+
+  // Demo mode: the same row, in the same place, pointing at the demo's own
+  // screens. Built from DEMO_NAV rather than filtered from the real list, so a
+  // module added to the real CRM cannot accidentally appear here linking at a
+  // real route.
+  if (isGuest) {
+    const ICONS = { home: LayoutGrid, leads: Users2, units: Building2, tasks: HardHat, books: BookOpen } as const;
+    return (
+      <nav aria-label="Demo modules" className="app-subnav sticky z-subnav hidden border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:block print:!hidden">
+        <div className="flex items-center gap-1 overflow-x-auto px-4 py-1.5 sm:px-6 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {DEMO_NAV.map(({ href, label, icon }) => {
+            const Icon = ICONS[icon];
+            const active = pathname === href || (href !== '/demo' && pathname.startsWith(href + '/'));
+            return (
+              <Link
+                key={href}
+                href={href}
+                data-tour={`nav-${href}`}
+                className={cn(
+                  'focus-ring inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+                  active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  }
+
   // Permission first, then the person's own choice to hide it. Hiding is purely
   // cosmetic — it can never reveal something they lack permission for.
   const permitted = ITEMS.filter((i) => !i.perm || isSuperAdmin || allowed.has(i.perm));

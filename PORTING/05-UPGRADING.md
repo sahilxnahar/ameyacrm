@@ -19,7 +19,7 @@ queries columns that do not exist yet, and every page in that area 500s.
 pg_dump "$DATABASE_URL_UNPOOLED" -Fc -f "backup-before-v15.94.dump"
 
 # 2. Migrate
-psql "$DATABASE_URL_UNPOOLED" -f MIGRATION_v15.95_all.sql
+psql "$DATABASE_URL_UNPOOLED" -f MIGRATION_v15.96_all.sql
 
 # 3. Deploy — unzip over your repo, then
 git add -A

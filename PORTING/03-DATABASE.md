@@ -41,7 +41,7 @@ output.
 **Command line:**
 
 ```bash
-psql "$DATABASE_URL_UNPOOLED" -f MIGRATION_v15.95_all.sql
+psql "$DATABASE_URL_UNPOOLED" -f MIGRATION_v15.96_all.sql
 ```
 
 Always on the **unpooled** URL. A pooler cannot hold the locks a migration needs.

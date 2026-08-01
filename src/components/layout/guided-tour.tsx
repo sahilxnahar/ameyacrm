@@ -108,6 +108,54 @@ const STEPS: Step[] = [
   },
 ];
 
+/**
+ * The demo's own tour. Chosen at runtime by looking for the demo navigation,
+ * so no prop has to be threaded down through the shell — and a guest can never
+ * be walked through a menu they do not have.
+ */
+const DEMO_STEPS: Step[] = [
+  {
+    title: 'Welcome to the demo',
+    body: 'This is the real CRM, running on your own private sample data. Everything you see is invented, and anything you change affects only your copy.',
+    target: '[data-tour="brand"]',
+  },
+  {
+    title: 'Overview',
+    body: 'Your starting point — headline numbers and a way into each area. It updates as you add things.',
+    target: '[data-tour="nav-/demo"]',
+    href: '/demo', hrefLabel: 'Open Overview',
+  },
+  {
+    title: 'Sales',
+    body: 'Add an enquiry, then move it along the pipeline: new → qualified → site visit → negotiation → booked.',
+    target: '[data-tour="nav-/demo/sales"]',
+    href: '/demo/sales', hrefLabel: 'Open Sales',
+  },
+  {
+    title: 'Inventory',
+    body: 'Every flat and its status. Put one on hold for a buyer, or mark it booked, and watch the totals move.',
+    target: '[data-tour="nav-/demo/inventory"]',
+    href: '/demo/inventory', hrefLabel: 'Open Inventory',
+  },
+  {
+    title: 'Tasks',
+    body: 'Follow-ups and site visits. Anything past its date is flagged as overdue.',
+    target: '[data-tour="nav-/demo/tasks"]',
+    href: '/demo/tasks', hrefLabel: 'Open Tasks',
+  },
+  {
+    title: 'Ameya Tally',
+    body: 'Real double-entry accounting. Post a journal entry and the trial balance proves both sides match — the same rule the live books follow.',
+    target: '[data-tour="nav-/demo/tally"]',
+    href: '/demo/tally', hrefLabel: 'Open the books',
+  },
+  {
+    title: 'Start over any time',
+    body: 'Every screen has a "Reset demo" button that puts the sample data back to how it started. The workspace also resets itself daily.',
+    target: '[data-tour="tour-button"]',
+  },
+];
+
 interface Placement { x: number; y: number; below: boolean }
 interface Rect { top: number; left: number; width: number; height: number }
 
@@ -119,20 +167,23 @@ const PAD = 8;
 export function GuidedTour() {
   const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState(0);
+  // Which tour applies is decided from the DOM when it opens: the demo shell
+  // renders its own module row, so its presence is the reliable signal.
+  const [steps, setSteps] = React.useState<Step[]>(STEPS);
   const [rect, setRect] = React.useState<Rect | null>(null);
   const [place, setPlace] = React.useState<Placement | null>(null);
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
 
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
 
   /**
    * Measure the current target and decide where the card sits. Called inside
    * rAF so a scroll or resize storm collapses to one measurement per frame.
    */
   const measure = React.useCallback(() => {
-    const sel = STEPS[step]?.target;
+    const sel = steps[step]?.target;
     const el = sel ? document.querySelector<HTMLElement>(sel) : null;
 
     if (!el) {
@@ -158,19 +209,19 @@ export function GuidedTour() {
     const rawX = spot.left + spot.width / 2 - CARD_W / 2;
     const x = Math.min(Math.max(PAD, rawX), Math.max(PAD, window.innerWidth - CARD_W - PAD));
     setPlace({ x, y, below: fitsBelow });
-  }, [step]);
+  }, [step, steps]);
 
   // Bring the target into view, then measure. Re-runs whenever the step changes.
   React.useEffect(() => {
     if (!open) return;
-    const sel = STEPS[step]?.target;
+    const sel = steps[step]?.target;
     const el = sel ? document.querySelector<HTMLElement>(sel) : null;
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
     let raf = requestAnimationFrame(measure);
     // Re-measure once the smooth scroll has settled.
     const t = window.setTimeout(() => { raf = requestAnimationFrame(measure); }, 200);
     return () => { window.clearTimeout(t); cancelAnimationFrame(raf); };
-  }, [open, step, measure]);
+  }, [open, step, steps, measure]);
 
   // Keep the spotlight glued to its target while the page moves underneath.
   React.useEffect(() => {
@@ -193,7 +244,7 @@ export function GuidedTour() {
     return () => cancelAnimationFrame(raf);
   }, [pathname, open, measure]);
 
-  const next = React.useCallback(() => setStep((s) => Math.min(STEPS.length - 1, s + 1)), []);
+  const next = React.useCallback(() => setStep((s) => Math.min(steps.length - 1, s + 1)), [steps.length]);
   const prev = React.useCallback(() => setStep((s) => Math.max(0, s - 1)), []);
   const close = React.useCallback(() => setOpen(false), []);
 
@@ -209,7 +260,12 @@ export function GuidedTour() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, next, prev, close]);
 
-  const start = () => { setStep(0); setOpen(true); };
+  const start = () => {
+    const inDemo = !!document.querySelector('[data-tour="nav-/demo"]');
+    setSteps(inDemo ? DEMO_STEPS : STEPS);
+    setStep(0);
+    setOpen(true);
+  };
 
   return (
     <>
@@ -263,7 +319,7 @@ export function GuidedTour() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-                  Step {step + 1} of {STEPS.length}
+                  Step {step + 1} of {steps.length}
                 </p>
                 <h2 className="mt-0.5 font-display text-base leading-snug">{current.title}</h2>
               </div>
@@ -281,7 +337,7 @@ export function GuidedTour() {
             )}
 
             <div className="mt-4 flex items-center justify-center gap-1.5">
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <button
                   key={s.title} type="button" onClick={() => setStep(i)}
                   aria-label={`Go to step ${i + 1}: ${s.title}`}

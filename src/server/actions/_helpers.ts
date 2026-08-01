@@ -12,12 +12,17 @@ export class ForbiddenError extends Error {}
 export async function getActionContext(): Promise<AuthContext> {
   const ctx = await getCurrentUser();
   if (!ctx) throw new AuthError('You must be signed in.');
-  // Hard read-only guarantee for preview/guest accounts. Every mutation in the
-  // app funnels through here (directly or via `ensure`), so a GUEST can never
-  // write, no matter how the request is crafted or what permissions are set.
+  // Hard seal on REAL data for guest accounts. Every mutation in the app funnels
+  // through here (directly or via `ensure`), so a GUEST can never touch company
+  // records, no matter how the request is crafted or what permissions are set.
+  //
+  // Guests are not read-only overall — they can create and edit freely inside
+  // their sandbox. Those actions live in `actions/sandbox.ts` and deliberately
+  // do NOT call this helper: they resolve the caller's own sandbox and write
+  // only to Sandbox* tables. So this stays an unconditional refusal.
   // Sign-out is exempt because it reads the session directly, not this helper.
   if (ctx.user.role === 'GUEST') {
-    throw new ForbiddenError('This is a read-only preview account — changes are disabled.');
+    throw new ForbiddenError('Demo accounts cannot change real company data. Everything in your demo workspace is yours to edit.');
   }
   return ctx;
 }

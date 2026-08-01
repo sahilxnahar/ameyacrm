@@ -11,21 +11,27 @@ import { readTopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { DEMO_ROOT } from '@/lib/guest/guest-mode';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, permissions } = await requireAuth();
 
-  // Guest / preview accounts get a sealed, data-free experience. We return here
-  // BEFORE any real query (projects, nav prefs, active project) runs, so a guest
-  // request never even fetches real company data.
-  // A guest can never render a real workspace screen. /preview now lives OUTSIDE
-  // this route group, so this redirect can never re-enter this layout — the
-  // previous version redirected to a page inside (app) and, whenever the
-  // x-pathname header was absent, looped forever ("webpage not working").
-  // This is unconditional: no header dependency, no loop, default-deny.
-  if (user.role === 'GUEST') {
-    redirect('/preview');
-  }
+  // ── Guest ("demo") mode ────────────────────────────────────────────────────
+  //
+  // A guest gets the REAL CRM chrome — this same shell, navigation, search and
+  // tour — but is confined to `/demo`, whose pages read only that guest's
+  // sandbox tables. Confining by route rather than filtering queries is what
+  // makes this safe: a real page component is never invoked for a guest, so
+  // there is no query that could return company data.
+  //
+  // Default-deny: a screen added later is outside the demo until somebody
+  // deliberately builds a sandbox-backed version of it.
+  // The redirect is UNCONDITIONAL and depends on no header, because `/demo`
+  // lives outside this route group. Re-entering this layout is therefore
+  // impossible, so there is nothing to loop on — the failure mode that produced
+  // "webpage not working" was a guard that redirected back into its own layout.
+  const guest = user.role === 'GUEST';
+  if (guest) redirect(DEMO_ROOT);
 
   const row = await getNavPrefsRow(user.id);
   const navPrefs = readPrefs(row?.navPrefs);

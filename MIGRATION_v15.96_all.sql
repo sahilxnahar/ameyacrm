@@ -1,5 +1,5 @@
 -- ============================================================================
--- Ameya CRM — migration to v15.95
+-- Ameya CRM — migration to v15.96
 --
 -- Safe to run more than once: every statement is guarded.
 -- Run on the DIRECT (unpooled) connection, and take a backup first.

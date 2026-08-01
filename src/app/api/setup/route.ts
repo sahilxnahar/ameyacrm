@@ -15,7 +15,7 @@ export async function GET() {
 
 /**
  * POST → one-time database bootstrap (seed RBAC, departments, project, Super Admin).
- * First run (no users) is open; afterwards it requires ?secret=<SETUP_SECRET>.
+ * First run (no users) is open; afterwards it requires the x-setup-secret header.
  * Visit this once after deploying — no terminal required.
  */
 export async function POST(req: NextRequest) {

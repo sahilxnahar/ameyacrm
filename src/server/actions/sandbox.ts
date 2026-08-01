@@ -52,7 +52,7 @@ export async function sandboxAddLead(input: unknown): Promise<SandboxResult> {
         source: d.source || 'Walk-in', budget: d.budget ?? null, note: d.note || null, status: 'NEW',
       },
     });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -66,7 +66,7 @@ export async function sandboxSetLeadStatus(id: string, status: string): Promise<
     // Scoped by sandboxId as well as id: an id alone must not be enough to
     // reach into a different guest's workspace.
     await prisma.sandboxLead.updateMany({ where: { id, sandboxId: s.sandboxId }, data: { status } });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -76,7 +76,7 @@ export async function sandboxDeleteLead(id: string): Promise<SandboxResult> {
     const s = await currentSandbox();
     if ('error' in s) return s;
     await prisma.sandboxLead.deleteMany({ where: { id, sandboxId: s.sandboxId } });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -90,7 +90,7 @@ export async function sandboxAddTask(title: string, dueDate?: string): Promise<S
     await prisma.sandboxTask.create({
       data: { sandboxId: s.sandboxId, title: t, dueDate: dueDate ? new Date(dueDate) : null },
     });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -100,7 +100,7 @@ export async function sandboxToggleTask(id: string, done: boolean): Promise<Sand
     const s = await currentSandbox();
     if ('error' in s) return s;
     await prisma.sandboxTask.updateMany({ where: { id, sandboxId: s.sandboxId }, data: { done } });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -112,7 +112,7 @@ export async function sandboxSetUnitStatus(id: string, status: string): Promise<
     const allowed = ['AVAILABLE', 'HELD', 'BOOKED'];
     if (!allowed.includes(status)) return { error: 'Unknown status.' };
     await prisma.sandboxUnit.updateMany({ where: { id, sandboxId: s.sandboxId }, data: { status } });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -137,7 +137,7 @@ export async function sandboxAddEntry(input: unknown): Promise<SandboxResult> {
         amount: d.amount, date: d.date ? new Date(d.date) : new Date(),
       },
     });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -149,7 +149,7 @@ export async function sandboxAddNote(body: string): Promise<SandboxResult> {
     const b = String(body ?? '').trim().slice(0, 1000);
     if (b.length < 1) return { error: 'Write something first.' };
     await prisma.sandboxNote.create({ data: { sandboxId: s.sandboxId, body: b } });
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
@@ -161,7 +161,7 @@ export async function sandboxReset(): Promise<SandboxResult> {
     if (!ctx || ctx.user.role !== 'GUEST') return { error: 'Only guest accounts have a demo workspace.' };
     await prisma.guestSandbox.deleteMany({ where: { userId: ctx.user.id } });
     await getOrCreateSandbox(ctx.user.id);
-    revalidatePath('/preview');
+    revalidatePath('/demo', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }

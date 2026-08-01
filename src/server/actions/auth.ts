@@ -88,7 +88,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       }
 
       // Guests belong on the sealed preview, never the workspace home.
-      if (result.user.role === 'GUEST') redirect('/preview');
+      if (result.user.role === 'GUEST') redirect('/demo');
       // Always land people on their home screen. If two-factor still needs
       // setting up, that is surfaced as a prominent reminder on the home page —
       // not a forced detour that hides the whole CRM behind the security screen.
@@ -152,7 +152,7 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   if (parsed.data.trustDevice === 'on') await markTrustedDevice(user.id);
   await markLoginSuccess(user.id, user.username, '2fa');
   await writeAudit({ actorId: user.id, action: 'LOGIN', summary: 'Password + 2FA login' });
-  if (user.role === 'GUEST') redirect('/preview');
+  if (user.role === 'GUEST') redirect('/demo');
   redirect('/home');
   // (user has 2FA here, so no enrollment gate needed)
 }
