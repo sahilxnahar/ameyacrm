@@ -15,8 +15,8 @@ export function PageHeader({
 }) {
   return (
     <div className={cn('mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between', className)}>
-      <div>
-        <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">
+      <div className="min-w-0">
+        <h1 className="break-words gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">
           {title}
           {(helpTermId || helpText) && <HelpTip termId={helpTermId} text={helpText} className="ml-2 align-middle" />}
         </h1>

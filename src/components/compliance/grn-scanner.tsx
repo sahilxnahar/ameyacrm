@@ -67,7 +67,7 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
     <div className="rounded-lg border border-[#A07D34]/40 bg-[#A07D34]/5 p-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[#1B2A4A]">Scan a goods-receipt note (AI)</h3>
+          <h3 className="text-sm font-semibold text-primary">Scan a goods-receipt note (AI)</h3>
           <p className="text-xs text-muted-foreground">Photograph or upload the delivery challan — the AI reads the vendor, material and quantities so you don’t have to type them.</p>
         </div>
         <button onClick={() => setOpen((v) => !v)} className="shrink-0 rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63]">{open ? 'Close' : 'Scan GRN'}</button>

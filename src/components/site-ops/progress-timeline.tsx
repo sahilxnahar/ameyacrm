@@ -83,7 +83,7 @@ export function ProgressTimeline({ logs }: { logs: TimelineLog[] }) {
                       <figure key={ph.id} className="relative break-inside-avoid overflow-hidden rounded-lg border">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={ph.url} alt={ph.milestoneTag} loading="lazy" className="w-full object-cover" />
-                        <figcaption className={`absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-semibold ${TAG_TONE[ph.milestoneTag] ?? 'bg-black/60 text-white'}`}>
+                        <figcaption className={`absolute left-2 top-2 rounded px-1.5 py-0.5 text-[11px] font-semibold ${TAG_TONE[ph.milestoneTag] ?? 'bg-black/60 text-white'}`}>
                           {ph.milestoneTag}
                         </figcaption>
                       </figure>

@@ -51,7 +51,7 @@ export function PermissionEditor({ permissions, roles, allowedByRole }: {
             <CardContent className="space-y-2 pb-4">
               {perms.map((p) => (
                 <label key={p.key} className="flex items-center justify-between gap-3 text-sm">
-                  <span><span className="font-medium">{p.description}</span><span className="ml-2 font-mono text-[10px] text-muted-foreground">{p.key}</span></span>
+                  <span><span className="font-medium">{p.description}</span><span className="ml-2 font-mono text-[11px] text-muted-foreground">{p.key}</span></span>
                   <Switch checked={checked.has(p.key)} onCheckedChange={(v) => toggle(p.key, v)} />
                 </label>
               ))}

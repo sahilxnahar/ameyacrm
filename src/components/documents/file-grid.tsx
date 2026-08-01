@@ -177,7 +177,7 @@ export function FileGrid({
               {[d.size ? readableSize(d.size) : null, format(new Date(d.updatedAt), 'd MMM')].filter(Boolean).join(' · ')}
             </p>
 
-            <span className="mt-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+            <span className="mt-2 flex gap-1 opacity-100 transition-opacity focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
               {canManage && (
                 <button className="rounded p-1 hover:bg-secondary" title="Rename" onClick={() => { setEditing(d.id); setDraft(d.title); }}>
                   <Pencil className="h-3.5 w-3.5" />

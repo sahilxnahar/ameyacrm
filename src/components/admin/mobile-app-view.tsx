@@ -97,7 +97,7 @@ export function MobileAppView({
               <tr key={n.id} className="border-b last:border-0">
                 <td className="p-3">
                   <span className="font-medium">{n.title}</span>
-                  <span className="mt-0.5 block"><Badge variant="secondary" className="text-[10px]">{n.kind}</Badge></span>
+                  <span className="mt-0.5 block"><Badge variant="secondary" className="text-[11px]">{n.kind}</Badge></span>
                 </td>
                 <td className="p-3">
                   {n.userName}

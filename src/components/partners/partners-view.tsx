@@ -139,7 +139,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
               <DialogHeader><DialogTitle className="flex items-center gap-2">{sel.firmName} <Badge variant={stTone(sel.status)}>{sel.status}</Badge> <Badge variant={kycTone(sel.kycStatus)}>KYC {sel.kycStatus}</Badge></DialogTitle></DialogHeader>
               <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
-                  {[['Code', sel.code], ['Contact', sel.contactName], ['Phone', sel.phone], ['Email', sel.email], ['RERA', sel.reraNumber], ['PAN', sel.panNumber], ['GSTIN', sel.gstin], ['Commission', commissionLabel(sel)]].map(([k, v]) => <div key={k as string}><p className="text-[10px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{(v as string) || '—'}</p></div>)}
+                  {[['Code', sel.code], ['Contact', sel.contactName], ['Phone', sel.phone], ['Email', sel.email], ['RERA', sel.reraNumber], ['PAN', sel.panNumber], ['GSTIN', sel.gstin], ['Commission', commissionLabel(sel)]].map(([k, v]) => <div key={k as string}><p className="text-[11px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{(v as string) || '—'}</p></div>)}
                 </div>
 
                 {canManage && (

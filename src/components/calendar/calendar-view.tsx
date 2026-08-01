@@ -112,7 +112,7 @@ export function CalendarView({
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setMonth(addMonths(month, 1))} aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
               </span>
             </div>
-            <div className="grid grid-cols-7 gap-px text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="grid grid-cols-7 gap-px text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => <div key={d} className="py-1">{d}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border bg-border">
@@ -128,9 +128,9 @@ export function CalendarView({
                       isToday(d) && 'bg-primary font-semibold text-primary-foreground')}>{format(d, 'd')}</span>
                     <span className="mt-1 flex flex-wrap gap-0.5">
                       {list.slice(0, 6).map((i) => <span key={i.id} className={cn('h-1.5 w-1.5 rounded-full', KIND[i.kind].dot)} />)}
-                      {list.length > 6 && <span className="text-[9px] text-muted-foreground">+{list.length - 6}</span>}
+                      {list.length > 6 && <span className="text-[11px] text-muted-foreground">+{list.length - 6}</span>}
                     </span>
-                    {late && <span className="mt-0.5 block text-[9px] font-medium text-destructive">late</span>}
+                    {late && <span className="mt-0.5 block text-[11px] font-medium text-destructive">late</span>}
                   </button>
                 );
               })}

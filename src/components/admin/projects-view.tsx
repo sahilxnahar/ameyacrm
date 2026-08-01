@@ -123,8 +123,8 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{p.name}</p>
-                    <Badge variant="secondary" className="font-mono text-[10px]">{p.code}</Badge>
-                    {!p.isActive && <Badge variant="outline" className="text-[10px] text-muted-foreground">Archived</Badge>}
+                    <Badge variant="secondary" className="font-mono text-[11px]">{p.code}</Badge>
+                    {!p.isActive && <Badge variant="outline" className="text-[11px] text-muted-foreground">Archived</Badge>}
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {p.city}{p.address ? ` · ${p.address}` : ''}{p.reraNumber ? ` · RERA ${p.reraNumber}` : ''}

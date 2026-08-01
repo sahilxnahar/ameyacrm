@@ -57,7 +57,7 @@ export default async function PublicPlanPage({ params }: { params: Promise<{ tok
         {plan.pins.map((p) => (
           <span key={p.id}
             style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, height: `${p.h}%`, background: COLOR[p.unit.status] ?? COLOR.AVAILABLE }}
-            className="absolute flex items-center justify-center rounded border border-white/70 text-[9px] font-semibold text-white sm:text-[11px]"
+            className="absolute flex items-center justify-center rounded border border-white/70 text-[11px] font-semibold text-white sm:text-[11px]"
             title={`${p.unit.code} · ${p.unit.typology} · ${p.unit.status}`}>
             {p.unit.code}
           </span>

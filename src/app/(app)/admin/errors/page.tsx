@@ -48,7 +48,7 @@ export default async function ErrorsPage() {
               {e.stack && (
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-muted-foreground">Show technical detail</summary>
-                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-secondary p-2 text-[10px] leading-relaxed">{e.stack}</pre>
+                  <pre className="mt-1 max-h-56 overflow-auto rounded bg-secondary p-2 text-[11px] leading-relaxed">{e.stack}</pre>
                 </details>
               )}
             </Card>

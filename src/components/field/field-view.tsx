@@ -197,7 +197,7 @@ export function FieldView({
                       <td key={d.toISOString()} className="p-1 text-center">
                         {isAdmin ? (
                           <select
-                            className="h-7 w-full rounded border border-input bg-background text-[10px]"
+                            className="h-7 w-full rounded border border-input bg-background text-[11px]"
                             value={r?.shift ?? ''}
                             disabled={pending}
                             onChange={(e) => start(async () => {
@@ -213,7 +213,7 @@ export function FieldView({
                             {SHIFTS.map((s) => <option key={s} value={s}>{SHIFT_LABEL[s]}</option>)}
                           </select>
                         ) : (
-                          <span className={cn('text-[10px]', r?.shift === 'OFF' && 'text-muted-foreground')}>{r ? SHIFT_LABEL[r.shift] : '—'}</span>
+                          <span className={cn('text-[11px]', r?.shift === 'OFF' && 'text-muted-foreground')}>{r ? SHIFT_LABEL[r.shift] : '—'}</span>
                         )}
                       </td>
                     );

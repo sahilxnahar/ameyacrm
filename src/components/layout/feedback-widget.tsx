@@ -35,7 +35,7 @@ export function FeedbackWidget() {
         type="button"
         aria-label="Send feedback"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3 z-dock flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-lg transition-colors hover:text-foreground lg:bottom-4 lg:right-4"
+        className="fixed bottom-[calc(9rem+env(safe-area-inset-bottom))] right-3 z-dock flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-lg transition-colors hover:text-foreground lg:bottom-4 lg:right-4"
       >
         <MessageSquarePlus className="h-5 w-5" />
       </button>

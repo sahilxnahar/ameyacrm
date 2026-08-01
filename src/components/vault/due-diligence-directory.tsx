@@ -99,7 +99,7 @@ export function DueDiligenceDirectory({ records, projects }: { records: DdRecord
                 <div className="divide-y">
                   {s.authorities.map((a) => (
                     <div key={a.name} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium', KIND_TONE[a.kind] ?? 'bg-muted text-muted-foreground')}>{a.kind}</span>
+                      <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium', KIND_TONE[a.kind] ?? 'bg-muted text-muted-foreground')}>{a.kind}</span>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{a.name}{a.region ? <span className="ml-1 text-xs text-muted-foreground">· {a.region}</span> : ''}</div>
                         {a.note ? <div className="truncate text-xs text-muted-foreground">{a.note}</div> : null}

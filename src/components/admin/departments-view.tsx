@@ -108,7 +108,7 @@ export function DepartmentsView({
                           onChange={(e) => toggle(c.slug, e.target.checked)} />
                         <span className="text-xs">
                           {c.name}
-                          {have.has(c.slug) && <Badge variant="secondary" className="ml-1 text-[10px]">already added</Badge>}
+                          {have.has(c.slug) && <Badge variant="secondary" className="ml-1 text-[11px]">already added</Badge>}
                         </span>
                       </label>
                     ))}

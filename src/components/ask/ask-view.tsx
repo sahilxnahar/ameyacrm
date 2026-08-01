@@ -88,7 +88,7 @@ export function AskView({ indexedChunks, indexedTitles, canIndex }: { indexedChu
                     <p className="flex items-center gap-2 text-sm font-medium">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="min-w-0 truncate">[{i + 1}] {s.title}</span>
-                      <Badge variant="secondary" className="ml-auto shrink-0 text-[10px]">{s.score}% match</Badge>
+                      <Badge variant="secondary" className="ml-auto shrink-0 text-[11px]">{s.score}% match</Badge>
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{s.snippet}…</p>
                   </Card>

@@ -132,7 +132,7 @@ export function DisplaySettings() {
               </button>
             ))}
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">Menus and common labels translate; full coverage is rolling out.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Menus and common labels translate; full coverage is rolling out.</p>
         </div>
       )}
     </div>

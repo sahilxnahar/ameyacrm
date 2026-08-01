@@ -30,7 +30,7 @@ export function TaskComments({ taskId, comments }: { taskId: string; comments: {
         {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
         {comments.map((c) => (
           <div key={c.id} className="flex gap-3">
-            <Avatar className="h-8 w-8"><AvatarFallback className="text-[10px]">{initials(c.authorName)}</AvatarFallback></Avatar>
+            <Avatar className="h-8 w-8"><AvatarFallback className="text-[11px]">{initials(c.authorName)}</AvatarFallback></Avatar>
             <div className="min-w-0 flex-1">
               <p className="text-sm"><span className="font-medium">{c.authorName}</span> <span className="text-xs text-muted-foreground">· {timeAgo(c.createdAt)}</span></p>
               <p className="whitespace-pre-wrap text-sm text-foreground/90">{c.body}</p>

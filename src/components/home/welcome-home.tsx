@@ -142,7 +142,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
 
       {/* Live KPI tiles — your morning cockpit. */}
       {kpi && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
           <StatTile label="New leads today" value={String(kpi.leadsToday)} icon={UserPlus} href="/leads" />
           <StatTile label="Tasks due today" value={String(kpi.tasksToday)} icon={CheckSquare} href="/tasks" />
           <StatTile label="Approvals pending" value={String(kpi.approvals)} icon={Inbox} href="/approvals" />
@@ -160,7 +160,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
             const Icon = q.icon;
             return (
               <Link key={q.href} href={q.href} className="group flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-[#A07D34]/50 hover:bg-[#A07D34]/5">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#1B2A4A]/10 text-[#1B2A4A] transition-colors group-hover:bg-[#1B2A4A] group-hover:text-white">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#1B2A4A]/10 text-primary transition-colors group-hover:bg-[#1B2A4A] group-hover:text-white">
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="min-w-0">
@@ -187,7 +187,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
                 return (
                   <li key={a.id}>
                     <Link href={a.href} className="flex items-center gap-3 py-3 hover:bg-secondary/40">
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">{KIND_LABEL[a.kind] ?? a.kind}</Badge>
+                      <Badge variant="secondary" className="shrink-0 text-[11px]">{KIND_LABEL[a.kind] ?? a.kind}</Badge>
                       <span className="min-w-0 flex-1 truncate text-sm">{a.title || '(untitled)'}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">{time}</span>
                       <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

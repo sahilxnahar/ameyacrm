@@ -173,7 +173,7 @@ export function FloorPlanView({
                 return (
                   <button key={p.unitId} onClick={(e) => { e.stopPropagation(); setPicked(u); }}
                     style={{ left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, height: `${p.h}%`, background: STATUS_COLOR[u.status] ?? STATUS_COLOR.AVAILABLE }}
-                    className={cn('absolute flex items-center justify-center rounded border border-white/70 text-[9px] font-semibold text-white shadow-sm transition-transform hover:scale-105 sm:text-[11px]',
+                    className={cn('absolute flex items-center justify-center rounded border border-white/70 text-[11px] font-semibold text-white shadow-sm transition-transform hover:scale-105 sm:text-[11px]',
                       picked?.id === u.id && 'ring-2 ring-white')}
                     title={`${u.code} · ${u.typology} · ${u.status}`}>
                     {u.code}

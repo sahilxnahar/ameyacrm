@@ -23,7 +23,7 @@ export function HomeLauncher({ allowed, isSuperAdmin }: { allowed: string[]; isS
       {groups.map((g) => (
         <section key={g.label}>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          <div className="grid gap-3 auto-rows-fr [grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
             {g.items.map((it) => {
               const Icon = it.icon;
               return (

@@ -77,7 +77,7 @@ export function AppPackagesView({ packages, installed: initial }: { packages: Ap
               <p className="mt-2 flex-1 text-sm text-muted-foreground">{p.description}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {Object.entries(summary).map(([kind, n]) => (
-                  <span key={kind} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{pluralise(n, KIND_LABEL[kind] ?? kind)}</span>
+                  <span key={kind} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{pluralise(n, KIND_LABEL[kind] ?? kind)}</span>
                 ))}
               </div>
               <div className="mt-3 flex items-center gap-2">

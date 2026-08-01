@@ -94,7 +94,7 @@ export function ApiPlayground({ endpoints, groups, tokens }: {
               <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g}</div>
               {endpoints.filter((e) => e.group === g).map((e) => (
                 <button key={e.id} onClick={() => setSel(e)} className={`flex w-full items-center gap-2 border-b px-3 py-2 text-left text-sm hover:bg-muted/50 ${sel.id === e.id ? 'bg-muted' : ''}`}>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${METHOD_TONE[e.method]}`}>{e.method}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${METHOD_TONE[e.method]}`}>{e.method}</span>
                   <span className="truncate font-mono text-xs">{e.path.replace('/api/v1', '')}</span>
                 </button>
               ))}

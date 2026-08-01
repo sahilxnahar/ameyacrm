@@ -1,5 +1,5 @@
 -- ============================================================================
--- Ameya CRM — migration to v15.98
+-- Ameya CRM — migration to v15.99
 --
 -- Safe to run more than once. Run on the DIRECT (unpooled) connection,
 -- and take a backup first.
@@ -7,7 +7,7 @@
 --   1. Statutory audit trail (edit log) for Ameya Tally
 --
 -- If you have NOT yet applied MIGRATION_v15.97_all.sql, run that one first —
--- this file only adds what is new in v15.98.
+-- this file only adds what is new in v15.99.
 -- ============================================================================
 
 BEGIN;

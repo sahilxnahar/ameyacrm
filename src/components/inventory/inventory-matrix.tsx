@@ -92,12 +92,12 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
         {towers.map(([tower, list]) => (
           <div key={tower}>
             <h3 className="mb-2 text-sm font-semibold text-muted-foreground">{tower} <span className="font-normal">· {list.length} units</span></h3>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+            <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(104px,1fr))]">
               {list.map((u) => (
                 <button key={u.id} onClick={() => open(u)} className={`rounded-md border p-2 text-left text-xs transition-colors ${STYLE[u.status] ?? ''}`}>
                   <p className="font-semibold">{u.code}</p>
                   <p className="opacity-80">{u.typology ?? '—'}{u.floor != null ? ` · Fl ${u.floor}` : ''}</p>
-                  <p className="opacity-70">{money(u.price)}</p>
+                  <p className="truncate tabular-nums opacity-70">{money(u.price)}</p>
                 </button>
               ))}
             </div>
@@ -182,7 +182,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
 }
 
 function Spec({ k, v }: { k: string; v: string | null }) {
-  return <div><p className="text-[10px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{v || '—'}</p></div>;
+  return <div><p className="text-[11px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{v || '—'}</p></div>;
 }
 function LabeledNum({ id, label }: { id: string; label: string }) {
   return <div className="space-y-1"><Label htmlFor={id} className="text-xs">{label} (₹)</Label><Input id={id} name={id} type="number" min="0" placeholder="0" /></div>;

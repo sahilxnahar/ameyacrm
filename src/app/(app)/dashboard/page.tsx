@@ -112,7 +112,7 @@ export default async function DashboardPage() {
 
       {/* Action cards */}
       <CollapsibleSection id="attention" title="Needs attention">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
         <ActionCard title="Hot leads" icon={Flame} tone="danger" value={hotLeads}
           caption="marked hot and still open — call them first"
           emptyCaption="No hot leads right now. Mark your best prospects hot."
@@ -144,10 +144,10 @@ export default async function DashboardPage() {
 
       {/* Detail lists */}
       <CollapsibleSection id="tasks-files" title="Tasks & files">
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-lg"><Clock className="mr-2 inline h-4 w-4" />Today&apos;s tasks</CardTitle>
+          <CardHeader className="flex-row items-center justify-between gap-2">
+            <CardTitle className="min-w-0 truncate text-base sm:text-lg"><Clock className="mr-2 inline h-4 w-4" />Today&apos;s tasks</CardTitle>
             <Button asChild variant="ghost" size="sm"><Link href="/tasks">View all</Link></Button>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -166,8 +166,8 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-lg"><FileStack className="mr-2 inline h-4 w-4" />Recent files</CardTitle>
+          <CardHeader className="flex-row items-center justify-between gap-2">
+            <CardTitle className="min-w-0 truncate text-base sm:text-lg"><FileStack className="mr-2 inline h-4 w-4" />Recent files</CardTitle>
             <Button asChild variant="ghost" size="sm"><Link href="/documents">Library</Link></Button>
           </CardHeader>
           <CardContent className="space-y-1">

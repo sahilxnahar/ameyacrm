@@ -83,7 +83,7 @@ export function FolderTree({
             <Link href={`/documents?folder=${n.id}`} className="flex min-h-[32px] min-w-0 flex-1 items-center gap-2 py-1">
               {isOpen ? <FolderOpen className="h-4 w-4 shrink-0 text-brass" /> : <FolderIcon className="h-4 w-4 shrink-0 text-brass" />}
               <span className="truncate">{n.name}</span>
-              {n.documentCount > 0 && <span className="ml-auto shrink-0 text-[10px] text-muted-foreground tabular">{n.documentCount}</span>}
+              {n.documentCount > 0 && <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular">{n.documentCount}</span>}
             </Link>
           ) : (
             <span className="flex min-h-[32px] min-w-0 flex-1 cursor-not-allowed items-center gap-2 py-1" title={n.reason ?? 'Restricted'}>

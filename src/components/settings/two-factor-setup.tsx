@@ -40,9 +40,9 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-row items-center justify-between gap-2">
         <div>
-          <CardTitle className="text-lg"><ShieldCheck className="mr-2 inline h-4 w-4" />Two-factor authentication</CardTitle>
+          <CardTitle className="min-w-0 truncate text-base sm:text-lg"><ShieldCheck className="mr-2 inline h-4 w-4" />Two-factor authentication</CardTitle>
           <CardDescription>Time-based one-time passwords (TOTP).</CardDescription>
         </div>
         <Badge variant={enabled ? 'success' : 'secondary'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>

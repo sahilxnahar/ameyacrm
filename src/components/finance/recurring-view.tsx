@@ -123,7 +123,7 @@ export function RecurringView({ rows, canManage }: { rows: Row[]; canManage: boo
                 <td className="p-2"><p className="font-medium">{r.payeeName}</p>{r.note && <p className="text-xs text-muted-foreground">{r.note}</p>}</td>
                 <td className="p-2 text-right tabular-nums">{formatCurrency(r.amount)}</td>
                 <td className="p-2 capitalize">{r.frequency.toLowerCase()}</td>
-                <td className="p-2 whitespace-nowrap">{new Date(r.nextDue).toLocaleDateString('en-IN')} {isDue(r) && <Badge variant="warning" className="ml-1 text-[10px]">Due</Badge>}</td>
+                <td className="p-2 whitespace-nowrap">{new Date(r.nextDue).toLocaleDateString('en-IN')} {isDue(r) && <Badge variant="warning" className="ml-1 text-[11px]">Due</Badge>}</td>
                 <td className="p-2 text-xs text-muted-foreground">{r.category ? CATEGORY_LABEL[r.category] ?? r.category : '—'}</td>
                 <td className="p-2">
                   {canManage && (

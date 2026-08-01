@@ -70,7 +70,7 @@ export function StatTileRow({ cols = 4, children, className }: { cols?: 3 | 4 | 
         // Desktop: the grid, tiles full width again.
         'sm:mx-0 sm:grid sm:snap-none sm:overflow-visible sm:px-0 sm:pb-0 sm:[&>*]:w-auto',
         cols === 3 && 'sm:grid-cols-3',
-        cols === 4 && 'sm:grid-cols-4',
+        cols === 4 && 'md:grid-cols-3 xl:grid-cols-4',
         cols === 5 && 'sm:grid-cols-5',
         className,
       )}

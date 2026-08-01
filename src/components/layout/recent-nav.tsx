@@ -76,7 +76,7 @@ export function RecentNav({ items, onNavigate }: { items: RecentItem[]; onNaviga
 
   return (
     <div>
-      <p className="mb-2 flex items-center gap-1 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">
+      <p className="mb-2 flex items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">
         <Clock className="h-2.5 w-2.5" /> Recent
       </p>
       <ul className="space-y-0.5">

@@ -44,7 +44,7 @@ export function NriDesk({ leads }: { leads: Lead[] }) {
           {zones.map((tz) => (
             <Card key={tz} className="flex items-center gap-2 px-4 py-2">
               <Clock className="h-4 w-4 text-brass" />
-              <div><p className="text-sm font-semibold tabular-nums">{localTime(tz, now)}</p><p className="text-[10px] text-muted-foreground">{tz}</p></div>
+              <div><p className="text-sm font-semibold tabular-nums">{localTime(tz, now)}</p><p className="text-[11px] text-muted-foreground">{tz}</p></div>
             </Card>
           ))}
         </div>
@@ -58,7 +58,7 @@ export function NriDesk({ leads }: { leads: Lead[] }) {
             {leads.map((l) => (
               <TableRow key={l.id}>
                 <TableCell><Link href={`/sales/${l.id}`} className="font-medium hover:text-primary">{l.name}</Link>
-                  <div className="flex gap-3 text-[10px] text-muted-foreground">{l.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{l.phone}</span>}{l.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{l.email}</span>}</div>
+                  <div className="flex gap-3 text-[11px] text-muted-foreground">{l.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{l.phone}</span>}{l.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{l.email}</span>}</div>
                 </TableCell>
                 <TableCell className="text-sm">{l.country ?? '—'}</TableCell>
                 <TableCell className="tabular-nums text-sm">{localTime(l.timezone, now)}</TableCell>

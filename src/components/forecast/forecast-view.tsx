@@ -89,7 +89,7 @@ export function ForecastView({
                 <div key={s.stage} className="flex items-center gap-3">
                   <span className="w-28 shrink-0 text-xs">{s.stage.replace(/_/g, ' ')}</span>
                   <span className="h-5 flex-1 overflow-hidden rounded bg-secondary">
-                    <span className="flex h-full items-center rounded bg-primary/70 px-2 text-[10px] font-medium text-primary-foreground"
+                    <span className="flex h-full items-center rounded bg-primary/70 px-2 text-[11px] font-medium text-primary-foreground"
                       style={{ width: `${Math.max(4, (s.value / maxStage) * 100)}%` }}>
                       {s.count}
                     </span>

@@ -210,7 +210,7 @@ export function AuditStudio({ defaultUrl, recent }: { defaultUrl: string; recent
           <p className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Earlier audits</p>
           {recent.map((r) => (
             <div key={r.id} className="flex flex-wrap items-center gap-3 p-3">
-              <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{r.kind}</span>
+              <span className="rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">{r.kind}</span>
               <span className="min-w-0 flex-1 truncate text-sm">{r.hostname}</span>
               {r.error
                 ? <span className="text-xs text-destructive">failed</span>

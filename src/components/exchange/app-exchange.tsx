@@ -110,12 +110,12 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
                   <div className="text-xs text-muted-foreground">{c.category}</div>
                 </div>
                 {isWorking(c.slug)
-                  ? <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Live</span>
-                  : <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Not built yet</span>}
+                  ? <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Live</span>
+                  : <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Not built yet</span>}
               </div>
               <p className="mt-2 line-clamp-2 flex-1 text-xs text-muted-foreground">{isWorking(c.slug) ? c.blurb : 'Listed in the directory — not built yet. Installing only records interest; ask us to prioritise it.'}</p>
               <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-[10px] text-muted-foreground">{AUTH_LABEL[c.auth]}</span>
+                <span className="text-[11px] text-muted-foreground">{AUTH_LABEL[c.auth]}</span>
                 {inst ? (
                   <div className="flex items-center gap-1">
                     <Badge variant={inst.status === 'INSTALLED' ? 'default' : 'secondary'} className="gap-1"><Check className="h-3 w-3" />{inst.status === 'INSTALLED' ? 'Installed' : 'Off'}</Badge>
@@ -140,8 +140,8 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
               <Monogram name={detail.name} />
               <div className="flex-1">
                 <div className="flex items-center gap-2 font-semibold">{detail.name}{isWorking(detail.slug)
-                  ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">Live</span>
-                  : <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">Not built yet</span>}</div>
+                  ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">Live</span>
+                  : <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">Not built yet</span>}</div>
                 <div className="text-xs text-muted-foreground">{detail.category} · {AUTH_LABEL[detail.auth]}</div>
               </div>
               <button onClick={() => setDetail(null)}><X className="h-4 w-4 text-muted-foreground" /></button>

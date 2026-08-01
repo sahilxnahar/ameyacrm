@@ -3039,6 +3039,7 @@ model TallyLedger {
   @@unique([companyId, name])
   @@index([group])
   @@index([companyId])
+  bills TallyBill[]
 }
 
 model TallyVoucher {
@@ -3065,6 +3066,7 @@ model TallyVoucher {
   @@index([costCentre])
   @@index([companyId, date])
   @@index([importBatchId])
+  billAllocations TallyBillAllocation[]
 }
 
 model TallyCostCentre {
@@ -6169,5 +6171,66 @@ model TallyVoucherAudit {
   at        DateTime @default(now())
 
   @@index([companyId, at])
+  @@index([voucherId])
+}
+
+/**
+ * ─── Bill-wise tracking ──────────────────────────────────────────────────────
+ *
+ * How Indian accounting actually chases money. A party ledger balance of
+ * ₹42 lakh tells you nothing useful; "invoice AH/24-25/118 for ₹12 lakh, due
+ * 40 days ago" is what you ring somebody about.
+ *
+ * Ameya Tally previously inferred this by matching payments to charges oldest
+ * first, which is only ever a guess — a buyer paying the third instalment while
+ * disputing the second produces a completely wrong ageing under FIFO. These two
+ * tables record the allocation the accountant actually intended, exactly as
+ * Tally's "Bill-wise details" does with New Ref / Against Ref / On Account.
+ */
+model TallyBill {
+  id        String    @id @default(cuid())
+  companyId String
+  /** The party this is owed by or to. */
+  ledgerId  String
+  /** The bill reference the parties quote to each other, e.g. AH/24-25/118. */
+  reference String
+  billDate  DateTime
+  dueDate   DateTime?
+  /** Positive. Direction is implied by the party's group (debtor vs creditor). */
+  amount    Decimal   @db.Decimal(14, 2)
+  /** RECEIVABLE (we are owed) | PAYABLE (we owe). */
+  kind      String
+  narration String?
+  /** The voucher that raised it, when there is one. */
+  voucherId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  ledger      TallyLedger           @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  allocations TallyBillAllocation[]
+
+  @@unique([companyId, ledgerId, reference])
+  @@index([companyId, kind])
+  @@index([ledgerId])
+  @@index([dueDate])
+}
+
+/**
+ * Money set against a bill. A receipt can be split across several bills, and a
+ * bill can be settled by several receipts — hence a join table rather than a
+ * column on either side.
+ */
+model TallyBillAllocation {
+  id        String   @id @default(cuid())
+  billId    String
+  /** The voucher that paid/received. */
+  voucherId String
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  bill    TallyBill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+  voucher TallyVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@index([billId])
   @@index([voucherId])
 }

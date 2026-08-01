@@ -73,7 +73,7 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
           {views.map((v) => (
             <span key={v.id} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-secondary/50">
               <button onClick={() => applyView(v)}>{v.name}</button>
-              {v.isShared && <Badge variant="secondary" className="h-4 px-1 text-[9px]">shared</Badge>}
+              {v.isShared && <Badge variant="secondary" className="h-4 px-1 text-[11px]">shared</Badge>}
               {v.mine && <button onClick={() => doDelete(v.id)} title="Delete"><Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" /></button>}
             </span>
           ))}

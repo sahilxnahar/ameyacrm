@@ -146,11 +146,11 @@ export function ChatView({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-1">
                   <span className="truncate text-sm font-medium">{c.title}</span>
-                  {c.lastAt && <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(c.lastAt)}</span>}
+                  {c.lastAt && <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(c.lastAt)}</span>}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">{c.lastMessage ?? 'No messages yet'}</span>
               </span>
-              {c.unread > 0 && <span className="shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{c.unread}</span>}
+              {c.unread > 0 && <span className="shrink-0 rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{c.unread}</span>}
             </button>
           ))}
         </div>
@@ -201,7 +201,7 @@ export function ChatView({
                       )
                     ))}
                   </div>
-                  <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                     {formatDateTime(m.createdAt)}
                     {m.mine && (m.read
                       ? <span className="flex items-center gap-0.5 text-[#1B2A4A] dark:text-[#8FB0E8]"><CheckCheck className="h-3 w-3" /> Read</span>

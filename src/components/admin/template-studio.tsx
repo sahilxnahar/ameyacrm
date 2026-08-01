@@ -121,7 +121,7 @@ export function TemplateStudio({
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-medium">{t.name}</p>
-                            <span className="rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Template</span>
+                            <span className="rounded-full border px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">Template</span>
                             {t.metaStatus && <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${META_BADGE[t.metaStatus] ?? META_BADGE.DRAFT}`}>{t.metaStatus === 'DRAFT' ? 'Not submitted' : t.metaStatus.toLowerCase()}</span>}
                           </div>
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{t.body}</p>

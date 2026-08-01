@@ -139,7 +139,7 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
                 <div className="flex items-center gap-2">
                   <span className="truncate text-xs text-muted-foreground">{t.lastSnippet || '—'}</span>
                   {t.unhandled > 0 && (
-                    <span className="ml-auto shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{t.unhandled}</span>
+                    <span className="ml-auto shrink-0 rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">{t.unhandled}</span>
                   )}
                 </div>
               </button>
@@ -179,7 +179,7 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
                     <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.direction === 'OUTBOUND' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       {m.subject && <div className="mb-1 text-xs font-semibold opacity-80">{m.subject}</div>}
                       <div className="whitespace-pre-wrap break-words">{m.body}</div>
-                      <div className="mt-1 text-[10px] opacity-70">{new Date(m.at).toLocaleString()}</div>
+                      <div className="mt-1 text-[11px] opacity-70">{new Date(m.at).toLocaleString()}</div>
                     </div>
                   </div>
                 ))

@@ -206,7 +206,7 @@ function Stat({ label, value, tone, hint }: { label: string; value: number; tone
     <div className="rounded-md border bg-card p-3">
       <div className={`text-xl font-semibold tabular-nums ${color}`}>{value}</div>
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      {hint && <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div>}
+      {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
     </div>
   );
 }

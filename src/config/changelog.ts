@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.98';
+export const APP_VERSION = 'v15.99';
 
 export interface Release {
   version: string;
@@ -13,6 +13,20 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.99',
+    date: '1 Aug 2026',
+    highlights: [
+      'A full sweep of the interface \u2014 17 layout and readability faults found and fixed, most of them only visible on a 13" laptop.',
+      'Today\u2019s Priorities was capped at 448px, so the whole page sat in a narrow strip with two thirds of the screen empty. It now uses the width you have, and the page title comes first.',
+      'Headings on eight screens were dark navy on a near-black card in dark mode \u2014 effectively invisible. They now follow the theme.',
+      'Rupee figures no longer overflow their tiles on Finance and elsewhere: long amounts start smaller and grow only where there is room.',
+      'Card rows across the dashboard, home, inventory and finance now fit themselves to the space actually available rather than to the browser window \u2014 the mismatch that squashed tiles and truncated filenames to two characters.',
+      'Ameya Tally\u2019s tables scroll sideways instead of colliding, and its function-key rail steps out of the way on smaller screens.',
+      'Document actions (rename, download, open) were hover-only, so they could not be reached at all on a tablet or phone.',
+      'The feedback button no longer sits on top of the Assistant button, and the smallest text in the app has been raised to a readable size.',
+    ],
+  },
   {
     version: 'v15.98',
     date: '1 Aug 2026',

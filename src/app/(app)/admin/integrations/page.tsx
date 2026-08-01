@@ -47,7 +47,7 @@ export default async function IntegrationsPage() {
       <div className="space-y-5">
         {categories.map((cat) => (
           <div key={cat}>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{cat}</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{cat}</p>
             <div className="grid gap-2 lg:grid-cols-2">
               {items.filter((i) => i.category === cat).map((i) => {
                 const S = STATE[i.health];

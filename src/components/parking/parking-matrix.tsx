@@ -51,7 +51,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[#1B2A4A]">Parking Matrix</h1>
+          <h1 className="text-xl font-semibold text-primary">Parking Matrix</h1>
           <p className="text-sm text-muted-foreground">Every parking slot, which level it’s on and which unit it belongs to. Click a slot to assign it, block it or free it.</p>
         </div>
         <button onClick={() => setShowAdd((v) => !v)} className="rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63]">{showAdd ? 'Close' : 'Add slots'}</button>
@@ -84,13 +84,13 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
         <div className="space-y-5">
           {data.levels.map((lvl) => (
             <div key={lvl.level}>
-              <h2 className="mb-2 text-sm font-semibold text-[#1B2A4A]">{lvl.level} <span className="font-normal text-muted-foreground">· {lvl.slots.length} slots</span></h2>
+              <h2 className="mb-2 text-sm font-semibold text-primary">{lvl.level} <span className="font-normal text-muted-foreground">· {lvl.slots.length} slots</span></h2>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
                 {lvl.slots.map((s) => (
                   <button key={s.id} onClick={() => setSelected(s)} title={s.unitCode ? `Assigned to ${s.unitCode}` : s.status} className={`rounded-md border p-2 text-left text-xs transition hover:ring-2 hover:ring-[#A07D34]/50 ${STATUS_STYLE[s.status] ?? STATUS_STYLE.Available} ${selected?.id === s.id ? 'ring-2 ring-[#1B2A4A]' : ''}`}>
                     <div className="font-semibold">{s.code}</div>
-                    <div className="text-[10px] opacity-70">{s.type}</div>
-                    {s.unitCode && <div className="mt-0.5 truncate text-[10px] font-medium">→ {s.unitCode}</div>}
+                    <div className="text-[11px] opacity-70">{s.type}</div>
+                    {s.unitCode && <div className="mt-0.5 truncate text-[11px] font-medium">→ {s.unitCode}</div>}
                   </button>
                 ))}
               </div>
@@ -181,7 +181,7 @@ function SlotEditor({ slot, units, pending, onAssign, onStatus, onDelete, onClos
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-t-xl bg-white p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-[#1B2A4A]">Slot {slot.code}</h3>
+          <h3 className="text-lg font-semibold text-primary">Slot {slot.code}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">✕</button>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">{slot.level} · {slot.type} · currently <span className="font-semibold">{slot.status}</span>{slot.unitCode ? ` (unit ${slot.unitCode})` : ''}</p>

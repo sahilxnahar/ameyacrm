@@ -29,7 +29,7 @@ function Card({ task }: { task: BoardTask }) {
       className={cn('cursor-grab rounded-lg border bg-card p-3 shadow-sm active:cursor-grabbing', isDragging && 'opacity-50 ring-2 ring-primary')}
     >
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] text-muted-foreground">{task.reference}</span>
+        <span className="font-mono text-[11px] text-muted-foreground">{task.reference}</span>
         <PriorityBadge priority={task.priority as never} />
       </div>
       <Link href={`/tasks/${task.id}`} onClick={(e) => e.stopPropagation()} className="line-clamp-2 text-sm font-medium hover:text-primary">
@@ -38,11 +38,11 @@ function Card({ task }: { task: BoardTask }) {
       <div className="mt-2 flex items-center justify-between">
         <div className="flex -space-x-2">
           {task.assignees.slice(0, 3).map((a, i) => (
-            <Avatar key={i} className="h-6 w-6 border-2 border-card"><AvatarFallback className="text-[9px]">{initials(a.name)}</AvatarFallback></Avatar>
+            <Avatar key={i} className="h-6 w-6 border-2 border-card"><AvatarFallback className="text-[11px]">{initials(a.name)}</AvatarFallback></Avatar>
           ))}
         </div>
         {task.dueDate && (
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <CalendarDays className="h-3 w-3" />{formatDate(task.dueDate, 'dd MMM')}
           </span>
         )}

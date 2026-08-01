@@ -126,7 +126,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
                 <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', t.role === 'user' ? 'bg-secondary' : 'bg-primary/10')}>
                   {t.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5 text-[#A07D34]" />}
                 </span>
-                <div className={cn('max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm', t.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
+                <div className={cn('max-w-[80%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm', t.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
                   {t.content}
                 </div>
               </div>

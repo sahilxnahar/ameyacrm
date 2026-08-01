@@ -82,7 +82,7 @@ export function MyAutomations({ prefs: initial }: { prefs: MyAutomationPrefs }) 
             <div className="flex items-center gap-2 bg-secondary/40 px-3 py-2">
               <button onClick={() => toggleDept(dept)} className="flex flex-1 items-center gap-2 text-left">
                 {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="text-sm font-semibold text-[#1B2A4A]">{dept}</span>
+                <span className="text-sm font-semibold text-primary">{dept}</span>
                 <span className="text-xs text-muted-foreground">{onInDept}/{list.length} on</span>
               </button>
               <button onClick={() => bulk(dept, true)} className="rounded border bg-card px-2 py-0.5 text-xs hover:bg-secondary">All on</button>
@@ -116,9 +116,9 @@ function Row({ a, pref, onUpdate }: { a: StarterAutomation; pref?: MyAutomationP
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-[#1B2A4A]">{a.name}</span>
-          {a.startHere && <span className="rounded bg-[#A07D34]/15 px-1.5 py-0.5 text-[10px] font-medium text-[#7a5f28]">Start here</span>}
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">{TRIGGER_LABEL[a.trigger] ?? a.trigger}</span>
+          <span className="text-sm font-semibold text-primary">{a.name}</span>
+          {a.startHere && <span className="rounded bg-[#A07D34]/15 px-1.5 py-0.5 text-[11px] font-medium text-[#7a5f28]">Start here</span>}
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{TRIGGER_LABEL[a.trigger] ?? a.trigger}</span>
         </div>
         <p className="text-xs text-muted-foreground">{a.what}</p>
         {on && params && (

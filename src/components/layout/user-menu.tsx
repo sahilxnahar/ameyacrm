@@ -27,7 +27,7 @@ export function UserMenu({ user }: { user: ShellUser }) {
           <div className="flex flex-col">
             <span className="font-semibold">{user.name}</span>
             <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
-            <span className="mt-1 text-[10px] font-normal uppercase tracking-wide text-primary">
+            <span className="mt-1 text-[11px] font-normal uppercase tracking-wide text-primary">
               {user.designation ?? user.role}
             </span>
           </div>

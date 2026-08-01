@@ -37,7 +37,7 @@ export function Topbar({
       >
         <Search className="h-4 w-4" />
         <span className="truncate">Search…</span>
-        <kbd className="ml-auto hidden rounded border bg-background px-1.5 text-[10px] sm:inline">⌘K</kbd>
+        <kbd className="ml-auto hidden rounded border bg-background px-1.5 text-[11px] sm:inline">⌘K</kbd>
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">

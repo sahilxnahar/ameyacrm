@@ -39,7 +39,7 @@ export default async function FinancePage() {
       {/* Cost of capital */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Cost of capital (bank &amp; NBFC debt)</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
           <Tile label="Debt outstanding" value={inr(debt.totalOutstanding)} hint="Principal still owed" />
           <Tile label="Weighted avg rate" value={`${debt.weightedAvgRate.toFixed(2)}%`} hint="Per year, balance-weighted" />
           <Tile label="Interest / month" value={inr(debt.monthlyInterestRunRate)} hint="At current balances" />
@@ -50,7 +50,7 @@ export default async function FinancePage() {
       {/* Cash & working capital */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Cash &amp; working capital</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
           <Tile label="Cash in bank" value={inr(cash)} hint={`${positions.length} account${positions.length === 1 ? '' : 's'}`} />
           <Tile label="Overdue to collect" value={inr(overdueRecv)} hint={`${overdue._count} milestone${overdue._count === 1 ? '' : 's'}`} tone={overdueRecv > 0 ? 'warn' : undefined} />
           <Tile label="Upcoming receivables" value={inr(pendingRecv)} hint="Not yet due" />
@@ -67,7 +67,7 @@ export default async function FinancePage() {
             <p>Cash is forecast to go <strong>negative</strong> (low point {inr(forecast.lowestPoint)} in week {forecast.lowestWeekIndex + 1}). Bring collections forward or delay a payment run.</p>
           </div>
         )}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
           <Tile label="Opening cash" value={inr(forecast.opening)} hint="Today" />
           <Tile label="Lowest point" value={inr(forecast.lowestPoint)} hint={`Week ${forecast.lowestWeekIndex + 1}`} tone={lowNegative ? 'bad' : undefined} />
           <Tile label="Closing (12 weeks)" value={inr(forecast.closing)} hint={forecast.horizonNote} />

@@ -38,7 +38,7 @@ function Row({ item }: { item: TodayItem }) {
           <p className="truncate text-[13px] font-medium leading-tight">{item.title}</p>
           <p className="truncate text-[11px] text-muted-foreground">{item.detail}</p>
         </div>
-        {item.when && <span className="shrink-0 text-[10px] text-muted-foreground">{item.when}</span>}
+        {item.when && <span className="shrink-0 text-[11px] text-muted-foreground">{item.when}</span>}
       </div>
     </Link>
   );
@@ -75,12 +75,17 @@ export default async function TodayPage() {
     .map(({ label, href, icon }) => ({ label, href, icon }));
 
   return (
-    <div className="max-w-md">
+    // `max-w-md` used to wrap this whole page, so on a laptop everything —
+    // header, checklist, quick actions and the priority list — rendered in a
+    // 448px sliver against the left edge with two thirds of the screen empty.
+    // The width limit belongs on the reading column alone, not the page.
+    <div>
+      <PageHeader title="Today's priorities" description={items.length ? `${counts.overdue} overdue · ${counts.today} due today` : 'Your day, in one column.'} />
       {showWelcome && <WelcomeWizard name={user.name} />}
       <OnboardingChecklist steps={steps} doneKeys={doneKeys} />
       <QuickActions actions={quickActions} />
       <RecentRecords />
-      <PageHeader title="Today's priorities" description={items.length ? `${counts.overdue} overdue · ${counts.today} due today` : 'Your day, in one column.'} />
+      <div className="max-w-3xl">
       {items.length === 0 ? (
         <Card className="p-10 text-center">
           <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-600" />
@@ -101,6 +106,7 @@ export default async function TodayPage() {
           })}
         </div>
       )}
+    </div>
     </div>
   );
 }

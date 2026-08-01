@@ -62,8 +62,8 @@ export function StarterAutomationsPanel({ existingNames }: { existingNames: stri
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                           {a.name}
-                          <span className="rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">Template</span>
-                          {a.startHere && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"><Star className="h-2.5 w-2.5" />start here</span>}
+                          <span className="rounded-full border px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">Template</span>
+                          {a.startHere && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary"><Star className="h-2.5 w-2.5" />start here</span>}
                           {have && <span className="text-xs font-normal text-muted-foreground">— already added</span>}
                         </p>
                         <p className="mt-0.5 text-sm text-muted-foreground">{a.what}</p>

@@ -54,7 +54,7 @@ export function SocialAccountsView({ people, meId, isAdmin }: { people: Person[]
         <Card key={p.id} className="overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
             <div>
-              <p className="font-medium">{p.name} {p.id === meId && <Badge variant="secondary" className="ml-1 text-[10px]">you</Badge>}</p>
+              <p className="font-medium">{p.name} {p.id === meId && <Badge variant="secondary" className="ml-1 text-[11px]">you</Badge>}</p>
               <p className="text-xs text-muted-foreground">{[p.designation, p.departmentName, p.email].filter(Boolean).join(' · ')}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

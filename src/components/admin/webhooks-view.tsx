@@ -98,7 +98,7 @@ export function WebhooksView({ hooks }: { hooks: Hook[] }) {
                   </div>
                   {h.description && <div className="text-xs text-muted-foreground">{h.description}</div>}
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {h.events.map((e) => <span key={e} className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{e}</span>)}
+                    {h.events.map((e) => <span key={e} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{e}</span>)}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {h.lastDeliveryAt

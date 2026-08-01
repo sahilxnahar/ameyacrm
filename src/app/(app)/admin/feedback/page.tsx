@@ -37,7 +37,7 @@ export default async function FeedbackPage() {
                 <span>{r.userId ? nameById.get(r.userId) ?? 'Someone' : 'Someone'}</span>
                 <span>·</span>
                 <span>{timeAgo(r.createdAt)}</span>
-                {r.path && <Badge variant="secondary" className="font-mono text-[10px]">{r.path}</Badge>}
+                {r.path && <Badge variant="secondary" className="font-mono text-[11px]">{r.path}</Badge>}
                 {r.handled && <Badge variant="success">Handled</Badge>}
               </div>
             </div>

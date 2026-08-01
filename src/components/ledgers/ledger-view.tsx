@@ -420,13 +420,13 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                     {p.tdsAmount ? <p className="text-[11px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</p> : null}
                     <div className="flex flex-wrap items-center gap-1.5">
                       {p.status === 'DRAFT' && (
-                        <><Badge variant="warning" className="gap-1 text-[10px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>{canManage && <button onClick={() => approve(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Approve</button>}</>
+                        <><Badge variant="warning" className="gap-1 text-[11px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>{canManage && <button onClick={() => approve(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Approve</button>}</>
                       )}
                       {p.isAdvance && (
-                        <><Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[10px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>{canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}</>
+                        <><Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[11px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>{canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}</>
                       )}
                       {p.retentionAmount ? (
-                        <><Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[10px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>{canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}</>
+                        <><Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[11px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>{canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}</>
                       ) : null}
                     </div>
                     <div>
@@ -451,19 +451,19 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                           {p.number}
                           {p.status === 'DRAFT' && (
                             <span className="mt-1 flex items-center gap-1">
-                              <Badge variant="warning" className="gap-1 text-[10px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>
+                              <Badge variant="warning" className="gap-1 text-[11px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>
                               {canManage && <button onClick={() => approve(p.id)} disabled={pending} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline disabled:opacity-60"><BadgeCheck className="h-3 w-3" /> Approve</button>}
                             </span>
                           )}
                           {p.isAdvance && (
                             <span className="mt-1 flex items-center gap-1">
-                              <Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[10px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>
+                              <Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[11px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>
                               {canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}
                             </span>
                           )}
                           {p.retentionAmount ? (
                             <span className="mt-1 flex items-center gap-1">
-                              <Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[10px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>
+                              <Badge variant={p.retentionReleased ? 'secondary' : 'warning'} className="text-[11px]">Retention {formatCompactCurrency(p.retentionAmount)}{p.retentionReleased ? ' · released' : ''}</Badge>
                               {canManage && !p.retentionReleased && <button onClick={() => doRelease(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Release</button>}
                             </span>
                           ) : null}
@@ -482,7 +482,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                             <span className="text-xs text-muted-foreground">{EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '—'}</span>
                           )}
                         </td>
-                        <td className="max-w-[15rem] whitespace-normal break-words p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[10px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
+                        <td className="max-w-[15rem] whitespace-normal break-words p-2 text-xs text-muted-foreground">{p.narration ?? '—'}{p.tdsAmount ? <span className="mt-0.5 block text-[11px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</span> : null}</td>
                         <td className="min-w-[13rem] p-2">{PaymentActions(p)}</td>
                       </tr>
                     ))}

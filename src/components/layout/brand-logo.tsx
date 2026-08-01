@@ -38,7 +38,7 @@ export function BrandLogo({
           <div className="font-display text-[1.35rem] font-semibold leading-none tracking-[0.01em] text-[#5B4412] dark:text-[#D9BE79]">
             {brand.company.displayName}
           </div>
-          <div className="mt-1 text-[9px] font-medium uppercase tracking-[0.34em] text-muted-foreground">CRM</div>
+          <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.34em] text-muted-foreground">CRM</div>
         </div>
       )}
     </>

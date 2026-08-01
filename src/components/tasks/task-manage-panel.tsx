@@ -38,7 +38,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
         <div className="space-y-1">
           {subtasks.map((s) => (
             <Link key={s.id} href={`/tasks/${s.id}`} className="flex items-center gap-2 rounded-md border p-2 text-sm hover:bg-secondary">
-              <span className="font-mono text-[10px] text-muted-foreground">{s.reference}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{s.reference}</span>
               <span className="flex-1 truncate">{s.title}</span>
               <StatusBadge status={s.status as never} />
             </Link>
@@ -73,7 +73,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
         <div className="space-y-1">
           {dependencies.map((d) => (
             <div key={d.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-              <span className="font-mono text-[10px] text-muted-foreground">{d.reference}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{d.reference}</span>
               <span className="flex-1 truncate">{d.title}</span>
               <Badge variant="secondary">{titleCase(d.status)}</Badge>
             </div>

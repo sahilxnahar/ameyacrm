@@ -79,8 +79,8 @@ export function SequencesView({
                   <p className="flex flex-wrap items-center gap-2 font-medium">
                     {s.name}
                     <Badge variant={s.status === 'ACTIVE' ? 'success' : 'secondary'}>{s.status.toLowerCase()}</Badge>
-                    {s.stopOnReply && <Badge variant="outline" className="text-[10px]">stops on reply</Badge>}
-                    {s.stopOnStage && <Badge variant="outline" className="text-[10px]">stops at {s.stopOnStage.toLowerCase()}</Badge>}
+                    {s.stopOnReply && <Badge variant="outline" className="text-[11px]">stops on reply</Badge>}
+                    {s.stopOnStage && <Badge variant="outline" className="text-[11px]">stops at {s.stopOnStage.toLowerCase()}</Badge>}
                   </p>
                   {s.description && <p className="text-sm text-muted-foreground">{s.description}</p>}
                   <p className="mt-1 text-xs text-muted-foreground tabular">

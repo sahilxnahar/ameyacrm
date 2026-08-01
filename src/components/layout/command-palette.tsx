@@ -121,7 +121,7 @@ export function CommandPalette({
             {!term && recentItems.length > 0 && (
               <Command.Group
                 heading="Recent"
-                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+                className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
               >
                 {recentItems.map((item) => {
                   const Icon = item.icon;
@@ -144,7 +144,7 @@ export function CommandPalette({
               <Command.Group
                 key={group.label}
                 heading={group.label}
-                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+                className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
               >
                 {group.items.map((item) => {
                   const Icon = item.icon;
@@ -169,7 +169,7 @@ export function CommandPalette({
             {authorityHits.length > 0 && (
               <Command.Group
                 heading="Authorities & portals"
-                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+                className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
               >
                 {authorityHits.map((a) => (
                   <React.Fragment key={`auth-${a.state}-${a.name}`}>
@@ -197,7 +197,7 @@ export function CommandPalette({
             {hits.length > 0 && (
               <Command.Group
                 heading="Records"
-                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
+                className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground [&_[cmdk-group-items]]:mt-1"
               >
                 {hits.map((hit) => (
                   <Command.Item
@@ -206,7 +206,7 @@ export function CommandPalette({
                     onSelect={() => go(hit.href)}
                     className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-foreground aria-selected:bg-secondary"
                   >
-                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{hit.type}</span>
+                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{hit.type}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{hit.title}</span>
                       {hit.subtitle && <span className="block truncate text-xs text-muted-foreground">{hit.subtitle}</span>}

@@ -126,7 +126,7 @@ export function AiTallyAssistant({ onPosted }: { onPosted?: () => void }) {
                         <tr key={i} className="border-t">
                           <td className="py-1.5">
                             {l.ledgerName}
-                            {!l.ledgerId && <span className="ml-1 rounded bg-amber-500/15 px-1 text-[10px] text-amber-700">new</span>}
+                            {!l.ledgerId && <span className="ml-1 rounded bg-amber-500/15 px-1 text-[11px] text-amber-700">new</span>}
                           </td>
                           <td className="py-1.5 text-right tabular-nums">{l.debit ? `₹${inr.format(l.debit)}` : ''}</td>
                           <td className="py-1.5 text-right tabular-nums">{l.credit ? `₹${inr.format(l.credit)}` : ''}</td>

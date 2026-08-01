@@ -55,7 +55,7 @@ export function ScanView() {
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-[#1B2A4A]">Scan a QR or Barcode</h1>
+        <h1 className="text-xl font-semibold text-primary">Scan a QR or Barcode</h1>
         <p className="text-sm text-muted-foreground">Point the camera at a unit QR, a material barcode or any code. Works on the phone camera and laptop webcams; you can also type a code by hand.</p>
       </div>
 
@@ -80,7 +80,7 @@ export function ScanView() {
         <div className="rounded-lg border border-[#A07D34]/40 bg-[#A07D34]/5 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Scanned</span>
-            <button onClick={() => void navigator.clipboard?.writeText(result).then(() => toast.success('Copied'))} className="text-xs text-[#1B2A4A] hover:underline">Copy</button>
+            <button onClick={() => void navigator.clipboard?.writeText(result).then(() => toast.success('Copied'))} className="text-xs text-primary hover:underline">Copy</button>
           </div>
           <p className="break-all font-mono text-sm">{result}</p>
 
@@ -105,7 +105,7 @@ export function ScanView() {
             ))}
           </div>
 
-          <button onClick={() => { setResult(null); setMatch(null); setManual(''); }} className="mt-3 text-xs text-[#1B2A4A] hover:underline">Scan another</button>
+          <button onClick={() => { setResult(null); setMatch(null); setManual(''); }} className="mt-3 text-xs text-primary hover:underline">Scan another</button>
         </div>
       )}
     </div>

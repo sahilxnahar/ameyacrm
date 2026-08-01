@@ -63,7 +63,7 @@ export function TaskList({ tasks, people = [] }: { tasks: BoardTask[]; people?: 
                   <TableCell>
                     <div className="flex -space-x-2">
                       {t.assignees.slice(0, 4).map((a, i) => (
-                        <Avatar key={i} className="h-6 w-6 border-2 border-background"><AvatarFallback className="text-[9px]">{initials(a.name)}</AvatarFallback></Avatar>
+                        <Avatar key={i} className="h-6 w-6 border-2 border-background"><AvatarFallback className="text-[11px]">{initials(a.name)}</AvatarFallback></Avatar>
                       ))}
                     </div>
                   </TableCell>

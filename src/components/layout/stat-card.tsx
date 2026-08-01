@@ -51,8 +51,11 @@ export function StatCard({
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      {/* Long values (₹1,23,45,678) get smaller rather than overflowing. */}
-      <p className="relative mt-2 text-2xl font-bold leading-none tabular-nums sm:text-3xl">{value}</p>
+      {/* A full rupee figure (₹1,23,45,678) has no break opportunity, so it must
+          start small and only grow where there is room — the reverse of what
+          this line used to do. `break-all` is the last resort for the extreme
+          case rather than letting it spill outside the card. */}
+      <p className="relative mt-2 break-all text-xl font-bold leading-none tabular-nums sm:text-2xl xl:text-3xl">{value}</p>
       {hint && <p className="relative mt-2 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>}
     </Card>
   );

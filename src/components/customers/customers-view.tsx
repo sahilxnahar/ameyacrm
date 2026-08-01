@@ -114,7 +114,7 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
                 <TableCell><Badge variant={t.priority === 'URGENT' || t.priority === 'HIGH' ? 'destructive' : 'secondary'}>{t.priority}</Badge></TableCell>
                 <TableCell>
                   <Badge variant={t.status === 'RESOLVED' ? 'success' : t.status === 'IN_PROGRESS' ? 'warning' : 'secondary'}>{t.status.replace('_', ' ')}</Badge>
-                  {t.status !== 'RESOLVED' && (() => { const s = snagSla(classifySnag(t.category, t.title), new Date(t.createdAt)); return <span className={`mt-1 block text-[10px] font-medium ${s.overdue ? 'text-rose-600' : 'text-amber-600'}`}>{s.label}</span>; })()}
+                  {t.status !== 'RESOLVED' && (() => { const s = snagSla(classifySnag(t.category, t.title), new Date(t.createdAt)); return <span className={`mt-1 block text-[11px] font-medium ${s.overdue ? 'text-rose-600' : 'text-amber-600'}`}>{s.label}</span>; })()}
                 </TableCell>
                 <TableCell className="text-right">{canManage && (
                   <span className="flex justify-end gap-1">

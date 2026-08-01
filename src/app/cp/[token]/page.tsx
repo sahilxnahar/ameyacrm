@@ -90,7 +90,7 @@ export default async function CpPortalPage({ params }: { params: Promise<{ token
 function Tile({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div className="rounded-xl border p-3">
-      <p className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">{icon}{label}</p>
+      <p className="flex items-center gap-1 text-[11px] uppercase text-muted-foreground">{icon}{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );

@@ -67,7 +67,7 @@ export function BentoCommandCenter({ tiles, urgent, firstName }: { tiles: AlertT
           </div>
           <button onClick={openPalette} className="inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-muted">
             <Search className="h-4 w-4" /> Search or jump to…
-            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
+            <kbd className="ml-2 rounded border bg-muted px-1.5 py-0.5 text-[11px] font-medium">⌘K</kbd>
           </button>
         </div>
       </div>

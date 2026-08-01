@@ -79,7 +79,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           <CardContent className="space-y-3">
             {task.assignees.map((a) => (
               <div key={a.user.id} className="flex items-center gap-3">
-                <Avatar className="h-8 w-8"><AvatarFallback className="text-[10px]">{initials(a.user.name)}</AvatarFallback></Avatar>
+                <Avatar className="h-8 w-8"><AvatarFallback className="text-[11px]">{initials(a.user.name)}</AvatarFallback></Avatar>
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{a.user.name}</p><p className="text-xs text-muted-foreground">{a.progressPct}% complete</p></div>
                 <AssigneeStateBadge state={a.state} />
               </div>

@@ -62,7 +62,7 @@ export function TopBar({
       >
         <Search className="h-4 w-4 shrink-0" />
         <span className="truncate">Search or jump to…</span>
-        <kbd className="ml-auto hidden shrink-0 rounded border bg-background px-1.5 text-[10px] lg:inline">⌘K</kbd>
+        <kbd className="ml-auto hidden shrink-0 rounded border bg-background px-1.5 text-[11px] lg:inline">⌘K</kbd>
       </button>
 
       {/* Module links (Sales, Tally, Messages, Assistant…) now live in <SubNav/>,

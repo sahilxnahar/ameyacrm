@@ -45,7 +45,7 @@ export function TemplateEditor({ templates }: { templates: Tmpl[] }) {
         {templates.map((t) => (
           <button key={t.id} onClick={() => setSelectedId(t.id)} className={`w-full rounded-md border p-2 text-left text-sm ${selectedId === t.id ? 'border-primary bg-primary/10' : 'hover:bg-secondary'}`}>
             <div className="font-medium">{t.name}</div>
-            <div className="font-mono text-[10px] text-muted-foreground">{t.key}</div>
+            <div className="font-mono text-[11px] text-muted-foreground">{t.key}</div>
           </button>
         ))}
       </div>

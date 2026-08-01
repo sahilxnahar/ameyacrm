@@ -75,14 +75,14 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
         <DropZone onFiles={(files) => void doUpload(files)} disabled={!!busy} overlayLabel="Drop files to add to the library" className="rounded-xl border border-[#A07D34]/40 bg-[#A07D34]/5 p-4">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => filesRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63] disabled:opacity-50"><Upload className="h-4 w-4" /> Upload files</button>
-            <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-[#1B2A4A] hover:bg-white disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
+            <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-white disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
             <span className="text-xs text-muted-foreground">Folders are sorted into categories automatically by AI.</span>
             {busy && <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-[#A07D34]"><Loader2 className="h-4 w-4 animate-spin" /> {busy}</span>}
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-xs">Google Drive / web link<br /><input value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/…" className="w-72 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
             <label className="text-xs">Title<br /><input value={driveTitle} onChange={(e) => setDriveTitle(e.target.value)} placeholder="What is it?" className="w-52 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
-            <button onClick={addDrive} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-[#1B2A4A] hover:bg-white disabled:opacity-50"><Link2 className="h-4 w-4" /> Add link</button>
+            <button onClick={addDrive} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-white disabled:opacity-50"><Link2 className="h-4 w-4" /> Add link</button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Tip: you can also drag files straight onto this panel.</p>
           <input ref={filesRef} type="file" multiple hidden onChange={(e) => doUpload(e.target.files)} />
@@ -93,7 +93,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
 
       {/* Featured (bundled) */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-[#1B2A4A]">Featured</h2>
+        <h2 className="mb-2 text-sm font-semibold text-primary">Featured</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {featured.map((c) => <FeaturedCard key={c.file} c={c} />)}
         </div>
@@ -105,7 +105,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
       ) : (
         [...orderedCats, ...extraCats].map((cat) => (
           <section key={cat}>
-            <h2 className="mb-2 text-sm font-semibold text-[#1B2A4A]">{cat} <span className="font-normal text-muted-foreground">· {byCat.get(cat)!.length}</span></h2>
+            <h2 className="mb-2 text-sm font-semibold text-primary">{cat} <span className="font-normal text-muted-foreground">· {byCat.get(cat)!.length}</span></h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {byCat.get(cat)!.map((it) => <ItemCard key={it.id} it={it} canManage={canManage} onRemove={remove} />)}
             </div>
@@ -130,11 +130,11 @@ function FeaturedCard({ c }: { c: Collateral }) {
         <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-[#A07D34]" /></div>
       )}
       <div className="border-t border-slate-100 p-3">
-        <p className="truncate text-sm font-semibold text-[#1B2A4A]">{c.title}</p>
+        <p className="truncate text-sm font-semibold text-primary">{c.title}</p>
         <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
         <div className="flex gap-3 text-xs">
-          <a href={c.file} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1B2A4A] hover:underline"><ExternalLink className="h-3 w-3" /> View</a>
-          <a href={c.file} download className="inline-flex items-center gap-1 text-[#1B2A4A] hover:underline"><Download className="h-3 w-3" /> Download</a>
+          <a href={c.file} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><ExternalLink className="h-3 w-3" /> View</a>
+          <a href={c.file} download className="inline-flex items-center gap-1 text-primary hover:underline"><Download className="h-3 w-3" /> Download</a>
         </div>
       </div>
     </div>
@@ -154,11 +154,11 @@ function ItemCard({ it, canManage, onRemove }: { it: LibraryItem; canManage: boo
         <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-[#A07D34]" /></div>
       )}
       <div className="border-t border-slate-100 p-3">
-        <p className="truncate text-sm font-semibold text-[#1B2A4A]" title={it.title}>{it.title}</p>
+        <p className="truncate text-sm font-semibold text-primary" title={it.title}>{it.title}</p>
         <p className="mb-2 text-[11px] text-muted-foreground">{it.source === 'DRIVE' ? 'Google Drive / link' : it.fileType || 'file'}{it.folderPath ? ` · ${it.folderPath}` : ''}</p>
         <div className="flex items-center gap-3 text-xs">
-          {isViewable(it.kind) && <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1B2A4A] hover:underline"><ExternalLink className="h-3 w-3" /> {it.source === 'DRIVE' ? 'Open in Drive' : 'View'}</a>}
-          {it.source !== 'DRIVE' && <a href={it.url} download className="inline-flex items-center gap-1 text-[#1B2A4A] hover:underline"><Download className="h-3 w-3" /> Download</a>}
+          {isViewable(it.kind) && <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><ExternalLink className="h-3 w-3" /> {it.source === 'DRIVE' ? 'Open in Drive' : 'View'}</a>}
+          {it.source !== 'DRIVE' && <a href={it.url} download className="inline-flex items-center gap-1 text-primary hover:underline"><Download className="h-3 w-3" /> Download</a>}
           {canManage && <button onClick={() => onRemove(it.id)} className="ml-auto inline-flex items-center gap-1 text-rose-600 hover:underline"><Trash2 className="h-3 w-3" /></button>}
         </div>
       </div>

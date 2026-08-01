@@ -85,7 +85,7 @@ export function CustomisationView({ terms, stages }: { terms: Terminology; stage
             const locked = k === 'NEW' || k === 'WON' || k === 'LOST';
             return (
               <div key={k} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-                <span className="w-24 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">{k}</span>
+                <span className="w-24 shrink-0 font-mono text-[11px] uppercase text-muted-foreground">{k}</span>
                 <Input className="h-8 min-w-32 flex-1" value={s[k].label}
                   onChange={(e) => setS({ ...s, [k]: { ...s[k], label: e.target.value } })} />
                 <span className="flex items-center gap-1.5">

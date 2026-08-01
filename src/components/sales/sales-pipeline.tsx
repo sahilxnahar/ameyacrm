@@ -68,7 +68,7 @@ function LeadRow({ lead }: { lead: Lead }) {
         </div>
       </div>
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
-        <Badge variant="outline" className="text-[10px]">{titleCase(lead.source)}</Badge>
+        <Badge variant="outline" className="text-[11px]">{titleCase(lead.source)}</Badge>
         {lead.budgetMax ? <span className="tabular-nums text-xs text-muted-foreground">≤ {formatCompactCurrency(lead.budgetMax)}</span> : null}
       </div>
       <StatusBadge status={lead.status} className="shrink-0" />
@@ -98,11 +98,11 @@ function Card({ lead }: { lead: Lead }) {
         <Link href={`/sales/${lead.id}`} onClick={(e) => e.stopPropagation()} className="text-sm font-medium hover:text-primary">{lead.name}</Link>
         {lead.isNri && <Globe2 className="h-3.5 w-3.5 text-brass" />}
       </div>
-      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{lead.reference}</p>
+      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{lead.reference}</p>
       {lead.budgetMax && <p className="mt-1 text-xs text-muted-foreground">Budget ≤ {formatCurrency(lead.budgetMax)}</p>}
       <div className="mt-2 flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px]">{titleCase(lead.source)}</Badge>
-        {lead.ownerName && <span className="text-[10px] text-muted-foreground">{lead.ownerName}</span>}
+        <Badge variant="outline" className="text-[11px]">{titleCase(lead.source)}</Badge>
+        {lead.ownerName && <span className="text-[11px] text-muted-foreground">{lead.ownerName}</span>}
       </div>
     </div>
   );

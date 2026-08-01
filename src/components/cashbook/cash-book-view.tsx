@@ -120,7 +120,7 @@ export function CashBookView({
                     <td className="p-3">
                       <span className="font-mono text-xs">{v.number}</span>
                       <span className="block text-[11px] text-muted-foreground">{format(new Date(v.date), 'd MMM')}</span>
-                      {cancelled && <Badge variant="destructive" className="mt-1 text-[10px]">cancelled</Badge>}
+                      {cancelled && <Badge variant="destructive" className="mt-1 text-[11px]">cancelled</Badge>}
                     </td>
                     <td className="p-3">
                       <span className={cn('font-medium', cancelled && 'line-through')}>{v.partyName}</span>

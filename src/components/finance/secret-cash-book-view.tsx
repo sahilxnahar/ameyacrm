@@ -177,7 +177,7 @@ export function SecretCashBookView({
         </div>
       </Card>
 
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Badge variant="secondary" className="text-[10px]">Private</Badge> These entries are stored separately and never appear in the normal books, reports or exports.</p>
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Badge variant="secondary" className="text-[11px]">Private</Badge> These entries are stored separately and never appear in the normal books, reports or exports.</p>
 
       {isSuperAdmin && (
         <Card className="border-destructive/40 p-4">

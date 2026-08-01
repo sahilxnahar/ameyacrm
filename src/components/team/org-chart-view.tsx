@@ -133,7 +133,7 @@ export function OrgChartView({
                     <div key={t.id} className="border-t">
                       <div className="flex items-center gap-2 px-3 pt-2 text-xs font-medium text-muted-foreground">
                         <ChevronRight className="h-3 w-3" /> {t.name}
-                        {t.headId && byId.get(t.headId) && <Badge variant="outline" className="text-[10px]">{byId.get(t.headId)!.name}</Badge>}
+                        {t.headId && byId.get(t.headId) && <Badge variant="outline" className="text-[11px]">{byId.get(t.headId)!.name}</Badge>}
                       </div>
                       <div className="space-y-1 p-2">
                         {members.length ? members.map((p) => card(p, 0))
@@ -188,15 +188,15 @@ function PersonRow({
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1.5', isMe && 'bg-primary/5')}>
       <div className="flex min-w-0 items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold">
           {p.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
         </span>
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
             {p.name}
-            {p.isDeptHead && <Badge variant="secondary" className="gap-1 text-[10px]"><Crown className="h-3 w-3" /> Head</Badge>}
-            {p.reportCount > 0 && <Badge variant="outline" className="gap-1 text-[10px]"><UserIcon className="h-3 w-3" /> {p.reportCount}</Badge>}
-            {p.status !== 'ACTIVE' && <Badge variant="warning" className="text-[10px]">{p.status}</Badge>}
+            {p.isDeptHead && <Badge variant="secondary" className="gap-1 text-[11px]"><Crown className="h-3 w-3" /> Head</Badge>}
+            {p.reportCount > 0 && <Badge variant="outline" className="gap-1 text-[11px]"><UserIcon className="h-3 w-3" /> {p.reportCount}</Badge>}
+            {p.status !== 'ACTIVE' && <Badge variant="warning" className="text-[11px]">{p.status}</Badge>}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {[p.designation, p.role.replace(/_/g, ' ').toLowerCase(), p.departmentName].filter(Boolean).join(' · ')}

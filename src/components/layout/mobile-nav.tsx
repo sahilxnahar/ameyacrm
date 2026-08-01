@@ -45,7 +45,7 @@ export function MobileNav({
               key={item.href}
               href={item.href}
               className={cn(
-                'relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
+                'relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
                 active ? 'text-primary' : 'text-muted-foreground active:bg-secondary',
               )}
               aria-current={active ? 'page' : undefined}
@@ -58,7 +58,7 @@ export function MobileNav({
         })}
         <button
           onClick={onMore}
-          className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground active:bg-secondary"
+          className="relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground active:bg-secondary"
         >
           <Menu className="h-5 w-5" />
           More

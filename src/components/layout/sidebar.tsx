@@ -232,7 +232,7 @@ export function Sidebar({
         <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]', rail ? 'px-2' : 'px-3')}>
           {!customising && pinned.length > 0 && (
             <div>
-              <p className={cn('mb-2 flex items-center gap-1 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]', rail && 'lg:hidden')}>
+              <p className={cn('mb-2 flex items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]', rail && 'lg:hidden')}>
                 <Pin className="h-2.5 w-2.5" /> Pinned
               </p>
               <ul className="space-y-0.5">{pinned.map((i) => renderItem(i, [], true))}</ul>
@@ -290,7 +290,7 @@ export function Sidebar({
                     type="button"
                     onClick={() => toggleGroup(group.label)}
                     aria-expanded={showItems}
-                    className={cn('mb-2 flex w-full items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
+                    className={cn('mb-2 flex w-full items-center gap-1 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
                     title={isCollapsedGroup ? 'Open this section' : 'Fold this section'}
                   >
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
@@ -321,7 +321,7 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
-          <p className={cn('mt-1.5 px-2 text-[10px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · {APP_VERSION}</p>
+          <p className={cn('mt-1.5 px-2 text-[11px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · {APP_VERSION}</p>
         </div>
       </aside>
     </>
@@ -337,7 +337,7 @@ function SortableGroup({ id, label, children }: { id: string; label: string; chi
         <button type="button" {...attributes} {...listeners} className="flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to move this whole section" aria-label={`Drag section ${label}`}>
           <GripVertical className="h-4 w-4" />
         </button>
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{label}</p>
       </div>
       {children}
     </div>

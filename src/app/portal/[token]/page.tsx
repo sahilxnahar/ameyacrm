@@ -129,7 +129,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
               return (
                 <div key={t.id} className="flex items-center justify-between gap-2 border-b py-1.5 text-sm last:border-0">
                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                  {!resolved && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${sla.overdue ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}>{sla.label}</span>}
+                  {!resolved && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${sla.overdue ? 'bg-rose-500/15 text-rose-700' : 'bg-amber-500/15 text-amber-700'}`}>{sla.label}</span>}
                   <span className={`flex shrink-0 items-center gap-1 text-xs ${resolved ? 'text-emerald-700' : 'text-amber-700'}`}>{resolved && <CheckCircle2 className="h-3 w-3" />}{t.status.replace('_', ' ')}</span>
                 </div>
               );
@@ -144,5 +144,5 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
 }
 
 function Spec({ k, v }: { k: string; v: string }) {
-  return <div><p className="text-[10px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{v}</p></div>;
+  return <div><p className="text-[11px] uppercase text-muted-foreground">{k}</p><p className="font-medium">{v}</p></div>;
 }

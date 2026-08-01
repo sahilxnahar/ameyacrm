@@ -45,7 +45,7 @@ export function MobileDock({ onSearch }: { onSearch: () => void }) {
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
             <Plus className="h-5 w-5" />
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground">Upload</span>
+          <span className="text-[11px] font-medium text-muted-foreground">Upload</span>
         </Link>
 
         {/* 4 — Alerts (Bento) */}
@@ -67,7 +67,7 @@ function DockLink({ href, label, active, Icon }: { href: string; label: string; 
       )}
     >
       <Icon className="h-5 w-5" />
-      <span className="text-[10px] font-medium">{label}</span>
+      <span className="text-[11px] font-medium">{label}</span>
     </Link>
   );
 }
@@ -81,7 +81,7 @@ function DockButton({ label, onClick, Icon }: { label: string; onClick: () => vo
       className="focus-ring flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
     >
       <Icon className="h-5 w-5" />
-      <span className="text-[10px] font-medium">{label}</span>
+      <span className="text-[11px] font-medium">{label}</span>
     </button>
   );
 }

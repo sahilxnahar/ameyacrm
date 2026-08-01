@@ -55,8 +55,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         {lead.requirement && <p className="text-sm text-muted-foreground">{lead.requirement}</p>}
 
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-lg">Communication timeline</CardTitle>
+          <CardHeader className="flex-row items-center justify-between gap-2">
+            <CardTitle className="min-w-0 truncate text-base sm:text-lg">Communication timeline</CardTitle>
             <LeadActivityLogger leadId={lead.id} />
           </CardHeader>
           <CardContent className="space-y-3">
@@ -65,7 +65,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               <div key={a.id} className="border-l-2 border-primary/40 pl-3">
                 <p className="text-sm"><Badge variant="secondary" className="mr-2">{titleCase(a.type)}</Badge>{a.subject}</p>
                 {a.notes && <p className="text-xs text-muted-foreground">{a.notes}</p>}
-                <p className="mt-0.5 text-[10px] text-muted-foreground">{a.user?.name ?? '—'} · {formatDateTime(a.occurredAt)}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{a.user?.name ?? '—'} · {formatDateTime(a.occurredAt)}</p>
               </div>
             ))}
           </CardContent>
@@ -73,7 +73,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
         {canBook && (
           <Card>
-            <CardHeader><CardTitle className="text-lg">Booking &amp; payments</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="min-w-0 truncate text-base sm:text-lg">Booking &amp; payments</CardTitle></CardHeader>
             <CardContent>
               <LeadBookingPanel
                 leadId={lead.id}
@@ -90,7 +90,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">Details</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="min-w-0 truncate text-base sm:text-lg">Details</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {lead.email ?? '—'}</p>
           <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {lead.phone ?? '—'}</p>
@@ -100,7 +100,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <p className="text-muted-foreground">Project: {lead.project?.name ?? '—'}</p>
           <p className="text-muted-foreground">Budget: {formatCurrency(lead.budgetMin ? Number(lead.budgetMin) : null)} – {formatCurrency(lead.budgetMax ? Number(lead.budgetMax) : null)}</p>
           {lead.isNri && lead.timezone && <p className="text-muted-foreground">Time zone: {lead.timezone}</p>}
-          <div className="pt-1"><p className="mb-1 text-[10px] uppercase text-muted-foreground">Temperature</p><LeadTemperature leadId={lead.id} value={lead.temperature} /></div>
+          <div className="pt-1"><p className="mb-1 text-[11px] uppercase text-muted-foreground">Temperature</p><LeadTemperature leadId={lead.id} value={lead.temperature} /></div>
           <p className="text-muted-foreground">Lead score: <span className="font-medium text-foreground">{lead.score}/100</span></p>
           {isGeminiEnabled() && <AiScoreButton leadId={lead.id} />}
         </CardContent>
@@ -108,7 +108,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
       {cfDefs.length > 0 && (
         <Card className="lg:col-start-3">
-          <CardHeader><CardTitle className="text-lg">Additional details</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="min-w-0 truncate text-base sm:text-lg">Additional details</CardTitle></CardHeader>
           <CardContent>
             <LeadCustomFields
               leadId={lead.id}

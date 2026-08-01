@@ -46,7 +46,7 @@ export function NotificationsBell({ userId }: { userId?: string }) {
         <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
           <Bell className="h-4 w-4" />
           {unread > 0 && (
-            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">
               {unread > 9 ? '9+' : unread}
             </span>
           )}
@@ -77,7 +77,7 @@ export function NotificationsBell({ userId }: { userId?: string }) {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{n.title}</p>
                       {n.body && <p className="truncate text-xs text-muted-foreground">{n.body}</p>}
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{timeAgo(n.createdAt)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{timeAgo(n.createdAt)}</p>
                     </div>
                   </div>
                 </Link>
