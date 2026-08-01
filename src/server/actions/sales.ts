@@ -111,15 +111,42 @@ export async function createBooking(input: unknown): Promise<SalesResult> {
     const ctx = await ensure('booking.manage');
     const d = bookingSchema.parse(input);
     const reference = await nextReference('BKG');
-    const booking = await prisma.booking.create({
-      data: {
-        reference, leadId: d.leadId, unitId: d.unitId || null, salesRepId: ctx.user.id,
-        status: 'CONFIRMED', paymentStatus: d.milestones.length ? 'PENDING' : 'PENDING',
-        agreementValue: d.agreementValue ?? null,
-        payments: { create: d.milestones.map((m) => ({ label: m.label, amount: m.amount, dueDate: m.dueDate ? new Date(m.dueDate) : null })) },
-      },
+
+    // Claim the flat and create the booking together.
+    //
+    // Reading the unit and then booking it is a check-then-act: two reps hitting
+    // save on the same flat both pass the check and both get a CONFIRMED booking
+    // against one unit, with neither told. Flipping AVAILABLE→BOOKED inside a
+    // conditional updateMany makes exactly one of them win — the database decides,
+    // not the timing. It also respects a hold placed for a different lead.
+    const booking = await prisma.$transaction(async (tx) => {
+      if (d.unitId) {
+        const claimed = await tx.unit.updateMany({
+          where: {
+            id: d.unitId,
+            status: 'AVAILABLE',
+            // A unit held for another lead is not free to book.
+            OR: [
+              { holdUntil: null },
+              { holdUntil: { lt: new Date() } },
+              { heldForLeadId: d.leadId },
+            ],
+          },
+          data: { status: 'BOOKED', holdUntil: null, heldForLeadId: null },
+        });
+        if (claimed.count === 0) {
+          throw new Error('That flat is no longer available — it has just been booked or is on hold for another buyer.');
+        }
+      }
+      return tx.booking.create({
+        data: {
+          reference, leadId: d.leadId, unitId: d.unitId || null, salesRepId: ctx.user.id,
+          status: 'CONFIRMED', paymentStatus: 'PENDING',
+          agreementValue: d.agreementValue ?? null,
+          payments: { create: d.milestones.map((m) => ({ label: m.label, amount: m.amount, dueDate: m.dueDate ? new Date(m.dueDate) : null })) },
+        },
+      });
     });
-    if (d.unitId) await prisma.unit.update({ where: { id: d.unitId }, data: { status: 'BOOKED' } }).catch(() => {});
     await prisma.lead.update({ where: { id: d.leadId }, data: { status: 'BOOKED' } }).catch(() => {});
     await prisma.leadActivity.create({ data: { leadId: d.leadId, userId: ctx.user.id, type: 'NOTE', subject: `Booking ${reference} created` } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Booking', entityId: booking.id, summary: `Created booking ${reference}` });

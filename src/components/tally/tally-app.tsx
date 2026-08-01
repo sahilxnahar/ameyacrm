@@ -1,6 +1,7 @@
 'use client';
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { switchTallyCompany } from '@/server/actions/tally';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
 import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, saveTallyPrefs, tallyInvoicePdf, tallyScheduleIII, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios, type ScheduleIII } from '@/server/actions/tally';
@@ -8,16 +9,19 @@ import { exportXlsx } from '@/lib/export/xlsx';
 import type { TallyData } from '@/server/services/tally-service';
 import { DEFAULT_TALLY_PREFS, type TallyPrefs } from '@/lib/tally/prefs';
 import { AiTallyAssistant } from '@/components/tally/ai-tally-assistant';
+import { todayISTISO, istMonth, indianQuarter, indianFY, dateInputToUTC } from '@/lib/date/ist';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
 type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings' | 'schedule3';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => todayISTISO();
 
 interface Line { ledgerId: string; debit: string; credit: string }
 
-export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { data: TallyData; prefs?: TallyPrefs }) {
+export interface TallyCompanyOption { id: string; name: string; isDefault: boolean }
+
+export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, companies = [], activeCompanyId = null }: { data: TallyData; prefs?: TallyPrefs; companies?: TallyCompanyOption[]; activeCompanyId?: string | null }) {
   const router = useRouter();
   const [data, setData] = React.useState<TallyData>(initialData);
   React.useEffect(() => setData(initialData), [initialData]);
@@ -41,21 +45,35 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
     setData(r.data);
   });
 
+  // ── Company switcher ─────────────────────────────────────────────────────
+  // Ameya Tally holds one set of books per company. Switching moves the WHOLE
+  // surface — reports and voucher entry alike — because the active company
+  // lives in a cookie the server reads on every action.
+  const [companyId, setCompanyId] = React.useState<string | null>(activeCompanyId);
+  const activeCompany = companies.find((c) => c.id === companyId) ?? null;
+
+  const switchCompany = (id: string) => {
+    if (id === companyId) return;
+    start(async () => {
+      const r = await switchTallyCompany(id);
+      if ('error' in r) { toast.error(r.error); return; }
+      setCompanyId(id);
+      setData(r.data);
+      setScreen('gateway');          // period/report state belongs to the old books
+      setEditId(null);
+      toast.success(`Now in ${r.name}`);
+      router.refresh();
+    });
+  };
+
   // Apply the user's preferred default period once on open.
   const appliedDefault = React.useRef(false);
   React.useEffect(() => {
     if (appliedDefault.current || prefs.defaultPeriod === 'all') return;
     appliedDefault.current = true;
-    const now = new Date();
-    if (prefs.defaultPeriod === 'month') {
-      applyPeriod(new Date(now.getFullYear(), now.getMonth(), 1), new Date(now.getFullYear(), now.getMonth() + 1, 0), now.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }));
-    } else if (prefs.defaultPeriod === 'quarter') {
-      const q = Math.floor(now.getMonth() / 3); const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-      applyPeriod(new Date(now.getFullYear(), q * 3, 1), new Date(now.getFullYear(), q * 3 + 3, 0), `Q${q + 1} FY${String(fyY).slice(2)}`);
-    } else if (prefs.defaultPeriod === 'fy') {
-      const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-      applyPeriod(new Date(fyY, 3, 1), new Date(fyY + 1, 2, 31), `FY ${fyY}-${String(fyY + 1).slice(2)}`);
-    }
+    if (prefs.defaultPeriod === 'month') { const p = istMonth(); applyPeriod(p.from, p.to, p.label); }
+    else if (prefs.defaultPeriod === 'quarter') { const p = indianQuarter(); applyPeriod(p.from, p.to, p.label); }
+    else if (prefs.defaultPeriod === 'fy') { const p = indianFY(); applyPeriod(p.from, p.to, p.label); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -273,7 +291,28 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
       {/* Title bar */}
       <div className="flex items-center justify-between bg-[#1B2A4A] px-3 py-1.5 text-[#E9D9A8]">
         <span className="font-semibold tracking-wide">AMEYA TALLY</span>
-        <span className="text-xs">{prefs.companyName} · {data.totals.ledgers} ledgers · {data.totals.vouchers} vouchers</span>
+        <span className="flex items-center gap-2 text-xs">
+          {companies.length > 1 ? (
+            <>
+              <label htmlFor="tally-company" className="text-[#E9D9A8]/70">Company:</label>
+              <select
+                id="tally-company"
+                value={companyId ?? ''}
+                disabled={pending}
+                onChange={(e) => switchCompany(e.target.value)}
+                className="max-w-[16rem] truncate border border-[#E9D9A8]/40 bg-[#0f2038] px-1.5 py-0.5 font-mono text-xs text-[#E9D9A8] disabled:opacity-60"
+              >
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.isDefault ? ' (Ameya)' : ''}</option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <span>{activeCompany?.name ?? prefs.companyName}</span>
+          )}
+          <span className="text-[#E9D9A8]/70">·</span>
+          <span>{data.totals.ledgers} ledgers · {data.totals.vouchers} vouchers</span>
+        </span>
         <span className="text-xs">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
       </div>
 
@@ -281,14 +320,13 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
       <div className="flex flex-wrap items-center gap-2 border-b-2 border-[#0f2038] bg-[#c9d4e0] px-3 py-1.5 text-[11px]">
         <span className="font-semibold text-[#5B4412]">Period:</span>
         {(() => {
-          const now = new Date();
-          const mStart = new Date(now.getFullYear(), now.getMonth(), 1), mEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          const q = Math.floor(now.getMonth() / 3); const qStart = new Date(now.getFullYear(), q * 3, 1), qEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
-          const fyY = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; const fyStart = new Date(fyY, 3, 1), fyEnd = new Date(fyY + 1, 2, 31);
+          // Bounds come from the IST helpers: local-midnight maths was dropping
+          // the last day of every period (31 March included) once serialised.
+          const mo = istMonth(), qt = indianQuarter(), fy = indianFY();
           const presets: Array<[string, () => void]> = [
-            ['This Month', () => applyPeriod(mStart, mEnd, mStart.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }))],
-            ['This Quarter', () => applyPeriod(qStart, qEnd, `Q${q + 1} FY${String(fyY).slice(2)}`)],
-            ['This FY', () => applyPeriod(fyStart, fyEnd, `FY ${fyY}-${String(fyY + 1).slice(2)}`)],
+            ['This Month', () => applyPeriod(mo.from, mo.to, mo.label)],
+            ['This Quarter', () => applyPeriod(qt.from, qt.to, qt.label)],
+            ['This FY', () => applyPeriod(fy.from, fy.to, fy.label)],
             ['All time', () => applyPeriod(null, null, 'All time')],
           ];
           return presets.map(([label, fn]) => (
@@ -299,7 +337,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS }: { d
         <input type="date" value={cfrom} onChange={(e) => setCfrom(e.target.value)} className="border border-[#0f2038]/40 bg-white px-1.5 py-0.5" />
         <span>to</span>
         <input type="date" value={cto} onChange={(e) => setCto(e.target.value)} className="border border-[#0f2038]/40 bg-white px-1.5 py-0.5" />
-        <button onClick={() => { if (!cfrom && !cto) return; applyPeriod(cfrom ? new Date(cfrom) : null, cto ? new Date(cto + 'T23:59:59') : null, `${cfrom || '…'} to ${cto || '…'}`); }} className="rounded bg-[#1B2A4A] px-2 py-0.5 text-white">Apply</button>
+        <button onClick={() => { if (!cfrom && !cto) return; applyPeriod(cfrom ? dateInputToUTC(cfrom) : null, cto ? dateInputToUTC(cto, true) : null, `${cfrom || '…'} to ${cto || '…'}`); }} className="rounded bg-[#1B2A4A] px-2 py-0.5 text-white">Apply</button>
         <span className="ml-auto flex items-center gap-2">
           <AiTallyAssistant onPosted={() => router.refresh()} />
           <span className="font-semibold text-[#1B2A4A]">Showing: {data.period.label}{pending ? ' …' : ''}</span>

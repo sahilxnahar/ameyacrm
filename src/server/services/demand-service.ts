@@ -1,4 +1,5 @@
 import 'server-only';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { sendWhatsappText, toWaNumber } from '@/server/services/whatsapp-service';
@@ -16,10 +17,9 @@ import { aiChat } from '@/lib/ai/provider';
  * PaymentMilestone → Voucher (via the Razorpay worker or a manual receipt).
  */
 
+/** DL-1001, DL-1002 … atomic; see the note on voucher numbering. */
 async function nextDemandNumber(): Promise<string> {
-  const last = await prisma.demandNotice.findFirst({ where: { number: { startsWith: 'DL-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-  const seq = (last ? Number(last.number.split('-')[1] ?? '1000') : 1000) + 1;
-  return `DL-${Number.isFinite(seq) ? seq : 1001}`;
+  return docNumber('DL', await nextSequence('demand:DL', prisma, 1000));
 }
 
 export interface GenerateResult { overdue: number; upcoming: number; created: number }

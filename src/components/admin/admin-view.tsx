@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Loader2, KeyRound, Ban, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager, generateTemporaryPassword } from '@/server/actions/admin';
+import { Plus, Loader2, KeyRound, Ban, CheckCircle2, ShieldCheck, Trash2, Download, Undo2 } from 'lucide-react';
+import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager, generateTemporaryPassword, deleteUser, restoreUser, exportUsers } from '@/server/actions/admin';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { titleCase } from '@/lib/utils/format';
 
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 const ROLES = ['SUPER_ADMIN','ADMIN','DEPARTMENT_HEAD','MANAGER','EXECUTIVE','EMPLOYEE','READ_ONLY','GUEST'];
-interface U { id: string; name: string; username: string; email: string; role: string; status: string; department: string | null; twoFactor: boolean; managerId: string | null }
+interface U { id: string; name: string; username: string; email: string; role: string; status: string; department: string | null; twoFactor: boolean; managerId: string | null; deletedAt?: string | null }
 interface D { id: string; name: string; users: number; head: string | null; active: boolean }
 
 export function AdminView({ users, departments, deptOptions }: { users: U[]; departments: D[]; deptOptions: { id: string; name: string }[] }) {
@@ -28,7 +28,7 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
   const [deptOpen, setDeptOpen] = React.useState(false);
   const [tempPw, setTempPw] = React.useState<{ name: string; password: string } | null>(null);
 
-  const act = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
+  const act = (fn: () => Promise<{ ok: true; id?: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); router.refresh(); });
 
   const issueTemp = (u: U) =>
@@ -47,6 +47,37 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
       toast.success('User created'); setUserOpen(false); router.refresh();
     });
   };
+
+  /**
+   * Download a takeout. The zip arrives base64-encoded from the server action,
+   * so it is turned back into bytes here and saved without a round trip through
+   * a temporary file or a public URL — an export of personal data should never
+   * sit at a guessable address.
+   */
+  const download = (userIds?: string[]) => act(async () => {
+    const r = await exportUsers(userIds);
+    if ('error' in r) return r;
+    const bytes = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return { ok: true } as const;
+  }, 'Export downloaded');
+
+  const confirmDelete = (u: { id: string; name: string }) => {
+    // A blocking confirm is right here: removing a colleague's access is not
+    // something to do by mis-click, and there is no undo button on the row.
+    if (!window.confirm(`Remove ${u.name}?\n\nThey will be signed out and can no longer sign in. Their history — audit trail, vouchers, leads — is kept.`)) return;
+    act(() => deleteUser(u.id), 'User removed');
+  };
+
+  const askRestore = (u: { id: string; name: string }) => {
+    const email = window.prompt(`Restore ${u.name} under which email address?`);
+    if (!email) return;
+    act(() => restoreUser(u.id, email), 'User restored');
+  };
   const submitDept = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget);
     start(async () => {
@@ -61,13 +92,21 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
       <TabsList className="mb-4"><TabsTrigger value="users">Users</TabsTrigger><TabsTrigger value="departments">Departments</TabsTrigger><TabsTrigger value="roles">Roles</TabsTrigger></TabsList>
 
       <TabsContent value="users">
-        <div className="mb-3 flex justify-end"><Button size="sm" onClick={() => setUserOpen(true)}><Plus className="h-4 w-4" /> New user</Button></div>
+        <div className="mb-3 flex flex-wrap justify-end gap-2">
+          <Button size="sm" variant="outline" disabled={pending} onClick={() => download()} title="Download every user's data as a zip">
+            <Download className="h-4 w-4" /> Export all users
+          </Button>
+          <Button size="sm" onClick={() => setUserOpen(true)}><Plus className="h-4 w-4" /> New user</Button>
+        </div>
         <Card><Table>
           <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Department</TableHead><TableHead>Reports to</TableHead><TableHead>2FA</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>
             {users.map((u) => (
-              <TableRow key={u.id}>
-                <TableCell><p className="font-medium">{u.name}</p><p className="text-xs text-muted-foreground">@{u.username} · {u.email}</p></TableCell>
+              <TableRow key={u.id} className={u.deletedAt ? 'opacity-55' : undefined}>
+                <TableCell>
+                  <p className="font-medium">{u.name}{u.deletedAt && <Badge variant="destructive" className="ml-2">Removed</Badge>}</p>
+                  <p className="text-xs text-muted-foreground">@{u.username} · {u.email}</p>
+                </TableCell>
                 <TableCell><Badge variant="secondary">{ROLE_LABELS[u.role as keyof typeof ROLE_LABELS]}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{u.department ?? '—'}</TableCell>
                 <TableCell>
@@ -90,9 +129,13 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => act(() => forcePasswordReset(u.id), 'Password reset forced')}><KeyRound className="h-4 w-4" /> Force password reset</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => issueTemp(u)}><KeyRound className="h-4 w-4" /> Generate temporary password</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => download([u.id])}><Download className="h-4 w-4" /> Download their data</DropdownMenuItem>
                       {u.status === 'ACTIVE'
                         ? <DropdownMenuItem className="text-destructive" onClick={() => act(() => setUserStatus(u.id, 'DISABLED'), 'User disabled')}><Ban className="h-4 w-4" /> Disable</DropdownMenuItem>
                         : <DropdownMenuItem onClick={() => act(() => setUserStatus(u.id, 'ACTIVE'), 'User activated')}><CheckCircle2 className="h-4 w-4" /> Activate</DropdownMenuItem>}
+                      {u.deletedAt
+                        ? <DropdownMenuItem onClick={() => askRestore(u)}><Undo2 className="h-4 w-4" /> Restore user</DropdownMenuItem>
+                        : <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(u)}><Trash2 className="h-4 w-4" /> Remove user</DropdownMenuItem>}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

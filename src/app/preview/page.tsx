@@ -6,6 +6,8 @@ import {
 import { requireAuth } from '@/lib/auth/current-user';
 import { GuestShell } from '@/components/layout/guest-shell';
 import { NAVIGATION } from '@/config/navigation';
+import { GuestWorkspace } from '@/components/preview/guest-workspace';
+import { getSandboxData } from '@/server/services/sandbox-service';
 
 export const metadata: Metadata = { title: 'Product Preview' };
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,9 @@ const COMPLIANCE = [
 
 export default async function PreviewPage() {
   const { user } = await requireAuth();
+  // A guest gets a live, private sandbox. Anyone else viewing this page just
+  // sees the showcase below — the sandbox is only built for GUEST accounts.
+  const sandbox = user.role === 'GUEST' ? await getSandboxData(user.id).catch(() => null) : null;
 
   return (
     <GuestShell name={user.name}>
@@ -122,6 +127,17 @@ export default async function PreviewPage() {
         </div>
       </section>
 
+      {/* The interactive part: a real, private workspace the guest can use. */}
+      {sandbox && (
+        <section>
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your demo workspace</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Try the product properly — add a lead, hold a flat, tick off a task, post a journal entry. It is all yours and all fictional.
+          </p>
+          <GuestWorkspace data={sandbox} />
+        </section>
+      )}
+
       {/* Full feature catalog (linkless showcase) */}
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Everything in the platform</h2>
@@ -150,7 +166,7 @@ export default async function PreviewPage() {
       </section>
 
       <p className="pt-2 text-center text-xs text-muted-foreground">
-        This preview shows the product’s capabilities with sample data only. A full account unlocks the live workspace.
+        This preview runs on sample data in a private sandbox. A full account unlocks the live workspace with your real projects.
       </p>
     </div>
     </GuestShell>

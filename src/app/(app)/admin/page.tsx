@@ -12,7 +12,10 @@ export default async function AdminPage() {
   const ctx = await requirePermission('admin.user.view');
   const [users, departments] = await Promise.all([
     prisma.user.findMany({
-      where: { deletedAt: null }, orderBy: { createdAt: 'desc' },
+      // Removed users are included so they can be restored — filtering them out
+      // here made removal a one-way door with no way back through the UI. They
+      // are shown greyed out and last.
+      orderBy: [{ deletedAt: 'asc' }, { createdAt: 'desc' }],
       include: { department: { select: { name: true } } },
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { users: true } }, head: { select: { name: true } } } }),
@@ -54,7 +57,7 @@ export default async function AdminPage() {
       <PendingInvites invites={pendingInvites} />
       <AdminConsole allowed={ctx.permissions.isSuperAdmin ? ['*'] : [...ctx.permissions.keys]} />
       <AdminView
-        users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled, managerId: u.managerId ?? null }))}
+        users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled, managerId: u.managerId ?? null, deletedAt: u.deletedAt ? u.deletedAt.toISOString() : null }))}
         departments={departments.map((d) => ({ id: d.id, name: d.name, users: d._count.users, head: d.head?.name ?? null, active: d.isActive }))}
         deptOptions={departments.map((d) => ({ id: d.id, name: d.name }))}
       />

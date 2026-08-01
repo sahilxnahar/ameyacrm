@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireBearerSecret } from '@/lib/security/require-secret';
+import { startOfTodayIST } from '@/lib/date/ist';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { notify } from '@/lib/notifications/notify';
@@ -14,7 +15,14 @@ export async function GET(req: NextRequest) {
   if (denied) return denied;
 
   const now = new Date();
-  const flagged = await prisma.paymentMilestone.updateMany({ where: { status: { in: ['PENDING', 'PARTIAL'] }, dueDate: { lt: now } }, data: { status: 'OVERDUE' } });
+  // Overdue means the due DAY has passed, not the due instant. Due dates are
+  // stored at UTC midnight, so comparing against `now` flags a buyer as overdue
+  // at 05:30 IST on the very morning the payment is due — and starts charging
+  // penal interest before the day has begun.
+  const flagged = await prisma.paymentMilestone.updateMany({
+    where: { status: { in: ['PENDING', 'PARTIAL'] }, dueDate: { lt: startOfTodayIST(now) } },
+    data: { status: 'OVERDUE' },
+  });
 
   const rate = Number((await prisma.setting.findUnique({ where: { key: 'collections.interestPct' } }))?.value ?? 18) || 18; // annual %
   const overdue = await prisma.paymentMilestone.findMany({ where: { status: 'OVERDUE' }, include: { booking: { select: { reference: true, salesRepId: true } } }, take: 1000 });

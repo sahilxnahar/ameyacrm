@@ -73,9 +73,30 @@ export async function createUser(input: unknown): Promise<AdminResult> {
   }
 }
 
+
+/**
+ * Load the target and confirm the actor outranks them.
+ *
+ * Every account-altering admin action funnels through here: permission alone
+ * never decides, because `admin.user.manage` is held by ADMIN as well as
+ * SUPER_ADMIN and these actions can otherwise be turned upward against a
+ * higher-ranked account.
+ */
+async function assertMayActOn(actorId: string, actorRole: string, targetId: string): Promise<{ error: string } | null> {
+  if (actorId === targetId) return { error: 'You cannot do that to your own account.' };
+  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true } });
+  if (!target) return { error: 'That user no longer exists.' };
+  if (!canActOnUser(actorRole, target.role)) {
+    return { error: 'You cannot change an account at or above your own level.' };
+  }
+  return null;
+}
+
 export async function setUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED'): Promise<AdminResult> {
   try {
     const ctx = await ensure('admin.user.manage');
+    const blocked = await assertMayActOn(ctx.user.id, ctx.user.role, userId);
+    if (blocked) return blocked;
     await prisma.user.update({ where: { id: userId }, data: { status } });
     if (status !== 'ACTIVE') await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: `Status → ${status}` });
@@ -89,6 +110,8 @@ export async function setUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDE
 export async function forcePasswordReset(userId: string): Promise<AdminResult> {
   try {
     const ctx = await ensure('admin.user.manage');
+    const blocked = await assertMayActOn(ctx.user.id, ctx.user.role, userId);
+    if (blocked) return blocked;
     await prisma.user.update({ where: { id: userId }, data: { mustChangePassword: true } });
     await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     await writeAudit({ actorId: ctx.user.id, action: 'PASSWORD_CHANGE', entityType: 'User', entityId: userId, summary: 'Forced password reset' });
@@ -111,8 +134,8 @@ export async function forcePasswordReset(userId: string): Promise<AdminResult> {
 export async function generateTemporaryPassword(userId: string): Promise<TempPasswordResult> {
   try {
     const ctx = await ensure('admin.user.manage');
-    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-    if (!target) return { error: 'That user no longer exists.' };
+    const blocked = await assertMayActOn(ctx.user.id, ctx.user.role, userId);
+    if (blocked) return blocked;
 
     const tempPassword = generateTempPassword();
     await prisma.user.update({
@@ -186,7 +209,7 @@ export async function setUserDepartment(userId: string, departmentId: string | n
 //  Changing somebody's role
 // ════════════════════════════════════════════════════════════════════════════
 
-import { checkRoleChange, type RoleValue, canAssignRole } from '@/lib/auth/role-change';
+import { checkRoleChange, type RoleValue, canAssignRole, canActOnUser } from '@/lib/auth/role-change';
 import { ASSIGNABLE_ROLES } from '@/config/roles';
 export type { RoleValue };
 
@@ -262,6 +285,112 @@ export async function setUserExtraDepartments(userId: string, departmentIds: str
     revalidatePath('/team');
     revalidatePath('/admin');
     return { ok: true, id: userId };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+
+/**
+ * Remove a user.
+ *
+ * A soft delete, deliberately: a hard delete would take their audit trail, the
+ * vouchers they posted and the leads they owned with it, and "who recorded this
+ * payment" is not a question the books are allowed to stop answering. The
+ * account is deactivated, its sessions are killed and the login is freed up by
+ * parking the address, so the person can no longer sign in by any route.
+ */
+export async function deleteUser(userId: string): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    const blocked = await assertMayActOn(ctx.user.id, ctx.user.role, userId);
+    if (blocked) return blocked;
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true, deletedAt: true },
+    });
+    if (!target) return { error: 'That user no longer exists.' };
+    if (target.deletedAt) return { error: 'That user has already been removed.' };
+
+    // Never remove the last person who can put things right.
+    if (target.role === 'SUPER_ADMIN') {
+      const others = await prisma.user.count({
+        where: { role: 'SUPER_ADMIN', status: 'ACTIVE', deletedAt: null, id: { not: userId } },
+      });
+      if (others === 0) {
+        return { error: 'This is the only super admin. Make somebody else a super admin first.' };
+      }
+    }
+
+    const parked = `deleted+${target.id.slice(-8)}@removed.invalid`;
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          deletedAt: new Date(),
+          status: 'DISABLED',
+          // Free the address so it can be re-invited later, and make certain the
+          // old one can no longer be used to sign in.
+          email: parked,
+          mustChangePassword: true,
+        },
+      }),
+      prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
+
+    await writeAudit({
+      actorId: ctx.user.id, action: 'DELETE', entityType: 'User', entityId: userId,
+      summary: `Removed user ${target.name ?? target.email} (${target.email}) — account disabled, history kept`,
+    });
+    revalidatePath('/admin');
+    return { ok: true, id: userId, message: `${target.name ?? target.email} has been removed. Their history stays in the audit trail.` };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+/** Put a removed user back. */
+export async function restoreUser(userId: string, email: string): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    const blocked = await assertMayActOn(ctx.user.id, ctx.user.role, userId);
+    if (blocked) return blocked;
+    const clean = String(email ?? '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { error: 'Enter the email address to restore them under.' };
+    const taken = await prisma.user.findFirst({ where: { email: clean, id: { not: userId } }, select: { id: true } });
+    if (taken) return { error: 'Another account already uses that email address.' };
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: null, status: 'ACTIVE', email: clean, mustChangePassword: true },
+    });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId, summary: `Restored user as ${clean}` });
+    revalidatePath('/admin');
+    return { ok: true, id: userId, message: 'User restored. They must set a new password at next sign-in.' };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export type ExportResult = { ok: true; filename: string; base64: string; users: number } | { error: string };
+
+/**
+ * Download everybody's data, Workspace-style.
+ *
+ * Gated on `admin.user.manage` and written to the audit log: a bulk export of
+ * personal data is precisely the action you want a record of afterwards.
+ */
+export async function exportUsers(userIds?: string[]): Promise<ExportResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    const { buildUserExport } = await import('@/server/services/user-export-service');
+    const result = await buildUserExport({ userIds, includeActivity: true });
+    await writeAudit({
+      actorId: ctx.user.id, action: 'EXPORT', entityType: 'User',
+      summary: `Exported data for ${result.users} user${result.users === 1 ? '' : 's'}`,
+    });
+    return { ok: true, ...result };
   } catch (err) {
     return toActionError(err);
   }

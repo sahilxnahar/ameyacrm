@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { TwoFactorReminder } from '@/components/layout/two-factor-reminder';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
+import { readTopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -28,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const row = await getNavPrefsRow(user.id);
   const navPrefs = readPrefs(row?.navPrefs);
+  const topNavPrefs = readTopNavPrefs(row?.topNavPrefs);
   const [active, projects] = await Promise.all([
     getActiveProject(user.id),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' } }),
@@ -59,6 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       permissionKeys={[...permissions.keys]}
       isSuperAdmin={permissions.isSuperAdmin}
       navPrefs={navPrefs}
+      topNavPrefs={topNavPrefs}
       projects={projects}
       activeProjectId={active.id}
       activeProjectName={active.name}

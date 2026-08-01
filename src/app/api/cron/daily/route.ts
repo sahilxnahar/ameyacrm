@@ -133,5 +133,12 @@ export async function GET(req: NextRequest) {
 
   try { result.gstr = await reconcileGstr2b(); } catch { result.gstr = 'failed'; }
 
+  // Guest sandboxes are disposable — drop the ones whose day is up so a demo
+  // account always opens on clean, freshly-seeded data.
+  try {
+    const { pruneExpiredSandboxes } = await import('@/server/services/sandbox-service');
+    result.guestSandboxes = await pruneExpiredSandboxes();
+  } catch { result.guestSandboxes = 'failed'; }
+
   return NextResponse.json({ ok: true, ...result });
 }

@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { splitEscrow } from '@/lib/finance/escrow-split';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 
 /**
  * The out-of-band worker (module #50). Drains PENDING WebhookEvent rows and
@@ -22,7 +23,17 @@ export async function processPendingWebhooks(limit = 50): Promise<WorkerResult> 
   let processed = 0, failed = 0;
   for (const event of pending) {
     try {
-      await prisma.webhookEvent.update({ where: { id: event.id }, data: { status: 'PROCESSING' } });
+      // Claim the row atomically. Reading PENDING and then writing PROCESSING is
+      // a check-then-act: the cron and an admin pressing "run now" can both read
+      // the same row and both run the handler, producing two receipt vouchers
+      // for one payment. updateMany with the status in the WHERE clause makes
+      // the claim conditional, and count === 0 means another worker won it.
+      const claimed = await prisma.webhookEvent.updateMany({
+        where: { id: event.id, status: 'PENDING' },
+        data: { status: 'PROCESSING' },
+      });
+      if (claimed.count === 0) continue;
+
       switch (event.provider) {
         case 'RAZORPAY': await handleRazorpayPayment(event); break;
         case 'WHATSAPP': await handleWhatsAppInbound(event); break;
@@ -58,12 +69,25 @@ async function handleRazorpayPayment(event: { id: string; payload: unknown }): P
   const booking = bookingId ? await prisma.booking.findUnique({ where: { id: bookingId }, select: { id: true, unit: { select: { projectId: true } }, lead: { select: { name: true } } } }).catch(() => null) : null;
   const projectId = booking?.unit?.projectId ?? null;
 
-  // Money spine: a receipt voucher (never a second money table).
-  const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CR-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-  const seq = (last ? Number(last.number.split('-')[1] ?? '1000') : 1000) + 1;
-  const voucher = await prisma.voucher.create({
+  // Idempotency: Razorpay retries webhooks, and a handler that failed midway is
+  // retried by this worker too. The payment id is the natural key — if a voucher
+  // already carries it, this money is already recorded and we must not bank it
+  // twice.
+  const paymentRef = String(pay.id ?? '');
+  if (paymentRef) {
+    const already = await prisma.voucher.findFirst({
+      where: { reference: paymentRef, kind: 'BANK_RECEIVED' }, select: { id: true },
+    });
+    if (already) return;
+  }
+
+  // Money spine: a receipt voucher (never a second money table). The voucher and
+  // its escrow split are written in ONE transaction — a partial write here would
+  // leave collected money with no RERA 70/30 allocation against it.
+  const voucher = await prisma.$transaction(async (tx) => {
+  const created = await tx.voucher.create({
     data: {
-      number: `CR-${Number.isFinite(seq) ? seq : 1001}`, kind: 'BANK_RECEIVED', status: 'POSTED',
+      number: docNumber('CR', await nextSequence('voucher:CR', tx, 1000)), kind: 'BANK_RECEIVED', status: 'POSTED',
       voucherDate: new Date(), partyName: booking?.lead?.name ?? 'Buyer', bookingId: booking?.id ?? null,
       projectId, amount: rupees, mode: 'BANK_TRANSFER',
       reference: String(pay.id ?? ''), utr: (pay.acquirer_data as Record<string, string> | undefined)?.bank_transaction_id ?? null,
@@ -73,13 +97,15 @@ async function handleRazorpayPayment(event: { id: string; payload: unknown }): P
 
   if (bookingId) {
     const { rera, general } = splitEscrow(rupees);
-    await prisma.bookingEscrowSplit.createMany({
+    await tx.bookingEscrowSplit.createMany({
       data: [
-        { bookingId, webhookEventId: event.id, voucherId: voucher.id, accountType: 'RERA_70', amount: rera, utrNumber: (pay.acquirer_data as Record<string, string> | undefined)?.bank_transaction_id ?? null },
-        { bookingId, webhookEventId: event.id, voucherId: voucher.id, accountType: 'GENERAL_30', amount: general },
+        { bookingId, webhookEventId: event.id, voucherId: created.id, accountType: 'RERA_70', amount: rera, utrNumber: (pay.acquirer_data as Record<string, string> | undefined)?.bank_transaction_id ?? null },
+        { bookingId, webhookEventId: event.id, voucherId: created.id, accountType: 'GENERAL_30', amount: general },
       ],
     });
   }
+    return created;
+  });
   await writeAudit({ action: 'CREATE', entityType: 'Voucher', entityId: voucher.id, summary: `Razorpay ₹${rupees} collected → 70/30 escrow (voucher ${voucher.number})` });
 }
 

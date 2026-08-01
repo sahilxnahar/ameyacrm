@@ -7,20 +7,22 @@ import { ensure, toActionError } from '@/server/actions/_helpers';
 import { KIND_META, VOUCHER_KINDS, PAY_MODES, type VoucherKind } from '@/config/vouchers';
 import { describeUtr } from '@/lib/money-words';
 import { extractPaymentAdvice, runAiSelfTest, isGeminiEnabled } from '@/lib/ai/gemini';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { AI_SOURCES, reindexSource, type IndexReport } from '@/server/services/ai-index-service';
 
 export type VoucherResult = { ok: true; id?: string; number?: string; message?: string } | { error: string };
 
-/** CR-1001, CP-1002 … one running series per voucher type. */
-async function nextNumber(kind: VoucherKind): Promise<string> {
+/**
+ * CR-1001, CP-1002 … one running series per voucher type.
+ *
+ * Backed by an atomic counter rather than MAX(number): text ordering would put
+ * CR-9999 above CR-10000 and jam the series forever at five digits, and two
+ * simultaneous receipts would compute the same number and collide on the unique
+ * index — which, for cash receipts, means money that cannot be recorded.
+ */
+async function nextNumber(kind: VoucherKind, tx?: Parameters<typeof nextSequence>[1]): Promise<string> {
   const prefix = KIND_META[kind].prefix;
-  const last = await prisma.voucher.findFirst({
-    where: { number: { startsWith: `${prefix}-` } },
-    orderBy: { number: 'desc' },
-    select: { number: true },
-  });
-  const n = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
-  return `${prefix}-${(Number.isFinite(n) ? n : 1000) + 1}`;
+  return docNumber(prefix, await nextSequence(`voucher:${prefix}`, tx, 1000));
 }
 
 const schema = z.object({
@@ -117,9 +119,28 @@ export async function cancelVoucher(id: string, reason: string): Promise<Voucher
       data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason.slice(0, 300) || 'No reason given' },
       select: { number: true },
     });
-    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Invoice', entityId: id, summary: `Cancelled voucher ${v.number}: ${reason.slice(0, 120)}` });
+
+    // Cancelling the voucher is only half the job: posting it wrote a balanced
+    // journal entry, and leaving that entry in place means the cash book excludes
+    // the money while the trial balance, P&L and balance sheet still contain it.
+    // The books must be moved by a reversing entry, never by deleting history.
+    let reversalNote = '';
+    const posted = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'Voucher', sourceId: id, status: 'POSTED' },
+      select: { id: true },
+    });
+    if (posted) {
+      const { reverse } = await import('@/server/services/ledger-service');
+      const r = await reverse(posted.id, `Voucher ${v.number} cancelled: ${reason.slice(0, 120)}`, ctx.user.id);
+      reversalNote = 'ok' in r
+        ? ` Ledger entry reversed as ${r.number}.`
+        : ' NOTE: the ledger entry could not be reversed automatically — pass it to finance.';
+    }
+
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Invoice', entityId: id, summary: `Cancelled voucher ${v.number}: ${reason.slice(0, 120)}${reversalNote}` });
     revalidatePath('/cash-book');
-    return { ok: true, message: `${v.number} cancelled. It stays in the book, marked cancelled.` };
+    revalidatePath('/ledger');
+    return { ok: true, message: `${v.number} cancelled. It stays in the book, marked cancelled.${reversalNote}` };
   } catch (err) { return toActionError(err); }
 }
 
@@ -259,7 +280,7 @@ async function postVoucherToLedger(
     });
     if ('error' in rule) return;
 
-    await post({
+    const result = await post({
       entryDate: v.voucherDate,
       narration: `${v.number} — ${rule.narration}`,
       lines: rule.lines,
@@ -269,7 +290,21 @@ async function postVoucherToLedger(
       createdById: actorId,
       once: true,
     });
-  } catch {
-    /* the voucher is saved; the ledger can catch up */
+    // A failed post used to vanish here: the user was told "CR-1042 recorded"
+    // while nothing reached the ledger, and only the unposted count hinted at it.
+    // The voucher still stands (money was genuinely received), but the failure is
+    // now recorded so finance can see what needs posting.
+    if ('error' in result) {
+      await writeAudit({
+        actorId, action: 'UPDATE', entityType: 'Voucher', entityId: v.id,
+        summary: `Voucher ${v.number} saved but NOT posted to the ledger: ${result.error}`,
+      }).catch(() => undefined);
+    }
+  } catch (err) {
+    // The voucher is saved; the ledger can catch up. Leave a trail either way.
+    await writeAudit({
+      actorId, action: 'UPDATE', entityType: 'Voucher', entityId: v.id,
+      summary: `Voucher ${v.number} saved but NOT posted to the ledger: ${err instanceof Error ? err.message : 'posting error'}`,
+    }).catch(() => undefined);
   }
 }

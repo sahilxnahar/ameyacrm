@@ -1,14 +1,21 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { checkEntry, reverseLines, rupees, signedBalance, type DraftLine, type CheckedLine } from '@/lib/ledger/entry';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { CHART_OF_ACCOUNTS, normalSide, REQUIRED_CODES } from '@/config/chart-of-accounts';
 
 export type PostResult = { ok: true; entryId: string; number: string } | { error: string };
 
-/** JV-000001, JV-000002 … taken inside the transaction so two posts cannot collide. */
-async function nextNumber(tx: { journalEntry: { count: (a?: unknown) => Promise<number> } }): Promise<string> {
-  const n = await tx.journalEntry.count();
-  return `JV-${String(n + 1).padStart(6, '0')}`;
+/**
+ * JV-000001, JV-000002 … allocated atomically inside the caller's transaction.
+ *
+ * COUNT() was not safe here despite the comment that claimed it was: Postgres
+ * defaults to READ COMMITTED, so two concurrent posts both see the same count,
+ * build the same number, and one dies on the unique index — silently dropping a
+ * ledger posting whose voucher was still reported as saved.
+ */
+async function nextNumber(tx: Parameters<typeof nextSequence>[1]): Promise<string> {
+  return docNumber('JV', await nextSequence('journal:JV', tx, 0), 6);
 }
 
 export interface PostOptions {
@@ -165,7 +172,7 @@ export interface TrialRow {
  * whole thing adds up. If `balanced` is ever false, something is wrong at a
  * level worth stopping for.
  */
-export async function trialBalance(opts: { upto?: Date; projectId?: string } = {}): Promise<{
+export async function trialBalance(opts: { upto?: Date; from?: Date; projectId?: string } = {}): Promise<{
   rows: TrialRow[]; totalDebit: number; totalCredit: number; balanced: boolean;
 }> {
   const [accounts, sums] = await Promise.all([
@@ -180,7 +187,11 @@ export async function trialBalance(opts: { upto?: Date; projectId?: string } = {
       where: {
         entry: {
           status: 'POSTED',
-          ...(opts.upto ? { entryDate: { lte: opts.upto } } : {}),
+          // `from` narrows to movement WITHIN a period (used by the P&L). Without
+          // it the query stays cumulative, which is what a balance sheet needs.
+          ...(opts.upto || opts.from
+            ? { entryDate: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.upto ? { lte: opts.upto } : {}) } }
+            : {}),
         },
         ...(opts.projectId ? { projectId: opts.projectId } : {}),
       },
@@ -197,7 +208,9 @@ export async function trialBalance(opts: { upto?: Date; projectId?: string } = {
     let credit = Number(s?._sum.credit ?? 0);
 
     // An opening balance belongs on whichever side the account normally sits.
-    const opening = Number(a.openingBalance ?? 0);
+    // It is excluded from a period-scoped run: an opening figure predates the
+    // window, so counting it would inflate the period's movement.
+    const opening = opts.from ? 0 : Number(a.openingBalance ?? 0);
     if (opening !== 0) {
       if (a.side === 'DEBIT') debit += opening;
       else credit += opening;
@@ -222,8 +235,16 @@ export async function trialBalance(opts: { upto?: Date; projectId?: string } = {
   };
 }
 
+/**
+ * Profit & Loss for a PERIOD.
+ *
+ * `from` is genuinely applied. It previously was not, which made every "this
+ * financial year" P&L an inception-to-date figure — in year two of use the
+ * reported FY profit was roughly double the real one, with nothing on screen to
+ * suggest the number was wrong.
+ */
 export async function profitAndLoss(opts: { from: Date; to: Date; projectId?: string }) {
-  const tb = await trialBalance({ upto: opts.to, projectId: opts.projectId });
+  const tb = await trialBalance({ from: opts.from, upto: opts.to, projectId: opts.projectId });
   const income = tb.rows.filter((r) => r.type === 'INCOME' && !r.isGroup);
   const expense = tb.rows.filter((r) => r.type === 'EXPENSE' && !r.isGroup);
   const totalIncome = income.reduce((a, r) => a + r.balance, 0);

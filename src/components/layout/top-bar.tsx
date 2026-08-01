@@ -42,7 +42,7 @@ export function TopBar({
       </Button>
 
       {/* Ameya Heights logo mark → Launchpad. */}
-      <Link href="/command-center" aria-label="Ameya Heights — Launchpad" className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1 py-1">
+      <Link href="/command-center" data-tour="brand" aria-label="Ameya Heights — Launchpad" className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1 py-1">
         <img src="/brand/mark-gold-dark.svg" alt="" className="hidden h-6 w-6 select-none dark:block" />
         <img src="/brand/mark-gold-light.svg" alt="" className="h-6 w-6 select-none dark:hidden" />
         <span className="hidden text-sm font-semibold tracking-tight 2xl:inline">Ameya&nbsp;Heights</span>
@@ -56,6 +56,7 @@ export function TopBar({
       {/* ⌘K Spotlight search. */}
       <button
         onClick={onSearch}
+        data-tour="search"
         className="flex h-9 min-w-[4.5rem] flex-1 items-center gap-2 rounded-md border bg-secondary/50 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary sm:px-3 sm:max-w-md"
         aria-label="Open search (Command-K)"
       >
@@ -70,7 +71,7 @@ export function TopBar({
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <GuidedTour />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
-        <NotificationsBell userId={user.id} />
+        <span data-tour="alerts" className="inline-flex"><NotificationsBell userId={user.id} /></span>
         <div className="hidden sm:block"><DisplaySettings /></div>
         <ThemeToggle />
         <UserMenu user={user} />

@@ -39,9 +39,9 @@ const schema = z.object({
   INGEST_SECRET: z.string().optional(), // guards the public lead-ingestion webhook
   TELEPHONY_SECRET: z.string().optional(), // guards the telephony (call-recording) webhook
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(), // verifies Razorpay webhook signatures
-  IOT_INGEST_SECRET: z.string().optional(),
+  IOT_INGEST_SECRET: z.string().optional(), // guards the /api/iot/ingest sensor endpoint
   // Live Tally sync. Unset = the /api/v1/tally/push endpoint stays OFF (503).
-  TALLY_BRIDGE_SECRET: z.string().optional(), // guards the /api/iot/ingest sensor endpoint
+  TALLY_BRIDGE_SECRET: z.string().optional(),
 
   // Legal group (modules 81–90). All optional — the modules work on manual entry
   // + computed deadlines; these only wire up the optional external feeds.

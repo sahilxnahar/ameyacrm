@@ -116,12 +116,21 @@ export async function setPaymentRequestStatus(id: string, status: 'PENDING' | 'P
 /** PUBLIC — the payee confirms they have paid, quoting a UTR/reference. */
 export async function confirmPayment(token: string, payerReference: string): Promise<{ ok: true } | { error: string }> {
   try {
+    // Unauthenticated endpoint — rate limit before touching the database. The
+    // limiter was imported here but never called, leaving anyone holding one
+    // valid link able to fire unlimited confirmations (and notifications).
+    const rate = await checkRate(`pay:confirm:${await callerIp()}`, 10, 300);
+    if (!rate.allowed) return { error: 'Too many attempts. Please wait a few minutes and try again.' };
+
     const ref = String(payerReference || '').trim().slice(0, 80);
     if (ref.length < 3) return { error: 'Enter the transaction / UTR reference.' };
     const pr = await prisma.paymentRequest.findUnique({ where: { token }, select: { id: true, status: true, reference: true, requestedById: true, payeeName: true, tokenExpiresAt: true } });
     if (!pr) return { error: 'This payment link is not valid.' };
     if (pr.tokenExpiresAt && pr.tokenExpiresAt < new Date()) return { error: 'This payment link has expired. Please ask for a fresh one.' };
     if (pr.status === 'CANCELLED') return { error: 'This request has been cancelled.' };
+    // Already confirmed or settled — acknowledge without re-notifying, so a
+    // refresh (or a replay) cannot spam the requester.
+    if (pr.status === 'CONFIRMED' || pr.status === 'PAID') return { ok: true };
     await prisma.paymentRequest.update({ where: { id: pr.id }, data: { status: 'CONFIRMED', payerReference: ref } });
     if (pr.requestedById) {
       const { notify } = await import('@/lib/notifications/notify');

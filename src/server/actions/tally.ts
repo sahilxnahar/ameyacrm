@@ -1,6 +1,7 @@
 'use server';
 import { z } from 'zod';
-import { defaultTallyCompanyId } from '@/lib/tally/company';
+import { cookies } from 'next/headers';
+import { activeTallyCompanyId, TALLY_COMPANY_COOKIE } from '@/lib/tally/company';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -16,6 +17,31 @@ export type TallyResult = { ok: true; id?: string } | { error: string };
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Re-fetch all Tally data for a chosen period, for the on-screen reports. */
+/**
+ * Switch the books everything reads and writes. Sets the company cookie, so the
+ * whole Tally surface — day book, reports, AND voucher entry — moves together.
+ */
+export async function switchTallyCompany(companyId: string): Promise<{ ok: true; name: string; data: TallyData } | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const co = await prisma.tallyCompany.findFirst({
+      where: { id: companyId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!co) return { error: 'That company is no longer available.' };
+
+    const jar = await cookies();
+    jar.set(TALLY_COMPANY_COOKIE, co.id, {
+      httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production',
+      path: '/', maxAge: 60 * 60 * 24 * 365,
+    });
+
+    // Return the new company's figures so the screen updates in one round trip.
+    const data = await getTallyData({ companyId: co.id });
+    return { ok: true, name: co.name, data };
+  } catch (e) { return toActionError(e); }
+}
+
 export async function tallyDataForPeriod(fromISO: string | null, toISO: string | null, label: string): Promise<{ ok: true; data: TallyData } | { error: string }> {
   try {
     await ensure('finance.ledger.view');
@@ -121,9 +147,9 @@ const ledgerSchema = z.object({
 /** Create a ledger master (F3-style). */
 export async function createTallyLedger(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = ledgerSchema.parse(input);
-    const cid = await defaultTallyCompanyId();
+    const cid = await activeTallyCompanyId();
     const exists = await prisma.tallyLedger.findUnique({ where: { companyId_name: { companyId: cid, name: d.name } }, select: { id: true } });
     if (exists) return { error: 'A ledger with that name already exists.' };
     const l = await prisma.tallyLedger.create({ data: { companyId: cid, name: d.name.trim(), group: d.group, openingBalance: d.openingBalance, openingSide: d.openingSide } });
@@ -135,7 +161,7 @@ export async function createTallyLedger(input: unknown): Promise<TallyResult> {
 
 export async function deleteTallyLedger(id: string): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const l = await prisma.tallyLedger.findUnique({ where: { id }, select: { isSystem: true, name: true, _count: { select: { lines: true } } } });
     if (!l) return { error: 'Ledger not found.' };
     if (l.isSystem) return { error: `${l.name} is a system ledger and cannot be deleted.` };
@@ -163,7 +189,7 @@ const voucherSchema = z.object({
 /** Post a balanced double-entry voucher (F4–F9). */
 export async function createTallyVoucher(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = voucherSchema.parse(input);
     const lines = d.lines.filter((l) => l.ledgerId && (l.debit > 0 || l.credit > 0));
     if (lines.length < 2) return { error: 'Enter at least two ledger lines with amounts.' };
@@ -176,7 +202,7 @@ export async function createTallyVoucher(input: unknown): Promise<TallyResult> {
     const number = (last?.number ?? 0) + 1;
 
     const v = await prisma.tallyVoucher.create({
-      data: { companyId: await defaultTallyCompanyId(),
+      data: { companyId: await activeTallyCompanyId(),
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, reference: d.reference || null,
         costCentre: d.costCentre?.trim() || null,
         createdById: ctx.user.id,
@@ -202,9 +228,9 @@ const stockSchema = z.object({
 /** Create a stock item master. */
 export async function createTallyStockItem(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = stockSchema.parse(input);
-    const cid = await defaultTallyCompanyId();
+    const cid = await activeTallyCompanyId();
     const exists = await prisma.tallyStockItem.findUnique({ where: { companyId_name: { companyId: cid, name: d.name } }, select: { id: true } });
     if (exists) return { error: 'A stock item with that name already exists.' };
     const it = await prisma.tallyStockItem.create({ data: { companyId: cid, name: d.name.trim(), unit: d.unit || 'Nos', hsn: d.hsn || null, gstRate: d.gstRate, openingQty: d.openingQty, openingRate: d.openingRate } });
@@ -216,7 +242,7 @@ export async function createTallyStockItem(input: unknown): Promise<TallyResult>
 
 /** Find or create a system trading/GST ledger by name. */
 async function ledgerByName(name: string, group: string): Promise<string> {
-  const cid = await defaultTallyCompanyId();
+  const cid = await activeTallyCompanyId();
   const found = await prisma.tallyLedger.findUnique({ where: { companyId_name: { companyId: cid, name } }, select: { id: true } });
   if (found) return found.id;
   const created = await prisma.tallyLedger.create({ data: { companyId: cid, name, group, isSystem: true } });
@@ -240,7 +266,7 @@ const invoiceSchema = z.object({
  */
 export async function createTallyItemInvoice(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = invoiceSchema.parse(input);
     const items = await prisma.tallyStockItem.findMany({ where: { id: { in: d.items.map((i) => i.itemId) } }, select: { id: true, gstRate: true } });
     const gstOf = new Map(items.map((i) => [i.id, Number(i.gstRate)]));
@@ -277,7 +303,7 @@ export async function createTallyItemInvoice(input: unknown): Promise<TallyResul
     const number = (last?.number ?? 0) + 1;
 
     const v = await prisma.tallyVoucher.create({
-      data: { companyId: await defaultTallyCompanyId(),
+      data: { companyId: await activeTallyCompanyId(),
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null, createdById: ctx.user.id,
         lines: { create: lines },
         inventoryLines: { create: invLines },
@@ -385,9 +411,9 @@ export async function tallyOutstanding(): Promise<Outstanding> {
 // ── Cost centres / job costing ──────────────────────────────────────────────
 export async function createTallyCostCentre(name: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const nm = z.string().min(1, 'Name is required').max(120).parse(name).trim();
-    const cid = await defaultTallyCompanyId();
+    const cid = await activeTallyCompanyId();
     const exists = await prisma.tallyCostCentre.findUnique({ where: { companyId_name: { companyId: cid, name: nm } }, select: { id: true } });
     if (exists) return { error: 'That cost centre already exists.' };
     const c = await prisma.tallyCostCentre.create({ data: { companyId: cid, name: nm } });
@@ -741,7 +767,7 @@ export async function tallyScheduleIII(fromISO: string | null, toISO: string | n
 
 export async function deleteTallyStockItem(id: string): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const it = await prisma.tallyStockItem.findUnique({ where: { id }, select: { name: true, _count: { select: { lines: true } } } });
     if (!it) return { error: 'Item not found.' };
     if (it._count.lines > 0) return { error: 'This item has movements — delete those invoices first.' };
@@ -800,7 +826,7 @@ export async function tallyBankRecon(ledgerId: string): Promise<BankRecon> {
 /** Mark a bank entry cleared on a given date, or un-clear it (null). */
 export async function tallySetCleared(lineId: string, dateISO: string | null): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const line = await prisma.tallyVoucherLine.findUnique({ where: { id: lineId }, select: { id: true, ledgerId: true } });
     if (!line) return { error: 'Entry not found.' };
     await prisma.tallyVoucherLine.update({ where: { id: lineId }, data: { clearedDate: dateISO ? new Date(dateISO) : null } });
@@ -856,7 +882,11 @@ export interface VoucherEdit {
 export async function tallyVoucherForEdit(id: string): Promise<VoucherEdit | { error: string }> {
   try {
     await ensure('finance.ledger.view');
-    const v = await prisma.tallyVoucher.findUnique({ where: { id }, include: { lines: true } });
+    // Scoped to the active company: a voucher id from another set of books
+    // must not be readable or editable just because it was guessed/kept.
+    const v = await prisma.tallyVoucher.findFirst({
+      where: { id, companyId: await activeTallyCompanyId() }, include: { lines: true },
+    });
     if (!v) return { error: 'Voucher not found.' };
     return {
       ok: true, id: v.id, type: v.type, date: v.date.toISOString().slice(0, 10),
@@ -877,9 +907,11 @@ const voucherEditSchema = z.object({
 /** Edit an accounting voucher (Contra/Payment/Receipt/Journal) — replaces its lines. */
 export async function updateTallyVoucher(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = voucherEditSchema.parse(input);
-    const existing = await prisma.tallyVoucher.findUnique({ where: { id: d.id }, select: { type: true, number: true } });
+    const existing = await prisma.tallyVoucher.findFirst({
+      where: { id: d.id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+    });
     if (!existing) return { error: 'Voucher not found.' };
     if (existing.type === 'Sales' || existing.type === 'Purchase') return { error: 'Item invoices carry stock — edit the date/narration only, or delete and re-post to change amounts.' };
     const lines = d.lines.filter((l) => l.ledgerId && (l.debit > 0 || l.credit > 0));
@@ -914,9 +946,11 @@ const headerEditSchema = z.object({
 /** Edit just the header of any voucher (date, narration, cost centre) — safe for invoices. */
 export async function updateTallyVoucherHeader(input: unknown): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
+    const ctx = await ensure('finance.ledger.manage');
     const d = headerEditSchema.parse(input);
-    const existing = await prisma.tallyVoucher.findUnique({ where: { id: d.id }, select: { type: true, number: true } });
+    const existing = await prisma.tallyVoucher.findFirst({
+      where: { id: d.id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+    });
     if (!existing) return { error: 'Voucher not found.' };
     await prisma.tallyVoucher.update({ where: { id: d.id }, data: { date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: d.id, summary: `Edited header of Tally ${existing.type} #${existing.number}` });
@@ -927,8 +961,10 @@ export async function updateTallyVoucherHeader(input: unknown): Promise<TallyRes
 
 export async function deleteTallyVoucher(id: string): Promise<TallyResult> {
   try {
-    const ctx = await ensure('finance.ledger.view');
-    const v = await prisma.tallyVoucher.findUnique({ where: { id }, select: { type: true, number: true } });
+    const ctx = await ensure('finance.ledger.manage');
+    const v = await prisma.tallyVoucher.findFirst({
+      where: { id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+    });
     if (!v) return { error: 'Voucher not found.' };
     await prisma.tallyVoucher.delete({ where: { id } });
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'TallyVoucher', entityId: id, summary: `Deleted Tally ${v.type} #${v.number}` });

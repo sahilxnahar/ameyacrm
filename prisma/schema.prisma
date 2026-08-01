@@ -1338,6 +1338,8 @@ model User {
 
   /** Personal Ameya Tally preferences: { companyName, defaultVoucher, defaultPeriod, os }. */
   tallyPrefs Json?
+  /** Personal TOP-navigation layout: { hidden: string[], pins: [{href,label}], order: string[] }. */
+  topNavPrefs Json?
 
   /** Personal automation choices: { [key]: { on, dueInDays?, priority? } }. */
   automationPrefs Json?
@@ -1419,6 +1421,7 @@ model User {
   @@index([status])
   @@index([departmentId])
   @@index([role])
+  guestSandbox GuestSandbox?
 }
 
 model ProjectMembership {
@@ -6008,4 +6011,125 @@ model ChatAttachment {
   message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([messageId])
+}
+
+/**
+ * Atomic counters for human-readable document numbers (CR-1042, JV-000317, DL-1008).
+ *
+ * Deriving the next number from MAX()/COUNT() of the existing rows is wrong on
+ * two counts: it orders text lexicographically (so CR-9999 outranks CR-10000 and
+ * the series jams permanently at five digits), and it is a check-then-act race —
+ * two people saving in the same second compute the same number and one insert
+ * dies on the unique index. A counter incremented in a single atomic statement
+ * has neither problem.
+ */
+model NumberSequence {
+  key       String   @id
+  value     Int
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ─── Guest sandbox ────────────────────────────────────────────────────────────
+ *
+ * A guest gets a private, disposable playground: they can open every screen and
+ * genuinely create things, without any route to real company data.
+ *
+ * Isolation is by construction, not by filtering. Guest records live in their
+ * OWN tables, so there is no query anywhere that could return a real lead to a
+ * guest even if a permission check were wrong — the real tables are simply not
+ * involved. Filtering a shared table on a `sandboxId` would put one forgotten
+ * `where` clause between a stranger and the company's books; this cannot.
+ *
+ * Each sandbox is seeded with believable demo data on first sign-in and expires
+ * on its own, so one guest never sees another's mess and nothing accumulates.
+ */
+model GuestSandbox {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  /** Wiped and re-seeded after this moment. */
+  expiresAt DateTime
+  seeded    Boolean  @default(false)
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads   SandboxLead[]
+  units   SandboxUnit[]
+  tasks   SandboxTask[]
+  entries SandboxLedgerEntry[]
+  notes   SandboxNote[]
+
+  @@index([expiresAt])
+}
+
+model SandboxLead {
+  id        String   @id @default(cuid())
+  sandboxId String
+  name      String
+  phone     String?
+  email     String?
+  source    String   @default("Walk-in")
+  status    String   @default("NEW")
+  budget    Decimal? @db.Decimal(14, 2)
+  note      String?
+  createdAt DateTime @default(now())
+
+  sandbox GuestSandbox @relation(fields: [sandboxId], references: [id], onDelete: Cascade)
+
+  @@index([sandboxId])
+}
+
+model SandboxUnit {
+  id        String   @id @default(cuid())
+  sandboxId String
+  tower     String
+  number    String
+  typology  String
+  areaSqft  Int
+  price     Decimal  @db.Decimal(14, 2)
+  status    String   @default("AVAILABLE")
+  createdAt DateTime @default(now())
+
+  sandbox GuestSandbox @relation(fields: [sandboxId], references: [id], onDelete: Cascade)
+
+  @@index([sandboxId])
+}
+
+model SandboxTask {
+  id        String    @id @default(cuid())
+  sandboxId String
+  title     String
+  done      Boolean   @default(false)
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  sandbox GuestSandbox @relation(fields: [sandboxId], references: [id], onDelete: Cascade)
+
+  @@index([sandboxId])
+}
+
+model SandboxLedgerEntry {
+  id        String   @id @default(cuid())
+  sandboxId String
+  date      DateTime
+  narration String
+  debitAcc  String
+  creditAcc String
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  sandbox GuestSandbox @relation(fields: [sandboxId], references: [id], onDelete: Cascade)
+
+  @@index([sandboxId])
+}
+
+model SandboxNote {
+  id        String   @id @default(cuid())
+  sandboxId String
+  body      String
+  createdAt DateTime @default(now())
+
+  sandbox GuestSandbox @relation(fields: [sandboxId], references: [id], onDelete: Cascade)
+
+  @@index([sandboxId])
 }

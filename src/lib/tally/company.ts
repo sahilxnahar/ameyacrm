@@ -1,4 +1,5 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db/prisma';
 
 /**
@@ -22,6 +23,36 @@ export async function defaultTallyCompanyId(): Promise<string> {
 }
 
 /** A caller-supplied company id when valid, otherwise the default books. */
+/**
+ * Which set of books the user is currently looking at.
+ *
+ * Held in a cookie rather than passed around as an argument, deliberately: EVERY
+ * server action that writes (post a voucher, create a ledger, raise an invoice)
+ * must land in the same company the user can see on screen. A per-call argument
+ * would eventually be forgotten at one call site and silently post entries into
+ * the wrong company's books — the kind of bug you'd only notice at year end.
+ * One source of truth means the switch is impossible to get half-applied.
+ */
+export const TALLY_COMPANY_COOKIE = 'ameya_tally_company';
+
+export async function activeTallyCompanyId(): Promise<string> {
+  try {
+    const jar = await cookies();
+    const id = jar.get(TALLY_COMPANY_COOKIE)?.value;
+    if (id) {
+      // Verify every time: the company may have been deleted or deactivated
+      // since the cookie was set, and a stale id must never widen access.
+      const found = await prisma.tallyCompany.findFirst({
+        where: { id, isActive: true }, select: { id: true },
+      });
+      if (found) return found.id;
+    }
+  } catch {
+    // No request scope (background job) — fall through to the default books.
+  }
+  return defaultTallyCompanyId();
+}
+
 export async function resolveTallyCompanyId(id?: string | null): Promise<string> {
   if (id) {
     const found = await prisma.tallyCompany.findUnique({ where: { id }, select: { id: true } });

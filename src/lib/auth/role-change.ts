@@ -59,3 +59,23 @@ export function checkRoleChange(r: RoleChangeRequest): { ok: true } | { error: s
   }
   return { ok: true };
 }
+
+
+/**
+ * May `actorRole` perform an account-altering action (suspend, force a reset,
+ * issue a temporary password) against `targetRole`?
+ *
+ * Holding `admin.user.manage` is NOT sufficient on its own. Issuing a temporary
+ * password returns the plaintext to the actor, which is functionally the power
+ * to sign in as the target — so an ADMIN able to do that to a SUPER_ADMIN owns
+ * the system. The same reasoning applies to disabling accounts (lockout).
+ * You may only act on someone strictly below your own rank; a SUPER_ADMIN may
+ * act on other super admins but never on themselves through these paths.
+ */
+export function canActOnUser(actorRole: string, targetRole: string): boolean {
+  const ai = ROLE_ORDER.indexOf(actorRole as RoleValue);
+  const ti = ROLE_ORDER.indexOf(targetRole as RoleValue);
+  if (ai < 0 || ti < 0) return false;
+  if (actorRole === 'SUPER_ADMIN') return true;
+  return ti > ai; // strictly lower privilege than the actor
+}

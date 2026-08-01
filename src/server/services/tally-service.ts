@@ -1,5 +1,5 @@
 import 'server-only';
-import { defaultTallyCompanyId, resolveTallyCompanyId } from '@/lib/tally/company';
+import { activeTallyCompanyId, resolveTallyCompanyId } from '@/lib/tally/company';
 import { prisma } from '@/lib/db/prisma';
 import { DEFAULT_LEDGERS, natureOfGroup, type Nature } from '@/config/tally-groups';
 
@@ -45,7 +45,7 @@ export const TRADING_LEDGERS = [
 
 /** Create Cash and Profit & Loss A/c the first time, like a fresh Tally company. */
 export async function ensureDefaultLedgers(companyId?: string): Promise<void> {
-  const cid = companyId ?? (await defaultTallyCompanyId());
+  const cid = companyId ?? (await activeTallyCompanyId());
   const count = await prisma.tallyLedger.count({ where: { companyId: cid } });
   if (count === 0) {
     for (const d of DEFAULT_LEDGERS) {
@@ -66,7 +66,7 @@ export interface PeriodOpts { from?: Date | null; to?: Date | null; label?: stri
 
 export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
   // Every figure below belongs to exactly one set of books.
-  const cid = await resolveTallyCompanyId(opts.companyId ?? null);
+  const cid = opts.companyId ? await resolveTallyCompanyId(opts.companyId) : await activeTallyCompanyId();
   await ensureDefaultLedgers(cid);
   const from = opts.from ?? null;
   const to = opts.to ?? null;

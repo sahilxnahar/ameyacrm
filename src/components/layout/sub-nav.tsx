@@ -2,9 +2,11 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UploadCloud, MessageSquare, Sparkles, BookOpen, LayoutGrid, Users2, Building2, Wallet, HardHat } from 'lucide-react';
+import { UploadCloud, MessageSquare, Sparkles, BookOpen, LayoutGrid, Users2, Building2, Wallet, HardHat, Star, FileBarChart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { NavCustomiser } from './nav-customiser';
+import { EMPTY_TOP_NAV_PREFS, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 
 /**
  * Ameya OS secondary navigation — the row directly beneath the Top-Bar.
@@ -24,6 +26,11 @@ import { cn } from '@/lib/utils/cn';
  */
 interface Item { href: string; label: string; Icon: LucideIcon; perm?: string }
 
+/** Icon for each kind of pinned thing. */
+const PIN_ICON: Record<string, LucideIcon> = {
+  ledger: BookOpen, project: Building2, screen: LayoutGrid, report: FileBarChart,
+};
+
 const ITEMS: Item[] = [
   { href: '/sales', label: 'Sales', Icon: Users2, perm: 'lead.view' },
   { href: '/inventory', label: 'Inventory', Icon: Building2, perm: 'unit.view' },
@@ -36,10 +43,15 @@ const ITEMS: Item[] = [
   { href: '/features', label: 'Explore', Icon: LayoutGrid },
 ];
 
-export function SubNav({ allowed, isSuperAdmin }: { allowed: Set<string>; isSuperAdmin: boolean }) {
+export function SubNav({
+  allowed, isSuperAdmin, prefs = EMPTY_TOP_NAV_PREFS,
+}: { allowed: Set<string>; isSuperAdmin: boolean; prefs?: TopNavPrefs }) {
   const pathname = usePathname() || '';
-  const items = ITEMS.filter((i) => !i.perm || isSuperAdmin || allowed.has(i.perm));
-  if (!items.length) return null;
+  // Permission first, then the person's own choice to hide it. Hiding is purely
+  // cosmetic — it can never reveal something they lack permission for.
+  const permitted = ITEMS.filter((i) => !i.perm || isSuperAdmin || allowed.has(i.perm));
+  const items = permitted.filter((i) => !prefs.hidden.includes(i.href));
+  const pins = prefs.pins;
 
   return (
     <nav
@@ -53,6 +65,7 @@ export function SubNav({ allowed, isSuperAdmin }: { allowed: Set<string>; isSupe
             <Link
               key={href}
               href={href}
+              data-tour={`nav-${href}`}
               className={cn(
                 'focus-ring inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
                 active
@@ -65,6 +78,31 @@ export function SubNav({ allowed, isSuperAdmin }: { allowed: Set<string>; isSupe
             </Link>
           );
         })}
+
+        {/* The person's own pins — a ledger, a project, any screen they live in. */}
+        {pins.length > 0 && <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-border" />}
+        {pins.map((p) => {
+          const PinIcon = PIN_ICON[p.kind] ?? Star;
+          const active = pathname === p.href.split('?')[0];
+          return (
+            <Link
+              key={p.href}
+              href={p.href}
+              title={p.label}
+              data-tour={`pin-${p.href}`}
+              className={cn(
+                'focus-ring inline-flex h-8 max-w-[12rem] shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+                active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+              )}
+            >
+              <PinIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{p.label}</span>
+            </Link>
+          );
+        })}
+
+        <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-border" />
+        <NavCustomiser prefs={prefs} defaults={permitted.map((i) => ({ href: i.href, label: i.label }))} />
       </div>
     </nav>
   );
