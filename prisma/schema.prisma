@@ -3021,16 +3021,21 @@ model SitePhoto {
 // ════════════════════════════════════════════════════════════════════════════
 model TallyLedger {
   id             String   @id @default(cuid())
-  name           String   @unique
+  companyId      String   // which set of books this ledger belongs to
+  name           String
   group          String   // Tally group name, e.g. "Sundry Debtors", "Cash-in-Hand"
   openingBalance Decimal  @default(0) @db.Decimal(16, 2)
   openingSide    String   @default("Dr") // Dr | Cr
   isSystem       Boolean  @default(false) // Cash, Profit & Loss A/c — cannot be deleted
+  tallyGuid      String?  // Tally's own master GUID, when the import provides one
   lines          TallyVoucherLine[]
+  company        TallyCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@unique([companyId, name])
   @@index([group])
+  @@index([companyId])
 }
 
 model TallyVoucher {
@@ -3044,23 +3049,37 @@ model TallyVoucher {
   lines          TallyVoucherLine[]
   inventoryLines TallyInventoryLine[]
   createdById    String?
+  companyId      String
+  tallyGuid      String?              // Tally's voucher GUID — the safest dedupe key
+  importBatchId  String?
+  company        TallyCompany         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt      DateTime             @default(now())
 
-  @@unique([type, number])
+  @@unique([companyId, type, number])
+  @@unique([companyId, tallyGuid])
   @@index([date])
   @@index([type, date])
   @@index([costCentre])
+  @@index([companyId, date])
+  @@index([importBatchId])
 }
 
 model TallyCostCentre {
   id        String   @id @default(cuid())
-  name      String   @unique
+  companyId String
+  name      String
+  company   TallyCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 model TallyStockItem {
   id          String               @id @default(cuid())
-  name        String               @unique
+  companyId   String
+  name        String
+  company     TallyCompany         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   unit        String               @default("Nos")
   hsn         String?
   gstRate     Decimal              @default(0) @db.Decimal(5, 2)
@@ -3069,6 +3088,9 @@ model TallyStockItem {
   lines       TallyInventoryLine[]
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 model TallyInventoryLine {
@@ -3098,6 +3120,59 @@ model TallyVoucherLine {
 
   @@index([voucherId])
   @@index([ledgerId])
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Tally import — multi-company books + an auditable record of every import.
+//  A Tally installation can hold many companies, and every company reuses the
+//  same master names ("Cash", "Sales") and restarts voucher numbering at 1, so
+//  all Tally data is scoped by company.
+// ════════════════════════════════════════════════════════════════════════════
+model TallyCompany {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  guid      String?   @unique // Tally's own company GUID, when the export carries one
+  booksFrom DateTime?
+  isDefault Boolean   @default(false)
+  isActive  Boolean   @default(true)
+
+  ledgers       TallyLedger[]
+  vouchers      TallyVoucher[]
+  costCentres   TallyCostCentre[]
+  stockItems    TallyStockItem[]
+  importBatches TallyImportBatch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// One import run. Every import is previewed first (status PREVIEW) and only
+/// written on confirmation (COMMITTED), so a bad file can never silently corrupt
+/// the books — and each voucher records the batch that created it.
+model TallyImportBatch {
+  id        String  @id @default(cuid())
+  companyId String?
+  source    String  // XML | CSV | BRIDGE
+  fileName  String?
+  status    String  @default("PREVIEW") // PREVIEW | COMMITTED | FAILED
+
+  ledgersCreated   Int @default(0)
+  ledgersUpdated   Int @default(0)
+  vouchersCreated  Int @default(0)
+  vouchersSkipped  Int @default(0)
+  linesCreated     Int @default(0)
+
+  fromDate DateTime?
+  toDate   DateTime?
+  warnings Json?
+  error    String?
+
+  importedById String?
+  company      TallyCompany? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([status])
 }
 
 /// Parking-slot inventory. Logical links to project/unit/booking by id (resolved

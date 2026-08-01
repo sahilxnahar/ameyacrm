@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/current-user';
 import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
 import { AppShell } from '@/components/layout/app-shell';
-import { GuestShell } from '@/components/layout/guest-shell';
 import { TwoFactorReminder } from '@/components/layout/two-factor-reminder';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
@@ -12,22 +11,19 @@ import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 
-// Routes a GUEST / preview account may reach. Everything else redirects to the
-// sample-data showcase. Default-DENY: if a screen isn't on this list it is never
-// reachable, so no real-data page can render for a guest even by direct URL.
-const GUEST_ALLOW = ['/preview'];
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, permissions } = await requireAuth();
 
   // Guest / preview accounts get a sealed, data-free experience. We return here
   // BEFORE any real query (projects, nav prefs, active project) runs, so a guest
   // request never even fetches real company data.
+  // A guest can never render a real workspace screen. /preview now lives OUTSIDE
+  // this route group, so this redirect can never re-enter this layout — the
+  // previous version redirected to a page inside (app) and, whenever the
+  // x-pathname header was absent, looped forever ("webpage not working").
+  // This is unconditional: no header dependency, no loop, default-deny.
   if (user.role === 'GUEST') {
-    const pathname = (await headers()).get('x-pathname') ?? '';
-    const allowed = GUEST_ALLOW.some((p) => pathname === p || pathname.startsWith(p + '/'));
-    if (!allowed) redirect('/preview');
-    return <GuestShell name={user.name}>{children}</GuestShell>;
+    redirect('/preview');
   }
 
   const row = await getNavPrefsRow(user.id);

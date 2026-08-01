@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { defaultTallyCompanyId } from '@/lib/tally/company';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -122,9 +123,10 @@ export async function createTallyLedger(input: unknown): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.view');
     const d = ledgerSchema.parse(input);
-    const exists = await prisma.tallyLedger.findUnique({ where: { name: d.name }, select: { id: true } });
+    const cid = await defaultTallyCompanyId();
+    const exists = await prisma.tallyLedger.findUnique({ where: { companyId_name: { companyId: cid, name: d.name } }, select: { id: true } });
     if (exists) return { error: 'A ledger with that name already exists.' };
-    const l = await prisma.tallyLedger.create({ data: { name: d.name.trim(), group: d.group, openingBalance: d.openingBalance, openingSide: d.openingSide } });
+    const l = await prisma.tallyLedger.create({ data: { companyId: cid, name: d.name.trim(), group: d.group, openingBalance: d.openingBalance, openingSide: d.openingSide } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'TallyLedger', entityId: l.id, summary: `Tally ledger ${d.name}` });
     revalidatePath('/tally');
     return { ok: true, id: l.id };
@@ -174,7 +176,7 @@ export async function createTallyVoucher(input: unknown): Promise<TallyResult> {
     const number = (last?.number ?? 0) + 1;
 
     const v = await prisma.tallyVoucher.create({
-      data: {
+      data: { companyId: await defaultTallyCompanyId(),
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, reference: d.reference || null,
         costCentre: d.costCentre?.trim() || null,
         createdById: ctx.user.id,
@@ -202,9 +204,10 @@ export async function createTallyStockItem(input: unknown): Promise<TallyResult>
   try {
     const ctx = await ensure('finance.ledger.view');
     const d = stockSchema.parse(input);
-    const exists = await prisma.tallyStockItem.findUnique({ where: { name: d.name }, select: { id: true } });
+    const cid = await defaultTallyCompanyId();
+    const exists = await prisma.tallyStockItem.findUnique({ where: { companyId_name: { companyId: cid, name: d.name } }, select: { id: true } });
     if (exists) return { error: 'A stock item with that name already exists.' };
-    const it = await prisma.tallyStockItem.create({ data: { name: d.name.trim(), unit: d.unit || 'Nos', hsn: d.hsn || null, gstRate: d.gstRate, openingQty: d.openingQty, openingRate: d.openingRate } });
+    const it = await prisma.tallyStockItem.create({ data: { companyId: cid, name: d.name.trim(), unit: d.unit || 'Nos', hsn: d.hsn || null, gstRate: d.gstRate, openingQty: d.openingQty, openingRate: d.openingRate } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'TallyStockItem', entityId: it.id, summary: `Tally stock item ${d.name}` });
     revalidatePath('/tally');
     return { ok: true, id: it.id };
@@ -213,9 +216,10 @@ export async function createTallyStockItem(input: unknown): Promise<TallyResult>
 
 /** Find or create a system trading/GST ledger by name. */
 async function ledgerByName(name: string, group: string): Promise<string> {
-  const found = await prisma.tallyLedger.findUnique({ where: { name }, select: { id: true } });
+  const cid = await defaultTallyCompanyId();
+  const found = await prisma.tallyLedger.findUnique({ where: { companyId_name: { companyId: cid, name } }, select: { id: true } });
   if (found) return found.id;
-  const created = await prisma.tallyLedger.create({ data: { name, group, isSystem: true } });
+  const created = await prisma.tallyLedger.create({ data: { companyId: cid, name, group, isSystem: true } });
   return created.id;
 }
 
@@ -273,7 +277,7 @@ export async function createTallyItemInvoice(input: unknown): Promise<TallyResul
     const number = (last?.number ?? 0) + 1;
 
     const v = await prisma.tallyVoucher.create({
-      data: {
+      data: { companyId: await defaultTallyCompanyId(),
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null, createdById: ctx.user.id,
         lines: { create: lines },
         inventoryLines: { create: invLines },
@@ -383,9 +387,10 @@ export async function createTallyCostCentre(name: unknown): Promise<TallyResult>
   try {
     const ctx = await ensure('finance.ledger.view');
     const nm = z.string().min(1, 'Name is required').max(120).parse(name).trim();
-    const exists = await prisma.tallyCostCentre.findUnique({ where: { name: nm }, select: { id: true } });
+    const cid = await defaultTallyCompanyId();
+    const exists = await prisma.tallyCostCentre.findUnique({ where: { companyId_name: { companyId: cid, name: nm } }, select: { id: true } });
     if (exists) return { error: 'That cost centre already exists.' };
-    const c = await prisma.tallyCostCentre.create({ data: { name: nm } });
+    const c = await prisma.tallyCostCentre.create({ data: { companyId: cid, name: nm } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'TallyCostCentre', entityId: c.id, summary: `Tally cost centre ${nm}` });
     revalidatePath('/tally');
     return { ok: true, id: c.id };

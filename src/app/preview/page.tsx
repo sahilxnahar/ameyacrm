@@ -4,6 +4,7 @@ import {
   ArrowUpRight, CheckCircle2,
 } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/current-user';
+import { GuestShell } from '@/components/layout/guest-shell';
 import { NAVIGATION } from '@/config/navigation';
 
 export const metadata: Metadata = { title: 'Product Preview' };
@@ -38,9 +39,10 @@ const COMPLIANCE = [
 ];
 
 export default async function PreviewPage() {
-  await requireAuth();
+  const { user } = await requireAuth();
 
   return (
+    <GuestShell name={user.name}>
     <div className="space-y-8">
       {/* Hero */}
       <section className="rounded-2xl border bg-gradient-to-br from-primary/10 via-muted/40 to-background p-6 sm:p-8">
@@ -151,5 +153,6 @@ export default async function PreviewPage() {
         This preview shows the product’s capabilities with sample data only. A full account unlocks the live workspace.
       </p>
     </div>
+    </GuestShell>
   );
 }

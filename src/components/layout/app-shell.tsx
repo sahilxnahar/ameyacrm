@@ -8,6 +8,7 @@ import { Breadcrumbs } from './breadcrumbs';
 import { CommandPalette } from './command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
 import { MobileDock } from './mobile-dock';
+import { SubNav } from './sub-nav';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
 import { WhatsNew } from './whats-new';
@@ -133,6 +134,7 @@ export function AppShell({
         <UpdateBanner />
         {/* Ameya OS desktop Top-Bar (md+). On phones the Mobile Dock takes over. */}
         <TopBar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
+        <SubNav allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <OfflineOutbox />
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes

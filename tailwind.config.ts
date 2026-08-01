@@ -17,6 +17,7 @@ const config: Config = {
       // Dialog still renders above it). Coach marks sit above everything interactive.
       //   content < top-bar < dock < drawer < popover(dialogs+menus) < modal < coach < toast < max
       zIndex: {
+        subnav: '29',            // secondary nav row (sits under the top-bar)
         sticky: '30',            // desktop top-bar
         dock: '40',              // mobile dock, pull-to-refresh, FABs, launcher, banners
         'drawer-backdrop': '44', // mobile sidebar scrim (over the dock)

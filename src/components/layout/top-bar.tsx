@@ -64,22 +64,10 @@ export function TopBar({
         <kbd className="ml-auto hidden shrink-0 rounded border bg-background px-1.5 text-[10px] lg:inline">⌘K</kbd>
       </button>
 
+      {/* Module links (Sales, Tally, Messages, Assistant…) now live in <SubNav/>,
+          the row directly below this one. Keeping them here crammed a dozen
+          controls into a single row, which collided on a 13" laptop. */}
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
-        {/* Universal file-upload trigger. */}
-        <Link
-          href="/documents"
-          title="Upload files — drag & drop CSV, Excel, PDFs and photos"
-          aria-label="Upload files"
-          className="focus-ring inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          <UploadCloud className="h-4 w-4 shrink-0" />
-          <span className="hidden text-xs font-medium 2xl:inline">Upload</span>
-        </Link>
-
-        <TopLink href="/chat" label="Messages" desc="Chat anyone in the company by @username" Icon={MessageSquare} />
-        <TopLink href="/assistant" label="Assistant" desc="Draft, explain and summarise with AI" Icon={Sparkles} />
-        <TopLink href="/tally" label="Ameya Tally" desc="Keyboard accounting — F4–F9, Day Book, Trial Balance, P&L" Icon={BookOpen} />
-        <TopLink href="/features" label="Explore features" desc="Everything the CRM can do" Icon={LayoutGrid} />
         <GuidedTour />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell userId={user.id} />
@@ -88,21 +76,5 @@ export function TopBar({
         <UserMenu user={user} />
       </div>
     </header>
-  );
-}
-
-/** A top-bar shortcut: icon everywhere, a text label on wide screens, and a
-    descriptive tooltip on hover so it's clear what each one does. */
-function TopLink({ href, label, desc, Icon }: { href: string; label: string; desc: string; Icon: typeof Menu }) {
-  return (
-    <Link
-      href={href}
-      title={`${label} — ${desc}`}
-      aria-label={`${label}: ${desc}`}
-      className="focus-ring hidden h-9 items-center gap-1.5 rounded-md px-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground lg:inline-flex"
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="hidden text-xs font-medium 2xl:inline">{label}</span>
-    </Link>
   );
 }

@@ -1,4 +1,5 @@
 import 'server-only';
+import { defaultTallyCompanyId, resolveTallyCompanyId } from '@/lib/tally/company';
 import { prisma } from '@/lib/db/prisma';
 import { DEFAULT_LEDGERS, natureOfGroup, type Nature } from '@/config/tally-groups';
 
@@ -43,49 +44,52 @@ export const TRADING_LEDGERS = [
 ] as const;
 
 /** Create Cash and Profit & Loss A/c the first time, like a fresh Tally company. */
-export async function ensureDefaultLedgers(): Promise<void> {
-  const count = await prisma.tallyLedger.count();
+export async function ensureDefaultLedgers(companyId?: string): Promise<void> {
+  const cid = companyId ?? (await defaultTallyCompanyId());
+  const count = await prisma.tallyLedger.count({ where: { companyId: cid } });
   if (count === 0) {
     for (const d of DEFAULT_LEDGERS) {
-      await prisma.tallyLedger.create({ data: { name: d.name, group: d.group, isSystem: d.system } }).catch(() => undefined);
+      await prisma.tallyLedger.create({ data: { companyId: cid, name: d.name, group: d.group, isSystem: d.system } }).catch(() => undefined);
     }
   }
   // Trading/GST ledgers appear once stock items exist, so item invoices can post.
-  const items = await prisma.tallyStockItem.count();
+  const items = await prisma.tallyStockItem.count({ where: { companyId: cid } });
   if (items > 0) {
     for (const t of TRADING_LEDGERS) {
-      const has = await prisma.tallyLedger.findUnique({ where: { name: t.name }, select: { id: true } });
-      if (!has) await prisma.tallyLedger.create({ data: { name: t.name, group: t.group, isSystem: true } }).catch(() => undefined);
+      const has = await prisma.tallyLedger.findUnique({ where: { companyId_name: { companyId: cid, name: t.name } }, select: { id: true } });
+      if (!has) await prisma.tallyLedger.create({ data: { companyId: cid, name: t.name, group: t.group, isSystem: true } }).catch(() => undefined);
     }
   }
 }
 
-export interface PeriodOpts { from?: Date | null; to?: Date | null; label?: string }
+export interface PeriodOpts { from?: Date | null; to?: Date | null; label?: string; companyId?: string | null }
 
 export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
-  await ensureDefaultLedgers();
+  // Every figure below belongs to exactly one set of books.
+  const cid = await resolveTallyCompanyId(opts.companyId ?? null);
+  await ensureDefaultLedgers(cid);
   const from = opts.from ?? null;
   const to = opts.to ?? null;
   const toEff = to ?? FAR_FUTURE;
   // Balances (Trial Balance, Balance Sheet, ledger, stock) are as-at `to`.
-  const asAt = { voucher: { date: { lte: toEff } } };
+  const asAt = { voucher: { companyId: cid, date: { lte: toEff } } };
   // The Day Book and P&L cover the period [from, to].
-  const inPeriod = { voucher: { date: from ? { gte: from, lte: toEff } : { lte: toEff } } };
+  const inPeriod = { voucher: { companyId: cid, date: from ? { gte: from, lte: toEff } : { lte: toEff } } };
 
   const [ledgers, sums, plSums, vouchers, items, invSums] = await Promise.all([
-    prisma.tallyLedger.findMany({ orderBy: { name: 'asc' } }),
+    prisma.tallyLedger.findMany({ where: { companyId: cid }, orderBy: { name: 'asc' } }),
     prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: asAt, _sum: { debit: true, credit: true } }),
     prisma.tallyVoucherLine.groupBy({ by: ['ledgerId'], where: inPeriod, _sum: { debit: true, credit: true } }),
     prisma.tallyVoucher.findMany({
-      where: { date: from ? { gte: from, lte: toEff } : { lte: toEff } },
+      where: { companyId: cid, date: from ? { gte: from, lte: toEff } : { lte: toEff } },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       take: 200,
       include: { lines: { include: { ledger: { select: { name: true } } } } },
     }),
-    prisma.tallyStockItem.findMany({ orderBy: { name: 'asc' } }),
+    prisma.tallyStockItem.findMany({ where: { companyId: cid }, orderBy: { name: 'asc' } }),
     prisma.tallyInventoryLine.groupBy({ by: ['itemId', 'direction'], where: asAt, _sum: { qty: true } }),
   ]);
-  const costCentres = (await prisma.tallyCostCentre.findMany({ orderBy: { name: 'asc' } })).map((c) => c.name);
+  const costCentres = (await prisma.tallyCostCentre.findMany({ where: { companyId: cid }, orderBy: { name: 'asc' } })).map((c) => c.name);
   const sumOf = new Map(sums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
   const plOf = new Map(plSums.map((s) => [s.ledgerId, { d: n(s._sum.debit), c: n(s._sum.credit) }]));
 
@@ -161,6 +165,6 @@ export async function getTallyData(opts: PeriodOpts = {}): Promise<TallyData> {
       balanced: Math.round(totalDebit * 100) === Math.round(totalCredit * 100),
     },
     period: { from: from ? from.toISOString() : null, to: to ? to.toISOString() : null, label: opts.label ?? 'All time' },
-    totals: { ledgers: ledgers.length, vouchers: await prisma.tallyVoucher.count(), stock: items.length },
+    totals: { ledgers: ledgers.length, vouchers: await prisma.tallyVoucher.count({ where: { companyId: cid } }), stock: items.length },
   };
 }
