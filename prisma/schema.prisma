@@ -6133,3 +6133,41 @@ model SandboxNote {
 
   @@index([sandboxId])
 }
+
+/**
+ * ─── Statutory audit trail (edit log) for the books ──────────────────────────
+ *
+ * Rule 3(1) of the Companies (Accounts) Rules requires accounting software used
+ * by a company to keep an audit trail of every transaction, recording each
+ * change with the date it was made, and — critically — the trail must not be
+ * capable of being switched off. The auditor reports on this under Rule 11(g).
+ *
+ * So this table is append-only by design and by convention: nothing in the
+ * application ever updates or deletes a row here, and a voucher cannot be
+ * created, altered or removed without one being written first. `before`/`after`
+ * hold the full line-level state, so an auditor can reconstruct exactly what a
+ * voucher looked like at any point.
+ */
+model TallyVoucherAudit {
+  id        String   @id @default(cuid())
+  companyId String
+  voucherId String
+  /** CREATE | UPDATE | DELETE */
+  action    String
+  /** Voucher identity kept inline, so the trail survives the voucher's deletion. */
+  voucherNo Int
+  voucherType String
+  voucherDate DateTime
+  /** Full state before the change (null on CREATE). */
+  before    Json?
+  /** Full state after the change (null on DELETE). */
+  after     Json?
+  /** Plain-language summary of what changed. */
+  summary   String
+  actorId   String?
+  actorName String
+  at        DateTime @default(now())
+
+  @@index([companyId, at])
+  @@index([voucherId])
+}

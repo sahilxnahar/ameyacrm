@@ -32,13 +32,27 @@ export function StatCard({
     <Card className="relative overflow-hidden p-4 sm:p-5">
       {/* Faint icon watermark, echoing the KPI tiles in the reference design. */}
       <Icon className={cn('pointer-events-none absolute -bottom-3 -right-2 h-20 w-20 opacity-[0.07]', toneText[tone])} aria-hidden />
-      <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <div className="relative flex items-start justify-between gap-2">
+        {/*
+         * `min-w-0` is what stops the label collapsing.
+         *
+         * A flex item defaults to min-width:auto, so in a narrow card the label
+         * refused to shrink, overflowed, and the browser broke it a character at
+         * a time — "NEW LEADS" rendered as one letter per line on a 13" screen.
+         * Allowing it to shrink lets it wrap at spaces like ordinary text.
+         *
+         * The wide letter-spacing is also dropped below `sm`, where it costs
+         * roughly a fifth of the available width and buys nothing.
+         */}
+        <p className="min-w-0 flex-1 text-[11px] font-semibold uppercase leading-tight text-muted-foreground sm:tracking-[0.14em]">
+          {label}
+        </p>
         <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', toneChip[tone])}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="relative mt-2 text-3xl font-bold leading-none tabular-nums">{value}</p>
+      {/* Long values (₹1,23,45,678) get smaller rather than overflowing. */}
+      <p className="relative mt-2 text-2xl font-bold leading-none tabular-nums sm:text-3xl">{value}</p>
       {hint && <p className="relative mt-2 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>}
     </Card>
   );

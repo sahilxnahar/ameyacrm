@@ -46,7 +46,7 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Matched" value={summary.matched} icon={CheckCircle2} tone="success" />
         <StatCard label="Amount mismatch" value={summary.mismatch} icon={AlertTriangle} tone={summary.mismatch ? 'destructive' : 'default'} />
         <StatCard label="Missing" value={summary.missing} icon={HelpCircle} tone={summary.missing ? 'warning' : 'default'} />

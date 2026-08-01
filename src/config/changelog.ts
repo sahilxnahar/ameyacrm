@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.97';
+export const APP_VERSION = 'v15.98';
 
 export interface Release {
   version: string;
@@ -13,6 +13,16 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.98',
+    date: '1 Aug 2026',
+    highlights: [
+      'Ameya Tally now keeps a full edit log: every voucher created, changed or deleted is recorded with who did it, when, and the exact before-and-after figures. Find it at Gateway \u2192 Audit \u2192 Edit Log.',
+      'It cannot be switched off, and no entry can be edited or removed \u2014 which is what the Companies (Accounts) Rules require of accounting software, and what your auditor has to report on. The trail survives even after a voucher is deleted.',
+      'Fixed the squashed dashboard tiles on a 13" laptop \u2014 the labels were breaking one letter per line because the row forced five cards into the narrow column beside the Assistant. The tiles now fit themselves to the space actually available.',
+      'Run MIGRATION_v15.98_all.sql before deploying this one.',
+    ],
+  },
   {
     version: 'v15.97',
     date: '1 Aug 2026',

@@ -58,7 +58,7 @@ export function DemandsView({ counts, rows }: { counts: { pending: number; sent:
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Outstanding demanded" value={formatCurrency(counts.outstanding)} icon={HandCoins} tone={counts.outstanding ? 'warning' : 'default'} />
         <StatCard label="Awaiting dispatch" value={counts.pending} icon={Clock} tone={counts.pending ? 'warning' : 'default'} />
         <StatCard label="Sent" value={counts.sent} icon={Send} />

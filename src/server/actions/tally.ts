@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { activeTallyCompanyId, TALLY_COMPANY_COOKIE } from '@/lib/tally/company';
+import { snapshotVoucher, logVoucherChange } from '@/server/services/tally-audit-service';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -909,9 +910,13 @@ export async function updateTallyVoucher(input: unknown): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.manage');
     const d = voucherEditSchema.parse(input);
+    const cidEdit = await activeTallyCompanyId();
     const existing = await prisma.tallyVoucher.findFirst({
-      where: { id: d.id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+      where: { id: d.id, companyId: cidEdit }, select: { type: true, number: true },
     });
+    // Capture the state BEFORE anything changes — this is the whole point of an
+    // edit log, and it cannot be recovered afterwards.
+    const beforeEdit = await snapshotVoucher(d.id);
     if (!existing) return { error: 'Voucher not found.' };
     if (existing.type === 'Sales' || existing.type === 'Purchase') return { error: 'Item invoices carry stock — edit the date/narration only, or delete and re-post to change amounts.' };
     const lines = d.lines.filter((l) => l.ledgerId && (l.debit > 0 || l.credit > 0));
@@ -932,6 +937,11 @@ export async function updateTallyVoucher(input: unknown): Promise<TallyResult> {
       }),
     ]);
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: d.id, summary: `Edited Tally ${existing.type} #${existing.number} — Rs ${(totalDr / 100).toLocaleString('en-IN')}` });
+    await logVoucherChange({
+      companyId: cidEdit, voucherId: d.id, action: 'UPDATE',
+      before: beforeEdit, after: await snapshotVoucher(d.id),
+      actorId: ctx.user.id, actorName: ctx.user.name,
+    });
     revalidatePath('/tally');
     return { ok: true, id: d.id };
   } catch (e) { return toActionError(e); }
@@ -948,11 +958,18 @@ export async function updateTallyVoucherHeader(input: unknown): Promise<TallyRes
   try {
     const ctx = await ensure('finance.ledger.manage');
     const d = headerEditSchema.parse(input);
+    const cidHdr = await activeTallyCompanyId();
     const existing = await prisma.tallyVoucher.findFirst({
-      where: { id: d.id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+      where: { id: d.id, companyId: cidHdr }, select: { type: true, number: true },
     });
     if (!existing) return { error: 'Voucher not found.' };
+    const beforeHdr = await snapshotVoucher(d.id);
     await prisma.tallyVoucher.update({ where: { id: d.id }, data: { date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null } });
+    await logVoucherChange({
+      companyId: cidHdr, voucherId: d.id, action: 'UPDATE',
+      before: beforeHdr, after: await snapshotVoucher(d.id),
+      actorId: ctx.user.id, actorName: ctx.user.name,
+    });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: d.id, summary: `Edited header of Tally ${existing.type} #${existing.number}` });
     revalidatePath('/tally');
     return { ok: true, id: d.id };
@@ -962,13 +979,42 @@ export async function updateTallyVoucherHeader(input: unknown): Promise<TallyRes
 export async function deleteTallyVoucher(id: string): Promise<TallyResult> {
   try {
     const ctx = await ensure('finance.ledger.manage');
+    const cidDel = await activeTallyCompanyId();
     const v = await prisma.tallyVoucher.findFirst({
-      where: { id, companyId: await activeTallyCompanyId() }, select: { type: true, number: true },
+      where: { id, companyId: cidDel }, select: { type: true, number: true },
     });
     if (!v) return { error: 'Voucher not found.' };
+    // Snapshot BEFORE the delete — afterwards there is nothing left to record,
+    // and a deletion is precisely what an auditor most wants to see.
+    const beforeDel = await snapshotVoucher(id);
     await prisma.tallyVoucher.delete({ where: { id } });
+    await logVoucherChange({
+      companyId: cidDel, voucherId: id, action: 'DELETE',
+      before: beforeDel, after: null,
+      actorId: ctx.user.id, actorName: ctx.user.name,
+    });
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'TallyVoucher', entityId: id, summary: `Deleted Tally ${v.type} #${v.number}` });
     revalidatePath('/tally');
     return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+
+export type AuditResult =
+  | { ok: true; rows: import('@/server/services/tally-audit-service').AuditRow[] }
+  | { error: string };
+
+/**
+ * The statutory edit log for the active company.
+ *
+ * Read-only by design: there is no action anywhere that edits or removes an
+ * entry, because a trail that can be tidied up is not a trail.
+ */
+export async function tallyEditLog(voucherId?: string): Promise<AuditResult> {
+  try {
+    await ensure('finance.ledger.view');
+    const { getVoucherAudit } = await import('@/server/services/tally-audit-service');
+    const rows = await getVoucherAudit(await activeTallyCompanyId(), { voucherId, limit: 500 });
+    return { ok: true, rows };
   } catch (e) { return toActionError(e); }
 }

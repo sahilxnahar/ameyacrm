@@ -27,7 +27,7 @@ export function IntegrationBusView({ counts, events }: { counts: { pending: numb
   }
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pending" value={counts.pending} icon={Radio} tone={counts.pending ? 'warning' : 'default'} />
         <StatCard label="Processed" value={counts.done} icon={CheckCircle2} tone="success" />
         <StatCard label="Failed" value={counts.failed} icon={AlertTriangle} tone={counts.failed ? 'destructive' : 'default'} />

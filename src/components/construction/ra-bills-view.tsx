@@ -62,7 +62,7 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Pending certification" value={summary.pendingCount} icon={ShieldCheck} tone={summary.pendingCount ? 'warning' : 'default'} />
         <StatCard label="Certified, unpaid" value={inr(summary.certifiedUnpaid)} icon={Wallet} tone="warning" />
         <StatCard label="BOCW cess accrued" value={inr(summary.cessAccrued)} icon={Landmark} />

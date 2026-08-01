@@ -69,7 +69,20 @@ export default async function DashboardPage() {
 
       {/* KPI strip */}
       <CollapsibleSection id="kpis" title="At a glance">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+        {/*
+         * auto-fit, not fixed breakpoints.
+         *
+         * Tailwind's breakpoints measure the VIEWPORT, but this strip sits in a
+         * column beside the Assistant panel — roughly 560px on a 13" laptop.
+         * `xl:grid-cols-5` therefore fired at 1280px viewport and forced five
+         * cards into 560px: ~99px each, leaving about 15px for the label, which
+         * the browser then broke one letter per line.
+         *
+         * auto-fit with a 168px floor responds to the space actually available,
+         * so the row fits as many cards as genuinely fit and never squeezes one
+         * below a readable width.
+         */}
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(168px,1fr))]">
           <StatCard label="New leads" value={newLeads7d} icon={Users2} hint="last 7 days" />
           <StatCard label="Site visits" value={siteVisits7d} icon={CalendarCheck} hint="last 7 days" />
           <StatCard label="Lead → win rate" value={`${winRate}%`} icon={TrendingUp} tone="success" hint={`${wonLeads} of ${totalLeads}`} />
