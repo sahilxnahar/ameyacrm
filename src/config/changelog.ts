@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.96';
+export const APP_VERSION = 'v15.97';
 
 export interface Release {
   version: string;
@@ -13,6 +13,50 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v15.97',
+    date: '1 Aug 2026',
+    highlights: [
+      'A sweep for anything that could lose an enquiry — 12 faults found and fixed. The worst: on a busy day, portal enquiries past the 50th in a batch were skipped and then never looked at again, because the mail connector moved its marker past them.',
+      'A repeat enquiry from someone marked Lost used to become a note on a dead record that appeared in nobody\u2019s list. It now reopens the lead, sets a follow-up for today and tells the owner.',
+      'The same buyer arriving as \u201c9840490000\u201d and \u201c+91 98404 90000\u201d is now recognised as one person, so two reps no longer ring the same person. You can also finally search for a lead by phone number.',
+      'An incoming call from a number nobody recognises now creates a lead instead of being discarded, so first-time callers can be rung back.',
+      'The rule that shares out new enquiries never actually worked \u2014 it reported success while assigning nobody, leaving leads invisible to the reps. Fixed, and it now says so loudly when it cannot assign.',
+      'Removing a colleague passes their open leads and tasks on, rather than leaving them unowned and unchased. Overdue follow-ups with no owner now reach the sales managers.',
+      'The lead board no longer stops at 300; where a list is trimmed, the screen says so instead of quietly hiding the rest.',
+      'What\u2019s new was showing an old entry \u2014 it now tracks the version you are actually running.',
+    ],
+  },
+  {
+    version: 'v15.96',
+    date: '1 Aug 2026',
+    highlights: [
+      'Guest accounts now run inside the real CRM. A guest signs in and gets the same top bar, menu, search and tour as everybody else — but every screen they can open reads their own private sample data, so they can add leads, hold flats, tick off tasks and post journal entries without touching a single real record. Their workspace resets itself daily.',
+      'The guided tour now points at what it is describing: the card travels to each menu button and spotlights it, instead of sitting over the middle of the screen.',
+      'The top menu is yours to arrange — pin a ledger, a project or any screen you open daily, reorder them, and switch off the modules you never use.',
+      'Admin can now add, remove and restore people, and download everybody\u2019s data as a zip (one folder per person, plus a readable spreadsheet). Removing someone keeps their history in the audit trail.',
+      'Run MIGRATION_v15.96_all.sql before deploying this one.',
+    ],
+  },
+  {
+    version: 'v15.95',
+    date: '1 Aug 2026',
+    highlights: [
+      'A full security and correctness sweep — 13 real faults found and fixed. Two were serious: any admin could reset a super-admin\u2019s password and take over the account, and staff with view-only finance access could delete posted vouchers.',
+      'Money and dates: cash receipts would have stopped working entirely once the numbering reached CR-10000; a cancelled voucher left its ledger entry in place, so the cash book and trial balance disagreed; the financial-year profit was adding up everything since day one rather than the year; and “This FY” was leaving out 31 March.',
+      'Collections: a small part-payment no longer marks a whole instalment as paid, and a buyer is no longer flagged overdue on the morning the payment is due.',
+      'The same flat can no longer be booked twice by two people at once.',
+    ],
+  },
+  {
+    version: 'v15.94',
+    date: '1 Aug 2026',
+    highlights: [
+      'Ameya Tally now holds more than one company, so you can import several sets of books and switch between them from the title bar.',
+      'Tally import handles the lot: ledgers with opening balances, vouchers, stock items with units and GST, inventory movements, and cost centres — by XML, by CSV, or automatically through the new bridge that runs on your Tally PC.',
+      'On a 13" laptop the crowded top bar is split into two rows, so every menu item shows a real label instead of collapsing into icons.',
+    ],
+  },
   {
     version: 'v15.87',
     date: '28 Jul 2026',

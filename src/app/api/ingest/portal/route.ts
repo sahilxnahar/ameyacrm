@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
-import { findDuplicateLead } from '@/lib/leads/dedup';
+import { findDuplicateLead, reopenStaleLead } from '@/lib/leads/dedup';
 import { runAutomations } from '@/lib/automation/engine';
 import { notifyMany } from '@/lib/notifications/notify';
 import { parsePortalEmail, portalFor } from '@/lib/portals/parse';
@@ -31,10 +31,20 @@ export async function POST(req: NextRequest) {
   let payload: Record<string, unknown>;
   try { payload = (await req.json()) as Record<string, unknown>; } catch { return NextResponse.json({ error: 'invalid json' }, { status: 400 }); }
 
-  const messages = Array.isArray(payload.messages) ? (payload.messages as Array<Record<string, unknown>>) : [payload];
+  const all = Array.isArray(payload.messages) ? (payload.messages as Array<Record<string, unknown>>) : [payload];
   const created: Array<{ leadId: string; portal: string; name: string | null; action: string }> = [];
+  const unparsed: string[] = [];
 
-  for (const m of messages.slice(0, 50)) {
+  // Process a bounded batch, but NEVER silently discard the rest. The connector
+  // used to advance its "last scanned" marker on any 200, so anything beyond
+  // the cap was skipped and then never seen again — enquiries lost with no
+  // error anywhere. `remaining` in the response tells the connector to hold its
+  // marker and send the rest.
+  const BATCH = 50;
+  const messages = all.slice(0, BATCH);
+  const remaining = Math.max(0, all.length - messages.length);
+
+  for (const m of messages) {
     // Either a raw email, or already-structured JSON from a webhook.
     const from = String(m.from ?? m.portal ?? '');
     const subject = String(m.subject ?? '');
@@ -53,7 +63,23 @@ export async function POST(req: NextRequest) {
           raw: JSON.stringify(m).slice(0, 2000),
         };
 
-    if (!parsed.phone && !parsed.email) continue;   // nothing to contact them by
+    if (!parsed.phone && !parsed.email) {
+      // No phone and no email — usually a portal changing its email template, or
+      // a masked/IVR number. Skipping used to throw the enquiry away entirely.
+      // Keep the raw message so a human can read it and chase it by hand.
+      const rawKeep = (parsed.raw || `${subject}\n\n${body}`).slice(0, 2000);
+      await prisma.socialActivity.create({
+        data: {
+          channel: 'OTHER', kind: 'unparsed', name: parsed.name, handle: parsed.portal,
+          message: rawKeep,
+          url: externalId ? `portal:${externalId}` : null,
+          summary: `UNREAD ${parsed.portal} enquiry — no phone or email could be read from it. Open it and add the lead by hand.`,
+          notifiedAt: new Date(),
+        },
+      }).catch(() => undefined);
+      unparsed.push(subject || parsed.portal);
+      continue;
+    }
 
     if (externalId) {
       const seen = await prisma.socialActivity.findFirst({ where: { url: `portal:${externalId}` }, select: { id: true } });
@@ -66,7 +92,8 @@ export async function POST(req: NextRequest) {
 
     if (dupe) {
       leadId = dupe.id;
-      action = 'matched an existing lead';
+      action = dupe.stale ? 'reopened a closed lead' : 'matched an existing lead';
+      if (dupe.stale) await reopenStaleLead(dupe.id, `a new enquiry via ${parsed.portal}`);
       await prisma.leadActivity.create({
         data: {
           leadId, type: 'NOTE',
@@ -133,5 +160,27 @@ export async function POST(req: NextRequest) {
     created.push({ leadId, portal: parsed.portal, name: parsed.name, action });
   }
 
-  return NextResponse.json({ ok: true, captured: created.length, leads: created });
+  // `remaining` MUST be honoured by the connector: it may only advance its
+  // "last scanned" marker when remaining === 0, otherwise the messages it did
+  // not send this round are never looked at again.
+  if (unparsed.length) {
+    const managers = await prisma.user.findMany({
+      where: { status: 'ACTIVE', deletedAt: null, role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'] } },
+      select: { id: true }, take: 10,
+    }).catch(() => []);
+    await notifyMany(managers.map((x) => x.id), {
+      type: 'SYSTEM',
+      title: `${unparsed.length} portal enquir${unparsed.length === 1 ? 'y' : 'ies'} could not be read`,
+      body: 'No phone or email could be read from them, so no lead was created. The original messages are saved — open them and add the leads by hand.',
+      link: '/sales',
+    }).catch(() => undefined);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    captured: created.length,
+    unparsed: unparsed.length,
+    remaining,
+    leads: created,
+  });
 }

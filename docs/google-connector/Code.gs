@@ -280,9 +280,25 @@ function scanPortalsOnce() {
 
   if (!messages.length) { Logger.log('portals: nothing new'); return; }
 
-  var res = postJson('/api/ingest/portal', { messages: messages });
-  Logger.log('portals ' + res.getResponseCode() + ' ' + res.getContentText());
-  if (res.getResponseCode() === 200) markScanned('lastPortalScan');
+  // Send in chunks and only advance the scan window once EVERYTHING has been
+  // accepted. Previously the whole batch was posted at once, the CRM processed
+  // the first 50 and returned 200, and the marker moved past the rest — so on a
+  // busy day enquiries 51+ were skipped and never seen again.
+  var CHUNK = 50;
+  var allOk = true;
+  for (var k = 0; k < messages.length; k += CHUNK) {
+    var slice = messages.slice(k, k + CHUNK);
+    var res = postJson('/api/ingest/portal', { messages: slice });
+    Logger.log('portals ' + res.getResponseCode() + ' ' + res.getContentText());
+    if (res.getResponseCode() !== 200) { allOk = false; break; }
+    // Belt and braces: if the CRM says it left some behind, do not advance.
+    try {
+      var payload = JSON.parse(res.getContentText());
+      if (payload && payload.remaining > 0) { allOk = false; break; }
+    } catch (e) { /* a body we cannot parse is not a reason to lose mail */ }
+  }
+  if (allOk) markScanned('lastPortalScan');
+  else Logger.log('portals: not all messages were accepted — scan window held so nothing is missed');
 }
 
 

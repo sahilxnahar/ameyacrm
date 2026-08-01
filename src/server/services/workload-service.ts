@@ -89,7 +89,12 @@ export async function getWorkItems(opts: { from: Date; to: Date; userIds?: strin
   const followUps = await prisma.lead.findMany({
     where: { deletedAt: null, nextFollowUp: range, status: { notIn: ['WON', 'LOST'] } },
     select: { id: true, name: !light, reference: !light, nextFollowUp: true, ownerId: true, temperature: !light },
-    take: 500,
+    // Oldest first, and a far higher cap. Without an explicit order Postgres
+    // returned rows in whatever order it liked, so a truncated result dropped an
+    // arbitrary — and run-to-run different — set of follow-ups. The ones that
+    // matter most are the most overdue, so those must never be the ones cut.
+    orderBy: { nextFollowUp: 'asc' },
+    take: 5000,
   });
   for (const l of followUps) {
     if (!inScope(l.ownerId)) continue;

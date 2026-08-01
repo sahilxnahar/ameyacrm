@@ -300,6 +300,41 @@ export async function setUserExtraDepartments(userId: string, departmentIds: str
  * account is deactivated, its sessions are killed and the login is freed up by
  * parking the address, so the person can no longer sign in by any route.
  */
+/**
+ * Move a departing person's open work to somebody who can act on it.
+ *
+ * Called before an account is removed. Leads keep their history — this only
+ * changes who is responsible — and each one gets an activity line so the
+ * handover is visible rather than mysterious.
+ */
+async function reassignOpenWork(fromUserId: string, toUserId: string): Promise<{ leads: number; tasks: number }> {
+  const leads = await prisma.lead.findMany({
+    where: { ownerId: fromUserId, deletedAt: null, status: { notIn: ['WON', 'LOST'] } },
+    select: { id: true },
+  }).catch(() => []);
+
+  if (leads.length) {
+    await prisma.lead.updateMany({
+      where: { id: { in: leads.map((l) => l.id) } },
+      data: { ownerId: toUserId },
+    }).catch(() => undefined);
+    await prisma.leadActivity.createMany({
+      data: leads.map((l) => ({
+        leadId: l.id, userId: toUserId, type: 'NOTE' as const,
+        subject: 'Reassigned — previous owner left',
+        notes: 'The person who owned this lead was removed from the CRM, so it was passed on to keep it being worked.',
+      })),
+    }).catch(() => undefined);
+  }
+
+  const tasks = await prisma.task.updateMany({
+    where: { createdById: fromUserId, status: { notIn: ['DONE', 'CANCELLED'] } },
+    data: { createdById: toUserId },
+  }).catch(() => ({ count: 0 }));
+
+  return { leads: leads.length, tasks: tasks.count };
+}
+
 export async function deleteUser(userId: string): Promise<AdminResult> {
   try {
     const ctx = await ensure('admin.user.manage');
@@ -323,6 +358,13 @@ export async function deleteUser(userId: string): Promise<AdminResult> {
       }
     }
 
+    // Hand their open work to somebody before the account goes.
+    //
+    // Leaving leads pointing at a removed user silently stops all chasing on
+    // them: the escalation sweep only loads ACTIVE users, so an executive
+    // leaving with 120 open leads took those 120 out of every queue at once.
+    const reassigned = await reassignOpenWork(userId, ctx.user.id);
+
     const parked = `deleted+${target.id.slice(-8)}@removed.invalid`;
     await prisma.$transaction([
       prisma.user.update({
@@ -341,10 +383,14 @@ export async function deleteUser(userId: string): Promise<AdminResult> {
 
     await writeAudit({
       actorId: ctx.user.id, action: 'DELETE', entityType: 'User', entityId: userId,
-      summary: `Removed user ${target.name ?? target.email} (${target.email}) — account disabled, history kept`,
+      summary: `Removed user ${target.name ?? target.email} (${target.email}) — account disabled, history kept, ${reassigned.leads} lead(s) and ${reassigned.tasks} task(s) reassigned`,
     });
     revalidatePath('/admin');
-    return { ok: true, id: userId, message: `${target.name ?? target.email} has been removed. Their history stays in the audit trail.` };
+    const moved = reassigned.leads + reassigned.tasks;
+    return {
+      ok: true, id: userId,
+      message: `${target.name ?? target.email} has been removed.${moved ? ` Their ${reassigned.leads} open lead(s) and ${reassigned.tasks} task(s) were passed to you so nothing goes unworked.` : ''} Their history stays in the audit trail.`,
+    };
   } catch (err) {
     return toActionError(err);
   }

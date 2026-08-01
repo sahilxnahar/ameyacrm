@@ -6,7 +6,7 @@ import { env } from '@/config/env';
 import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
 import { runAutomations } from '@/lib/automation/engine';
-import { findDuplicateLead } from '@/lib/leads/dedup';
+import { findDuplicateLead, reopenStaleLead } from '@/lib/leads/dedup';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -43,7 +43,10 @@ export async function POST(req: NextRequest) {
   const dupe = await findDuplicateLead(phone, email);
   if (dupe) {
     await prisma.leadActivity.create({ data: { leadId: dupe.id, userId: dupe.ownerId, type: 'NOTE', subject: 'Repeat inquiry (auto-captured)', notes: note } });
-    return NextResponse.json({ ok: true, leadId: dupe.id, reference: dupe.reference, deduped: true, ownerId: dupe.ownerId });
+    // A match that was closed or had gone quiet appears in nobody's queue, so a
+    // note alone means the enquiry is never worked. Reopen it and tell somebody.
+    if (dupe.stale) await reopenStaleLead(dupe.id, 'a new enquiry came in');
+    return NextResponse.json({ ok: true, leadId: dupe.id, reference: dupe.reference, deduped: true, reopened: dupe.stale, ownerId: dupe.ownerId });
   }
 
   let projectId: string | null = null;

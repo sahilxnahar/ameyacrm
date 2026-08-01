@@ -8,10 +8,21 @@ export async function globalSearch(q: string): Promise<SearchHit[]> {
   const term = q.trim();
   if (term.length < 2) return [];
   const like = { contains: term, mode: 'insensitive' as const };
+  // Looking a buyer up by phone is the commonest thing anybody does — "who is
+  // this ringing me?" — and it did not work at all. Digits are matched on their
+  // own so "98404 90000", "+919840490000" and "9840490000" all find the lead.
+  const digits = term.replace(/\D/g, '');
+  const phoneLike = digits.length >= 6 ? { contains: digits.slice(-10) } : null;
 
   const [tasks, leads, docs, users, mrs, units, customers, partners] = await Promise.all([
     prisma.task.findMany({ where: { deletedAt: null, OR: [{ title: like }, { reference: like }] }, take: 8, select: { id: true, title: true, reference: true, status: true } }),
-    prisma.lead.findMany({ where: { deletedAt: null, OR: [{ name: like }, { reference: like }, { email: like }] }, take: 8, select: { id: true, name: true, reference: true, status: true } }),
+    prisma.lead.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ name: like }, { reference: like }, { email: like }, ...(phoneLike ? [{ phone: phoneLike }] : [])],
+      },
+      take: 12, select: { id: true, name: true, reference: true, status: true },
+    }),
     prisma.document.findMany({ where: { deletedAt: null, title: like }, take: 8, select: { id: true, title: true, folder: { select: { name: true } } } }),
     prisma.user.findMany({ where: { deletedAt: null, OR: [{ name: like }, { username: like }, { email: like }] }, take: 8, select: { id: true, name: true, email: true } }),
     prisma.materialRequest.findMany({ where: { OR: [{ title: like }, { reference: like }] }, take: 8, select: { id: true, title: true, reference: true } }),

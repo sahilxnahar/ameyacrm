@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { authenticateApiToken, hasScope } from '@/lib/api/token-auth';
 import { nextReference } from '@/lib/utils/reference';
-import { findDuplicateLead } from '@/lib/leads/dedup';
+import { findDuplicateLead, reopenStaleLead } from '@/lib/leads/dedup';
 import { runAutomations } from '@/lib/automation/engine';
 
 export const dynamic = 'force-dynamic';
@@ -55,8 +55,40 @@ export async function POST(req: NextRequest) {
 
   const dupe = await findDuplicateLead(phone, email);
   if (dupe) {
-    const updated = await prisma.lead.update({ where: { id: dupe.id }, data });
-    return NextResponse.json({ ok: true, action: 'updated', id: updated.id, reference: updated.reference });
+    // An external push must never undo a rep's work. Writing `data` wholesale
+    // reset a lead a rep had driven to NEGOTIATION back to the file's NEW, and
+    // handed ownership back to whoever the file named — silently, with no
+    // activity, no audit entry and no notification. Only fields that are
+    // currently EMPTY are filled in; status and owner are never regressed.
+    const current = await prisma.lead.findUnique({
+      where: { id: dupe.id },
+      select: { name: true, phone: true, email: true, requirement: true, budgetMin: true, budgetMax: true, source: true, projectId: true },
+    });
+    const fill: Record<string, unknown> = {};
+    for (const key of ['name', 'phone', 'email', 'requirement', 'budgetMin', 'budgetMax', 'source', 'projectId'] as const) {
+      const incoming = (data as Record<string, unknown>)[key];
+      const existing = current ? (current as Record<string, unknown>)[key] : null;
+      if (incoming != null && incoming !== '' && (existing == null || existing === '')) fill[key] = incoming;
+    }
+
+    if (Object.keys(fill).length) {
+      await prisma.lead.update({ where: { id: dupe.id }, data: fill });
+    }
+    // Always leave a trail, so a re-post is visible rather than invisible.
+    await prisma.leadActivity.create({
+      data: {
+        leadId: dupe.id, type: 'NOTE', subject: 'Repeat enquiry via the API',
+        notes: Object.keys(fill).length
+          ? `Filled in blank fields: ${Object.keys(fill).join(', ')}. Existing details and stage were left alone.`
+          : 'No new information — the existing details and stage were left alone.',
+      },
+    }).catch(() => undefined);
+    if (dupe.stale) await reopenStaleLead(dupe.id, 'a repeat enquiry through the API');
+
+    return NextResponse.json({
+      ok: true, action: 'matched', id: dupe.id, reference: dupe.reference,
+      filled: Object.keys(fill), reopened: dupe.stale,
+    });
   }
 
   const reference = await nextReference('LEAD');

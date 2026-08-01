@@ -77,10 +77,21 @@ export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Pro
       const actions = passed
         ? ((rule.actions as Action[] | null) ?? [])
         : elseActions;
+      // Every action runs even if an earlier one could not do its job — a rule
+      // that cannot assign should still create the follow-up task. Any action
+      // reporting FAILED marks the whole run FAILED so it is visible on the
+      // automation log rather than being recorded as a success.
       const results: string[] = [];
-      for (const a of actions) results.push(await executeAction(a, rule, ctx));
+      for (const a of actions) {
+        try {
+          results.push(await executeAction(a, rule, ctx));
+        } catch (err) {
+          results.push(`FAILED: ${a.type} — ${err instanceof Error ? err.message : 'error'}`);
+        }
+      }
+      const anyFailed = results.some((r) => r.startsWith('FAILED:'));
       await prisma.automationRule.update({ where: { id: rule.id }, data: { runCount: { increment: 1 }, lastRunAt: new Date() } });
-      await logRun(rule.id, ctx, 'SUCCESS', { branch: passed ? 'then' : 'else', actions: results });
+      await logRun(rule.id, ctx, anyFailed ? 'FAILED' : 'SUCCESS', { branch: passed ? 'then' : 'else', actions: results });
     } catch (err) {
       await logRun(rule.id, ctx, 'FAILED', { error: err instanceof Error ? err.message : 'error' });
     }
@@ -104,8 +115,46 @@ async function executeAction(a: Action, rule: { id: string; name: string; runCou
 
   switch (a.type) {
     case 'ASSIGN_ROUND_ROBIN': {
-      const ids = (p.userIds as string[]) ?? [];
-      if (!ids.length) return 'assign: no users configured';
+      // Accepts an explicit list of people OR a role. The shipped starter rule
+      // ("share out every new enquiry") passes a role, which this used to
+      // ignore — so it silently assigned nobody, logged SUCCESS, and every
+      // captured lead sat unowned and invisible to the reps.
+      let ids = (p.userIds as string[] | undefined)?.filter(Boolean) ?? [];
+      if (!ids.length && typeof p.role === 'string') {
+        const people = await prisma.user.findMany({
+          where: { role: p.role as never, status: 'ACTIVE', deletedAt: null },
+          select: { id: true }, orderBy: { createdAt: 'asc' },
+        }).catch(() => []);
+        ids = people.map((u) => u.id);
+      }
+      // Only people who can actually act on it.
+      if (ids.length) {
+        const active = await prisma.user.findMany({
+          where: { id: { in: ids }, status: 'ACTIVE', deletedAt: null }, select: { id: true },
+        }).catch(() => []);
+        ids = active.map((u) => u.id);
+      }
+      if (!ids.length) {
+        // Cannot assign. Two things must happen, and neither used to:
+        // the run is marked FAILED (see the FAILED: prefix handling below) so
+        // it shows up on the automation log, and a human is told — otherwise
+        // the lead simply sits unowned, invisible to every rep.
+        const managers = await prisma.user.findMany({
+          where: { status: 'ACTIVE', deletedAt: null, role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'] } },
+          select: { id: true }, take: 10,
+        }).catch(() => []);
+        for (const m of managers) {
+          await notify({
+            userId: m.id, type: 'SYSTEM',
+            title: 'A new enquiry could not be assigned to anybody',
+            body: typeof p.role === 'string'
+              ? `The rule "${rule.name}" shares leads out among people with the role ${String(p.role)}, and nobody active holds it. The lead is unowned — please assign it.`
+              : `The rule "${rule.name}" has no people configured. The lead is unowned — please assign it.`,
+            link: leadLink,
+          }).catch(() => undefined);
+        }
+        return `FAILED: assign — ${typeof p.role === 'string' ? `nobody active has the role "${String(p.role)}"` : 'no users configured'}`;
+      }
       const pick = ids[rule.runCount % ids.length]!;
       if (ctx.entityType === 'Lead') await prisma.lead.update({ where: { id: ctx.entityId }, data: { ownerId: pick } });
       await notify({ userId: pick, type: 'SYSTEM', title: `New lead assigned: ${String(ctx.data.name ?? '')}`, link: leadLink });

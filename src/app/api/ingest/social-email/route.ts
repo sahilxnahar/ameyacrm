@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
-import { findDuplicateLead } from '@/lib/leads/dedup';
+import { findDuplicateLead, reopenStaleLead } from '@/lib/leads/dedup';
 import { announceSocialActivity } from '@/lib/social/notify-social';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +88,10 @@ export async function POST(req: NextRequest) {
     let leadId: string | null = null;
     if (['lead', 'dm', 'inquiry'].includes(kind) && (email || phone)) {
       const dupe = await findDuplicateLead(phone, email);
-      if (dupe) leadId = dupe.id;
+      if (dupe) {
+        leadId = dupe.id;
+        if (dupe.stale) await reopenStaleLead(dupe.id, 'a new message came in');
+      }
       else {
         const reference = await nextReference('LEAD');
         const lead = await prisma.lead.create({

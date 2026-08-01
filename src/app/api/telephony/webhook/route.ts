@@ -29,15 +29,64 @@ export async function POST(req: NextRequest) {
   const customerNo = direction.includes('out') ? to : from;
   if (!customerNo) return NextResponse.json({ error: 'no phone in payload' }, { status: 400 });
 
-  const lead = await prisma.lead.findFirst({ where: { deletedAt: null, phone: { contains: customerNo } }, orderBy: { updatedAt: 'desc' }, select: { id: true } });
-  if (!lead) return NextResponse.json({ ok: true, matched: false });
+  let lead = await prisma.lead.findFirst({ where: { deletedAt: null, phone: { contains: customerNo } }, orderBy: { updatedAt: 'desc' }, select: { id: true } });
+  let createdLead = false;
+
+  if (!lead) {
+    // An INBOUND call from a number we do not know is a first touch — somebody
+    // ringing the number on a hoarding or an ad. Acknowledging and discarding
+    // it, as this used to, threw away the enquiry entirely: no record of the
+    // number, no callback, nothing. Capture it as a lead so it enters the
+    // pipeline like any other enquiry.
+    if (direction.includes('out')) {
+      return NextResponse.json({ ok: true, matched: false });
+    }
+    try {
+      const { nextReference } = await import('@/lib/utils/reference');
+      const fresh = await prisma.lead.create({
+        data: {
+          reference: await nextReference('LEAD'),
+          name: `Caller ${customerNo}`,
+          phone: customerNo,
+          source: 'OTHER',
+          requirement: 'Called in — nobody has spoken to them yet.',
+          nextFollowUp: new Date(),
+        },
+        select: { id: true, name: true, status: true, score: true },
+      });
+      lead = { id: fresh.id };
+      createdLead = true;
+
+      const { runAutomations } = await import('@/lib/automation/engine');
+      await runAutomations('LEAD_CREATED', {
+        entityType: 'Lead', entityId: fresh.id,
+        data: { name: fresh.name, email: null, phone: customerNo, source: 'OTHER', status: fresh.status, score: fresh.score },
+      }).catch(() => undefined);
+
+      const managers = await prisma.user.findMany({
+        where: { status: 'ACTIVE', deletedAt: null, role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'] } },
+        select: { id: true }, take: 10,
+      }).catch(() => []);
+      const { notifyMany } = await import('@/lib/notifications/notify');
+      await notifyMany(managers.map((m) => m.id), {
+        type: 'SYSTEM',
+        title: `Missed enquiry — incoming call from ${customerNo}`,
+        body: 'A number we did not recognise called in. A lead has been created so somebody can ring them back.',
+        link: `/sales/${fresh.id}`,
+      }).catch(() => undefined);
+    } catch {
+      // Even if lead creation fails, do not tell the provider everything is
+      // fine and lose the call — report it so it is retried.
+      return NextResponse.json({ error: 'could not record the call' }, { status: 500 });
+    }
+  }
 
   const recordingUrl = (b.recordingUrl ?? b.RecordingUrl ?? b.recording_url ?? null) as string | null;
   const duration = b.duration ?? b.Duration ?? b.CallDuration ?? null;
   const status = String(b.status ?? b.Status ?? b.DialCallStatus ?? 'completed');
   const notes = [`${direction} call`, duration ? `${duration}s` : null, `status ${status}`, recordingUrl ? `Recording: ${recordingUrl}` : null].filter(Boolean).join(' · ');
 
-  await prisma.leadActivity.create({ data: { leadId: lead.id, type: 'CALL', subject: direction.includes('out') ? 'Outbound call' : 'Inbound call', notes, outcome: status } });
+  await prisma.leadActivity.create({ data: { leadId: lead.id, type: 'CALL', subject: direction.includes('out') ? 'Outbound call' : `Inbound call${createdLead ? ' (new caller)' : ''}`, notes, outcome: status } });
 
   // AI call analysis — transcribe the recording and extract budget / typology / timeline / sentiment.
   let analysed = false;

@@ -40,7 +40,21 @@ export async function runOverdueEscalation(now = new Date()): Promise<Escalation
   const res: EscalationResult = { overdue: 0, pushed: 0, emailed: 0, whatsappQueued: 0, resolved: 0 };
 
   const items = await getWorkItems({ from: addDays(now, -180), to: now });
-  const overdue = items.filter((i) => new Date(i.due) < startOfDay(now) || new Date(i.due) < now).filter((i) => i.ownerId);
+  const allOverdue = items.filter((i) => new Date(i.due) < startOfDay(now) || new Date(i.due) < now);
+
+  // An item with no owner used to be filtered out and forgotten. Since every
+  // ingested lead arrives unowned until an automation assigns it, that meant
+  // overdue follow-ups on freshly captured enquiries were never chased at all.
+  // Unowned work is routed to whoever runs sales instead.
+  const managers = await prisma.user.findMany({
+    where: { status: 'ACTIVE', deletedAt: null, role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'] } },
+    select: { id: true }, orderBy: { createdAt: 'asc' }, take: 5,
+  }).catch(() => []);
+  const fallbackOwner = managers[0]?.id ?? null;
+
+  const overdue = allOverdue
+    .map((i) => (i.ownerId ? i : { ...i, ownerId: fallbackOwner, title: `${i.title} (nobody owns this)` }))
+    .filter((i) => i.ownerId);
   res.overdue = overdue.length;
 
   const liveKeys = new Set(overdue.map((i) => `${i.id}::${i.ownerId}`));

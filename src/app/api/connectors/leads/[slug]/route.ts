@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 import { limitOr429, callerIp } from '@/lib/security/rate-limit';
 import { nextReference } from '@/lib/utils/reference';
 import { runAutomations } from '@/lib/automation/engine';
-import { findDuplicateLead } from '@/lib/leads/dedup';
+import { findDuplicateLead, reopenStaleLead } from '@/lib/leads/dedup';
 import { normalizeLeadPayload, LEAD_CONNECTOR_SLUGS } from '@/lib/connectors/lead-normalize';
 import { openConfig } from '@/server/services/connector-runtime';
 import { safeEqual } from '@/lib/utils/crypto';
@@ -42,7 +42,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const dupe = await findDuplicateLead(n.phone, n.email);
   if (dupe) {
     await prisma.leadActivity.create({ data: { leadId: dupe.id, userId: dupe.ownerId, type: 'NOTE', subject: `Repeat enquiry via ${slug}`, notes: n.requirement ?? '' } }).catch(() => undefined);
-    return NextResponse.json({ ok: true, leadId: dupe.id, reference: dupe.reference, deduped: true });
+    if (dupe.stale) await reopenStaleLead(dupe.id, `a new enquiry via ${slug}`);
+    return NextResponse.json({ ok: true, leadId: dupe.id, reference: dupe.reference, deduped: true, reopened: dupe.stale });
   }
 
   let projectId: string | null = null;
