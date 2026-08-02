@@ -300,16 +300,52 @@ export async function createTallyItemInvoice(input: unknown): Promise<TallyResul
       lines.push({ ledgerId: d.partyLedgerId, debit: 0, credit: total });
     }
 
-    const last = await prisma.tallyVoucher.findFirst({ where: { type: d.type }, orderBy: { number: 'desc' }, select: { number: true } });
+    const invCompanyId = await activeTallyCompanyId();
+
+    // Scoped to the company. Without it the next invoice number was taken from
+    // whichever company happened to hold the highest one, so a second set of
+    // books would start numbering from the first company's last invoice — and
+    // the unique index on (company, type, number) would reject it.
+    const last = await prisma.tallyVoucher.findFirst({
+      where: { companyId: invCompanyId, type: d.type },
+      orderBy: { number: 'desc' }, select: { number: true },
+    });
     const number = (last?.number ?? 0) + 1;
 
     const v = await prisma.tallyVoucher.create({
-      data: { companyId: await activeTallyCompanyId(),
+      data: { companyId: invCompanyId,
         type: d.type, number, date: new Date(d.date), narration: d.narration || null, costCentre: d.costCentre?.trim() || null, createdById: ctx.user.id,
         lines: { create: lines },
         inventoryLines: { create: invLines },
       },
       select: { id: true },
+    });
+
+    // Raise the bill alongside the invoice.
+    //
+    // An invoice IS a bill — somebody owes money against a reference. Making
+    // that automatic is what keeps bill-wise outstanding honest: if bills only
+    // existed when somebody remembered to add one by hand, the ageing report
+    // would quietly under-report what is owed.
+    await prisma.tallyBill.create({
+      data: {
+        companyId: invCompanyId,
+        ledgerId: d.partyLedgerId,
+        reference: `${d.type === 'Sales' ? 'INV' : 'BILL'}-${number}`,
+        billDate: new Date(d.date),
+        // Indian trade credit is commonly 30 days; the accountant can change it.
+        dueDate: new Date(new Date(d.date).getTime() + 30 * 86400_000),
+        amount: total,
+        kind: d.type === 'Sales' ? 'RECEIVABLE' : 'PAYABLE',
+        narration: d.narration || null,
+        voucherId: v.id,
+      },
+    }).catch(() => undefined);   // a bill that cannot be raised must not lose the invoice
+
+    await logVoucherChange({
+      companyId: invCompanyId, voucherId: v.id, action: 'CREATE',
+      before: null, after: await snapshotVoucher(v.id),
+      actorId: ctx.user.id, actorName: ctx.user.name,
     });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'TallyVoucher', entityId: v.id, summary: `Tally ${d.type} invoice #${number} — Rs ${total.toLocaleString('en-IN')} (GST ${gst.toLocaleString('en-IN')})` });
     revalidatePath('/tally');

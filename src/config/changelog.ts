@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.2';
+export const APP_VERSION = 'v16.3';
 
 export interface Release {
   version: string;
@@ -13,6 +13,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.3',
+    date: '2 Aug 2026',
+    highlights: [
+      'Bill-wise outstanding in Ameya Tally. Instead of one balance per party, you now see each unpaid bill \u2014 its reference, when it was due, and how many days late \u2014 with the worst offenders listed first.',
+      'Ageing is worked out from what was actually set against each bill, not guessed. The old report matched payments to the oldest charge first, so a buyer paying the third instalment while disputing the second looked like they had settled the second \u2014 and the genuinely overdue amount was hidden.',
+      'Raising a Sales or Purchase invoice now creates the bill automatically, with a 30-day due date you can change. Receipts can be split across several bills, and one bill can be settled by several receipts.',
+      'Fixed: invoice numbering was taken from whichever company held the highest number, so a second set of books would collide. It is now per company.',
+      'Run MIGRATION_v16.3_all.sql before deploying this one.',
+    ],
+  },
   {
     version: 'v16.2',
     date: '2 Aug 2026',

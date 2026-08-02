@@ -10,11 +10,13 @@ import type { TallyData } from '@/server/services/tally-service';
 import { DEFAULT_TALLY_PREFS, type TallyPrefs } from '@/lib/tally/prefs';
 import { AiTallyAssistant } from '@/components/tally/ai-tally-assistant';
 import { EditLogView } from '@/components/tally/edit-log-view';
+import { BillWiseView } from '@/components/tally/bill-wise-view';
+import { tallyBillWise } from '@/server/actions/tally-bills';
 import { todayISTISO, istMonth, indianQuarter, indianFY, dateInputToUTC } from '@/lib/date/ist';
 
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
-type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings' | 'schedule3' | 'editLog';
+type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings' | 'schedule3' | 'editLog' | 'billWise';
 const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => todayISTISO();
 
@@ -253,6 +255,12 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
     setRatios(r); setScreen('ratios');
   });
   const [editLog, setEditLog] = React.useState<Awaited<ReturnType<typeof tallyEditLog>> | null>(null);
+  const [billWise, setBillWise] = React.useState<Awaited<ReturnType<typeof tallyBillWise>> | null>(null);
+  const openBillWise = () => start(async () => {
+    setScreen('billWise');
+    setBillWise(null);
+    setBillWise(await tallyBillWise());
+  });
   const openEditLog = () => start(async () => {
     setScreen('editLog');
     setEditLog(null);
@@ -354,7 +362,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
 
       <div className="flex">
         <div className="min-h-[70vh] flex-1 p-4">
-          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else { if (s === 'bankRecon') { setReconLedgerId(''); setRecon(null); } setScreen(s); } }} onOutstanding={openOutstanding} onJobCosting={openJobCosting} onGst={openGst} onFlows={openFlows} onRatios={openRatios} onSchedule3={openSchedule3} onEditLog={openEditLog} data={data} />}
+          {screen === 'gateway' && <Gateway onGo={(s) => { if (s === 'voucher') openVoucher('Payment'); else { if (s === 'bankRecon') { setReconLedgerId(''); setRecon(null); } setScreen(s); } }} onOutstanding={openOutstanding} onJobCosting={openJobCosting} onGst={openGst} onFlows={openFlows} onRatios={openRatios} onSchedule3={openSchedule3} onEditLog={openEditLog} onBillWise={openBillWise} data={data} />}
           {screen === 'voucher' && (
             <VoucherEntry
               type={vType} setType={setVType} date={vDate} setDate={setVDate} narr={vNarr} setNarr={setVNarr}
@@ -390,6 +398,14 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
           {screen === 'gst' && <GstReturnsView gst={gst} label={data.period.label} onBack={back} onExcel={() => { if (gst && 'ok' in gst) { const rows = [...gst.gstr1.map((r) => ({ Return: 'GSTR-1 (outward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax })), ...gst.itc.map((r) => ({ Return: 'ITC (inward)', 'Rate %': r.rate, Taxable: r.taxable, CGST: r.cgst, SGST: r.sgst, 'Total tax': r.totalTax }))]; exportXlsx('Tally-GST-Returns', 'GST', rows); } }} />}
           {screen === 'flows' && <FlowsView flows={flows} label={data.period.label} onBack={back} onExcel={() => { if (flows && 'ok' in flows) { const rows = [...flows.cash.inflows.map((r) => ({ Statement: 'Cash inflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.cash.outflows.map((r) => ({ Statement: 'Cash outflow', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.sources.map((r) => ({ Statement: 'Funds source', Particulars: r.name, Group: r.group, Amount: r.amount })), ...flows.funds.applications.map((r) => ({ Statement: 'Funds application', Particulars: r.name, Group: r.group, Amount: r.amount }))]; exportXlsx('Tally-Cash-Funds-Flow', 'Flows', rows); } }} />}
           {screen === 'ratios' && <RatioAnalysis ratios={ratios} onBack={back} onExcel={() => { if (ratios && 'ok' in ratios) exportXlsx('Tally-Ratio-Analysis', 'Ratios', ratios.rows.map((r) => ({ Ratio: r.name, Value: r.value, Basis: r.hint }))); }} />}
+          {screen === 'billWise' && (
+            <BillWiseView
+              report={billWise && 'ok' in billWise ? billWise.report : null}
+              ledgers={data.ledgers.map((l) => ({ id: l.id, name: l.name, group: l.group }))}
+              onBack={back}
+              onRefresh={openBillWise}
+            />
+          )}
           {screen === 'editLog' && (
             <EditLogView rows={editLog && 'ok' in editLog ? editLog.rows : editLog ? [] : null} onBack={back} />
           )}
@@ -418,6 +434,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
           <BarBtn label="Cash / Funds Flow" k="F" onClick={openFlows} />
           <BarBtn label="Ratio Analysis" k="A" onClick={openRatios} />
           <BarBtn label="Schedule III" k="3" onClick={openSchedule3} />
+          <BarBtn label="Bill-wise" k="W" onClick={openBillWise} />
           <BarBtn label="Edit Log" k="E" onClick={openEditLog} />
           <div className="pt-2 text-[11px] font-semibold text-[#5B4412]">MASTERS</div>
           <BarBtn label="Ledgers" k="L" onClick={() => setScreen('ledgers')} />
@@ -458,7 +475,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, onSchedule3, onEditLog, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; onJobCosting: () => void; onGst: () => void; onFlows: () => void; onRatios: () => void; onSchedule3: () => void; onEditLog: () => void; data: TallyData }) {
+function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, onSchedule3, onEditLog, onBillWise, data }: { onGo: (s: Screen) => void; onOutstanding: () => void; onJobCosting: () => void; onGst: () => void; onFlows: () => void; onRatios: () => void; onSchedule3: () => void; onEditLog: () => void; onBillWise: () => void; data: TallyData }) {
   const income = data.pl.totalIncome;
   const expense = data.pl.totalExpense;
   return (
@@ -477,6 +494,7 @@ function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, 
           <MenuItem label="Balance Sheet" k="B" onClick={() => onGo('balsheet')} />
           <MenuItem label="Stock Summary" k="S" onClick={() => onGo('stockSummary')} />
           <MenuItem label="Outstanding (ageing)" k="O" onClick={onOutstanding} />
+          <MenuItem label="Bill-wise Outstanding" k="W" onClick={onBillWise} />
           <MenuItem label="Job Costing (P&L by centre)" k="J" onClick={onJobCosting} />
           <MenuItem label="Bank Reconciliation" k="R" onClick={() => onGo('bankRecon')} />
           <MenuItem label="GST Returns (GSTR-1 / 3B)" k="G" onClick={onGst} />
