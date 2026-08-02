@@ -2108,6 +2108,21 @@ model Vendor {
   phone   String?
   address String?
 
+  /**
+   * MSME registration.
+   *
+   * Not a detail. Section 15 of the MSMED Act gives a registered micro or small
+   * supplier 45 days (15 without a written agreement), and s.43B(h) of the
+   * Income-tax Act disallows the expense outright if you pay late — so this
+   * flag decides whether a missed date costs you tax. It lives on the vendor
+   * because that is where it is true; the 45-day clock is then started
+   * automatically from each bill rather than typed in a second time.
+   */
+  isMsme       Boolean @default(false)
+  udyamNumber  String?
+  /** A written agreement extends the statutory window from 15 days to 45. */
+  msmeHasAgreement Boolean @default(true)
+
   // Bank details, kept on the vendor so a payment never needs them retyped
   // from a WhatsApp message.
   bankAccountName   String?
@@ -3040,6 +3055,7 @@ model TallyLedger {
   @@index([group])
   @@index([companyId])
   bills TallyBill[]
+  reminder TallyPartyReminder?
 }
 
 model TallyVoucher {
@@ -6233,4 +6249,62 @@ model TallyBillAllocation {
 
   @@index([billId])
   @@index([voucherId])
+}
+
+/**
+ * ─── Payment reminders to a party ────────────────────────────────────────────
+ *
+ * Automatic chasing for somebody who owes you money. Set the cadence once and
+ * the daily sweep does the rest, but only while there is genuinely something
+ * outstanding.
+ *
+ * This sends mail to people OUTSIDE the company, so it is built to be hard to
+ * misuse. It is off unless somebody switches it on for that specific party; it
+ * needs an address entered deliberately (nothing is inferred); it never fires
+ * when the balance is clear; a minimum gap is enforced whatever the cadence
+ * says; and a single switch in Settings stops every reminder at once. Each
+ * send is recorded, so "did we chase them?" has an answer.
+ */
+model TallyPartyReminder {
+  id        String   @id @default(cuid())
+  companyId String
+  ledgerId  String   @unique
+  /** Where reminders go. Required — nothing is guessed from elsewhere. */
+  email     String
+  /** Copy somebody internally, e.g. the accounts inbox. */
+  ccEmail   String?
+  /** OFF | WEEKLY | FORTNIGHTLY | MONTHLY */
+  cadence   String   @default("OFF")
+  /** Only chase once a bill is actually past its due date. */
+  onlyWhenOverdue Boolean @default(true)
+  /** Nothing goes out before this — for "they've promised to pay on the 15th". */
+  pausedUntil DateTime?
+  lastSentAt  DateTime?
+  sentCount   Int      @default(0)
+  /** Free text prepended to the message, e.g. a project or contact name. */
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ledger TallyLedger              @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  sends  TallyPartyReminderSend[]
+
+  @@index([companyId, cadence])
+}
+
+/** Every reminder actually sent — the answer to "have we chased them?". */
+model TallyPartyReminderSend {
+  id         String   @id @default(cuid())
+  reminderId String
+  sentAt     DateTime @default(now())
+  toEmail    String
+  /** Outstanding at the moment of sending, so the history stays meaningful. */
+  amount     Decimal  @db.Decimal(14, 2)
+  billCount  Int
+  ok         Boolean  @default(true)
+  error      String?
+
+  reminder TallyPartyReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId, sentAt])
 }

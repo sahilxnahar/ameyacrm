@@ -133,6 +133,12 @@ export async function GET(req: NextRequest) {
 
   try { result.gstr = await reconcileGstr2b(); } catch { result.gstr = 'failed'; }
 
+  // Chase the people who owe money, on whatever schedule was set per party.
+  try {
+    const { runPartyReminders } = await import('@/server/services/party-reminder-service');
+    result.paymentReminders = await runPartyReminders(now);
+  } catch { result.paymentReminders = 'failed'; }
+
   // Guest sandboxes are disposable — drop the ones whose day is up so a demo
   // account always opens on clean, freshly-seeded data.
   try {

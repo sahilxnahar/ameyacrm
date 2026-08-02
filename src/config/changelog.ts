@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.3';
+export const APP_VERSION = 'v16.4';
 
 export interface Release {
   version: string;
@@ -13,6 +13,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.4',
+    date: '2 Aug 2026',
+    highlights: [
+      'Automatic payment reminders. On Bill-wise Outstanding, press \u201cRemind\u2026\u201d next to anyone who owes you money and choose weekly, fortnightly or monthly. The email goes out on that schedule for as long as there is a balance, and stops on its own when it is cleared.',
+      'You can see exactly what they would receive, and send yourself a test copy, before anything goes out. Reminders are off until you switch them on, never chase a cleared balance, and by default wait until a bill is genuinely overdue.',
+      'The MSME 45-day clock now starts itself. Mark a vendor as MSME-registered and every bill starts its own clock \u2014 45 days with a written agreement, 15 without. Settling an RA bill also warns you if that vendor has other MSME payments already past the statutory date.',
+      'Fixed: contractor payment numbering jammed at CP-9999 for the same reason cash receipts once did.',
+      'Run MIGRATION_v16.4_all.sql before deploying this one.',
+    ],
+  },
   {
     version: 'v16.3',
     date: '2 Aug 2026',

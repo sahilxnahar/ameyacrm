@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { ChevronDown, Plus } from 'lucide-react';
 import { AGEING_BUCKETS, type BillWiseReport, type PartyAgeing, type BucketKey } from '@/lib/tally/bills-shared';
 import { createTallyBill } from '@/server/actions/tally-bills';
+import { PartyReminderPanel } from './party-reminder-panel';
 
 /**
  * Bill-wise outstanding, with ageing.
@@ -107,6 +108,7 @@ export function BillWiseView({
 
 function PartyRow({ party }: { party: PartyAgeing }) {
   const [open, setOpen] = React.useState(false);
+  const [chasing, setChasing] = React.useState(false);
   const late = party.oldestOverdueDays;
   return (
     <>
@@ -117,10 +119,14 @@ function PartyRow({ party }: { party: PartyAgeing }) {
           {late > 0 ? `${late} days late` : 'not yet due'}
         </td>
         <td className="p-1.5 text-right">
+          <button onClick={() => setChasing(true)} title={`Set up automatic reminders for ${party.party}`} className="mr-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-[#eef2f6]">
+            Remind…
+          </button>
           <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] hover:bg-[#eef2f6]" aria-expanded={open}>
             {party.bills.length} bill{party.bills.length === 1 ? '' : 's'}
             <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
           </button>
+          {chasing && <PartyReminderPanel ledgerId={party.ledgerId} party={party.party} onClose={() => setChasing(false)} />}
         </td>
       </tr>
       {open && party.bills.map((b) => (

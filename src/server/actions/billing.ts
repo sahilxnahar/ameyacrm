@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { docNumber } from '@/lib/utils/reference';
+import { msmeDueDate } from '@/server/services/msme-service';
 import { writeAudit } from '@/lib/audit/log';
 import { notifyMany } from '@/lib/notifications/notify';
 import { ensure, toActionError } from './_helpers';
@@ -186,8 +187,37 @@ export async function createVendorBill(input: unknown): Promise<BillingResult> {
     const bill = await prisma.vendorBill.create({
       data: { number: d.number, vendorId: d.vendorId || null, amount: d.amount, gstAmount: d.gstAmount, billDate: d.billDate ? new Date(d.billDate) : new Date(), dueDate: d.dueDate ? new Date(d.dueDate) : null, createdById: ctx.user.id },
     });
+    // Start the MSME clock with the bill, not by hand.
+    //
+    // Section 15 of the MSMED Act gives 45 days (15 without a written
+    // agreement), and s.43B(h) of the Income-tax Act disallows the expense
+    // entirely if you miss it. That is real tax money, and it turned on
+    // somebody remembering to open the tracker and type the bill in a second
+    // time. If the vendor is registered as MSME, the clock now starts itself.
+    if (d.vendorId) {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: d.vendorId },
+        select: { isMsme: true, udyamNumber: true, msmeHasAgreement: true },
+      }).catch(() => null);
+
+      if (vendor?.isMsme) {
+        const billDate = d.billDate ? new Date(d.billDate) : new Date();
+        await prisma.msmePaymentClock.create({
+          data: {
+            vendorId: d.vendorId,
+            vendorBillId: bill.id,
+            udyamNo: vendor.udyamNumber ?? null,
+            billDate,
+            dueDate: msmeDueDate(billDate, vendor.msmeHasAgreement),
+            amount: d.amount + d.gstAmount,
+          },
+        }).catch(() => undefined);   // a clock that cannot start must not lose the bill
+      }
+    }
+
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'VendorBill', entityId: bill.id, summary: `Recorded bill ${d.number}` });
     revalidatePath('/billing');
+    revalidatePath('/msme-tracker');
     return { ok: true, id: bill.id };
   } catch (err) { return toActionError(err); }
 }

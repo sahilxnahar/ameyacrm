@@ -7,10 +7,12 @@ import { notify } from '@/lib/notifications/notify';
 import { computeRaBill } from '@/lib/construction/ra-bill';
 import { vendorComplianceStatus, monthKey } from '@/server/services/labour-compliance-service';
 import { vendorAdvanceFrozen } from '@/server/services/insolvency-service';
+import { vendorMsmeOverdue } from '@/server/services/msme-service';
+import { nextSequence } from '@/lib/db/sequence';
 import { structuralCertificationGate } from '@/server/services/structural-contract-service';
 import { ensure, toActionError } from './_helpers';
 
-export type RaResult = { ok: true; id?: string } | { error: string };
+export type RaResult = { ok: true; id?: string; message?: string } | { error: string };
 
 const lineSchema = z.object({
   description: z.string().min(1).max(300),
@@ -128,13 +130,31 @@ export async function settleRaBill(id: string): Promise<RaResult> {
       if (cert.blocked) return { error: `Payment blocked — ${cert.reason} Record the engineer certification first.` };
     }
 
+    // MSME status — surfaced, deliberately NOT blocking.
+    //
+    // The other three gates stop a payment that should not happen. This one is
+    // the opposite: an overdue MSME due means you are ALREADY late under s.15
+    // of the MSMED Act and risk the expense being disallowed under s.43B(h).
+    // Blocking the payment would make that worse, not better. So it is flagged
+    // loudly on the way through, and the accounts team is told, so this
+    // vendor's other overdue bills get pulled forward.
+    let msmeNotice = '';
+    if (bill.vendorId) {
+      const msme = await vendorMsmeOverdue(bill.vendorId).catch(() => ({ overdue: false, count: 0 }));
+      if (msme.overdue) {
+        msmeNotice = ` NOTE: this vendor has ${msme.count} MSME payment(s) already past the statutory date — settle those too, or the expense can be disallowed under s.43B(h).`;
+      }
+    }
+
     const vendor = bill.vendorId ? await prisma.vendor.findUnique({ where: { id: bill.vendorId }, select: { name: true } }) : null;
-    const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-    const seq = (last ? Number(last.number.split('-')[1] ?? '1000') : 1000) + 1;
+    // Atomic counter, not MAX(number). Ordering these as text puts CP-9999
+    // above CP-10000, so the series jammed at five digits and two settlements
+    // in the same moment collided on the unique index.
+    const seq = await nextSequence('voucher:CP', prisma, 1000);
 
     const voucher = await prisma.voucher.create({
       data: {
-        number: `CP-${Number.isFinite(seq) ? seq : 1001}`, kind: 'BANK_PAID', status: 'POSTED',
+        number: `CP-${seq}`, kind: 'BANK_PAID', status: 'POSTED',
         voucherDate: new Date(), partyName: vendor?.name ?? 'Contractor', vendorId: bill.vendorId,
         projectId: bill.projectId, amount: bill.netPayable, mode: 'BANK_TRANSFER',
         reference: bill.number, narration: `Settlement of RA bill ${bill.number}`, accountCode: '5400',
@@ -145,6 +165,6 @@ export async function settleRaBill(id: string): Promise<RaResult> {
     await prisma.raBill.update({ where: { id: billId }, data: { status: 'PAID', voucherId: voucher.id } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'RaBill', entityId: billId, summary: `Settled ${bill.number} → voucher ${voucher.number} (net ₹${Number(bill.netPayable)})` });
     revalidatePath('/ra-bills');
-    return { ok: true };
+    return { ok: true, message: `Settled.${msmeNotice}` };
   } catch (err) { return toActionError(err); }
 }
