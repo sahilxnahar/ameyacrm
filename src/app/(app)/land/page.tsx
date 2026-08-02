@@ -7,11 +7,14 @@ import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { landOverview } from '@/server/services/land-service';
 import { LandView } from '@/components/land/land-view';
+import { powersOfAttorney, jointDevelopmentAgreements } from '@/server/services/compliance-service';
+import { RegisterTabs } from '@/components/compliance/register-tabs';
+import { PoaRegister, JdaRegister } from '@/components/compliance/extra-registers';
 
 export const metadata: Metadata = { title: 'Land & Approvals' };
 export const dynamic = 'force-dynamic';
 
-export default async function LandPage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
+export default async function LandPage({ searchParams }: { searchParams: Promise<{ project?: string; view?: string }> }) {
   const ctx = await requirePermission('land.view');
   const canManage = can(ctx.permissions, 'land.manage');
   const sp = await searchParams;
@@ -21,14 +24,37 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
       where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' },
     });
     const projectId = sp.project ?? null;
-    const data = await landOverview(new Date(), projectId);
+    const view = ['parcels', 'poa', 'jda'].includes(sp.view ?? '') ? sp.view! : 'parcels';
+    const [data, poaRows, jdaRows, parcelOpts] = await Promise.all([
+      landOverview(new Date(), projectId),
+      powersOfAttorney(projectId),
+      jointDevelopmentAgreements(),
+      prisma.landParcel.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 }),
+    ]);
 
     return (
       <div className="space-y-6">
         <PageHeader
           title="Land & Approvals"
-          description="The parcels, the title chain, the sanctions and the matters in court. A gap in the chain shows as a gap here — not when a buyer's lawyer finds it — and an approval whose expected date has passed is flagged rather than forgotten."
+          description={view === 'poa'
+            ? 'Every general and special power of attorney in the title chain, with what it actually covers and when it stops being valid.'
+            : view === 'jda'
+              ? 'The joint development agreements — share split, refundable deposit and signing date, against the parcel each one binds.'
+              : "The parcels, the title chain, the sanctions and the matters in court. A gap in the chain shows as a gap here — not when a buyer's lawyer finds it — and an approval whose expected date has passed is flagged rather than forgotten."}
         />
+        <RegisterTabs
+          basePath="/land"
+          current={view}
+          projectId={projectId}
+          tabs={[
+            { key: 'parcels', label: 'Parcels & approvals', count: data.parcels.length },
+            { key: 'poa', label: 'Powers of attorney', count: poaRows.length },
+            { key: 'jda', label: 'JDAs', count: jdaRows.length },
+          ]}
+        />
+        {view === 'poa' && <PoaRegister canManage={canManage} projects={projects} projectId={projectId} rows={poaRows} />}
+        {view === 'jda' && <JdaRegister canManage={canManage} rows={jdaRows} parcels={parcelOpts} />}
+        {view === 'parcels' && <>
         <ScreenHelp id="land" />
         <LandView
           canManage={canManage}
@@ -40,6 +66,7 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
           litigation={data.litigation}
           parcelsWithGaps={data.parcelsWithGaps}
         />
+        </>}
       </div>
     );
   } catch (e) {

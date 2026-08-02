@@ -1054,3 +1054,64 @@ export async function tallyEditLog(voucherId?: string): Promise<AuditResult> {
     return { ok: true, rows };
   } catch (e) { return toActionError(e); }
 }
+
+// ─── CRM books → Ameya Tally mirror ──────────────────────────────────────────
+
+export interface MirrorSettings { companyId: string | null; mirrored: number; total: number }
+
+/** What the mirror is currently set to, and how far behind it is. */
+export async function getTallyMirrorSettings(): Promise<MirrorSettings | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const { MIRROR_COMPANY_KEY } = await import('@/server/services/tally-mirror-service');
+    const row = await prisma.setting.findUnique({ where: { key: MIRROR_COMPANY_KEY } });
+    const companyId = typeof row?.value === 'string' ? row.value : null;
+    const [total, mirrored] = await Promise.all([
+      prisma.journalEntry.count({ where: { status: 'POSTED' } }),
+      companyId
+        ? prisma.tallyVoucher.count({ where: { companyId, tallyGuid: { startsWith: 'crm:' } } })
+        : Promise.resolve(0),
+    ]);
+    return { companyId, mirrored, total };
+  } catch (e) { return toActionError(e) as { error: string }; }
+}
+
+/**
+ * Point the CRM's books at a Tally company — or at nothing, to switch the
+ * mirror off. Changing it does not move anything already mirrored: vouchers
+ * already written to the old company stay where they are, because deleting
+ * posted vouchers out of a set of books is never the right answer.
+ */
+export async function setTallyMirrorCompany(companyId: string | null): Promise<{ ok: true; message: string } | { error: string }> {
+  try {
+    const ctx = await ensure('admin.setting.manage');
+    const { MIRROR_COMPANY_KEY } = await import('@/server/services/tally-mirror-service');
+
+    if (!companyId) {
+      await prisma.setting.upsert({ where: { key: MIRROR_COMPANY_KEY }, create: { key: MIRROR_COMPANY_KEY, value: '' }, update: { value: '' } });
+      await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', entityId: MIRROR_COMPANY_KEY, summary: 'Turned off CRM → Tally mirroring' });
+      revalidatePath('/tally');
+      return { ok: true, message: 'Mirroring is off. Nothing already copied has been touched.' };
+    }
+
+    const company = await prisma.tallyCompany.findUnique({ where: { id: companyId }, select: { id: true, name: true } });
+    if (!company) return { error: 'That Tally company no longer exists.' };
+
+    await prisma.setting.upsert({ where: { key: MIRROR_COMPANY_KEY }, create: { key: MIRROR_COMPANY_KEY, value: company.id }, update: { value: company.id } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', entityId: MIRROR_COMPANY_KEY, summary: `CRM books now mirror into Tally company "${company.name}"` });
+    revalidatePath('/tally');
+    return { ok: true, message: `New CRM entries will now appear in ${company.name}. Run the catch-up to bring the history across.` };
+  } catch (e) { return toActionError(e) as { error: string }; }
+}
+
+/** Copy across everything posted before mirroring was switched on. */
+export async function runTallyMirrorBackfill(): Promise<{ ok: true; message: string } | { error: string }> {
+  try {
+    const ctx = await ensure('finance.ledger.manage');
+    const { backfillMirror } = await import('@/server/services/tally-mirror-service');
+    const r = await backfillMirror(2000);
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'TallyVoucher', entityId: 'mirror', summary: `Tally mirror catch-up — ${r.message}` });
+    revalidatePath('/tally');
+    return { ok: true, message: r.message };
+  } catch (e) { return toActionError(e) as { error: string }; }
+}

@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth/current-user';
 import { getSecurityPolicy, mustEnroll2FA } from '@/lib/auth/policy';
 import { AppShell } from '@/components/layout/app-shell';
 import { TwoFactorReminder } from '@/components/layout/two-factor-reminder';
+import { EmailDormantBanner } from '@/components/layout/email-dormant-banner';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
 import { readTopNavPrefs } from '@/lib/nav/top-nav-prefs';
@@ -78,6 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       <SchemaWarning />
       <TwoFactorReminder show={needsTwoFactor} />
+      <EmailDormantBanner show={env.EMAIL_PROVIDER === 'console' && permissions.keys.has('admin.setting.manage')} />
       {children}
     </AppShell>
   );

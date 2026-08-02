@@ -13,7 +13,7 @@ export default async function SiteOpsPage() {
   const ctx = await requirePermission('document.create');
   const active = await getActiveProject(ctx.user.id);
 
-  const [projects, rows] = await Promise.all([
+  const [projects, rows, activityRows] = await Promise.all([
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.dailySiteLog.findMany({
       where: active.id ? { projectId: active.id } : undefined,
@@ -25,6 +25,12 @@ export default async function SiteOpsPage() {
         author: { select: { name: true } },
         photos: { select: { id: true, url: true, milestoneTag: true }, orderBy: { capturedAt: 'asc' } },
       },
+    }).catch(() => []),
+    prisma.programmeActivity.findMany({
+      where: { ...(active.id ? { projectId: active.id } : {}), actualEnd: null },
+      orderBy: [{ sortOrder: 'asc' }, { plannedStart: 'asc' }],
+      take: 300,
+      select: { id: true, projectId: true, name: true, percentComplete: true },
     }).catch(() => []),
   ]);
 
@@ -45,7 +51,12 @@ export default async function SiteOpsPage() {
         title="Site Ops"
         description={`Daily field logs and the 4D BIM progress timeline${active.id ? ` for ${active.name}` : ' across all projects'}. Log weather, labour and progress photos from your phone at site.`}
       />
-      <SiteOpsBoard projects={projects} activeProjectId={active.id} logs={logs} />
+      <SiteOpsBoard
+        projects={projects}
+        activeProjectId={active.id}
+        logs={logs}
+        activities={activityRows.map((a) => ({ id: a.id, projectId: a.projectId, name: a.name, percentComplete: Number(a.percentComplete) }))}
+      />
     </div>
   );
 }

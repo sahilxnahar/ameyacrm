@@ -5,6 +5,8 @@ import { nextReference } from '@/lib/utils/reference';
 import { findDuplicateLead } from '@/lib/leads/dedup';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 import { toNumber, toDate } from '@/lib/import/parse';
 import type { UnitStatus, LeadSource, LeadStatus, PaymentStatus } from '@prisma/client';
 
@@ -184,21 +186,27 @@ export async function runImport(
           const when = toDate(r.date ?? '');
 
           // Same description, same amount, same day — almost certainly a re-paste.
+          // The row is STORED as "particulars — notes", so matching on
+          // `particulars` alone never matched and a re-pasted sheet with a notes
+          // column doubled every expense. Match what is actually written, and
+          // bound it to the day so a genuine repeat is not swallowed.
+          const notesForKey = [r.notes, r.poc ? `Handled by ${r.poc}` : ''].filter(Boolean).join(' · ');
+          const narrationKey = [particulars, notesForKey].filter(Boolean).join(' — ').slice(0, 500);
+          const dayStart = when ? new Date(when) : null; dayStart?.setHours(0, 0, 0, 0);
+          const dayEnd = when ? new Date(when) : null; dayEnd?.setHours(23, 59, 59, 999);
           const dupe = await prisma.voucher.findFirst({
-            where: { kind: 'CASH_PAID', amount, narration: particulars },
+            where: {
+              kind: 'CASH_PAID', amount, narration: narrationKey,
+              ...(dayStart && dayEnd ? { voucherDate: { gte: dayStart, lte: dayEnd } } : {}),
+            },
             select: { number: true },
           });
           if (dupe) { skipped++; results.push({ row: line, ok: true, message: `Already recorded as ${dupe.number}` }); continue; }
 
           if (!dryRun) {
-            const last = await prisma.voucher.findFirst({
-              where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true },
-            });
-            const seq = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
-            const notes = [r.notes, r.poc ? `Handled by ${r.poc}` : ''].filter(Boolean).join(' · ');
-            await prisma.voucher.create({
+            const importedVoucher = await prisma.voucher.create({
               data: {
-                number: `CP-${(Number.isFinite(seq) ? seq : 1000) + 1}`,
+                number: await nextVoucherNumber('CP'),
                 kind: 'CASH_PAID',
                 voucherDate: when ?? new Date(),
                 partyName: party,
@@ -206,9 +214,11 @@ export async function runImport(
                 amount,
                 mode: /cash/i.test(particulars) ? 'CASH' : 'BANK_TRANSFER',
                 reference: r.reference || null,
-                narration: [particulars, notes].filter(Boolean).join(' — ').slice(0, 500),
+                narration: narrationKey,
               },
+              select: { id: true },
             });
+            await postVoucherById(importedVoucher.id, ctx.user.id);
           }
           created++;
           results.push({

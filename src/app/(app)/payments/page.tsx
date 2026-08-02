@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
+import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { getActiveProject, projectScope } from '@/server/services/active-project-service';
@@ -34,7 +35,9 @@ export default async function PaymentsPage() {
     dated: r.voucherDate.toISOString(),
   }));
 
-  const live = payments.filter((p) => p.status !== 'CANCELLED');
+  // DRAFT = raised but not yet approved. It is not money that has gone out, so
+  // it is excluded from the paid total and from the missing-UTR chase.
+  const live = payments.filter((p) => p.status !== 'CANCELLED' && p.status !== 'DRAFT');
   const missingUtr = live.filter((p) => !p.utr && p.mode !== 'CASH').length;
 
   return (
@@ -47,6 +50,7 @@ export default async function PaymentsPage() {
         payments={payments}
         totalPaid={live.reduce((s, p) => s + p.amount, 0)}
         missingUtr={missingUtr}
+        canApprove={can(ctx.permissions, 'billing.approve')}
       />
     </div>
   );

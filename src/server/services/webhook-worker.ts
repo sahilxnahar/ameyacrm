@@ -2,7 +2,8 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { splitEscrow } from '@/lib/finance/escrow-split';
-import { nextSequence, docNumber } from '@/lib/db/sequence';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
 
 /**
  * The out-of-band worker (module #50). Drains PENDING WebhookEvent rows and
@@ -87,7 +88,7 @@ async function handleRazorpayPayment(event: { id: string; payload: unknown }): P
   const voucher = await prisma.$transaction(async (tx) => {
   const created = await tx.voucher.create({
     data: {
-      number: docNumber('CR', await nextSequence('voucher:CR', tx, 1000)), kind: 'BANK_RECEIVED', status: 'POSTED',
+      number: await nextVoucherNumber('CR'), kind: 'BANK_RECEIVED', status: 'POSTED',
       voucherDate: new Date(), partyName: booking?.lead?.name ?? 'Buyer', bookingId: booking?.id ?? null,
       projectId, amount: rupees, mode: 'BANK_TRANSFER',
       reference: String(pay.id ?? ''), utr: (pay.acquirer_data as Record<string, string> | undefined)?.bank_transaction_id ?? null,
@@ -106,6 +107,9 @@ async function handleRazorpayPayment(event: { id: string; payload: unknown }): P
   }
     return created;
   });
+  // Posted after the transaction commits, never inside it: a failure to reach
+  // the books must not roll back money the bank has already taken.
+  await postVoucherById(voucher.id, null);
   await writeAudit({ action: 'CREATE', entityType: 'Voucher', entityId: voucher.id, summary: `Razorpay ₹${rupees} collected → 70/30 escrow (voucher ${voucher.number})` });
 }
 

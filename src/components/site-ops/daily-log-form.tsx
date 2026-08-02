@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { toast } from 'sonner';
-import { Minus, Plus, X, Loader2, Users, CloudSun } from 'lucide-react';
+import { Minus, Plus, X, Loader2, Users, CloudSun, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,13 +23,18 @@ function todayISO(): string {
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 10);
 }
 
+export interface ProgrammeOption { id: string; projectId: string; name: string; percentComplete: number }
+
 export function DailyLogForm({
   projects,
   activeProjectId,
+  activities = [],
   onSaved,
 }: {
   projects: { id: string; name: string }[];
   activeProjectId: string | null;
+  /** Programme activities the engineer can move from this same form. */
+  activities?: ProgrammeOption[];
   onSaved?: () => void;
 }) {
   const [projectId, setProjectId] = React.useState(activeProjectId ?? projects[0]?.id ?? '');
@@ -40,7 +45,20 @@ export function DailyLogForm({
   const [currentTag, setCurrentTag] = React.useState<string>(MILESTONE_TAGS[0]);
   const [photos, setPhotos] = React.useState<DraftPhoto[]>([]);
   const [saving, setSaving] = React.useState(false);
+  const [activityId, setActivityId] = React.useState('');
+  const [percent, setPercent] = React.useState<number | ''>('');
+  const [shareWithBuyers, setShareWithBuyers] = React.useState(false);
   const seq = React.useRef(0);
+
+  // Only this project's activities, and reset the pick when the project changes
+  // so a percentage can never land on another project's programme.
+  const projectActivities = React.useMemo(() => activities.filter((a) => a.projectId === projectId), [activities, projectId]);
+  React.useEffect(() => { setActivityId(''); setPercent(''); }, [projectId]);
+  React.useEffect(() => {
+    if (!activityId) { setPercent(''); return; }
+    const a = projectActivities.find((x) => x.id === activityId);
+    setPercent(a ? a.percentComplete : '');
+  }, [activityId, projectActivities]);
 
   const addPhoto = React.useCallback((f: { url: string; name: string }) => {
     seq.current += 1;
@@ -60,12 +78,16 @@ export function DailyLogForm({
       laborCount: labor,
       notes,
       photos: photos.map((p) => ({ url: p.url, milestoneTag: p.milestoneTag, capturedAt: '' })),
+      activityId: activityId || '',
+      percentComplete: activityId && percent !== '' ? Number(percent) : undefined,
+      shareWithBuyers: shareWithBuyers && photos.length > 0,
     }).then((r) => {
       setSaving(false);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success(`Site log saved — ${r.photoCount} photo${r.photoCount === 1 ? '' : 's'}`);
+      const extra = [r.progressNote, r.sharedWithBuyers ? 'shared with buyers' : ''].filter(Boolean).join(' · ');
+      toast.success(`Site log saved — ${r.photoCount} photo${r.photoCount === 1 ? '' : 's'}${extra ? ` · ${extra}` : ''}`);
       // Reset for the next entry (engineers often log several projects in a row).
-      setLabor(0); setNotes(''); setPhotos([]);
+      setLabor(0); setNotes(''); setPhotos([]); setActivityId(''); setPercent(''); setShareWithBuyers(false);
       onSaved?.();
     });
   }
@@ -167,6 +189,45 @@ export function DailyLogForm({
         ) : null}
         {photos.length > 0 ? <p className="text-xs text-muted-foreground">{photos.length} photo{photos.length === 1 ? '' : 's'} attached</p> : null}
       </div>
+
+      {/* Programme progress — the same visit that produced the photos is the one
+          that knows how far the work got. Typing it here means nobody has to
+          reconcile the diary against the schedule afterwards. */}
+      {projectActivities.length > 0 && (
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <Label className="flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" /> Programme progress <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <div className="mt-1 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Select value={activityId} onChange={(e) => setActivityId(e.target.value)}>
+              <option value="">Don&apos;t update the programme</option>
+              {projectActivities.map((a) => <option key={a.id} value={a.id}>{a.name} — {a.percentComplete}%</option>)}
+            </Select>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number" inputMode="numeric" min={0} max={100} disabled={!activityId}
+                value={percent} onChange={(e) => setPercent(e.target.value === '' ? '' : Math.min(100, Math.max(0, Number(e.target.value))))}
+                className="h-11 w-24 text-center text-lg font-semibold" placeholder="%"
+              />
+              <span className="text-sm text-muted-foreground">% done</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buyer portal — one tick instead of a second screen. */}
+      <label className={cn('flex items-start gap-2 rounded-lg border p-3 text-sm', photos.length === 0 && 'opacity-50')}>
+        <input
+          type="checkbox" className="mt-0.5 h-4 w-4" disabled={photos.length === 0}
+          checked={shareWithBuyers} onChange={(e) => setShareWithBuyers(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium">Show this to buyers</span>
+          <span className="block text-xs text-muted-foreground">
+            {photos.length === 0
+              ? 'Add a photo first — a progress update without one is not worth sending.'
+              : `Posts the first photo (${photos[0]?.milestoneTag}) and your notes to the customer portal as a progress update.`}
+          </span>
+        </span>
+      </label>
 
       <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 bg-gradient-to-t from-card via-card to-transparent pt-2">
         <Button onClick={submit} disabled={saving} className={cn('h-11 min-w-[8rem] gap-2', saving && 'opacity-80')}>

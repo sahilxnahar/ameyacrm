@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, FileText, Lock, Unlock } from 'lucide-react';
-import { blockUnit, releaseUnit, setUnitStatus, generateCostSheet } from '@/server/actions/inventory';
+import { Loader2, FileText, Lock, Unlock, Plus, Building2, Pencil } from 'lucide-react';
+import { blockUnit, releaseUnit, setUnitStatus, generateCostSheet, createUnit, createTower, updateUnit } from '@/server/actions/inventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +30,8 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
 }) {
   const router = useRouter();
   const [sel, setSel] = React.useState<UnitCell | null>(null);
-  const [mode, setMode] = React.useState<'view' | 'block' | 'cost'>('view');
+  const [mode, setMode] = React.useState<'view' | 'block' | 'cost' | 'edit'>('view');
+  const [adding, setAdding] = React.useState<'unit' | 'tower' | null>(null);
   const [pending, start] = React.useTransition();
 
   const counts = STATUSES.map((s) => ({ s, n: units.filter((u) => u.status === s).length }));
@@ -40,7 +41,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [units]);
 
-  const open = (u: UnitCell, m: 'view' | 'block' | 'cost' = 'view') => { setSel(u); setMode(m); };
+  const open = (u: UnitCell, m: 'view' | 'block' | 'cost' | 'edit' = 'view') => { setSel(u); setMode(m); };
   const close = () => setSel(null);
 
   const doRelease = (id: string) => start(async () => { const r = await releaseUnit(id); if ('error' in r) { toast.error(r.error); return; } toast.success('Unit released'); close(); router.refresh(); });
@@ -51,6 +52,46 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
     start(async () => {
       const r = await blockUnit({ unitId: sel.id, hours: fd.get('hours'), tokenAmount: fd.get('tokenAmount') || undefined, leadId: fd.get('leadId') || null, note: fd.get('note') || undefined });
       if ('error' in r) { toast.error(r.error); return; } toast.success('Unit blocked'); close(); router.refresh();
+    });
+  };
+
+  const fields = (fd: FormData) => ({
+    code: fd.get('code'), tower: fd.get('tower') || '', floor: fd.get('floor') || undefined,
+    typology: fd.get('typology') || '', facing: fd.get('facing') || '',
+    carpetAreaSqft: fd.get('carpetAreaSqft') || undefined, price: fd.get('price') || undefined,
+  });
+
+  const submitNewUnit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); if (!projectId) { toast.error('Pick a project first.'); return; }
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await createUnit({ projectId, ...fields(fd) });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Unit added'); setAdding(null); router.refresh();
+    });
+  };
+
+  const submitEditUnit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); if (!sel || !projectId) return;
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await updateUnit({ unitId: sel.id, projectId, ...fields(fd) });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success('Unit updated'); close(); router.refresh();
+    });
+  };
+
+  const submitTower = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); if (!projectId) { toast.error('Pick a project first.'); return; }
+    const fd = new FormData(e.currentTarget);
+    start(async () => {
+      const r = await createTower({
+        projectId, tower: fd.get('tower'), fromFloor: fd.get('fromFloor'), toFloor: fd.get('toFloor'),
+        unitsPerFloor: fd.get('unitsPerFloor'), numbering: fd.get('numbering'), startAt: fd.get('startAt') || 1,
+        typology: fd.get('typology') || '', carpetAreaSqft: fd.get('carpetAreaSqft') || undefined, price: fd.get('price') || undefined,
+      });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(r.message); setAdding(null); router.refresh();
     });
   };
 
@@ -79,6 +120,12 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
           {projects.length === 0 && <option value="">No projects</option>}
           {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        {canManage && projectId && (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => setAdding('unit')}><Plus className="h-4 w-4" /> Add unit</Button>
+            <Button size="sm" variant="outline" onClick={() => setAdding('tower')}><Building2 className="h-4 w-4" /> Add tower</Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 text-xs">
           {counts.map(({ s, n }) => (
             <span key={s} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${STYLE[s]}`}><b>{n}</b> {s.charAt(0) + s.slice(1).toLowerCase()}</span>
@@ -86,7 +133,17 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
         </div>
       </div>
 
-      {units.length === 0 && <p className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">No units for this project yet. Add units under the project to populate the matrix.</p>}
+      {units.length === 0 && (
+        <div className="rounded-lg border border-dashed p-10 text-center">
+          <p className="text-sm text-muted-foreground">No units for this project yet.</p>
+          {canManage && projectId && (
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <Button size="sm" onClick={() => setAdding('tower')}><Building2 className="h-4 w-4" /> Generate a tower</Button>
+              <Button size="sm" variant="outline" onClick={() => setAdding('unit')}><Plus className="h-4 w-4" /> Add a single unit</Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-6">
         {towers.map(([tower, list]) => (
@@ -126,6 +183,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                   {sel.holdNote && <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800">{sel.holdNote}</p>}
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => setMode('cost')}><FileText className="h-4 w-4" /> Cost sheet</Button>
+                    {canManage && <Button size="sm" variant="outline" onClick={() => setMode('edit')}><Pencil className="h-4 w-4" /> Edit</Button>}
                     {canManage && sel.status !== 'HELD' && sel.status !== 'SOLD' && sel.status !== 'BOOKED' && <Button size="sm" onClick={() => setMode('block')}><Lock className="h-4 w-4" /> Block</Button>}
                     {canManage && (sel.status === 'HELD' || sel.status === 'BLOCKED') && <Button size="sm" variant="outline" onClick={() => doRelease(sel.id)} disabled={pending}><Unlock className="h-4 w-4" /> Release</Button>}
                   </div>
@@ -173,10 +231,82 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                   <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setMode('view')}>Back</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<FileText className="h-4 w-4" />Generate PDF</Button></div>
                 </form>
               )}
+              {mode === 'edit' && (
+                <form onSubmit={submitEditUnit} className="space-y-3">
+                  <UnitFields unit={sel} />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setMode('view')}>Back</Button>
+                    <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Save changes</Button>
+                  </div>
+                </form>
+              )}
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add a single unit */}
+      <Dialog open={adding === 'unit'} onOpenChange={(o) => !o && setAdding(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Add a unit</DialogTitle></DialogHeader>
+          <form onSubmit={submitNewUnit} className="space-y-3">
+            <UnitFields unit={null} />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setAdding(null)}>Cancel</Button>
+              <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Add unit</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate a whole tower */}
+      <Dialog open={adding === 'tower'} onOpenChange={(o) => !o && setAdding(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Generate a tower</DialogTitle></DialogHeader>
+          <form onSubmit={submitTower} className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Creates every unit on every floor in one go. Codes already in use are left exactly as they are,
+              so you can run this again after adding floors.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label htmlFor="t-tower">Tower name</Label><Input id="t-tower" name="tower" required placeholder="A" maxLength={40} /></div>
+              <div className="space-y-1"><Label htmlFor="t-upf">Units per floor</Label><Input id="t-upf" name="unitsPerFloor" type="number" min="1" max="26" required defaultValue="4" /></div>
+              <div className="space-y-1"><Label htmlFor="t-from">From floor</Label><Input id="t-from" name="fromFloor" type="number" required defaultValue="1" /></div>
+              <div className="space-y-1"><Label htmlFor="t-to">To floor</Label><Input id="t-to" name="toFloor" type="number" required defaultValue="12" /></div>
+              <div className="space-y-1">
+                <Label htmlFor="t-numbering">Unit numbering</Label>
+                <select id="t-numbering" name="numbering" defaultValue="NUMERIC" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="NUMERIC">A-1201, A-1202…</option>
+                  <option value="ALPHA">A-12A, A-12B…</option>
+                </select>
+              </div>
+              <div className="space-y-1"><Label htmlFor="t-start">First unit number</Label><Input id="t-start" name="startAt" type="number" min="1" max="99" defaultValue="1" /></div>
+              <div className="space-y-1"><Label htmlFor="t-typ">Typology</Label><Input id="t-typ" name="typology" placeholder="3BHK" maxLength={40} /></div>
+              <div className="space-y-1"><Label htmlFor="t-area">Carpet area (sq.ft)</Label><Input id="t-area" name="carpetAreaSqft" type="number" min="0" step="0.01" placeholder="Optional" /></div>
+              <div className="space-y-1 col-span-2"><Label htmlFor="t-price">Price per unit (₹)</Label><Input id="t-price" name="price" type="number" min="0" placeholder="Optional — set per unit later" /></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setAdding(null)}>Cancel</Button>
+              <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Generate</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** The shared unit fields, used both to add a new unit and to correct one. */
+function UnitFields({ unit }: { unit: UnitCell | null }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1"><Label htmlFor="u-code">Unit code</Label><Input id="u-code" name="code" required maxLength={40} defaultValue={unit?.code ?? ''} placeholder="A-1203" /></div>
+      <div className="space-y-1"><Label htmlFor="u-tower">Tower</Label><Input id="u-tower" name="tower" maxLength={40} defaultValue={unit?.tower ?? ''} placeholder="A" /></div>
+      <div className="space-y-1"><Label htmlFor="u-floor">Floor</Label><Input id="u-floor" name="floor" type="number" defaultValue={unit?.floor ?? ''} placeholder="12" /></div>
+      <div className="space-y-1"><Label htmlFor="u-typ">Typology</Label><Input id="u-typ" name="typology" maxLength={40} defaultValue={unit?.typology ?? ''} placeholder="3BHK" /></div>
+      <div className="space-y-1"><Label htmlFor="u-facing">Facing</Label><Input id="u-facing" name="facing" maxLength={20} defaultValue={unit?.facing ?? ''} placeholder="East" /></div>
+      <div className="space-y-1"><Label htmlFor="u-area">Carpet area (sq.ft)</Label><Input id="u-area" name="carpetAreaSqft" type="number" min="0" step="0.01" defaultValue={unit?.carpetAreaSqft ?? ''} /></div>
+      <div className="space-y-1 col-span-2"><Label htmlFor="u-price">Price (₹)</Label><Input id="u-price" name="price" type="number" min="0" defaultValue={unit?.price ?? ''} /></div>
     </div>
   );
 }

@@ -171,3 +171,85 @@ export function invoiceLines(i: InvoiceLike): RuleResult {
   if (igst > 0) lines.push({ accountCode: '2143', credit: igst, ...party });
   return { ok: true, narration: `Invoice to ${i.clientName ?? 'buyer'}`, lines };
 }
+
+export interface SettlementLike extends VoucherLike {
+  tdsAmount?: number | string | null;
+  retentionAmount?: number | string | null;
+  /** BOCW labour cess withheld — owed to the welfare board, not saved. */
+  cessAmount?: number | string | null;
+}
+
+/**
+ * A contractor payment with money held back.
+ *
+ * The cheque is for the net, but the cost is the gross and the two deductions
+ * are liabilities that outlive the payment: TDS you must deposit under s.194C
+ * within the month, and retention you owe the contractor when the
+ * defect-liability period expires. Booking only the net understates project
+ * cost by the retention and leaves the 26Q deposit with no ledger balance to
+ * clear against — which is exactly the reconciliation that eats a week at
+ * year end.
+ */
+export function contractorSettlementLines(v: SettlementLike): RuleResult {
+  const net = Number(v.amount);
+  if (!Number.isFinite(net) || net <= 0) return { error: 'A payment with no amount cannot be posted.' };
+
+  const tds = Math.max(0, Number(v.tdsAmount ?? 0) || 0);
+  const retention = Math.max(0, Number(v.retentionAmount ?? 0) || 0);
+  const cess = Math.max(0, Number(v.cessAmount ?? 0) || 0);
+  if (tds === 0 && retention === 0 && cess === 0) return voucherLines({ ...v, kind: v.kind });
+
+  const gross = Math.round((net + tds + retention + cess) * 100) / 100;
+  const money = moneyAccount(v.mode);
+  const party = { vendorId: v.vendorId ?? null, customerId: v.customerId ?? null, projectId: v.projectId ?? null };
+  const head = v.accountCode || '5410';
+
+  const lines: DraftLine[] = [{ accountCode: head, debit: gross, ...party }];
+  if (tds > 0) lines.push({ accountCode: '2150', credit: tds, ...party });          // TDS payable
+  if (retention > 0) lines.push({ accountCode: '2130', credit: retention, ...party }); // Retention payable
+  if (cess > 0) lines.push({ accountCode: '2155', credit: cess, ...party });             // BOCW cess payable
+  lines.push({ accountCode: money, credit: net, ...party });
+
+  return {
+    ok: true,
+    narration: `Paid to ${v.partyName ?? 'contractor'}${tds ? ` (TDS ${tds.toLocaleString('en-IN')} withheld)` : ''}${retention ? ` (retention ${retention.toLocaleString('en-IN')} held)` : ''}${cess ? ` (cess ${cess.toLocaleString('en-IN')} withheld)` : ''}`,
+    lines,
+  };
+}
+
+/**
+ * A payment that settles a vendor bill already in the books.
+ *
+ * The bill has already booked the cost and the creditor. Debiting the expense
+ * again at payment would count the same spend twice and leave the creditor
+ * balance standing for ever — which is precisely what happened when bills
+ * started posting and payments still posted as though they had not.
+ */
+export function billSettlementLines(v: {
+  amount: number | string; mode?: string | null; vendorId?: string | null; projectId?: string | null;
+  partyName?: string | null; billNumber?: string | null;
+  tdsAmount?: number | string | null; retentionAmount?: number | string | null;
+}): RuleResult {
+  const gross = Number(v.amount);
+  if (!Number.isFinite(gross) || gross <= 0) return { error: 'A payment with no amount cannot be posted.' };
+
+  const tds = Math.max(0, Number(v.tdsAmount ?? 0) || 0);
+  const retention = Math.max(0, Number(v.retentionAmount ?? 0) || 0);
+  const net = Math.round((gross - tds - retention) * 100) / 100;
+  if (net < 0) return { error: 'The deductions on this payment are larger than the bill.' };
+
+  const party = { vendorId: v.vendorId ?? null, customerId: null, projectId: v.projectId ?? null };
+  // The bill already booked the cost; this clears the payable in full. Anything
+  // withheld from the cheque is a liability that moves from one head to another,
+  // never a reduction in what was owed.
+  const lines: DraftLine[] = [{ accountCode: '2110', debit: gross, ...party }];
+  if (tds > 0) lines.push({ accountCode: '2150', credit: tds, ...party });
+  if (retention > 0) lines.push({ accountCode: '2130', credit: retention, ...party });
+  if (net > 0) lines.push({ accountCode: moneyAccount(v.mode), credit: net, ...party });
+
+  return {
+    ok: true,
+    narration: `Settled bill ${v.billNumber ?? ''} — ${v.partyName ?? 'vendor'}`.replace(/\s+/g, ' ').trim(),
+    lines,
+  };
+}

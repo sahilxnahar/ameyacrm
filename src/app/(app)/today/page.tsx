@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BellRing, CheckSquare, Inbox, PhoneCall, Flame, Wallet, CheckCircle2, CalendarClock, Wrench } from 'lucide-react';
+import { BellRing, CheckSquare, Inbox, PhoneCall, Flame, Wallet, CheckCircle2, CalendarClock, Wrench, ShieldAlert } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/current-user';
 import { getTodayList, type TodayItem, type Urgency } from '@/server/services/today-service';
 import { PageHeader } from '@/components/layout/page-header';
@@ -16,7 +16,7 @@ import { UserPlus, ClipboardCheck, FolderPlus, Package } from 'lucide-react';
 
 export const metadata: Metadata = { title: "Today's priorities" };
 
-const ICON = { reminder: BellRing, task: CheckSquare, approval: Inbox, followup: PhoneCall, lead: Flame, payment: Wallet, event: CalendarClock, workrequest: Wrench } as const;
+const ICON = { reminder: BellRing, task: CheckSquare, approval: Inbox, followup: PhoneCall, lead: Flame, payment: Wallet, event: CalendarClock, workrequest: Wrench, renewal: ShieldAlert } as const;
 const TONE: Record<Urgency, string> = {
   overdue: 'border-l-rose-500 bg-rose-500/[0.04]',
   today: 'border-l-amber-500 bg-amber-500/[0.04]',

@@ -8,9 +8,12 @@ import { computeRaBill } from '@/lib/construction/ra-bill';
 import { vendorComplianceStatus, monthKey } from '@/server/services/labour-compliance-service';
 import { vendorAdvanceFrozen } from '@/server/services/insolvency-service';
 import { vendorMsmeOverdue } from '@/server/services/msme-service';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 import { nextSequence } from '@/lib/db/sequence';
 import { structuralCertificationGate } from '@/server/services/structural-contract-service';
 import { ensure, toActionError } from './_helpers';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { needsPaymentApproval, notifyPaymentApprovers } from '@/server/services/payment-approval-service';
 
 export type RaResult = { ok: true; id?: string; message?: string } | { error: string };
 
@@ -36,10 +39,24 @@ const createSchema = z.object({
   lines: z.array(lineSchema).max(100).optional(),
 });
 
+/**
+ * RA-1001, RA-1002 … an atomic counter, seeded once from the numbers already in
+ * use. `MAX(number)` read as text put RA-9999 above RA-10000, so the series
+ * jammed at five digits, and two bills raised in the same moment computed the
+ * same number.
+ */
 async function nextRaNumber(): Promise<{ number: string; billNo: number }> {
-  const last = await prisma.raBill.findFirst({ where: { number: { startsWith: 'RA-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-  const seq = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
-  const n = (Number.isFinite(seq) ? seq : 1000) + 1;
+  const seeded = (await prisma.$queryRaw`SELECT 1 FROM "NumberSequence" WHERE "key" = 'rabill:RA' LIMIT 1`) as unknown[];
+  if (seeded.length === 0) {
+    await prisma.$queryRaw`
+      INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+      VALUES ('rabill:RA', GREATEST(1000, COALESCE((
+        SELECT MAX(substring("number" from '[0-9]+$')::bigint) FROM "RaBill" WHERE "number" ~ '^RA-[0-9]+$'
+      ), 1000)), NOW())
+      ON CONFLICT ("key") DO NOTHING
+    `;
+  }
+  const n = await nextSequence('rabill:RA', prisma, 1000);
   return { number: `RA-${n}`, billNo: n - 1000 };
 }
 
@@ -113,7 +130,15 @@ export async function settleRaBill(id: string): Promise<RaResult> {
     const bill = await prisma.raBill.findUnique({ where: { id: billId } });
     if (!bill) return { error: 'RA bill not found.' };
     if (bill.status !== 'CERTIFIED') return { error: 'Only a certified RA bill can be paid.' };
-    if (bill.voucherId) return { error: 'This RA bill is already settled.' };
+    // A link to a CANCELLED voucher is not a settlement — it is a settlement
+    // that was turned down or withdrawn, and the bill has to be payable again.
+    // Judging by the link alone left a rejected settlement stuck for ever.
+    if (bill.voucherId) {
+      const held = await prisma.voucher.findUnique({ where: { id: bill.voucherId }, select: { status: true, number: true } });
+      if (held && held.status !== 'CANCELLED') {
+        return { error: held.status === 'DRAFT' ? `Settlement ${held.number} is already raised and waiting for approval.` : 'This RA bill is already settled.' };
+      }
+    }
 
     // Document gate: block labour vendors without verified EPF/ESI for the month.
     if (bill.vendorId) {
@@ -147,24 +172,29 @@ export async function settleRaBill(id: string): Promise<RaResult> {
     }
 
     const vendor = bill.vendorId ? await prisma.vendor.findUnique({ where: { id: bill.vendorId }, select: { name: true } }) : null;
-    // Atomic counter, not MAX(number). Ordering these as text puts CP-9999
-    // above CP-10000, so the series jammed at five digits and two settlements
-    // in the same moment collided on the unique index.
-    const seq = await nextSequence('voucher:CP', prisma, 1000);
+
+    // The company approval threshold applies to a contractor settlement exactly
+    // as it applies to a vendor payment — arguably more, since these are the
+    // largest single amounts leaving the business.
+    const needsApproval = await needsPaymentApproval(Number(bill.netPayable));
 
     const voucher = await prisma.voucher.create({
       data: {
-        number: `CP-${seq}`, kind: 'BANK_PAID', status: 'POSTED',
+        number: await nextVoucherNumber('CP'), kind: 'BANK_PAID', status: needsApproval ? 'DRAFT' : 'POSTED',
         voucherDate: new Date(), partyName: vendor?.name ?? 'Contractor', vendorId: bill.vendorId,
         projectId: bill.projectId, amount: bill.netPayable, mode: 'BANK_TRANSFER',
-        reference: bill.number, narration: `Settlement of RA bill ${bill.number}`, accountCode: '5400',
+        reference: bill.number, narration: `Settlement of RA bill ${bill.number}`, accountCode: '5410',
         tdsAmount: bill.tdsAmount, tdsRate: bill.tdsRate, tdsSection: bill.tdsSection,
-        retentionAmount: bill.retentionAmount, createdById: ctx.user.id,
+        retentionAmount: bill.retentionAmount, cessAmount: bill.cessAmount, createdById: ctx.user.id,
       },
     });
-    await prisma.raBill.update({ where: { id: billId }, data: { status: 'PAID', voucherId: voucher.id } });
+    await prisma.raBill.update({ where: { id: billId }, data: { status: needsApproval ? 'CERTIFIED' : 'PAID', voucherId: voucher.id } });
+    if (needsApproval) await notifyPaymentApprovers(voucher.id, ctx.user.id, `${voucher.number} · ${vendor?.name ?? 'Contractor'} · Rs ${Number(bill.netPayable).toLocaleString('en-IN')}`);
+    else await postVoucherById(voucher.id, ctx.user.id);
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'RaBill', entityId: billId, summary: `Settled ${bill.number} → voucher ${voucher.number} (net ₹${Number(bill.netPayable)})` });
     revalidatePath('/ra-bills');
-    return { ok: true, message: `Settled.${msmeNotice}` };
+    return { ok: true, message: needsApproval
+      ? `Raised for approval — above the company payment limit, so it does not count as paid until somebody approves it.${msmeNotice}`
+      : `Settled.${msmeNotice}` };
   } catch (err) { return toActionError(err); }
 }

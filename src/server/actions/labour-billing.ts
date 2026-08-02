@@ -3,6 +3,9 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { needsPaymentApproval, notifyPaymentApprovers } from '@/server/services/payment-approval-service';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 
 function num(n?: number | null): number { return n != null && Number.isFinite(n) ? n : 0; }
 
@@ -26,18 +29,26 @@ export async function savePieceRateEntry(input: PieceRateInput): Promise<{ ok: t
 /** Settle a piece-rate entry — raises a CP- payment voucher (money on the spine). */
 export async function settlePieceRate(id: string): Promise<{ ok: true; voucher: string } | { error: string }> {
   try {
-    await ensure('finance.ledger.manage');
+    const ctx = await ensure('finance.ledger.manage');
     const entry = await prisma.pieceRateEntry.findUnique({ where: { id }, select: { id: true, amount: true, workItem: true, vendorId: true, projectId: true, voucherId: true } });
     if (!entry) return { error: 'Entry not found.' };
-    if (entry.voucherId) return { error: 'Already settled.' };
+    if (entry.voucherId) {
+      // Same rule as an RA bill: a cancelled or rejected settlement leaves the
+      // entry payable again, so the link alone must not lock it out for ever.
+      const held = await prisma.voucher.findUnique({ where: { id: entry.voucherId }, select: { status: true, number: true } });
+      if (held && held.status !== 'CANCELLED') {
+        return { error: held.status === 'DRAFT' ? `Settlement ${held.number} is already raised and waiting for approval.` : 'Already settled.' };
+      }
+    }
     const vendor = entry.vendorId ? await prisma.vendor.findUnique({ where: { id: entry.vendorId }, select: { name: true, isActive: true } }) : null;
     if (vendor && !vendor.isActive) return { error: 'Vendor is deactivated (possibly frozen) — cannot settle.' };
-    const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-    const seq = (last ? Number(last.number.split('-')[1] ?? '1000') : 1000) + 1;
+    const needsApproval = await needsPaymentApproval(Number(entry.amount));
     const voucher = await prisma.voucher.create({
-      data: { number: `CP-${Number.isFinite(seq) ? seq : 1001}`, kind: 'BANK_PAID', status: 'POSTED', voucherDate: new Date(), partyName: vendor?.name ?? 'Sub-contractor', vendorId: entry.vendorId, projectId: entry.projectId, amount: Number(entry.amount), mode: 'BANK_TRANSFER', narration: `Piece-rate: ${entry.workItem}` },
+      data: { number: await nextVoucherNumber('CP'), kind: 'BANK_PAID', status: needsApproval ? 'DRAFT' : 'POSTED', voucherDate: new Date(), partyName: vendor?.name ?? 'Sub-contractor', vendorId: entry.vendorId, projectId: entry.projectId, amount: Number(entry.amount), mode: 'BANK_TRANSFER', narration: `Piece-rate: ${entry.workItem}`, accountCode: '5450', createdById: ctx.user.id },
     });
     await prisma.pieceRateEntry.update({ where: { id }, data: { voucherId: voucher.id } });
+    if (needsApproval) await notifyPaymentApprovers(voucher.id, ctx.user.id, `${voucher.number} · ${vendor?.name ?? 'Sub-contractor'} · Rs ${Number(entry.amount).toLocaleString('en-IN')}`);
+    else await postVoucherById(voucher.id, ctx.user.id);
     await writeAudit({ action: 'CREATE', entityType: 'Voucher', entityId: voucher.id, summary: `Piece-rate settled → ${voucher.number} (₹${Number(entry.amount)})` });
     revalidatePath('/piece-rate');
     return { ok: true, voucher: voucher.number };

@@ -98,9 +98,26 @@ export async function post(opts: PostOptions): Promise<PostResult> {
         select: { id: true, number: true },
       });
     });
+    // Mirror into Ameya Tally, if the books are configured to be one set of
+    // numbers. After the transaction, never inside it: a Tally problem must not
+    // roll back an entry the CRM has already accepted.
+    try {
+      const { mirrorJournalEntry } = await import('@/server/services/tally-mirror-service');
+      await mirrorJournalEntry(entry.id);
+    } catch { /* the entry stands; backfill can catch up */ }
+
     return { ok: true, entryId: entry.id, number: entry.number };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'The entry could not be posted.' };
+    // The database enforces one live entry per source document (see the partial
+    // unique index in MIGRATION_v16.5). Two callers racing the `once` check
+    // above both pass it and both insert; the loser lands here. That is the
+    // guard working, not a failure — say so plainly rather than reporting a
+    // constraint name to somebody trying to record a payment.
+    const msg = e instanceof Error ? e.message : '';
+    if (msg.includes('JournalEntry_source_once_idx') || msg.includes('Unique constraint')) {
+      return { error: 'This has already been posted to the ledger.' };
+    }
+    return { error: msg || 'The entry could not be posted.' };
   }
 }
 

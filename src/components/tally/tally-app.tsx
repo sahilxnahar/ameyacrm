@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { switchTallyCompany, tallyEditLog } from '@/server/actions/tally';
+import { switchTallyCompany, tallyEditLog, getTallyMirrorSettings, setTallyMirrorCompany, runTallyMirrorBackfill } from '@/server/actions/tally';
 import { toast } from 'sonner';
 import { GROUP_NAMES, VOUCHER_TYPES, VOUCHER_KEY, natureOfGroup, type VoucherType } from '@/config/tally-groups';
 import { createTallyLedger, createTallyVoucher, deleteTallyVoucher, deleteTallyLedger, createTallyStockItem, createTallyItemInvoice, deleteTallyStockItem, tallyStatementPdf, tallyLedgerStatement, tallyOutstanding, tallyDataForPeriod, createTallyCostCentre, tallyCostCentreReport, tallyBankRecon, tallySetCleared, tallyVoucherForEdit, updateTallyVoucher, updateTallyVoucherHeader, tallyGstReturns, tallyFlows, tallyRatios, saveTallyPrefs, tallyInvoicePdf, tallyScheduleIII, type LedgerStmt, type Outstanding, type AgedParty, type CostReport, type BankRecon, type GstReturns, type GstRateRow, type FlowStatements, type FlowRow, type Ratios, type ScheduleIII } from '@/server/actions/tally';
@@ -411,7 +411,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
           )}
           {screen === 'schedule3' && <ScheduleThree sch={sch3} onBack={back} onExcel={() => { if (sch3 && 'ok' in sch3) { const rows = [...sch3.equityLiabilities.flatMap((s) => s.heads.map((h) => ({ Side: 'Equity & Liabilities', Section: s.title, Head: h.label, Amount: h.amount }))), ...sch3.assets.flatMap((s) => s.heads.map((h) => ({ Side: 'Assets', Section: s.title, Head: h.label, Amount: h.amount })))]; exportXlsx('Tally-Schedule-III', 'Schedule III', rows); } }} />}
           {screen === 'shortcuts' && <ShortcutsScreen os={prefs.os} onBack={back} />}
-          {screen === 'settings' && <TallySettings prefs={prefs} onBack={back} onSaved={() => { router.refresh(); back(); }} />}
+          {screen === 'settings' && <TallySettings prefs={prefs} companies={companies} onBack={back} onSaved={() => { router.refresh(); back(); }} />}
         </div>
 
         {/* Right button bar — Tally-style function keys */}
@@ -1213,7 +1213,7 @@ function ShortcutsScreen({ os, onBack }: { os: 'auto' | 'mac' | 'windows'; onBac
   );
 }
 
-function TallySettings({ prefs, onBack, onSaved }: { prefs: TallyPrefs; onBack: () => void; onSaved: () => void }) {
+function TallySettings({ prefs, companies, onBack, onSaved }: { prefs: TallyPrefs; companies: TallyCompanyOption[]; onBack: () => void; onSaved: () => void }) {
   const [pending, start] = React.useTransition();
   const [companyName, setCompanyName] = React.useState(prefs.companyName);
   const [defaultVoucher, setDefaultVoucher] = React.useState(prefs.defaultVoucher);
@@ -1246,7 +1246,77 @@ function TallySettings({ prefs, onBack, onSaved }: { prefs: TallyPrefs; onBack: 
         </label>
         <button onClick={save} disabled={pending} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Save my settings</button>
       </div>
+
+      <TallyMirrorPanel companies={companies} />
     </Panel>
+  );
+}
+
+/**
+ * One set of numbers, not two.
+ *
+ * The CRM posts its own double-entry books (every payment, receipt, invoice and
+ * vendor bill). Ameya Tally is a separate set of books by design — that is what
+ * makes importing a real Tally company safe. This is the bridge between them:
+ * switch it on against one company and every entry the CRM posts from now on
+ * also appears there, so the trial balance the accountant closes the month from
+ * is the same trial balance the business ran on.
+ *
+ * Company-wide, not personal, which is why it sits below the line.
+ */
+function TallyMirrorPanel({ companies }: { companies: TallyCompanyOption[] }) {
+  const [pending, start] = React.useTransition();
+  const [state, setState] = React.useState<{ companyId: string | null; mirrored: number; total: number } | null>(null);
+  const cls = 'border border-[#0f2038]/40 bg-white px-2 py-1 text-[13px]';
+
+  const load = React.useCallback(() => {
+    void getTallyMirrorSettings().then((r) => { if (!('error' in r)) setState(r); });
+  }, []);
+  React.useEffect(load, [load]);
+
+  const choose = (id: string) => start(async () => {
+    const r = await setTallyMirrorCompany(id || null);
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success(r.message); load();
+  });
+
+  const backfill = () => start(async () => {
+    const r = await runTallyMirrorBackfill();
+    if ('error' in r) { toast.error(r.error); return; }
+    toast.success(r.message); load();
+  });
+
+  const behind = state ? Math.max(0, state.total - state.mirrored) : 0;
+
+  return (
+    <div className="mt-6 max-w-2xl border-t border-[#0f2038]/25 pt-4">
+      <h3 className="text-[13px] font-semibold text-[#1B2A4A]">Mirror the CRM&apos;s books into Tally</h3>
+      <p className="mb-2 mt-1 text-[12px] text-[#5B4412]">
+        Applies to everyone. Payments, receipts, invoices and vendor bills raised anywhere in the CRM
+        are written into the Tally company you pick here, so you stop re-keying the month to close it.
+        Entries already copied are never duplicated or removed.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1 text-[13px]">Copy into
+          <select value={state?.companyId ?? ''} disabled={pending} onChange={(e) => choose(e.target.value)} className={`${cls} min-w-[14rem]`}>
+            <option value="">— off, keep the books separate —</option>
+            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        {state?.companyId && (
+          <button onClick={backfill} disabled={pending} className="rounded bg-[#1B2A4A] px-3 py-1 text-[12px] font-semibold text-white disabled:opacity-50">
+            {pending ? 'Copying…' : 'Catch up the history'}
+          </button>
+        )}
+      </div>
+      {state && (
+        <p className="mt-2 text-[11px] text-[#5B4412]">
+          {state.companyId
+            ? `${state.mirrored.toLocaleString('en-IN')} of ${state.total.toLocaleString('en-IN')} CRM entries are in Tally${behind ? ` — ${behind.toLocaleString('en-IN')} still to copy.` : ' — up to date.'}`
+            : `Mirroring is off. ${state.total.toLocaleString('en-IN')} CRM entries are not reflected in any Tally company.`}
+        </p>
+      )}
+    </div>
   );
 }
 

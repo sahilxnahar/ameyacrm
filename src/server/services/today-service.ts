@@ -5,7 +5,7 @@ import type { LeadStatus } from '@prisma/client';
 
 export type Urgency = 'overdue' | 'today' | 'soon';
 export interface TodayItem {
-  kind: 'reminder' | 'task' | 'approval' | 'followup' | 'lead' | 'payment' | 'event' | 'workrequest';
+  kind: 'reminder' | 'task' | 'approval' | 'followup' | 'lead' | 'payment' | 'event' | 'workrequest' | 'renewal';
   urgency: Urgency;
   title: string;
   detail: string;
@@ -75,6 +75,23 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
   for (const m of duePayments) items.push({ kind: 'payment', urgency: 'overdue', title: `Collect: ${m.booking?.lead?.name ?? m.booking?.reference ?? 'payment'}`, detail: `${m.label} · Rs.${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(m.amount))} overdue`, href: '/billing', when: t(m.dueDate) });
   for (const e of events) items.push({ kind: 'event', urgency: rank(e.startAt), title: e.title, detail: e.location ?? e.type, href: '/calendar', when: t(e.startAt) });
   for (const w of workRequests) items.push({ kind: 'workrequest', urgency: w.dueOn ? rank(w.dueOn) : 'soon', title: w.title, detail: `${w.reference} · ${w.status.toLowerCase().replace(/_/g, ' ')}`, href: '/work-requests', when: t(w.dueOn) });
+
+  // Anything with an expiry that will hurt if it passes — a contract renewal
+  // date, an insurance policy, a licence, a power of attorney. These registers
+  // are only worth keeping if the date reaches somebody before it arrives.
+  try {
+    const { upcomingExpiries } = await import('@/server/services/compliance-service');
+    for (const e of await upcomingExpiries(45)) {
+      items.push({
+        kind: 'renewal',
+        urgency: e.days < 0 ? 'overdue' : e.days <= 1 ? 'today' : 'soon',
+        title: `${e.kind}: ${e.title}`,
+        detail: e.days < 0 ? `expired ${Math.abs(e.days)} day${Math.abs(e.days) === 1 ? '' : 's'} ago${e.who ? ` · ${e.who}` : ''}` : `in ${e.days} day${e.days === 1 ? '' : 's'}${e.who ? ` · ${e.who}` : ''}`,
+        href: e.href,
+        when: e.on.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+      });
+    }
+  } catch { /* the rest of the list still stands */ }
 
   const order: Record<Urgency, number> = { overdue: 0, today: 1, soon: 2 };
   return items.sort((a, b) => order[a.urgency] - order[b.urgency]);

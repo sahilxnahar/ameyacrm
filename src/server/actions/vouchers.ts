@@ -7,8 +7,10 @@ import { ensure, toActionError } from '@/server/actions/_helpers';
 import { KIND_META, VOUCHER_KINDS, PAY_MODES, type VoucherKind } from '@/config/vouchers';
 import { describeUtr } from '@/lib/money-words';
 import { extractPaymentAdvice, runAiSelfTest, isGeminiEnabled } from '@/lib/ai/gemini';
-import { nextSequence, docNumber } from '@/lib/db/sequence';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 import { AI_SOURCES, reindexSource, type IndexReport } from '@/server/services/ai-index-service';
+import { postVoucherToLedger } from '@/lib/ledger/post-voucher';
+import { needsPaymentApproval, notifyPaymentApprovers } from '@/server/services/payment-approval-service';
 
 export type VoucherResult = { ok: true; id?: string; number?: string; message?: string } | { error: string };
 
@@ -18,11 +20,12 @@ export type VoucherResult = { ok: true; id?: string; number?: string; message?: 
  * Backed by an atomic counter rather than MAX(number): text ordering would put
  * CR-9999 above CR-10000 and jam the series forever at five digits, and two
  * simultaneous receipts would compute the same number and collide on the unique
- * index — which, for cash receipts, means money that cannot be recorded.
+ * index — which, for cash receipts, means money that cannot be recorded. All
+ * six voucher creators now share this one allocator; when they did not, the
+ * counter and the MAX-readers handed out the same number to each other.
  */
-async function nextNumber(kind: VoucherKind, tx?: Parameters<typeof nextSequence>[1]): Promise<string> {
-  const prefix = KIND_META[kind].prefix;
-  return docNumber(prefix, await nextSequence(`voucher:${prefix}`, tx, 1000));
+async function nextNumber(kind: VoucherKind): Promise<string> {
+  return nextVoucherNumber(KIND_META[kind].prefix);
 }
 
 const schema = z.object({
@@ -62,9 +65,16 @@ export async function createVoucher(input: unknown): Promise<VoucherResult> {
     const gstAmount = d.gstRate ? Math.round(((amount * d.gstRate) / 100) * 100) / 100 : null;
 
     const number = await nextNumber(d.kind);
+
+    // The company approval threshold is a rule about money leaving the
+    // business, not a rule about one screen. A payment raised here is exactly
+    // the payment it was written for.
+    const isPayment = d.kind === 'CASH_PAID' || d.kind === 'BANK_PAID';
+    const needsApproval = isPayment && (await needsPaymentApproval(amount));
+
     const v = await prisma.voucher.create({
       data: {
-        number, kind: d.kind,
+        number, kind: d.kind, status: needsApproval ? 'DRAFT' : undefined,
         voucherDate: d.voucherDate ? new Date(d.voucherDate) : new Date(),
         partyName: d.partyName.trim(),
         partyPhone: d.partyPhone || null,
@@ -96,14 +106,15 @@ export async function createVoucher(input: unknown): Promise<VoucherResult> {
     // fact; the ledger entry is a consequence of it, and an unposted voucher
     // can be posted later. Losing the payment because the books were not ready
     // would be the worse of the two failures by a wide margin.
-    await postVoucherToLedger(v, ctx.user.id);
+    if (needsApproval) await notifyPaymentApprovers(v.id, ctx.user.id, `${number} · ${d.partyName.trim()} · Rs ${amount.toLocaleString('en-IN')}`);
+    else await postVoucherToLedger(v, ctx.user.id);
 
     await writeAudit({
       actorId: ctx.user.id, action: 'CREATE', entityType: 'Invoice', entityId: v.id,
       summary: `${meta.label} ${number} — ${d.partyName} — Rs ${amount.toLocaleString('en-IN')}`,
     });
     revalidatePath('/cash-book');
-    return { ok: true, id: v.id, number, message: `${number} recorded.` };
+    return { ok: true, id: v.id, number, message: needsApproval ? `${number} raised — above the company payment limit, so it needs approving before it counts as paid.` : `${number} recorded.` };
   } catch (err) { return toActionError(err); }
 }
 
@@ -255,56 +266,3 @@ export async function catchUpSummaries(): Promise<{ summarised: number; indexed:
   return { summarised: r.summarised, indexed: r.indexed, remaining: r.remaining, message: r.message };
 }
 
-/**
- * Turn a saved voucher into a ledger entry.
- *
- * Never throws. Every failure is swallowed and reported through the unposted
- * count on the ledger screen instead, so that a problem with the books can
- * never stop somebody recording that money moved.
- */
-async function postVoucherToLedger(
-  v: { id: string; kind: string; amount: unknown; gstAmount: unknown; mode: string; partyName: string; projectId: string | null; voucherDate: Date; number: string },
-  actorId: string,
-): Promise<void> {
-  try {
-    const { voucherLines } = await import('@/lib/ledger/posting-rules');
-    const { post } = await import('@/server/services/ledger-service');
-
-    const rule = voucherLines({
-      kind: v.kind,
-      amount: Number(v.amount),
-      gstAmount: v.gstAmount === null || v.gstAmount === undefined ? null : Number(v.gstAmount),
-      mode: v.mode,
-      projectId: v.projectId,
-      partyName: v.partyName,
-    });
-    if ('error' in rule) return;
-
-    const result = await post({
-      entryDate: v.voucherDate,
-      narration: `${v.number} — ${rule.narration}`,
-      lines: rule.lines,
-      sourceType: 'Voucher',
-      sourceId: v.id,
-      projectId: v.projectId,
-      createdById: actorId,
-      once: true,
-    });
-    // A failed post used to vanish here: the user was told "CR-1042 recorded"
-    // while nothing reached the ledger, and only the unposted count hinted at it.
-    // The voucher still stands (money was genuinely received), but the failure is
-    // now recorded so finance can see what needs posting.
-    if ('error' in result) {
-      await writeAudit({
-        actorId, action: 'UPDATE', entityType: 'Voucher', entityId: v.id,
-        summary: `Voucher ${v.number} saved but NOT posted to the ledger: ${result.error}`,
-      }).catch(() => undefined);
-    }
-  } catch (err) {
-    // The voucher is saved; the ledger can catch up. Leave a trail either way.
-    await writeAudit({
-      actorId, action: 'UPDATE', entityType: 'Voucher', entityId: v.id,
-      summary: `Voucher ${v.number} saved but NOT posted to the ledger: ${err instanceof Error ? err.message : 'posting error'}`,
-    }).catch(() => undefined);
-  }
-}

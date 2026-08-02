@@ -4,18 +4,16 @@ import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { can } from '@/lib/rbac/can';
 import { ensure, toActionError } from './_helpers';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { paymentApprovalLimit, notifyPaymentApprovers, needsPaymentApproval } from '@/server/services/payment-approval-service';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 import { parseTable } from '@/lib/import/parse';
 import { classifyPaymentRow, parsePaymentDate, paymentMode } from '@/lib/import/payments';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { categorizeExpense } from '@/config/expense-categories';
 import { sendViaOpenWA } from '@/server/services/whatsapp-service';
+import { notifyMany } from '@/lib/notifications/notify';
 
-/** The company's "payments above this need a review" threshold (₹). 0 = off. */
-async function paymentApprovalLimit(): Promise<number> {
-  const row = await prisma.setting.findUnique({ where: { key: 'finance.payment_approval_limit' } });
-  const n = Number(row?.value ?? 0);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
 
 /** Admin sets the review threshold. */
 export async function setPaymentApprovalLimit(amount: number): Promise<LedgerActionResult> {
@@ -29,14 +27,117 @@ export async function setPaymentApprovalLimit(amount: number): Promise<LedgerAct
   } catch (e) { return toActionError(e); }
 }
 
-/** Mark a flagged (over-threshold) payment as reviewed/approved. */
+/**
+ * Approve a flagged (over-threshold) payment.
+ *
+ * Three things were wrong with the old version and all three mattered:
+ *  · it asked for `billing.bill.manage` — the SAME permission needed to raise
+ *    the payment — so the person spending the money could approve their own
+ *    spend, which is not an approval, it is a formality;
+ *  · it never posted to the ledger, so an approved payment updated the cash
+ *    book and left the books untouched;
+ *  · there was no way to say no, so a wrong payment could only be approved or
+ *    abandoned as a permanent DRAFT.
+ */
 export async function approveVendorPayment(voucherId: string): Promise<LedgerActionResult> {
   try {
-    const ctx = await ensure('billing.bill.manage');
-    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
+    const ctx = await ensure('billing.approve');
+    const v = await prisma.voucher.findUnique({
+      where: { id: voucherId },
+      select: { id: true, number: true, status: true, createdById: true, amount: true, partyName: true, vendorBillId: true },
+    });
     if (!v) return { error: 'That payment no longer exists.' };
+    if (v.status === 'CANCELLED') return { error: `Payment ${v.number} was cancelled and cannot be approved.` };
+    if (v.status !== 'DRAFT') return { error: `Payment ${v.number} is already approved.` };
+    // Self-approval defeats the entire purpose of a threshold.
+    if (v.createdById && v.createdById === ctx.user.id) {
+      return { error: 'You raised this payment, so somebody else has to approve it.' };
+    }
+
     await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', approvedById: ctx.user.id, approvedAt: new Date() } });
-    await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number}` });
+    // Only now does the money exist as far as the books are concerned.
+    await postVoucherById(voucherId, ctx.user.id);
+    // Anything that was held pending this payment is settled now.
+    await prisma.raBill.updateMany({ where: { voucherId, status: 'CERTIFIED' }, data: { status: 'PAID' } }).catch(() => undefined);
+    if (v.vendorBillId) await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'PAID' } }).catch(() => undefined);
+    await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number} to ${v.partyName} — Rs ${Number(v.amount).toLocaleString('en-IN')}` });
+    if (v.createdById) {
+      await notifyMany([v.createdById], { type: 'APPROVAL', title: `Payment ${v.number} approved`, link: '/payments' }).catch(() => undefined);
+    }
+    revalidatePath('/ledgers'); revalidatePath('/payments');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/**
+ * Square the books when a payment is withdrawn.
+ *
+ * "Nothing to reverse" and "the reversal failed" used to be the same answer —
+ * null — and every caller treated both as success. A payment removed while its
+ * ledger entry survived is money missing from the cash book and still sitting in
+ * the trial balance, silently and for good.
+ */
+type Reversal = { state: 'none' } | { state: 'reversed'; number: string } | { state: 'failed'; why: string };
+
+async function reverseLedgerFor(voucherId: string, actorId: string, why: string): Promise<Reversal> {
+  try {
+    const entry = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'Voucher', sourceId: voucherId, status: 'POSTED' },
+      select: { id: true },
+    });
+    if (!entry) return { state: 'none' };
+    const { reverse } = await import('@/server/services/ledger-service');
+    const r = await reverse(entry.id, why, actorId);
+    return 'ok' in r ? { state: 'reversed', number: r.number ?? 'a reversing entry' } : { state: 'failed', why: r.error };
+  } catch (e) {
+    return { state: 'failed', why: e instanceof Error ? e.message : 'the ledger could not be squared' };
+  }
+}
+
+/**
+ * Let go of whatever was waiting on a payment that is not going to happen.
+ *
+ * An RA bill sits with `voucherId` set while its settlement waits; a piece-rate
+ * entry and a vendor bill the same. If the payment is turned down, cancelled or
+ * deleted and nothing releases those, `settleRaBill` answers "already settled"
+ * for ever and the contractor can never be paid.
+ *
+ * The LINK is deliberately kept. Nulling it was the obvious move and it was
+ * wrong: restoring the payment afterwards could not re-take the hold, so a
+ * rejected-then-restored settlement could be raised a second time and the
+ * contractor paid twice. The settle guards ask instead what state the linked
+ * voucher is in — a cancelled voucher is not a settlement — so the link and the
+ * truth cannot drift apart.
+ */
+async function releaseHoldsFor(voucherId: string): Promise<void> {
+  const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { vendorBillId: true } }).catch(() => null);
+  await prisma.raBill.updateMany({ where: { voucherId, status: 'PAID' }, data: { status: 'CERTIFIED' } }).catch(() => undefined);
+  if (v?.vendorBillId) {
+    await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'DRAFT' } }).catch(() => undefined);
+  }
+}
+
+/** Turn a flagged payment down, with a reason. The number stays; nothing is deleted. */
+export async function rejectVendorPayment(voucherId: string, reason: string): Promise<LedgerActionResult> {
+  try {
+    const ctx = await ensure('billing.approve');
+    const why = (reason ?? '').trim();
+    if (why.length < 3) return { error: 'Say why it is being turned down — the person who raised it needs to know.' };
+    const v = await prisma.voucher.findUnique({
+      where: { id: voucherId }, select: { id: true, number: true, status: true, createdById: true },
+    });
+    if (!v) return { error: 'That payment no longer exists.' };
+    if (v.status !== 'DRAFT') return { error: `Payment ${v.number} is not awaiting approval.` };
+
+    await prisma.voucher.update({
+      where: { id: voucherId },
+      data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: `Not approved: ${why.slice(0, 280)}` },
+    });
+    await releaseHoldsFor(voucherId);
+    await writeAudit({ actorId: ctx.user.id, action: 'REJECT', entityType: 'Voucher', entityId: voucherId, summary: `Rejected payment ${v.number} — ${why.slice(0, 200)}` });
+    if (v.createdById) {
+      await notifyMany([v.createdById], { type: 'APPROVAL', title: `Payment ${v.number} was not approved`, body: why.slice(0, 200), link: '/payments' }).catch(() => undefined);
+    }
     revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
@@ -54,6 +155,8 @@ export type LedgerActionResult =
       failed?: number;
       /** Up to a handful of plain-language notes on rows that need a look. */
       issues?: string[];
+      /** Said out loud when the action succeeded but left something to fix. */
+      message?: string;
     }
   | { error: string };
 
@@ -116,21 +219,33 @@ export async function importVendorPayments(text: string): Promise<LedgerActionRe
         }
         const reference = H.ref >= 0 ? opt(row[H.ref] ?? '') : null;
         const date = H.date >= 0 ? parsePaymentDate(row[H.date] ?? '') : null;
-        const dupe = await prisma.voucher.findFirst({ where: { vendorId, amount, ...(reference ? { reference } : {}) }, select: { id: true } });
+        // Same payee and same amount is NOT a duplicate on its own — twelve
+        // months of identical rent is twelve payments. Without a reference to
+        // match on, only a payment on the same DAY counts as a re-paste.
+        const when = date ?? new Date();
+        const dayStart = new Date(when); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(when); dayEnd.setHours(23, 59, 59, 999);
+        const dupe = await prisma.voucher.findFirst({
+          where: reference
+            ? { vendorId, amount, reference }
+            : { vendorId, amount, voucherDate: { gte: dayStart, lte: dayEnd } },
+          select: { id: true },
+        });
         if (dupe) { duplicates++; continue; }
         const mode = H.mode >= 0 ? paymentMode(row[H.mode] ?? '') : 'BANK_TRANSFER';
         const noteText = H.note >= 0 ? (row[H.note] ?? '').trim().slice(0, 500) || null : null;
-        seq++;
-        await prisma.voucher.create({
+        const imported = await prisma.voucher.create({
           data: {
-            number: `CP-${seq}`, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+            number: await nextVoucherNumber('CP'), kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
             voucherDate: date ?? new Date(), partyName: name, vendorId, amount, mode,
             reference, utr: H.utr >= 0 ? opt(row[H.utr] ?? '') : null,
             narration: noteText,
             accountCode: categorizeExpense(`${name} ${noteText ?? ''}`),
             createdById: ctx.user.id,
           },
+          select: { id: true },
         });
+        await postVoucherById(imported.id, ctx.user.id);
         created++;
       } catch (e) {
         failed++;
@@ -235,11 +350,7 @@ export async function saveVendorBank(vendorId: string, v: Record<string, string>
   } catch (e) { return toActionError(e); }
 }
 
-async function nextCpNumber(): Promise<string> {
-  const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-  const n = last ? Number(last.number.split('-')[1] ?? '1000') : 1000;
-  return `CP-${(Number.isFinite(n) ? n : 1000) + 1}`;
-}
+
 
 /**
  * Add a single payment to a payee's ledger by hand — so you never need a CSV
@@ -279,7 +390,7 @@ export async function addVendorPayment(input: {
     const note = (input.note ?? '').trim().slice(0, 500) || null;
     const accountCode = (input.category ?? '').trim() || categorizeExpense(`${vendor.name} ${note ?? ''}`);
     const active = await getActiveProject(ctx.user.id);
-    const number = await nextCpNumber();
+    const number = await nextVoucherNumber('CP');
 
     // Payments above the company threshold are flagged for review (DRAFT) rather
     // than posted straight away.
@@ -307,6 +418,10 @@ export async function addVendorPayment(input: {
       },
       select: { id: true },
     });
+    // A payment parked as DRAFT for review has not happened yet — posting it
+    // would put money in the books that nobody has approved. It posts on approval.
+    if (!flagged) await postVoucherById(v.id, ctx.user.id);
+    else await notifyPaymentApprovers(v.id, ctx.user.id, `${number} · ${vendor.name} · Rs ${amount.toLocaleString('en-IN')}`);
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Payment ${number} to ${vendor.name} — Rs ${amount.toLocaleString('en-IN')}${flagged ? ' (flagged for review)' : ''}` });
 
     // Best-effort WhatsApp receipt to the vendor. Never fails the payment.
@@ -354,7 +469,18 @@ export async function deleteVendorPayment(voucherId: string): Promise<LedgerActi
     const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true } });
     if (!v) return { error: 'That payment no longer exists.' };
     await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Removed from vendor ledger' } });
-    await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId, summary: `Removed payment ${v.number}` });
+    // Cancelling the voucher without reversing its journal entry leaves the
+    // money out of the cash book and still in the trial balance.
+    const reversal = await reverseLedgerFor(voucherId, ctx.user.id, `Payment ${v.number} removed`);
+    await releaseHoldsFor(voucherId);
+    await writeAudit({
+      actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId,
+      summary: `Removed payment ${v.number}${reversal.state === 'reversed' ? ` (ledger entry reversed by ${reversal.number})` : reversal.state === 'failed' ? ` — LEDGER NOT REVERSED: ${reversal.why}` : ''}`,
+    });
+    if (reversal.state === 'failed') {
+      revalidatePath('/ledgers'); revalidatePath('/payments');
+      return { ok: true, message: `Payment removed, but its ledger entry could NOT be reversed (${reversal.why}). The trial balance still contains it — fix that account and reverse the entry from the ledger screen.` };
+    }
     revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
@@ -377,6 +503,16 @@ export async function hardDeleteVendorPayment(voucherId: string): Promise<Ledger
     }
     const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true, partyName: true, amount: true } });
     if (!v) return { error: 'That payment no longer exists.' };
+    // The journal entry points at this voucher by id and outlives it, so the
+    // books must be squared BEFORE the row disappears — otherwise the cash book
+    // loses the payment while the trial balance keeps it, untraceably.
+    const reversal = await reverseLedgerFor(voucherId, ctx.user.id, `Payment ${v.number} permanently deleted`);
+    if (reversal.state === 'failed') {
+      // Deleting the row now would orphan a live journal entry whose source no
+      // longer exists — untraceable, and permanent. Refuse instead.
+      return { error: `Its ledger entry could not be reversed (${reversal.why}), and deleting the payment would leave that entry in the books with nothing to trace it back to. Reverse the entry from the ledger screen first.` };
+    }
+    await releaseHoldsFor(voucherId);
     await prisma.voucher.delete({ where: { id: voucherId } });
     await writeAudit({
       actorId: ctx.user.id, action: 'DELETE', entityType: 'Voucher', entityId: voucherId,
@@ -391,8 +527,29 @@ export async function hardDeleteVendorPayment(voucherId: string): Promise<Ledger
 export async function restoreVendorPayment(voucherId: string): Promise<LedgerActionResult> {
   try {
     const ctx = await ensure('billing.bill.manage');
-    await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', cancelledAt: null, cancelReason: null } });
-    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: 'Restored a payment' });
+    const v = await prisma.voucher.findUnique({ where: { id: voucherId }, select: { id: true, number: true, amount: true, status: true, cancelReason: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    if (v.status !== 'CANCELLED') return { error: `Payment ${v.number} is not cancelled, so there is nothing to restore.` };
+
+    // Restore is not a back door around approval.
+    //
+    // It used to set POSTED unconditionally, on the same permission needed to
+    // RAISE a payment — so the person who raised a payment an approver had just
+    // turned down could restore it themselves, fully posted, with no approver
+    // recorded. A payment that was rejected has to go back for approval, and one
+    // above the threshold has to be approved regardless of how it got cancelled.
+    const wasRejected = (v.cancelReason ?? '').startsWith('Not approved:');
+    const needsApproval = wasRejected || (await needsPaymentApproval(Number(v.amount)));
+
+    await prisma.voucher.update({
+      where: { id: voucherId },
+      data: { status: needsApproval ? 'DRAFT' : 'POSTED', cancelledAt: null, cancelReason: null },
+    });
+    // It was cancelled, so it is not in the books; restoring it has to put it there.
+    if (needsApproval) await notifyPaymentApprovers(voucherId, ctx.user.id, `${v.number} · restored · Rs ${Number(v.amount).toLocaleString('en-IN')}`);
+    else await postVoucherById(voucherId, ctx.user.id);
+
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: voucherId, summary: `Restored payment ${v.number}${needsApproval ? ' — back to awaiting approval' : ''}` });
     revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
@@ -449,4 +606,44 @@ export async function attachPaymentProof(voucherId: string, url: string): Promis
     revalidatePath('/ledgers'); revalidatePath('/payments');
     return { ok: true };
   } catch (e) { return toActionError(e); }
+}
+
+/**
+ * The books' backlog: money in the cash book that never reached the ledger.
+ *
+ * Posting is deliberately non-fatal — a payment must be recordable before the
+ * chart of accounts exists — but "non-fatal" only works if the failures are
+ * visible and clearable. Without this the audit line "saved but NOT posted" was
+ * the only trace, and the trial balance was quietly short for good.
+ */
+export async function unpostedLedgerBacklog(): Promise<{ ok: true; count: number; total: number; rows: { id: string; number: string; partyName: string; amount: number; date: string }[] } | { error: string }> {
+  try {
+    await ensure('finance.ledger.view');
+    const { unpostedVouchers } = await import('@/lib/ledger/post-voucher');
+    const rows = await unpostedVouchers(200);
+    return {
+      ok: true,
+      count: rows.length,
+      total: rows.reduce((t, r) => t + r.amount, 0),
+      rows: rows.map((r) => ({ id: r.id, number: r.number, partyName: r.partyName, amount: r.amount, date: r.voucherDate.toISOString() })),
+    };
+  } catch (e) { return toActionError(e) as { error: string }; }
+}
+
+/** Try the backlog again. Safe to run as often as you like. */
+export async function postLedgerBacklog(): Promise<{ ok: true; message: string } | { error: string }> {
+  try {
+    const ctx = await ensure('finance.ledger.manage');
+    const { postUnposted } = await import('@/lib/ledger/post-voucher');
+    const r = await postUnposted(ctx.user.id, 200);
+    if (r.attempted === 0) return { ok: true, message: 'Nothing waiting — every payment is in the ledger.' };
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'JournalEntry', entityId: 'backlog', summary: `Ledger catch-up — ${r.posted} of ${r.attempted} posted` });
+    revalidatePath('/ledgers'); revalidatePath('/accounts');
+    return {
+      ok: true,
+      message: r.posted === r.attempted
+        ? `${r.posted} payment${r.posted === 1 ? '' : 's'} posted to the ledger.`
+        : `${r.posted} of ${r.attempted} posted. The rest still cannot be — usually a missing or switched-off account.`,
+    };
+  } catch (e) { return toActionError(e) as { error: string }; }
 }

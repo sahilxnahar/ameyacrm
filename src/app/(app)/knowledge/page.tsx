@@ -4,16 +4,54 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageLoadError } from '@/components/layout/page-load-error';
-import { decisions } from '@/server/services/compliance-service';
+import { decisions, sops, lessons } from '@/server/services/compliance-service';
 import { KnowledgeRegister } from '@/components/compliance/knowledge-register';
-export const metadata: Metadata = { title: 'Decision Log' };
+import { RegisterTabs } from '@/components/compliance/register-tabs';
+import { SopRegister, LessonsRegister } from '@/components/compliance/extra-registers';
+
+export const metadata: Metadata = { title: 'Knowledge' };
 export const dynamic = 'force-dynamic';
-export default async function KnowledgePage({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
+
+const DESCRIPTIONS: Record<string, string> = {
+  decisions: 'What was decided, when, by whom and on what information — the institutional memory that walks out of the door with people otherwise.',
+  sops: 'How things are done here, written down once, so the answer does not depend on who is in the office.',
+  lessons: 'What this project taught, in a form the next one can act on.',
+};
+
+export default async function KnowledgePage({ searchParams }: { searchParams: Promise<{ project?: string; view?: string }> }) {
   const ctx = await requirePermission('knowledge.view');
   const canManage = can(ctx.permissions, 'knowledge.manage');
-  const sp = await searchParams; const projectId = sp.project ?? null;
+  const sp = await searchParams;
+  const projectId = sp.project ?? null;
+  const view = ['decisions', 'sops', 'lessons'].includes(sp.view ?? '') ? sp.view! : 'decisions';
+
   try {
-    const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), decisions(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Decision Log" description="What was decided, when, by whom and on what information — the institutional memory that walks out of the door with people otherwise." /><KnowledgeRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Decision Log" description="Decisions." /><PageLoadError error={e} /></div>; }
+    const [projects, decisionRows, sopRows, lessonRows] = await Promise.all([
+      prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      decisions(projectId),
+      sops(),
+      lessons(projectId),
+    ]);
+
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Knowledge" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.decisions!} />
+        <RegisterTabs
+          basePath="/knowledge"
+          current={view}
+          projectId={projectId}
+          tabs={[
+            { key: 'decisions', label: 'Decision log', count: decisionRows.length },
+            { key: 'sops', label: 'SOPs', count: sopRows.length },
+            { key: 'lessons', label: 'Lessons learned', count: lessonRows.length },
+          ]}
+        />
+        {view === 'decisions' && <KnowledgeRegister canManage={canManage} projects={projects} projectId={projectId} rows={decisionRows} />}
+        {view === 'sops' && <SopRegister canManage={canManage} rows={sopRows} />}
+        {view === 'lessons' && <LessonsRegister canManage={canManage} projects={projects} projectId={projectId} rows={lessonRows} />}
+      </div>
+    );
+  } catch (e) {
+    return <div className="space-y-6"><PageHeader title="Knowledge" description="Decisions, SOPs and lessons learned." /><PageLoadError error={e} /></div>;
+  }
 }

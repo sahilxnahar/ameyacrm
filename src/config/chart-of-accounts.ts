@@ -59,6 +59,7 @@ export const CHART_OF_ACCOUNTS: SeedAccount[] = [
   { code: '2142', name: 'Output SGST', type: 'LIABILITY', parent: '2140' },
   { code: '2143', name: 'Output IGST', type: 'LIABILITY', parent: '2140' },
   { code: '2150', name: 'TDS payable', type: 'LIABILITY', parent: '2100' },
+  { code: '2155', name: 'Labour cess payable (BOCW)', type: 'LIABILITY', parent: '2100' },
   { code: '2160', name: 'Statutory dues — PF, ESI, PT', type: 'LIABILITY', parent: '2100' },
   { code: '2170', name: 'Salaries payable', type: 'LIABILITY', parent: '2100' },
   { code: '2180', name: 'Security deposits received', type: 'LIABILITY', parent: '2100' },
@@ -131,6 +132,6 @@ export function normalSide(type: AccountType): NormalSide {
  */
 export const REQUIRED_CODES = [
   '1110', '1121', '1130', '1140', '1151', '1152', '1220',
-  '2110', '2120', '2141', '2142', '2150',
+  '2110', '2120', '2130', '2141', '2142', '2150', '2155',
   '4100', '5390', '6900',
 ] as const;

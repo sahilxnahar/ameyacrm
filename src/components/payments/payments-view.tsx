@@ -4,6 +4,9 @@ import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge, FileSpreadsheet } from 'lucide-react';
 import { recordUtr, readPaymentAdvice } from '@/server/actions/vouchers';
+import { approveVendorPayment, rejectVendorPayment } from '@/server/actions/vendor-ledger';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { PAY_MODE_LABEL } from '@/config/vouchers';
 import { exportXlsx } from '@/lib/export/xlsx';
 
@@ -16,7 +19,9 @@ export interface PaymentRow {
 const inr = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`;
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
-export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: PaymentRow[]; totalPaid: number; missingUtr: number }) {
+export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = false }: { payments: PaymentRow[]; totalPaid: number; missingUtr: number; canApprove?: boolean }) {
+  const router = useRouter();
+  const [deciding, startDecide] = useTransition();
   const [q, setQ] = useState('');
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [modeFilter, setModeFilter] = useState('');
@@ -24,14 +29,16 @@ export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: Pa
 
   const modes = useMemo(() => {
     const s = new Set<string>();
-    for (const p of payments) if (p.status !== 'CANCELLED') s.add(p.mode);
+    for (const p of payments) if (p.status !== 'CANCELLED' && p.status !== 'DRAFT') s.add(p.mode);
     return [...s];
   }, [payments]);
 
   const parties = useMemo(() => {
     const map = new Map<string, { name: string; total: number; count: number; last: string; missing: number; rows: PaymentRow[] }>();
     for (const p of payments) {
-      if (p.status === 'CANCELLED') continue;
+      // A payment awaiting approval has not been made — it must not appear in
+      // anybody's paid total or passbook until somebody approves it.
+      if (p.status === 'CANCELLED' || p.status === 'DRAFT') continue;
       if (modeFilter && p.mode !== modeFilter) continue;
       const key = p.partyName.trim().toLowerCase();
       const e = map.get(key) ?? { name: p.partyName, total: 0, count: 0, last: p.paidOn, missing: 0, rows: [] };
@@ -52,11 +59,59 @@ export function PaymentsView({ payments, totalPaid, missingUtr }: { payments: Pa
     return list;
   }, [payments, q, onlyMissing, modeFilter]);
 
+  // Payments raised above the company limit. They are NOT money that has left
+  // the building yet, which is why they are pulled out of the list entirely
+  // rather than sitting in it looking like every other paid row.
+  const awaiting = useMemo(() => payments.filter((p) => p.status === 'DRAFT'), [payments]);
+
+  const decide = (id: string, number: string, approve: boolean) => {
+    let why = '';
+    if (!approve) {
+      const answer = window.prompt(`Why is ${number} not approved? The person who raised it will see this.`);
+      if (answer === null) return;
+      why = answer;
+    }
+    startDecide(async () => {
+      const r = approve ? await approveVendorPayment(id) : await rejectVendorPayment(id, why);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(approve ? `${number} approved — now in the books` : `${number} turned down`);
+      router.refresh();
+    });
+  };
+
   return (
     <div className="space-y-5">
+      {awaiting.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5">
+          <div className="flex items-center gap-2 border-b border-amber-500/30 px-3 py-2 text-sm font-medium text-amber-900 dark:text-amber-200">
+            <ShieldAlert className="h-4 w-4 shrink-0" />
+            <span>{awaiting.length} payment{awaiting.length > 1 ? 's' : ''} awaiting approval</span>
+            <span className="ml-auto tabular-nums">{inr(awaiting.reduce((t, p) => t + p.amount, 0))}</span>
+          </div>
+          <ul className="divide-y divide-amber-500/20">
+            {awaiting.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+                <span className="font-mono text-xs text-muted-foreground">{p.number}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{p.partyName}</span>
+                <span className="tabular-nums">{inr(p.amount)}</span>
+                <span className="text-xs text-muted-foreground">{day(p.dated)}</span>
+                {canApprove ? (
+                  <span className="flex items-center gap-2">
+                    <button type="button" disabled={deciding} onClick={() => decide(p.id, p.number, true)} className="focus-ring rounded border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/10 disabled:opacity-60 dark:text-emerald-300">Approve</button>
+                    <button type="button" disabled={deciding} onClick={() => decide(p.id, p.number, false)} className="focus-ring rounded border border-destructive/40 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-60">Reject</button>
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">waiting on an approver</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Total paid out" value={inr(totalPaid)} />
-        <Stat label="People & vendors paid" value={String(new Set(payments.filter((p) => p.status !== 'CANCELLED').map((p) => p.partyName.toLowerCase())).size)} />
+        <Stat label="People & vendors paid" value={String(new Set(payments.filter((p) => p.status !== 'CANCELLED' && p.status !== 'DRAFT').map((p) => p.partyName.toLowerCase())).size)} />
         <Stat
           label="Missing a UTR"
           value={String(missingUtr)}

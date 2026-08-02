@@ -4,6 +4,9 @@ import { addMonths, addWeeks, addYears } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { needsPaymentApproval, notifyPaymentApprovers } from '@/server/services/payment-approval-service';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
 
 export type RecurringResult = { ok: true; id?: string } | { error: string };
 
@@ -75,14 +78,15 @@ export async function recordRecurringNow(id: string, utr?: string): Promise<Recu
     const rec = await prisma.recurringPayment.findUnique({ where: { id } });
     if (!rec) return { error: 'That recurring payment no longer exists.' };
 
-    const last = await prisma.voucher.findFirst({ where: { number: { startsWith: 'CP-' } }, orderBy: { number: 'desc' }, select: { number: true } });
-    const seq = (last ? Number(last.number.split('-')[1] ?? '1000') : 1000) + 1;
     const cleanUtr = utr ? utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null;
+    // A payment being on a schedule does not exempt it from the threshold — a
+    // standing instruction is exactly where a large amount goes out unnoticed.
+    const needsApproval = await needsPaymentApproval(Number(rec.amount));
     const now = new Date();
 
-    await prisma.voucher.create({
+    const recurringVoucher = await prisma.voucher.create({
       data: {
-        number: `CP-${seq}`, kind: rec.mode === 'Cash' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+        number: await nextVoucherNumber('CP'), kind: rec.mode === 'Cash' ? 'CASH_PAID' : 'BANK_PAID', status: needsApproval ? 'DRAFT' : 'POSTED',
         voucherDate: now, paidOn: rec.mode === 'Cash' ? null : now,
         partyName: rec.payeeName, vendorId: rec.vendorId, amount: rec.amount,
         mode: rec.mode === 'Cash' ? 'CASH' : rec.mode === 'UPI' ? 'UPI' : rec.mode === 'Cheque' ? 'CHEQUE' : 'BANK_TRANSFER',
@@ -92,6 +96,9 @@ export async function recordRecurringNow(id: string, utr?: string): Promise<Recu
         createdById: ctx.user.id,
       },
     });
+
+    if (needsApproval) await notifyPaymentApprovers(recurringVoucher.id, ctx.user.id, `${recurringVoucher.number} · ${rec.payeeName} · Rs ${Number(rec.amount).toLocaleString('en-IN')}`);
+    else await postVoucherById(recurringVoucher.id, ctx.user.id);
 
     await prisma.recurringPayment.update({
       where: { id },

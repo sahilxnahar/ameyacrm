@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Trash2, Loader2, Check, X } from 'lucide-react';
-import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder } from '@/server/actions/billing';
+import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill } from '@/server/actions/billing';
 import { VendorPortalLink } from './vendor-portal-link';
 import { Button } from '@/components/ui/button';
 import { AiBillImport } from './ai-bill-import';
@@ -46,6 +46,19 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
+  // Issuing is what puts the sale in the books, so it is a deliberate second
+  // step rather than something that happens quietly when the invoice is saved.
+  const issue = (id: string, number: string) =>
+    start(async () => { const r = await issueInvoice(id); if ('error' in r) { toast.error(r.error); return; } toast.success(`${number} issued — posted to the ledger`); router.refresh(); });
+  // Paying a bill from here is what clears the payable. Recording the same
+  // payment as a loose expense voucher instead books the cost a second time and
+  // leaves the creditor standing.
+  const payBill = (id: string, number: string) =>
+    start(async () => {
+      const r = await settleVendorBill({ billId: id, mode: 'BANK_TRANSFER' });
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(`${number} settled`); router.refresh();
+    });
   const decide = (id: string, decision: 'APPROVED' | 'REJECTED') =>
     start(async () => { const r = await decidePurchaseOrder(id, decision); if ('error' in r) { toast.error(r.error); return; } toast.success(`PO ${decision.toLowerCase()}`); router.refresh(); });
 
@@ -82,23 +95,32 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       <TabsContent value="invoices">
         <RecordList empty="No invoices yet.">
           {invoices.map((i) => (
-            <a
+            <div
               key={i.id}
-              href={`/api/billing/invoices/${i.id}/pdf`}
-              target="_blank"
-              rel="noreferrer"
               className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-muted/40', statusAccent(i.status))}
             >
-              <Monogram name={i.client} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{i.client}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  <span className="font-mono">{i.number}</span>{i.project ? ` · ${i.project}` : ''}{i.dueDate ? ` · due ${formatDate(i.dueDate)}` : ''}
+              <a
+                href={`/api/billing/invoices/${i.id}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                <Monogram name={i.client} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{i.client}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    <span className="font-mono">{i.number}</span>{i.project ? ` · ${i.project}` : ''}{i.dueDate ? ` · due ${formatDate(i.dueDate)}` : ''}
+                  </div>
                 </div>
-              </div>
+              </a>
+              {i.status === 'DRAFT' && (
+                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending} onClick={() => issue(i.id, i.number)}>
+                  {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Issue'}
+                </Button>
+              )}
               <Badge variant={statusVariant(i.status) as never} className="shrink-0">{titleCase(i.status)}</Badge>
               <div className="w-24 shrink-0 text-right font-medium tabular-nums">{formatCurrency(i.total)}</div>
-            </a>
+            </div>
           ))}
         </RecordList>
       </TabsContent>
@@ -136,6 +158,11 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <div className="truncate font-medium">{b.vendor}</div>
                 <div className="truncate font-mono text-xs text-muted-foreground">{b.number}</div>
               </div>
+              {b.status !== 'PAID' && (
+                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending} onClick={() => payBill(b.id, b.number)}>
+                  {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Pay'}
+                </Button>
+              )}
               <Badge variant={statusVariant(b.status) as never} className="shrink-0">{titleCase(b.status)}</Badge>
               <div className="w-24 shrink-0 text-right tabular-nums">{formatCurrency(b.amount)}</div>
             </div>

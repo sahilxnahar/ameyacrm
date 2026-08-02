@@ -1,5 +1,15 @@
 # What's actually working — an honest review
 
+> **Status after v16.5.** Everything below except Problem 2 (App Exchange) has
+> been built. Problem 1 is closed: all six voucher creators post, invoices and
+> vendor bills post, and Ameya Tally can mirror the CRM's books. Problem 3 is
+> closed: the nine tables have screens and the four menu descriptions are
+> accurate. Items 1, 5, 6 and 7 of "what I would do next" are done — and the
+> email one is now surfaced in the app rather than left to be discovered.
+> **Problem 2 remains open by your instruction.** App Exchange still offers
+> Install for 148 apps with four drivers behind them; do not demo that screen.
+
+
 A deep scan of every feature built to date, judged not on whether the code runs
 but on whether somebody could do their job with it.
 

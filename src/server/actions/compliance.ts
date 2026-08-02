@@ -175,3 +175,166 @@ export async function createEnvCondition(v: Record<string, string>): Promise<Com
     return { ok: true, message: 'Condition added.' };
   } catch (e) { return toActionError(e); }
 }
+
+// ─── The nine registers ──────────────────────────────────────────────────────
+
+const optNum = (s: string) => { const n = Number((s ?? '').trim()); return Number.isFinite(n) && (s ?? '').trim() !== '' ? n : null; };
+
+export async function createContract(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('governance.manage');
+    const title = str.parse(v.title ?? ''); const counterparty = str.parse(v.counterparty ?? '');
+    if (title.length < 2) return { error: 'Name the contract.' };
+    if (counterparty.length < 2) return { error: 'Who is it with?' };
+    const r = await prisma.contractRecord.create({ data: {
+      projectId: optStr(v.projectId ?? ''), title, counterparty, kind: optStr(v.kind ?? ''),
+      value: optNum(v.value ?? ''), startsOn: optDate(v.startsOn ?? ''), endsOn: optDate(v.endsOn ?? ''),
+      renewalOn: optDate(v.renewalOn ?? ''), obligations: optStr(v.obligations ?? ''),
+      status: (v.status || 'ACTIVE') as never, createdById: ctx.user.id,
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'ContractRecord', entityId: r.id, summary: `Contract "${title}" with ${counterparty}` });
+    revalidatePath('/governance');
+    return { ok: true, message: 'Contract added to the register.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createInsurancePolicy(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('governance.manage');
+    const name = str.parse(v.name ?? ''); const insurer = str.parse(v.insurer ?? '');
+    if (name.length < 2 || insurer.length < 2) return { error: 'The policy needs a name and an insurer.' };
+    const p = await prisma.insurancePolicy.create({ data: {
+      projectId: optStr(v.projectId ?? ''), name, insurer, policyNo: optStr(v.policyNo ?? ''),
+      cover: optNum(v.cover ?? ''), premium: optNum(v.premium ?? ''), expiresOn: optDate(v.expiresOn ?? ''),
+      claims: optStr(v.claims ?? ''),
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'InsurancePolicy', entityId: p.id, summary: `Policy "${name}" with ${insurer}` });
+    revalidatePath('/governance');
+    return { ok: true, message: 'Policy recorded.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createRenewal(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('governance.manage');
+    const title = str.parse(v.title ?? '');
+    if (title.length < 2) return { error: 'Name the licence or certificate.' };
+    const c = await prisma.complianceDocExpiry.create({ data: {
+      projectId: optStr(v.projectId ?? ''), title, category: optStr(v.category ?? ''),
+      reference: optStr(v.reference ?? ''), expiresOn: optDate(v.expiresOn ?? ''),
+      owner: optStr(v.owner ?? ''), renewed: (v.renewed ?? '') === 'YES',
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'ComplianceDocExpiry', entityId: c.id, summary: `Renewal tracked: ${title}` });
+    revalidatePath('/governance');
+    return { ok: true, message: 'Added to the renewals watch.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createSop(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('knowledge.manage');
+    const title = str.parse(v.title ?? '');
+    if (title.length < 2) return { error: 'Give the SOP a title.' };
+    const s = await prisma.sop.create({ data: {
+      title, department: optStr(v.department ?? ''), content: optStr(v.content ?? ''),
+      effectiveOn: optDate(v.effectiveOn ?? ''), status: (v.status || 'DRAFT') as never,
+      createdById: ctx.user.id,
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Sop', entityId: s.id, summary: `SOP "${title}"` });
+    revalidatePath('/knowledge');
+    return { ok: true, message: 'SOP added.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createLesson(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('knowledge.manage');
+    const title = str.parse(v.title ?? ''); const recommendation = str.parse(v.recommendation ?? '');
+    if (title.length < 2 || recommendation.length < 2) return { error: 'A lesson needs a title and what to do differently.' };
+    const l = await prisma.lessonLearned.create({ data: {
+      projectId: optStr(v.projectId ?? ''), title, category: optStr(v.category ?? ''),
+      situation: optStr(v.situation ?? ''), recommendation, createdById: ctx.user.id,
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'LessonLearned', entityId: l.id, summary: `Lesson "${title}"` });
+    revalidatePath('/knowledge');
+    return { ok: true, message: 'Lesson captured.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createWasteManifest(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('esg.manage');
+    const wasteType = str.parse(v.wasteType ?? '');
+    if (wasteType.length < 2) return { error: 'What waste was it?' };
+    const qty = optNum(v.quantity ?? '');
+    const w = await prisma.wasteManifest.create({ data: {
+      projectId: optStr(v.projectId ?? ''), manifestNo: optStr(v.manifestNo ?? ''), wasteType,
+      quantity: qty ?? 0, unit: optStr(v.unit ?? ''), disposedTo: optStr(v.disposedTo ?? ''),
+      disposedOn: optDate(v.disposedOn ?? ''),
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'WasteManifest', entityId: w.id, summary: `Waste manifest: ${wasteType}` });
+    revalidatePath('/esg');
+    return { ok: true, message: 'Manifest recorded.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createAccessReview(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('secops.manage');
+    const subject = str.parse(v.subject ?? '');
+    if (subject.length < 2) return { error: 'What is being reviewed?' };
+    const a = await prisma.accessReview.create({ data: {
+      subject, scope: optStr(v.scope ?? ''), reviewer: optStr(v.reviewer ?? ''),
+      dueOn: optDate(v.dueOn ?? ''), completedOn: optDate(v.completedOn ?? ''), findings: optStr(v.findings ?? ''),
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'AccessReview', entityId: a.id, summary: `Access review: ${subject}` });
+    revalidatePath('/security-ops');
+    return { ok: true, message: 'Review scheduled.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createPowerOfAttorney(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('land.manage');
+    const grantor = str.parse(v.grantor ?? ''); const attorney = str.parse(v.attorney ?? ''); const scope = str.parse(v.scope ?? '');
+    if (grantor.length < 2 || attorney.length < 2) return { error: 'Both the grantor and the attorney are needed.' };
+    if (scope.length < 2) return { error: 'Say what the power covers — an unbounded POA is the one nobody should sign.' };
+    const p = await prisma.powerOfAttorney.create({ data: {
+      parcelId: optStr(v.parcelId ?? ''), projectId: optStr(v.projectId ?? ''),
+      grantor, attorney, scope, validFrom: optDate(v.validFrom ?? ''), validUntil: optDate(v.validUntil ?? ''),
+      revoked: (v.revoked ?? '') === 'YES',
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'PowerOfAttorney', entityId: p.id, summary: `POA ${grantor} → ${attorney}` });
+    revalidatePath('/land');
+    return { ok: true, message: 'Power of attorney recorded.' };
+  } catch (e) { return toActionError(e); }
+}
+
+export async function createJda(v: Record<string, string>): Promise<ComplianceResult> {
+  try {
+    const ctx = await guard('land.manage');
+    const parcelId = (v.parcelId ?? '').trim();
+    const landownerName = str.parse(v.landownerName ?? '');
+    if (!parcelId) return { error: 'A JDA has to sit against a land parcel.' };
+    if (landownerName.length < 2) return { error: 'Name the landowner.' };
+    const parcel = await prisma.landParcel.findUnique({ where: { id: parcelId }, select: { id: true, name: true } });
+    if (!parcel) return { error: 'That land parcel no longer exists.' };
+
+    const dev = optNum(v.developerShare ?? '');
+    const own = optNum(v.landownerShare ?? '');
+    // The two shares are the whole commercial substance of a JDA. If both are
+    // given they must add up, or the agreement in the system is not the one on paper.
+    if (dev !== null && own !== null && Math.abs(dev + own - 100) > 0.01) {
+      return { error: `The shares add up to ${(dev + own).toFixed(2)}%, not 100%.` };
+    }
+
+    const j = await prisma.jointDevelopmentAgreement.create({ data: {
+      parcelId: parcel.id, landownerName, shareType: (v.shareType || 'AREA_SHARE') as never,
+      developerShare: dev, landownerShare: own, refundableDeposit: optNum(v.refundableDeposit ?? ''),
+      signedOn: optDate(v.signedOn ?? ''), obligations: optStr(v.obligations ?? ''),
+    }, select: { id: true } });
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'JointDevelopmentAgreement', entityId: j.id, summary: `JDA on ${parcel.name} with ${landownerName}` });
+    revalidatePath('/land');
+    return { ok: true, message: 'JDA recorded.' };
+  } catch (e) { return toActionError(e); }
+}

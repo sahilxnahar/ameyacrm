@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.4';
+export const APP_VERSION = 'v16.5';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.5',
+    date: '2 Aug 2026',
+    highlights: [
+      'Your trial balance is now real. Every payment, receipt, contractor settlement, piece-rate settlement, recurring payment and imported expense reaches the ledger \u2014 six of them never did, so the P&L and balance sheet were missing most of the money that actually moved.',
+      'Invoices and vendor bills reach it too. Issuing an invoice recognises the sale and raises the receivable; a bill received books the cost and what you owe on the day it arrives, and paying it clears that payable instead of counting the cost twice.',
+      'TDS, retention and BOCW labour cess held back from a contractor are now liabilities in the books rather than a quietly smaller project cost \u2014 so the 26Q deposit has a balance to clear against.',
+      'Ameya Tally can now be one set of books with the CRM. In Tally \u2192 Settings, pick the company to mirror into and everything the CRM posts appears there, with a catch-up for the history. Off until you turn it on.',
+      'The payment approval limit now applies everywhere money leaves \u2014 contractor settlements, piece-rate, recurring and the cash book, not just vendor payments. You cannot approve a payment you raised yourself, there is a Reject with a reason, and the Payments screen shows what is waiting.',
+      'Inventory is no longer CSV-only: add a single unit, correct one, or generate a whole tower \u2014 floors \u00d7 units \u2014 in one go. Running it again after adding floors only adds the new ones.',
+      'Site logs now feed something. Record how far a programme activity got in the same form, and tick one box to send the day\u2019s photo to the buyer portal.',
+      'Nine registers that had tables and no screens are built: contracts, insurance, licence renewals, SOPs, lessons learned, waste manifests, access reviews, powers of attorney and JDAs \u2014 with everything about to expire surfaced on Today\u2019s Priorities.',
+      'You will now be told, in the app, when email is not actually sending \u2014 and when payments are sitting in the cash book but not in the ledger, with a button to post them.',
+      'Run MIGRATION_v16.5_all.sql before deploying this one.',
+    ],
+  },
   {
     version: 'v16.4',
     date: '2 Aug 2026',

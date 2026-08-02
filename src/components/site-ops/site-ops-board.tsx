@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { DailyLogForm } from './daily-log-form';
+import { DailyLogForm, type ProgrammeOption } from './daily-log-form';
 import { ProgressTimeline, type TimelineLog } from './progress-timeline';
 
 /**
@@ -18,10 +18,12 @@ export function SiteOpsBoard({
   projects,
   activeProjectId,
   logs,
+  activities = [],
 }: {
   projects: { id: string; name: string }[];
   activeProjectId: string | null;
   logs: TimelineLog[];
+  activities?: ProgrammeOption[];
 }) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
@@ -53,7 +55,7 @@ export function SiteOpsBoard({
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="New site log">
         <div className="max-h-[78vh] overflow-y-auto pr-0.5">
-          <DailyLogForm projects={projects} activeProjectId={activeProjectId} onSaved={onSaved} />
+          <DailyLogForm projects={projects} activeProjectId={activeProjectId} activities={activities} onSaved={onSaved} />
         </div>
       </BottomSheet>
     </div>

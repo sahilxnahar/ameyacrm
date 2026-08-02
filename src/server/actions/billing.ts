@@ -3,11 +3,17 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { docNumber } from '@/lib/utils/reference';
+import { nextSequence } from '@/lib/db/sequence';
 import { msmeDueDate } from '@/server/services/msme-service';
 import { writeAudit } from '@/lib/audit/log';
 import { notifyMany } from '@/lib/notifications/notify';
 import { ensure, toActionError } from './_helpers';
 import { isGeminiEnabled, extractInvoiceData, type ExtractedBill } from '@/lib/ai/gemini';
+import { invoiceLines, vendorBillLines } from '@/lib/ledger/posting-rules';
+import { postVoucherById } from '@/lib/ledger/post-voucher';
+import { nextVoucherNumber } from '@/lib/db/voucher-number';
+import { needsPaymentApproval, notifyPaymentApprovers } from '@/server/services/payment-approval-service';
+import { post } from '@/server/services/ledger-service';
 
 export type BillingResult = { ok: true; id: string } | { error: string };
 
@@ -42,7 +48,10 @@ export async function createInvoice(input: unknown): Promise<BillingResult> {
       return { description: i.description, hsnSac: i.hsnSac || null, quantity: i.quantity, rate: i.rate, gstRate: i.gstRate, amount };
     });
     const total = subTotal + taxTotal;
-    const seq = (await prisma.invoice.count()) + 1;
+    // count()+1 gave two simultaneous invoices the same number, and reissued a
+    // number the moment one was deleted. An invoice number that repeats is a GST
+    // problem, not a cosmetic one.
+    const seq = await nextSequence('invoice:INV', prisma, 0);
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -59,6 +68,154 @@ export async function createInvoice(input: unknown): Promise<BillingResult> {
   } catch (err) {
     return toActionError(err);
   }
+}
+
+/**
+ * Pay a vendor bill.
+ *
+ * The bill already booked the cost and the payable when it was received; this
+ * clears the payable and moves the money. Recording the payment as a plain
+ * expense voucher instead — which is what happened before bills and payments
+ * were linked — books the same spend twice and leaves a creditor balance that
+ * never comes down.
+ */
+export async function settleVendorBill(input: unknown): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const d = z.object({
+      billId: z.string().min(1),
+      mode: z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CHEQUE']).default('BANK_TRANSFER'),
+      paidOn: z.string().optional().nullable(),
+      utr: z.string().max(40).optional().nullable(),
+    }).parse(input);
+
+    const bill = await prisma.vendorBill.findUnique({
+      where: { id: d.billId },
+      select: { id: true, number: true, amount: true, gstAmount: true, status: true, vendorId: true, vendor: { select: { name: true, isActive: true } } },
+    });
+    if (!bill) return { error: 'That bill no longer exists.' };
+    if (bill.status === 'PAID') return { error: `Bill ${bill.number} is already paid.` };
+    if (bill.vendor && !bill.vendor.isActive) return { error: 'That vendor is deactivated — clear the flag before paying.' };
+
+    const existing = await prisma.voucher.findFirst({ where: { vendorBillId: bill.id, status: { not: 'CANCELLED' } }, select: { number: true } });
+    if (existing) return { error: `Bill ${bill.number} already has payment ${existing.number} against it.` };
+
+    const gross = Number(bill.amount) + Number(bill.gstAmount);
+    if (gross <= 0) return { error: 'That bill has no amount to pay.' };
+
+    // Paying clears the payable the bill created. If the bill never reached the
+    // ledger — posting is non-fatal, so a bill raised before the chart of
+    // accounts existed did not — clearing it would debit a creditor nobody ever
+    // credited, and the cost would never be booked at all. Post the bill first.
+    const billPosted = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'VendorBill', sourceId: bill.id, status: { not: 'REVERSED' } }, select: { id: true },
+    });
+    if (!billPosted) {
+      const rule = vendorBillLines({
+        amount: gross, gstAmount: Number(bill.gstAmount),
+        vendorId: bill.vendorId, vendorName: bill.vendor?.name ?? 'vendor',
+      });
+      if ('ok' in rule) {
+        await post({
+          entryDate: new Date(), narration: `${bill.number} — ${rule.narration}`, lines: rule.lines,
+          sourceType: 'VendorBill', sourceId: bill.id, createdById: ctx.user.id, once: true,
+        }).catch(() => undefined);
+      }
+      const nowPosted = await prisma.journalEntry.findFirst({
+        where: { sourceType: 'VendorBill', sourceId: bill.id, status: { not: 'REVERSED' } }, select: { id: true },
+      });
+      if (!nowPosted) return { error: `Bill ${bill.number} is not in the ledger yet and could not be posted — usually the chart of accounts has not been set up. Paying it now would leave the cost unbooked.` };
+    }
+    const needsApproval = await needsPaymentApproval(gross);
+    const when = d.paidOn ? new Date(d.paidOn) : new Date();
+
+    const v = await prisma.voucher.create({
+      data: {
+        number: await nextVoucherNumber('CP'),
+        kind: d.mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID',
+        status: needsApproval ? 'DRAFT' : 'POSTED',
+        voucherDate: when, paidOn: d.mode === 'CASH' ? null : when,
+        partyName: bill.vendor?.name ?? 'Vendor', vendorId: bill.vendorId,
+        amount: gross, mode: d.mode,
+        reference: bill.number, vendorBillId: bill.id,
+        utr: d.utr ? d.utr.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : null,
+        narration: `Settlement of vendor bill ${bill.number}`,
+        createdById: ctx.user.id,
+      },
+      select: { id: true, number: true },
+    });
+
+    if (needsApproval) {
+      await notifyPaymentApprovers(v.id, ctx.user.id, `${v.number} · ${bill.vendor?.name ?? 'vendor'} · Rs ${gross.toLocaleString('en-IN')}`);
+    } else {
+      await prisma.vendorBill.update({ where: { id: bill.id }, data: { status: 'PAID' } });
+      await postVoucherById(v.id, ctx.user.id);
+    }
+
+    await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Bill ${bill.number} settled → ${v.number} (Rs ${gross.toLocaleString('en-IN')})${needsApproval ? ' — awaiting approval' : ''}` });
+    revalidatePath('/billing'); revalidatePath('/payments'); revalidatePath('/ledgers');
+    return { ok: true, id: v.id };
+  } catch (err) { return toActionError(err); }
+}
+
+/**
+ * Issue a draft invoice — the moment the sale is recognised.
+ *
+ * Creating an invoice leaves it DRAFT deliberately: a draft is a working
+ * document and must not touch the books. Issuing it is what recognises the
+ * revenue, raises the receivable and creates the output GST liability, so it is
+ * the only correct place to post. Doing it at creation would put unfinished
+ * invoices into the P&L; doing it at payment would be cash accounting and would
+ * lose the receivable entirely.
+ */
+export async function issueInvoice(invoiceId: string): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.invoice.manage');
+    const inv = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: {
+        id: true, number: true, status: true, total: true, cgst: true, sgst: true, igst: true,
+        clientName: true, projectId: true, issueDate: true,
+      },
+    });
+    if (!inv) return { error: 'That invoice no longer exists.' };
+
+    // An invoice can be SENT and still not in the books — posting is deliberately
+    // non-fatal, so the first invoice raised before the chart of accounts exists
+    // ends up exactly there. Refusing to re-issue it would strand the revenue
+    // with no way back, so a SENT-but-unposted invoice is repaired instead.
+    const alreadyPosted = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'Invoice', sourceId: inv.id, status: { not: 'REVERSED' } }, select: { id: true },
+    });
+    if (inv.status !== 'DRAFT' && alreadyPosted) return { error: `Invoice ${inv.number} is already ${inv.status.toLowerCase()} and in the ledger.` };
+    if (inv.status === 'VOID') return { error: `Invoice ${inv.number} is void.` };
+
+    // Status first: the invoice being issued is the fact, the ledger entry is a
+    // consequence. A books problem must not stop the invoice going out.
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { status: 'SENT' } });
+
+    const rule = invoiceLines({
+      total: Number(inv.total), cgst: Number(inv.cgst ?? 0), sgst: Number(inv.sgst ?? 0), igst: Number(inv.igst ?? 0),
+      projectId: inv.projectId, clientName: inv.clientName,
+    });
+    if ('ok' in rule) {
+      const r = await post({
+        entryDate: inv.issueDate ?? new Date(), narration: `${inv.number} — ${rule.narration}`,
+        lines: rule.lines, sourceType: 'Invoice', sourceId: inv.id,
+        projectId: inv.projectId, createdById: ctx.user.id, once: true,
+      }).catch(() => ({ error: 'posting error' }) as const);
+      if ('error' in r) {
+        await writeAudit({
+          actorId: ctx.user.id, action: 'UPDATE', entityType: 'Invoice', entityId: inv.id,
+          summary: `Invoice ${inv.number} issued but NOT posted to the ledger: ${r.error}`,
+        }).catch(() => undefined);
+      }
+    }
+
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Invoice', entityId: inv.id, summary: `Issued invoice ${inv.number}` });
+    revalidatePath('/billing'); revalidatePath('/ledgers');
+    return { ok: true, id: inv.id };
+  } catch (err) { return toActionError(err); }
 }
 
 // ─── Vendors, Purchase Orders, Vendor Bills, PO approvals (Billing depth) ────
@@ -187,6 +344,31 @@ export async function createVendorBill(input: unknown): Promise<BillingResult> {
     const bill = await prisma.vendorBill.create({
       data: { number: d.number, vendorId: d.vendorId || null, amount: d.amount, gstAmount: d.gstAmount, billDate: d.billDate ? new Date(d.billDate) : new Date(), dueDate: d.dueDate ? new Date(d.dueDate) : null, createdById: ctx.user.id },
     });
+    // A bill received IS a cost and a liability, on the day it is received —
+    // not on the day it is paid. Booking it only at payment is cash accounting,
+    // which understates cost at every month end and hides what is owed.
+    // Non-fatal: an unpostable bill is still a bill.
+    const billVendorName = d.vendorId
+      ? (await prisma.vendor.findUnique({ where: { id: d.vendorId }, select: { name: true } }).catch(() => null))?.name ?? 'vendor'
+      : 'vendor';
+    const billRule = vendorBillLines({
+      amount: d.amount + d.gstAmount, gstAmount: d.gstAmount,
+      vendorId: d.vendorId || null, vendorName: billVendorName,
+    });
+    if ('ok' in billRule) {
+      const r = await post({
+        entryDate: bill.billDate, narration: `${bill.number} — ${billRule.narration}`,
+        lines: billRule.lines, sourceType: 'VendorBill', sourceId: bill.id,
+        createdById: ctx.user.id, once: true,
+      }).catch(() => ({ error: 'posting error' }) as const);
+      if ('error' in r) {
+        await writeAudit({
+          actorId: ctx.user.id, action: 'UPDATE', entityType: 'VendorBill', entityId: bill.id,
+          summary: `Bill ${bill.number} saved but NOT posted to the ledger: ${r.error}`,
+        }).catch(() => undefined);
+      }
+    }
+
     // Start the MSME clock with the bill, not by hand.
     //
     // Section 15 of the MSMED Act gives 45 days (15 without a written

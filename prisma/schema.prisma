@@ -172,10 +172,10 @@ enum ApprovalEntity {
 }
 
 enum RaBillStatus {
-  DRAFT      // being prepared
-  PENDING    // submitted for IE certification / approval
-  CERTIFIED  // certified — cleared to pay
-  PAID       // settled via a voucher
+  DRAFT // being prepared
+  PENDING // submitted for IE certification / approval
+  CERTIFIED // certified — cleared to pay
+  PAID // settled via a voucher
   REJECTED
 }
 
@@ -183,19 +183,19 @@ enum RaBillStatus {
 /// the Independent Engineer through the shared approval engine, carries the 1%
 /// BOCW labour cess, retention and TDS, and is settled by a Voucher.
 model RaBill {
-  id           String       @id @default(cuid())
-  number       String       @unique // RA-1001
-  billNo       Int          @default(1) // running-account sequence for this contract (RA-1, RA-2…)
-  contractId   String?
-  vendorId     String? // the contractor
-  projectId    String?
-  periodFrom   DateTime?
-  periodTo     DateTime?
+  id         String    @id @default(cuid())
+  number     String    @unique // RA-1001
+  billNo     Int       @default(1) // running-account sequence for this contract (RA-1, RA-2…)
+  contractId String?
+  vendorId   String? // the contractor
+  projectId  String?
+  periodFrom DateTime?
+  periodTo   DateTime?
 
   grossValue       Decimal  @default(0) @db.Decimal(16, 2) // value of work certified in this bill
   previousPaid     Decimal  @default(0) @db.Decimal(16, 2) // cumulative paid on earlier RA bills
   deductions       Decimal  @default(0) @db.Decimal(16, 2) // ad-hoc deductions (advances, penalties)
-  cessPercent      Decimal  @default(1) @db.Decimal(5, 2)  // BOCW labour cess %
+  cessPercent      Decimal  @default(1) @db.Decimal(5, 2) // BOCW labour cess %
   cessAmount       Decimal  @default(0) @db.Decimal(16, 2) // derived
   retentionPercent Decimal  @default(5) @db.Decimal(5, 2)
   retentionAmount  Decimal  @default(0) @db.Decimal(16, 2)
@@ -531,12 +531,12 @@ model Trademark {
 }
 
 model TrademarkEvent {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   trademarkId String
   kind        String
   note        String?
-  occurredOn  DateTime  @default(now())
-  createdAt   DateTime  @default(now())
+  occurredOn  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   trademark Trademark @relation(fields: [trademarkId], references: [id], onDelete: Cascade)
 
@@ -650,7 +650,7 @@ enum LinkDocKind {
 }
 
 model TitleChainEntry {
-  id           String       @id @default(cuid())
+  id           String      @id @default(cuid())
   projectId    String?
   landParcelId String?
   kind         LinkDocKind
@@ -662,9 +662,9 @@ model TitleChainEntry {
   periodFrom   Int?
   periodTo     Int?
   documentId   String?
-  isVerified   Boolean      @default(false)
+  isVerified   Boolean     @default(false)
   remarks      String?
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime    @default(now())
 
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
@@ -1280,20 +1280,20 @@ model User {
 
   // Per-user IMAP inbox (module: email integration). imapPassEnc is encrypted
   // at rest with the app ENCRYPTION_KEY; never stored or returned in plain text.
-  imapHost     String?
-  imapPort     Int?
-  imapUser     String?
-  imapPassEnc  String?
+  imapHost    String?
+  imapPort    Int?
+  imapUser    String?
+  imapPassEnc String?
 
   // Per-user OUTBOUND sending (module: email integration). The CRM sends mail AS
   // the signed-in user (fixes the shared hi@/no-reply sender). The SMTP credential
   // reuses imapPassEnc (the same Gmail app password works for IMAP + SMTP); these
   // optional fields only override the derived SMTP endpoint. sendAsSelf lets a user
   // opt back into the shared org sender. Fully additive — nothing breaks if unset.
-  smtpHost     String?
-  smtpPort     Int?
-  smtpSecure   Boolean?
-  sendAsSelf   Boolean   @default(true)
+  smtpHost   String?
+  smtpPort   Int?
+  smtpSecure Boolean?
+  sendAsSelf Boolean  @default(true)
 
   // Security
   twoFactorEnabled   Boolean   @default(false)
@@ -1336,12 +1336,18 @@ model User {
    */
   navPrefs Json?
 
-  /** Personal Ameya Tally preferences: { companyName, defaultVoucher, defaultPeriod, os }. */
-  tallyPrefs Json?
-  /** Personal TOP-navigation layout: { hidden: string[], pins: [{href,label}], order: string[] }. */
+  /**
+   * Personal Ameya Tally preferences: { companyName, defaultVoucher, defaultPeriod, os }.
+   */
+  tallyPrefs  Json?
+  /**
+   * Personal TOP-navigation layout: { hidden: string[], pins: [{href,label}], order: string[] }.
+   */
   topNavPrefs Json?
 
-  /** Personal automation choices: { [key]: { on, dueInDays?, priority? } }. */
+  /**
+   * Personal automation choices: { [key]: { on, dueInDays?, priority? } }.
+   */
   automationPrefs Json?
 
   /**
@@ -1417,11 +1423,11 @@ model User {
   raisedIssues        IssueLog[]           @relation("IssueRaisedBy")
   assignedIssues      IssueLog[]           @relation("IssueAssignee")
   dailySiteLogs       DailySiteLog[]       @relation("SiteLogAuthor")
+  guestSandbox        GuestSandbox?
 
   @@index([status])
   @@index([departmentId])
   @@index([role])
-  guestSandbox GuestSandbox?
 }
 
 model ProjectMembership {
@@ -1872,7 +1878,7 @@ model Lead {
   name             String
   email            String?
   phone            String?
-  preferredLang    String?         // demand/WhatsApp language: en | hi | kn | ta (module #6)
+  preferredLang    String? // demand/WhatsApp language: en | hi | kn | ta (module #6)
   source           LeadSource      @default(WEBSITE)
   status           LeadStatus      @default(NEW)
   score            Int             @default(0)
@@ -1979,13 +1985,13 @@ model Booking {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  lead     Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  unit     Unit?              @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  salesRep User?              @relation("BookingSalesRep", fields: [salesRepId], references: [id], onDelete: SetNull)
-  payments PaymentMilestone[]
+  lead          Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  unit          Unit?                  @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  salesRep      User?                  @relation("BookingSalesRep", fields: [salesRepId], references: [id], onDelete: SetNull)
+  payments      PaymentMilestone[]
   demandNotices DemandNotice[]
-  nriProfiles NriComplianceProfile[]
-  estamps     EstampCertificate[]
+  nriProfiles   NriComplianceProfile[]
+  estamps       EstampCertificate[]
 
   @@index([status])
   @@index([bookedAt])
@@ -2001,8 +2007,8 @@ model PaymentMilestone {
   paidAt    DateTime?
   createdAt DateTime      @default(now())
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  demands DemandNotice[]
+  booking   Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  demands   DemandNotice[]
   bimPhases BimPhase[]
 
   @@index([bookingId])
@@ -2035,15 +2041,15 @@ model BimModel {
 }
 
 model BimPhase {
-  id            String    @id @default(cuid())
-  bimModelId    String
-  label         String // "Tower A — 5th slab"
-  elementIds    String? // model element ids (comma/JSON)
-  plannedOn     DateTime?
-  actualOn      DateTime?
-  milestoneId   String? // linked buyer PaymentMilestone (cash-flow trigger)
-  triggersDemand Boolean  @default(false)
-  createdAt     DateTime  @default(now())
+  id             String    @id @default(cuid())
+  bimModelId     String
+  label          String // "Tower A — 5th slab"
+  elementIds     String? // model element ids (comma/JSON)
+  plannedOn      DateTime?
+  actualOn       DateTime?
+  milestoneId    String? // linked buyer PaymentMilestone (cash-flow trigger)
+  triggersDemand Boolean   @default(false)
+  createdAt      DateTime  @default(now())
 
   bimModel  BimModel          @relation(fields: [bimModelId], references: [id], onDelete: Cascade)
   milestone PaymentMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
@@ -2110,7 +2116,6 @@ model Vendor {
 
   /**
    * MSME registration.
-   *
    * Not a detail. Section 15 of the MSMED Act gives a registered micro or small
    * supplier 45 days (15 without a written agreement), and s.43B(h) of the
    * Income-tax Act disallows the expense outright if you pay late — so this
@@ -2118,21 +2123,23 @@ model Vendor {
    * because that is where it is true; the 45-day clock is then started
    * automatically from each bill rather than typed in a second time.
    */
-  isMsme       Boolean @default(false)
-  udyamNumber  String?
-  /** A written agreement extends the statutory window from 15 days to 45. */
+  isMsme           Boolean @default(false)
+  udyamNumber      String?
+  /**
+   * A written agreement extends the statutory window from 15 days to 45.
+   */
   msmeHasAgreement Boolean @default(true)
 
   // Bank details, kept on the vendor so a payment never needs them retyped
   // from a WhatsApp message.
-  bankAccountName   String?
-  bankAccountNumber String?
-  bankIfsc          String?
-  bankName          String?
-  bankBranch        String?
-  upiId             String?
-  paymentNotes      String?
-  defaultTdsSection String? // default Indian TDS section for this vendor, e.g. 194C / 194J
+  bankAccountName          String?
+  bankAccountNumber        String?
+  bankIfsc                 String?
+  bankName                 String?
+  bankBranch               String?
+  upiId                    String?
+  paymentNotes             String?
+  defaultTdsSection        String? // default Indian TDS section for this vendor, e.g. 194C / 194J
   requiresLabourCompliance Boolean @default(false) // labour vendor — block payment without EPF/ESI challan
 
   isActive  Boolean  @default(true)
@@ -2151,7 +2158,7 @@ model Vendor {
   msmeClocks MsmePaymentClock[]
 
   // Group 13 — sub-contractor default registry (module 69)
-  defaults VendorDefault[]
+  defaults   VendorDefault[]
   labourUans LabourUan[]
 
   @@index([isActive])
@@ -2904,30 +2911,30 @@ enum CommissionBasis {
 }
 
 model ChannelPartner {
-  id            String               @id @default(cuid())
-  code          String               @unique
-  firmName      String
-  contactName   String
-  phone         String
-  email         String?
-  reraNumber    String?
-  panNumber     String?
-  gstin         String?
-  commissionBasis  CommissionBasis   @default(PERCENT_OF_SALE)
-  commissionPct Decimal              @default(2) @db.Decimal(5, 2)
+  id                   String               @id @default(cuid())
+  code                 String               @unique
+  firmName             String
+  contactName          String
+  phone                String
+  email                String?
+  reraNumber           String?
+  panNumber            String?
+  gstin                String?
+  commissionBasis      CommissionBasis      @default(PERCENT_OF_SALE)
+  commissionPct        Decimal              @default(2) @db.Decimal(5, 2)
   /// Months of rent, when commissionBasis is MONTHS_OF_RENT (e.g. 1.5 months).
-  commissionMonths Decimal?          @db.Decimal(5, 2)
+  commissionMonths     Decimal?             @db.Decimal(5, 2)
   /// Flat fee in rupees, when commissionBasis is FLAT_FEE.
-  commissionFlat   Decimal?          @db.Decimal(14, 2)
-  kycStatus     KycStatus            @default(PENDING)
-  status        ChannelPartnerStatus @default(PENDING)
-  bankDetails   String?
-  notes         String?
-  portalToken   String?              @unique
-  portalTokenExpiresAt DateTime?       // F-24
-  onboardedById String?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  commissionFlat       Decimal?             @db.Decimal(14, 2)
+  kycStatus            KycStatus            @default(PENDING)
+  status               ChannelPartnerStatus @default(PENDING)
+  bankDetails          String?
+  notes                String?
+  portalToken          String?              @unique
+  portalTokenExpiresAt DateTime? // F-24
+  onboardedById        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@index([status])
 }
@@ -2962,19 +2969,19 @@ enum SnagStatus {
 }
 
 model Customer {
-  id            String   @id @default(cuid())
-  name          String
-  email         String?
-  phone         String?
-  portalToken   String   @unique
-  portalTokenExpiresAt DateTime?   // F-24: link expiry (null = legacy, never expires)
-  bookingId     String?
-  projectId     String?
-  isActive      Boolean  @default(true)
-  customFields  Json? // admin-defined custom field values
-  onboardedById String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String?
+  phone                String?
+  portalToken          String    @unique
+  portalTokenExpiresAt DateTime? // F-24: link expiry (null = legacy, never expires)
+  bookingId            String?
+  projectId            String?
+  isActive             Boolean   @default(true)
+  customFields         Json? // admin-defined custom field values
+  onboardedById        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([portalToken])
 }
@@ -3038,42 +3045,43 @@ model SitePhoto {
 //  books from the CRM's own ledger, exactly like running Tally alongside.
 // ════════════════════════════════════════════════════════════════════════════
 model TallyLedger {
-  id             String   @id @default(cuid())
-  companyId      String   // which set of books this ledger belongs to
+  id             String              @id @default(cuid())
+  companyId      String // which set of books this ledger belongs to
   name           String
-  group          String   // Tally group name, e.g. "Sundry Debtors", "Cash-in-Hand"
-  openingBalance Decimal  @default(0) @db.Decimal(16, 2)
-  openingSide    String   @default("Dr") // Dr | Cr
-  isSystem       Boolean  @default(false) // Cash, Profit & Loss A/c — cannot be deleted
-  tallyGuid      String?  // Tally's own master GUID, when the import provides one
+  group          String // Tally group name, e.g. "Sundry Debtors", "Cash-in-Hand"
+  openingBalance Decimal             @default(0) @db.Decimal(16, 2)
+  openingSide    String              @default("Dr") // Dr | Cr
+  isSystem       Boolean             @default(false) // Cash, Profit & Loss A/c — cannot be deleted
+  tallyGuid      String? // Tally's own master GUID, when the import provides one
   lines          TallyVoucherLine[]
-  company        TallyCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  company        TallyCompany        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  bills          TallyBill[]
+  reminder       TallyPartyReminder?
 
   @@unique([companyId, name])
   @@index([group])
   @@index([companyId])
-  bills TallyBill[]
-  reminder TallyPartyReminder?
 }
 
 model TallyVoucher {
-  id             String               @id @default(cuid())
-  number         Int
-  type           String               // Payment | Receipt | Contra | Journal | Sales | Purchase
-  date           DateTime
-  narration      String?
-  reference      String?
-  costCentre     String?              // job-costing tag, e.g. a project name
-  lines          TallyVoucherLine[]
-  inventoryLines TallyInventoryLine[]
-  createdById    String?
-  companyId      String
-  tallyGuid      String?              // Tally's voucher GUID — the safest dedupe key
-  importBatchId  String?
-  company        TallyCompany         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt      DateTime             @default(now())
+  id              String                @id @default(cuid())
+  number          Int
+  type            String // Payment | Receipt | Contra | Journal | Sales | Purchase
+  date            DateTime
+  narration       String?
+  reference       String?
+  costCentre      String? // job-costing tag, e.g. a project name
+  lines           TallyVoucherLine[]
+  inventoryLines  TallyInventoryLine[]
+  createdById     String?
+  companyId       String
+  tallyGuid       String? // Tally's voucher GUID — the safest dedupe key
+  importBatchId   String?
+  company         TallyCompany          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt       DateTime              @default(now())
+  billAllocations TallyBillAllocation[]
 
   @@unique([companyId, type, number])
   @@unique([companyId, tallyGuid])
@@ -3082,15 +3090,14 @@ model TallyVoucher {
   @@index([costCentre])
   @@index([companyId, date])
   @@index([importBatchId])
-  billAllocations TallyBillAllocation[]
 }
 
 model TallyCostCentre {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   companyId String
   name      String
   company   TallyCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -3121,7 +3128,7 @@ model TallyInventoryLine {
   qty       Decimal        @default(0) @db.Decimal(16, 3)
   rate      Decimal        @default(0) @db.Decimal(16, 2)
   amount    Decimal        @default(0) @db.Decimal(16, 2)
-  direction String         // IN | OUT
+  direction String // IN | OUT
   voucher   TallyVoucher   @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   item      TallyStockItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
@@ -3135,7 +3142,7 @@ model TallyVoucherLine {
   ledgerId    String
   debit       Decimal      @default(0) @db.Decimal(16, 2)
   credit      Decimal      @default(0) @db.Decimal(16, 2)
-  clearedDate DateTime?    // bank-reconciliation: the date this entry cleared the bank
+  clearedDate DateTime? // bank-reconciliation: the date this entry cleared the bank
   voucher     TallyVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   ledger      TallyLedger  @relation(fields: [ledgerId], references: [id], onDelete: Restrict)
 
@@ -3173,15 +3180,15 @@ model TallyCompany {
 model TallyImportBatch {
   id        String  @id @default(cuid())
   companyId String?
-  source    String  // XML | CSV | BRIDGE
+  source    String // XML | CSV | BRIDGE
   fileName  String?
   status    String  @default("PREVIEW") // PREVIEW | COMMITTED | FAILED
 
-  ledgersCreated   Int @default(0)
-  ledgersUpdated   Int @default(0)
-  vouchersCreated  Int @default(0)
-  vouchersSkipped  Int @default(0)
-  linesCreated     Int @default(0)
+  ledgersCreated  Int @default(0)
+  ledgersUpdated  Int @default(0)
+  vouchersCreated Int @default(0)
+  vouchersSkipped Int @default(0)
+  linesCreated    Int @default(0)
 
   fromDate DateTime?
   toDate   DateTime?
@@ -3450,7 +3457,7 @@ model PaymentRequest {
   id              String               @id @default(cuid())
   reference       String               @unique // PAY-1001
   token           String               @unique // unguessable public link
-  tokenExpiresAt  DateTime?            // F-24: link expiry (null = legacy)
+  tokenExpiresAt  DateTime? // F-24: link expiry (null = legacy)
   payeeName       String
   payeeEmail      String?
   payeePhone      String?
@@ -3761,23 +3768,23 @@ model DocChunk {
 // ════════════════════════════════════════════════════════════════════════════
 
 model FloorPlan {
-  id          String   @id @default(cuid())
-  projectId   String
-  name        String
-  tower       String?
-  floor       Int?
-  imageUrl    String
-  imageWidth  Int      @default(1000)
-  imageHeight Int      @default(700)
-  isActive    Boolean  @default(true)
-  kind        String   @default("FLOOR") // UNIT | FLOOR | TOWER | MASTER | AMENITY
-  description String?
-  shareToken  String?  @unique
-  shareTokenExpiresAt DateTime?         // F-24
-  isPublic    Boolean  @default(false)
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  projectId           String
+  name                String
+  tower               String?
+  floor               Int?
+  imageUrl            String
+  imageWidth          Int       @default(1000)
+  imageHeight         Int       @default(700)
+  isActive            Boolean   @default(true)
+  kind                String    @default("FLOOR") // UNIT | FLOOR | TOWER | MASTER | AMENITY
+  description         String?
+  shareToken          String?   @unique
+  shareTokenExpiresAt DateTime? // F-24
+  isPublic            Boolean   @default(false)
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   project Project   @relation("ProjectFloorPlans", fields: [projectId], references: [id], onDelete: Cascade)
   pins    UnitPin[]
@@ -4069,21 +4076,21 @@ model SecretCashEntry {
 /// A payment that repeats — salary, rent, an EMI, a subscription. The CRM
 /// surfaces the next one due so it is recorded on time; it never pays anything.
 model RecurringPayment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   payeeName   String
   vendorId    String?
-  amount      Decimal  @db.Decimal(14, 2)
-  frequency   String   @default("MONTHLY") // MONTHLY | QUARTERLY | YEARLY | WEEKLY
+  amount      Decimal   @db.Decimal(14, 2)
+  frequency   String    @default("MONTHLY") // MONTHLY | QUARTERLY | YEARLY | WEEKLY
   nextDue     DateTime
   accountCode String? // expense category
   projectId   String?
   mode        String? // Bank | UPI | Cash | Cheque
   note        String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   lastPaidAt  DateTime?
   createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([isActive, nextDue])
 }
@@ -4137,24 +4144,31 @@ model Voucher {
   gstRate   Decimal? @db.Decimal(5, 2)
   gstAmount Decimal? @db.Decimal(14, 2)
 
-  attachmentId String?
-  accountCode  String? // expense category for reporting (chart-of-accounts code, e.g. 5300 Materials)
-  isAdvance       Boolean  @default(false) // paid ahead of a bill; adjust later
-  advanceSettled  Boolean  @default(false) // advance has been set off against a bill
-  retentionAmount Decimal? @db.Decimal(14, 2) // amount held back from a contractor
-  retentionReleased Boolean @default(false)
-  tdsAmount    Decimal? @db.Decimal(14, 2) // TDS deducted from this payment
-  tdsRate      Decimal? @db.Decimal(5, 2)
-  tdsSection      String?   // Indian TDS section applied, e.g. 194C / 194J / 194I
-  tdsChallanNo    String?   // challan/BSR reference once deposited to the government
-  tdsDepositedAt  DateTime? // when the deducted TDS was actually deposited (null = pending)
-  createdById  String?
-  approvedById String?
-  approvedAt   DateTime?
-  cancelledAt  DateTime?
-  cancelReason String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  attachmentId      String?
+  /// The vendor bill this payment settles, when it settles one. A payment
+  /// against a bill must clear the creditor, not book the expense a second
+  /// time — the bill already booked it.
+  vendorBillId      String?
+  accountCode       String? // expense category for reporting (chart-of-accounts code, e.g. 5300 Materials)
+  isAdvance         Boolean   @default(false) // paid ahead of a bill; adjust later
+  advanceSettled    Boolean   @default(false) // advance has been set off against a bill
+  retentionAmount   Decimal?  @db.Decimal(14, 2) // amount held back from a contractor
+  retentionReleased Boolean   @default(false)
+  tdsAmount         Decimal?  @db.Decimal(14, 2) // TDS deducted from this payment
+  /// BOCW labour cess withheld from a contractor payment. Withheld money you
+  /// still owe the welfare board — a liability, not a smaller cost.
+  cessAmount        Decimal?  @db.Decimal(14, 2)
+  tdsRate           Decimal?  @db.Decimal(5, 2)
+  tdsSection        String? // Indian TDS section applied, e.g. 194C / 194J / 194I
+  tdsChallanNo      String? // challan/BSR reference once deposited to the government
+  tdsDepositedAt    DateTime? // when the deducted TDS was actually deposited (null = pending)
+  createdById       String?
+  approvedById      String?
+  approvedAt        DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([kind, voucherDate])
   @@index([projectId, voucherDate])
@@ -4162,6 +4176,7 @@ model Voucher {
   @@index([partyName])
   @@index([utr])
   @@index([tdsDepositedAt])
+  @@index([vendorBillId])
 }
 
 /// A connected external account (WhatsApp, Meta, Google Ads …). Tokens are
@@ -4303,18 +4318,18 @@ model WhatsappSession {
 
 /// Every inbound WhatsApp message, so a lost upload can be traced.
 model WhatsappMessage {
-  id         String   @id @default(cuid())
-  externalId String   @unique // WhatsApp message id — a replay never duplicates
+  id         String        @id @default(cuid())
+  externalId String        @unique // WhatsApp message id — a replay never duplicates
   phone      String
   userId     String?
   kind       String // text, document, image, other
   body       String?
   mediaId    String?
   filename   String?
-  handled    Boolean  @default(false)
+  handled    Boolean       @default(false)
   outcome    String?
   direction  MailDirection @default(INBOUND) // INBOUND = they messaged us; OUTBOUND = a staff reply
-  createdAt  DateTime @default(now())
+  createdAt  DateTime      @default(now())
 
   @@index([phone, createdAt])
 }
@@ -4803,7 +4818,7 @@ model LitigationMatter {
   exposure    Decimal?         @db.Decimal(16, 2)
   summary     String?
 
-  hearings    LitigationHearing[]
+  hearings LitigationHearing[]
 
   createdById String?
   createdAt   DateTime @default(now())
@@ -4856,14 +4871,14 @@ model PowerOfAttorney {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model BankAccount {
-  id             String   @id @default(cuid())
+  id             String  @id @default(cuid())
   name           String
   bankName       String
   accountLast4   String?
   ifsc           String?
-  openingBalance Decimal  @default(0) @db.Decimal(16, 2)
+  openingBalance Decimal @default(0) @db.Decimal(16, 2)
   projectId      String?
-  isActive       Boolean  @default(true)
+  isActive       Boolean @default(true)
 
   imports BankStatementImport[]
   lines   BankStatementLine[]
@@ -4934,14 +4949,14 @@ enum LoanKind {
 }
 
 model LoanFacility {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   lender           String
-  kind             LoanKind @default(TERM_LOAN)
-  sanctionedAmount Decimal  @default(0) @db.Decimal(16, 2)
-  interestRate     Decimal? @db.Decimal(6, 3)
+  kind             LoanKind  @default(TERM_LOAN)
+  sanctionedAmount Decimal   @default(0) @db.Decimal(16, 2)
+  interestRate     Decimal?  @db.Decimal(6, 3)
   projectId        String?
   startedOn        DateTime?
-  isActive         Boolean  @default(true)
+  isActive         Boolean   @default(true)
   notes            String?
 
   events LoanEvent[]
@@ -5259,11 +5274,11 @@ model WorkPermit {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Investor {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   projectId  String?
   name       String
   contact    String?
-  commitment Decimal  @default(0) @db.Decimal(18, 2)
+  commitment Decimal @default(0) @db.Decimal(18, 2)
   notes      String?
 
   transactions InvestorTransaction[]
@@ -5479,35 +5494,35 @@ enum ObligationStatus {
 }
 
 model StatutoryObligation {
-  id        String              @id @default(cuid())
-  projectId String?
-  title     String
-  kind      ObligationKind      @default(OTHER)
-  authority String?
-  frequency ObligationFrequency @default(MONTHLY)
-  owner     String?
-  nextDue   DateTime?
-  lastFiled DateTime?
-  status    ObligationStatus    @default(UPCOMING)
-  note      String?
+  id          String              @id @default(cuid())
+  projectId   String?
+  title       String
+  kind        ObligationKind      @default(OTHER)
+  authority   String?
+  frequency   ObligationFrequency @default(MONTHLY)
+  owner       String?
+  nextDue     DateTime?
+  lastFiled   DateTime?
+  status      ObligationStatus    @default(UPCOMING)
+  note        String?
   createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@index([projectId, status])
   @@index([nextDue])
 }
 
 model ComplianceDocExpiry {
-  id         String    @id @default(cuid())
-  projectId  String?
-  title      String
-  category   String?
-  reference  String?
-  expiresOn  DateTime?
-  owner      String?
-  renewed    Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(cuid())
+  projectId String?
+  title     String
+  category  String?
+  reference String?
+  expiresOn DateTime?
+  owner     String?
+  renewed   Boolean   @default(false)
+  createdAt DateTime  @default(now())
 
   @@index([expiresOn])
 }
@@ -5549,19 +5564,19 @@ enum RiskStatus {
 }
 
 model RiskEntry {
-  id         String     @id @default(cuid())
-  projectId  String?
-  title      String
-  category   String?
-  likelihood RiskLevel  @default(MEDIUM)
-  impact     RiskLevel  @default(MEDIUM)
-  owner      String?
-  mitigation String?
-  status     RiskStatus @default(OPEN)
-  reviewOn   DateTime?
+  id          String     @id @default(cuid())
+  projectId   String?
+  title       String
+  category    String?
+  likelihood  RiskLevel  @default(MEDIUM)
+  impact      RiskLevel  @default(MEDIUM)
+  owner       String?
+  mitigation  String?
+  status      RiskStatus @default(OPEN)
+  reviewOn    DateTime?
   createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@index([projectId, status])
 }
@@ -5587,8 +5602,8 @@ model ContractRecord {
   obligations  String?
   status       ContractStatus @default(ACTIVE)
   createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@index([status])
   @@index([renewalOn])
@@ -5625,17 +5640,17 @@ enum SecIncidentStatus {
 }
 
 model SecurityIncident {
-  id         String            @id @default(cuid())
-  title      String
-  severity   SecOpsSeverity    @default(MEDIUM)
-  kind       String?
-  detectedOn DateTime          @default(now())
-  status     SecIncidentStatus @default(OPEN)
-  rootCause  String?
-  resolvedOn DateTime?
+  id          String            @id @default(cuid())
+  title       String
+  severity    SecOpsSeverity    @default(MEDIUM)
+  kind        String?
+  detectedOn  DateTime          @default(now())
+  status      SecIncidentStatus @default(OPEN)
+  rootCause   String?
+  resolvedOn  DateTime?
   createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([status])
 }
@@ -5677,13 +5692,13 @@ model Sop {
 }
 
 model DecisionLog {
-  id        String   @id @default(cuid())
-  projectId String?
-  title     String
-  decidedOn DateTime @default(now())
-  decidedBy String?
-  context   String?
-  decision  String
+  id          String   @id @default(cuid())
+  projectId   String?
+  title       String
+  decidedOn   DateTime @default(now())
+  decidedBy   String?
+  context     String?
+  decision    String
   createdById String?
   createdAt   DateTime @default(now())
 
@@ -5713,16 +5728,16 @@ enum EnvCondStatus {
 }
 
 model EnvClearanceCondition {
-  id        String        @id @default(cuid())
-  projectId String?
-  condition String
-  authority String?
-  evidence  String?
-  dueOn     DateTime?
-  status    EnvCondStatus @default(PENDING)
+  id          String        @id @default(cuid())
+  projectId   String?
+  condition   String
+  authority   String?
+  evidence    String?
+  dueOn       DateTime?
+  status      EnvCondStatus @default(PENDING)
   createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([projectId, status])
 }
@@ -5848,17 +5863,17 @@ model CommercialTenancy {
 // ═════════════════════════════════════════════════════════════════════════════
 
 model SavedReport {
-  id        String   @id @default(cuid())
-  name      String
-  source    String
-  groupBy   String
-  metric    String   @default("count")
-  valueKey  String?
-  shared    Boolean  @default(false)
-  ownerId   String?
+  id          String   @id @default(cuid())
+  name        String
+  source      String
+  groupBy     String
+  metric      String   @default("count")
+  valueKey    String?
+  shared      Boolean  @default(false)
+  ownerId     String?
   createdById String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([ownerId])
 }
@@ -5876,12 +5891,12 @@ model Feedback {
 }
 
 model WorkRequest {
-  id           String   @id @default(cuid())
-  reference    String   @unique
+  id           String               @id @default(cuid())
+  reference    String               @unique
   title        String
   detail       String?
-  priority     String   @default("NORMAL")
-  status       String   @default("RAISED")
+  priority     String               @default("NORMAL")
+  status       String               @default("RAISED")
   fromDeptId   String?
   toDeptId     String?
   raisedById   String?
@@ -5892,8 +5907,8 @@ model WorkRequest {
   linkedTaskId String?
   confirmedAt  DateTime?
   closedAt     DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
   events       WorkRequestEvent[]
   comments     WorkRequestComment[]
 
@@ -5943,26 +5958,26 @@ model RecordLink {
 }
 
 model VendorPortalAccess {
-  id        String   @id @default(cuid())
-  vendorId  String   @unique
-  token     String   @unique
-  tokenExpiresAt DateTime?              // F-24
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  vendorId       String    @unique
+  token          String    @unique
+  tokenExpiresAt DateTime? // F-24
+  createdAt      DateTime  @default(now())
 
   @@index([token])
 }
 
 model TelemetryDevice {
-  id         String    @id @default(cuid())
-  name       String
-  deviceKey  String    @unique
-  kind       String    @default("sensor")
-  projectId  String?
-  location   String?
-  lastSeenAt DateTime?
-  isActive   Boolean   @default(true)
+  id          String    @id @default(cuid())
+  name        String
+  deviceKey   String    @unique
+  kind        String    @default("sensor")
+  projectId   String?
+  location    String?
+  lastSeenAt  DateTime?
+  isActive    Boolean   @default(true)
   createdById String?
-  createdAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([projectId])
 }
@@ -6033,7 +6048,6 @@ model ChatAttachment {
 
 /**
  * Atomic counters for human-readable document numbers (CR-1042, JV-000317, DL-1008).
- *
  * Deriving the next number from MAX()/COUNT() of the existing rows is wrong on
  * two counts: it orders text lexicographically (so CR-9999 outranks CR-10000 and
  * the series jams permanently at five digits), and it is a check-then-act race —
@@ -6049,16 +6063,13 @@ model NumberSequence {
 
 /**
  * ─── Guest sandbox ────────────────────────────────────────────────────────────
- *
  * A guest gets a private, disposable playground: they can open every screen and
  * genuinely create things, without any route to real company data.
- *
  * Isolation is by construction, not by filtering. Guest records live in their
  * OWN tables, so there is no query anywhere that could return a real lead to a
  * guest even if a permission check were wrong — the real tables are simply not
  * involved. Filtering a shared table on a `sandboxId` would put one forgotten
  * `where` clause between a stranger and the company's books; this cannot.
- *
  * Each sandbox is seeded with believable demo data on first sign-in and expires
  * on its own, so one guest never sees another's mess and nothing accumulates.
  */
@@ -6066,11 +6077,13 @@ model GuestSandbox {
   id        String   @id @default(cuid())
   userId    String   @unique
   createdAt DateTime @default(now())
-  /** Wiped and re-seeded after this moment. */
+  /**
+   * Wiped and re-seeded after this moment.
+   */
   expiresAt DateTime
   seeded    Boolean  @default(false)
 
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   leads   SandboxLead[]
   units   SandboxUnit[]
   tasks   SandboxTask[]
@@ -6154,12 +6167,10 @@ model SandboxNote {
 
 /**
  * ─── Statutory audit trail (edit log) for the books ──────────────────────────
- *
  * Rule 3(1) of the Companies (Accounts) Rules requires accounting software used
  * by a company to keep an audit trail of every transaction, recording each
  * change with the date it was made, and — critically — the trail must not be
  * capable of being switched off. The auditor reports on this under Rule 11(g).
- *
  * So this table is append-only by design and by convention: nothing in the
  * application ever updates or deletes a row here, and a voucher cannot be
  * created, altered or removed without one being written first. `before`/`after`
@@ -6167,24 +6178,34 @@ model SandboxNote {
  * voucher looked like at any point.
  */
 model TallyVoucherAudit {
-  id        String   @id @default(cuid())
-  companyId String
-  voucherId String
-  /** CREATE | UPDATE | DELETE */
-  action    String
-  /** Voucher identity kept inline, so the trail survives the voucher's deletion. */
-  voucherNo Int
+  id          String   @id @default(cuid())
+  companyId   String
+  voucherId   String
+  /**
+   * CREATE | UPDATE | DELETE
+   */
+  action      String
+  /**
+   * Voucher identity kept inline, so the trail survives the voucher's deletion.
+   */
+  voucherNo   Int
   voucherType String
   voucherDate DateTime
-  /** Full state before the change (null on CREATE). */
-  before    Json?
-  /** Full state after the change (null on DELETE). */
-  after     Json?
-  /** Plain-language summary of what changed. */
-  summary   String
-  actorId   String?
-  actorName String
-  at        DateTime @default(now())
+  /**
+   * Full state before the change (null on CREATE).
+   */
+  before      Json?
+  /**
+   * Full state after the change (null on DELETE).
+   */
+  after       Json?
+  /**
+   * Plain-language summary of what changed.
+   */
+  summary     String
+  actorId     String?
+  actorName   String
+  at          DateTime @default(now())
 
   @@index([companyId, at])
   @@index([voucherId])
@@ -6192,11 +6213,9 @@ model TallyVoucherAudit {
 
 /**
  * ─── Bill-wise tracking ──────────────────────────────────────────────────────
- *
  * How Indian accounting actually chases money. A party ledger balance of
  * ₹42 lakh tells you nothing useful; "invoice AH/24-25/118 for ₹12 lakh, due
  * 40 days ago" is what you ring somebody about.
- *
  * Ameya Tally previously inferred this by matching payments to charges oldest
  * first, which is only ever a guess — a buyer paying the third instalment while
  * disputing the second produces a completely wrong ageing under FIFO. These two
@@ -6206,18 +6225,28 @@ model TallyVoucherAudit {
 model TallyBill {
   id        String    @id @default(cuid())
   companyId String
-  /** The party this is owed by or to. */
+  /**
+   * The party this is owed by or to.
+   */
   ledgerId  String
-  /** The bill reference the parties quote to each other, e.g. AH/24-25/118. */
+  /**
+   * The bill reference the parties quote to each other, e.g. AH/24-25/118.
+   */
   reference String
   billDate  DateTime
   dueDate   DateTime?
-  /** Positive. Direction is implied by the party's group (debtor vs creditor). */
+  /**
+   * Positive. Direction is implied by the party's group (debtor vs creditor).
+   */
   amount    Decimal   @db.Decimal(14, 2)
-  /** RECEIVABLE (we are owed) | PAYABLE (we owe). */
+  /**
+   * RECEIVABLE (we are owed) | PAYABLE (we owe).
+   */
   kind      String
   narration String?
-  /** The voucher that raised it, when there is one. */
+  /**
+   * The voucher that raised it, when there is one.
+   */
   voucherId String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -6239,7 +6268,9 @@ model TallyBill {
 model TallyBillAllocation {
   id        String   @id @default(cuid())
   billId    String
-  /** The voucher that paid/received. */
+  /**
+   * The voucher that paid/received.
+   */
   voucherId String
   amount    Decimal  @db.Decimal(14, 2)
   createdAt DateTime @default(now())
@@ -6253,11 +6284,9 @@ model TallyBillAllocation {
 
 /**
  * ─── Payment reminders to a party ────────────────────────────────────────────
- *
  * Automatic chasing for somebody who owes you money. Set the cadence once and
  * the daily sweep does the rest, but only while there is genuinely something
  * outstanding.
- *
  * This sends mail to people OUTSIDE the company, so it is built to be hard to
  * misuse. It is off unless somebody switches it on for that specific party; it
  * needs an address entered deliberately (nothing is inferred); it never fires
@@ -6266,25 +6295,37 @@ model TallyBillAllocation {
  * send is recorded, so "did we chase them?" has an answer.
  */
 model TallyPartyReminder {
-  id        String   @id @default(cuid())
-  companyId String
-  ledgerId  String   @unique
-  /** Where reminders go. Required — nothing is guessed from elsewhere. */
-  email     String
-  /** Copy somebody internally, e.g. the accounts inbox. */
-  ccEmail   String?
-  /** OFF | WEEKLY | FORTNIGHTLY | MONTHLY */
-  cadence   String   @default("OFF")
-  /** Only chase once a bill is actually past its due date. */
-  onlyWhenOverdue Boolean @default(true)
-  /** Nothing goes out before this — for "they've promised to pay on the 15th". */
-  pausedUntil DateTime?
-  lastSentAt  DateTime?
-  sentCount   Int      @default(0)
-  /** Free text prepended to the message, e.g. a project or contact name. */
-  note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  companyId       String
+  ledgerId        String    @unique
+  /**
+   * Where reminders go. Required — nothing is guessed from elsewhere.
+   */
+  email           String
+  /**
+   * Copy somebody internally, e.g. the accounts inbox.
+   */
+  ccEmail         String?
+  /**
+   * OFF | WEEKLY | FORTNIGHTLY | MONTHLY
+   */
+  cadence         String    @default("OFF")
+  /**
+   * Only chase once a bill is actually past its due date.
+   */
+  onlyWhenOverdue Boolean   @default(true)
+  /**
+   * Nothing goes out before this — for "they've promised to pay on the 15th".
+   */
+  pausedUntil     DateTime?
+  lastSentAt      DateTime?
+  sentCount       Int       @default(0)
+  /**
+   * Free text prepended to the message, e.g. a project or contact name.
+   */
+  note            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   ledger TallyLedger              @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
   sends  TallyPartyReminderSend[]
@@ -6292,13 +6333,17 @@ model TallyPartyReminder {
   @@index([companyId, cadence])
 }
 
-/** Every reminder actually sent — the answer to "have we chased them?". */
+/**
+ * Every reminder actually sent — the answer to "have we chased them?".
+ */
 model TallyPartyReminderSend {
   id         String   @id @default(cuid())
   reminderId String
   sentAt     DateTime @default(now())
   toEmail    String
-  /** Outstanding at the moment of sending, so the history stays meaningful. */
+  /**
+   * Outstanding at the moment of sending, so the history stays meaningful.
+   */
   amount     Decimal  @db.Decimal(14, 2)
   billCount  Int
   ok         Boolean  @default(true)
