@@ -108,6 +108,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Borrowings', href: '/borrowings', icon: Banknote, permission: 'treasury.view', blurb: 'Bank & NBFC loans — drawdowns, outstanding and interest.' },
       { label: 'Budgets', href: '/budgets', icon: Target, permission: 'finance.ledger.view', blurb: 'What you planned to spend, versus actual.' },
       { label: 'Cash Book', href: '/cash-book', icon: Wallet, permission: 'finance.ledger.view', blurb: 'Cash in and cash out, day by day.' },
+      { label: 'Ameya Tally', href: '/tally', icon: BookOpen, permission: 'finance.ledger.view', blurb: 'Full double-entry books — day book, trial balance, P&L and balance sheet.' },
       { label: 'Accounts & Books', href: '/accounts', icon: Landmark, permission: 'finance.ledger.view', blurb: 'Ledger, Tally, GST, vendor ledgers, treasury, capital — all in one place.' },
       { label: 'TDS', href: '/tds', icon: Banknote, permission: 'finance.ledger.view', blurb: 'Tax Deducted at Source — auto-rate by section, per-account ledger, and what is deducted vs deposited vs pending.' },
       { label: 'MSME 45-Day Tracker', href: '/msme-tracker', icon: Clock, permission: 'finance.ledger.view', blurb: 'Section 43B(h) countdown on every MSME supplier bill — flags overdue before it becomes a tax disallowance.' },
@@ -219,3 +220,79 @@ export const NAVIGATION: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * ─── Essentials ──────────────────────────────────────────────────────────────
+ *
+ * The handful of screens a person opens most days. Everything else — all 120
+ * items — stays reachable through ⌘K, Explore Features, and by drilling into a
+ * section; it just isn't all on screen at once.
+ *
+ * The reason for a list this short is not tidiness. Below roughly a dozen items
+ * the eye recognises a list; above it, the eye has to read it. A 120-item
+ * sidebar is something you parse every time, which is what makes an interface
+ * feel like work. Finder shows about ten things and hides a hard disk behind
+ * Spotlight; this is the same bargain.
+ *
+ * Anyone can change their own list: pins add to it, hiding removes from it, and
+ * switching to "Everything" brings the full grouped menu back.
+ */
+export const ESSENTIAL_HREFS: string[] = [
+  '/today',
+  '/sales',
+  '/inventory',
+  '/finance',
+  '/site-ops',
+  '/tally',
+  '/documents',
+  '/chat',
+  '/admin',
+];
+
+/** How many entries the short menu aims for. */
+export const ESSENTIALS_TARGET = 8;
+
+/**
+ * The short menu for ONE person, given what they may see.
+ *
+ * The preferred list above is written for somebody with full access. Intersect
+ * it with a narrower role and it collapses — an EMPLOYEE holds neither the
+ * finance, inventory nor admin permissions, so a naive intersection left them
+ * with a two-item sidebar and no route to the screens they actually use. Two
+ * of the eight (`/finance`, `/tally`) are not granted to ANY role by default,
+ * so they would have been invisible to everyone but a super admin.
+ *
+ * So the list is a starting point, not the answer: take what the person can
+ * see, then top up from the rest of their permitted menu until there are enough
+ * entries to navigate by. Everybody ends up with a usable menu, whatever their
+ * role.
+ */
+export function essentialsFor(
+  permitted: NavItem[],
+  opts: { hidden?: string[]; target?: number } = {},
+): NavItem[] {
+  const hidden = new Set(opts.hidden ?? []);
+  const target = opts.target ?? ESSENTIALS_TARGET;
+  const byHref = new Map(permitted.map((i) => [i.href, i]));
+  const out: NavItem[] = [];
+  const taken = new Set<string>();
+
+  for (const href of ESSENTIAL_HREFS) {
+    const item = byHref.get(href);
+    if (item && !hidden.has(href)) { out.push(item); taken.add(href); }
+  }
+
+  // Top up in menu order, which follows the grouping — so the additions are the
+  // most everyday screens this person can reach, not an arbitrary tail.
+  for (const item of permitted) {
+    if (out.length >= target) break;
+    if (taken.has(item.href) || hidden.has(item.href)) continue;
+    out.push(item); taken.add(item.href);
+  }
+  return out;
+}
+
+/** Is this one of the default essentials? */
+export function isEssential(href: string): boolean {
+  return ESSENTIAL_HREFS.includes(href);
+}

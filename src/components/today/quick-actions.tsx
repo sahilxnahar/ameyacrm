@@ -27,7 +27,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
               )}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <Icon className="h-4 w-4 text-[#A07D34]" />
+                <Icon className="h-4 w-4 text-brass" />
               </span>
               <span className="truncate">{a.label}</span>
             </Link>

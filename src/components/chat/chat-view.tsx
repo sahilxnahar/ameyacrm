@@ -216,7 +216,7 @@ export function ChatView({
                 <div className="absolute bottom-full left-3 mb-1 w-56 overflow-hidden rounded-lg border bg-popover shadow-lg">
                   {suggestions.map((u) => (
                     <button key={u.id} onClick={() => applySuggestion(u.username)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-secondary">
-                      <AtSign className="h-3.5 w-3.5 text-[#A07D34]" /> <span className="font-medium">{u.username}</span> <span className="truncate text-xs text-muted-foreground">{u.name}</span>
+                      <AtSign className="h-3.5 w-3.5 text-brass" /> <span className="font-medium">{u.username}</span> <span className="truncate text-xs text-muted-foreground">{u.name}</span>
                     </button>
                   ))}
                 </div>

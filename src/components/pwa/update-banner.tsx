@@ -67,9 +67,9 @@ export function UpdateBanner() {
   return (
     <div
       role="status"
-      className="flex items-center gap-3 border-b border-[#A07D34]/40 bg-[#A07D34]/10 px-4 py-2 text-sm text-foreground sm:px-6"
+      className="flex items-center gap-3 border-b border-brass/40 bg-brass/10 px-4 py-2 text-sm text-foreground sm:px-6"
     >
-      <RefreshCw className="h-4 w-4 shrink-0 text-[#A07D34]" />
+      <RefreshCw className="h-4 w-4 shrink-0 text-brass" />
       <p className="min-w-0 flex-1">
         <span className="font-medium">A new version ({latest}) is ready.</span>{' '}
         <span className="text-muted-foreground">Update to get the latest — no reinstall needed.</span>
@@ -77,7 +77,7 @@ export function UpdateBanner() {
       <button
         onClick={update}
         disabled={busy}
-        className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#A07D34] px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brass px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {busy ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {busy ? 'Updating…' : 'Update now'}

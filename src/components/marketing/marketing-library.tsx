@@ -72,12 +72,12 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
   return (
     <div className="space-y-6">
       {canManage && (
-        <DropZone onFiles={(files) => void doUpload(files)} disabled={!!busy} overlayLabel="Drop files to add to the library" className="rounded-xl border border-[#A07D34]/40 bg-[#A07D34]/5 p-4">
+        <DropZone onFiles={(files) => void doUpload(files)} disabled={!!busy} overlayLabel="Drop files to add to the library" className="rounded-xl border border-brass/40 bg-brass/5 p-4">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => filesRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63] disabled:opacity-50"><Upload className="h-4 w-4" /> Upload files</button>
             <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-white disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
             <span className="text-xs text-muted-foreground">Folders are sorted into categories automatically by AI.</span>
-            {busy && <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-[#A07D34]"><Loader2 className="h-4 w-4 animate-spin" /> {busy}</span>}
+            {busy && <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-brass"><Loader2 className="h-4 w-4 animate-spin" /> {busy}</span>}
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-xs">Google Drive / web link<br /><input value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/…" className="w-72 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
@@ -127,7 +127,7 @@ function FeaturedCard({ c }: { c: Collateral }) {
           <img src={c.file} alt={c.title} className="h-32 w-full object-contain p-2" />
         </a>
       ) : (
-        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-[#A07D34]" /></div>
+        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-brass" /></div>
       )}
       <div className="border-t border-slate-100 p-3">
         <p className="truncate text-sm font-semibold text-primary">{c.title}</p>
@@ -151,7 +151,7 @@ function ItemCard({ it, canManage, onRemove }: { it: LibraryItem; canManage: boo
           <img src={it.url} alt={it.title} className="h-32 w-full object-cover" />
         </a>
       ) : (
-        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-[#A07D34]" /></div>
+        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-brass" /></div>
       )}
       <div className="border-t border-slate-100 p-3">
         <p className="truncate text-sm font-semibold text-primary" title={it.title}>{it.title}</p>

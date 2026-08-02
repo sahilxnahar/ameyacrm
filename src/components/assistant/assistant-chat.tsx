@@ -111,7 +111,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {turns.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-10 text-center">
-              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10"><Sparkles className="h-6 w-6 text-[#A07D34]" /></span>
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10"><Sparkles className="h-6 w-6 text-brass" /></span>
               <p className="font-medium">How can I help?</p>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">Draft a message, explain a term, summarise something you paste, or attach a document and ask about it.</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -124,7 +124,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
             turns.map((t, i) => (
               <div key={i} className={cn('flex gap-2.5', t.role === 'user' ? 'flex-row-reverse' : '')}>
                 <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', t.role === 'user' ? 'bg-secondary' : 'bg-primary/10')}>
-                  {t.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5 text-[#A07D34]" />}
+                  {t.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5 text-brass" />}
                 </span>
                 <div className={cn('max-w-[80%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm', t.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
                   {t.content}
@@ -134,7 +134,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
           )}
           {pending && (
             <div className="flex gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10"><Bot className="h-3.5 w-3.5 text-[#A07D34]" /></span>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10"><Bot className="h-3.5 w-3.5 text-brass" /></span>
               <div className="rounded-lg bg-secondary px-3 py-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></div>
             </div>
           )}
@@ -146,7 +146,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
         {/* Attached-file chip */}
         {attached && (
           <div className="mx-3 mt-2 flex items-center gap-2 rounded-md border bg-secondary/60 px-2.5 py-1.5 text-xs">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-[#A07D34]" />
+            <FileText className="h-3.5 w-3.5 shrink-0 text-brass" />
             <span className="min-w-0 flex-1 truncate">{attached.name}</span>
             <span className="shrink-0 text-muted-foreground">{(attached.size / 1024).toFixed(0)} KB</span>
             <button aria-label="Remove attachment" onClick={() => setAttached(null)} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
@@ -247,7 +247,7 @@ function FilingPicker({ filing, onDone }: { filing: Filing; onDone: () => void }
 
   return (
     <div className="ml-9 rounded-lg border bg-card p-3">
-      <div className="mb-2 flex items-center gap-1.5 text-sm font-medium"><FolderInput className="h-4 w-4 text-[#A07D34]" /> File this document</div>
+      <div className="mb-2 flex items-center gap-1.5 text-sm font-medium"><FolderInput className="h-4 w-4 text-brass" /> File this document</div>
       <div className="relative mb-2">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <input

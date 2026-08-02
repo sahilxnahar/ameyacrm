@@ -86,7 +86,7 @@ function ToolGrid({ tools }: { tools: AdminTool[] }) {
           className="focus-ring group flex items-start gap-3 rounded-lg border bg-card p-3.5 shadow-sm transition-all hover:border-primary hover:shadow-md active:scale-[0.99]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-            <t.icon className="h-4.5 w-4.5" />
+            <t.icon className="h-[18px] w-[18px]" />
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-medium">{t.title}</span>

@@ -89,7 +89,7 @@ export function RecurringView({ rows, canManage }: { rows: Row[]; canManage: boo
 
       {addOpen && canManage && (
         <Card className="p-4">
-          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Repeat className="h-4 w-4 text-[#A07D34]" /> Add a recurring payment</p>
+          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Repeat className="h-4 w-4 text-brass" /> Add a recurring payment</p>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-2">
             <Field label="Paid to *"><Input name="payeeName" required placeholder="e.g. Office rent" /></Field>
             <Field label="Amount (₹) *"><Input name="amount" type="number" step="1" required placeholder="50000" /></Field>

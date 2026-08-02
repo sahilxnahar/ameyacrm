@@ -19,7 +19,7 @@ export function LegalDocket({ docket, renewals }: { docket: LitigationDocket; re
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-primary">Litigation & Renewals</h1>
+        <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">Litigation & Renewals</h1>
         <p className="text-sm text-muted-foreground">Track every court matter with its full hearing history, and keep EC / Khata renewals from lapsing.</p>
       </div>
       <div className="flex gap-1 border-b border-slate-200">
@@ -121,10 +121,10 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
           {m.summary && <p className="mb-3 rounded bg-slate-50 p-2 text-xs text-slate-700">{m.summary}</p>}
           <h4 className="mb-2 text-xs font-semibold text-primary">Hearing docket ({m.hearings.length})</h4>
           {m.hearings.length === 0 ? <p className="mb-3 text-xs text-muted-foreground">No hearings recorded yet.</p> : (
-            <ol className="mb-3 space-y-2 border-l-2 border-[#A07D34]/40 pl-3">
+            <ol className="mb-3 space-y-2 border-l-2 border-brass/40 pl-3">
               {m.hearings.map((h) => (
                 <li key={h.id} className="relative">
-                  <span className="absolute -left-[15px] top-1 h-2 w-2 rounded-full bg-[#A07D34]" />
+                  <span className="absolute -left-[15px] top-1 h-2 w-2 rounded-full bg-brass" />
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-xs">
                       <span className="font-semibold">{fmtDate(h.date)}</span>{h.purpose && <span className="text-muted-foreground"> · {h.purpose}</span>}

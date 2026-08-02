@@ -10,7 +10,7 @@ function SliceTable({ title, icon: Icon, slices, total }: { title: string; icon:
   const max = Math.max(1, ...slices.map((s) => s.total));
   return (
     <Card className="p-4">
-      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Icon className="h-4 w-4 text-[#A07D34]" /> {title}</p>
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Icon className="h-4 w-4 text-brass" /> {title}</p>
       {slices.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing yet.</p>
       ) : (

@@ -71,7 +71,7 @@ export function NavProgress() {
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div
-        className="h-full bg-gradient-to-r from-[#8C6E2C] via-[#E4C878] to-[#A07D34] shadow-[0_0_8px_rgba(160,125,52,0.6)]"
+        className="h-full bg-gradient-to-r from-[#8C6E2C] via-[#E4C878] to-brass shadow-[0_0_8px_rgba(160,125,52,0.6)]"
         style={{
           width: `${width}%`,
           opacity: visible ? 1 : 0,

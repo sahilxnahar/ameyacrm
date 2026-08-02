@@ -42,7 +42,7 @@ export function ScreenHelp({ id }: { id: string }) {
         aria-expanded={isOpen}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium"
       >
-        <HelpCircle className="h-4 w-4 shrink-0 text-[#A07D34]" />
+        <HelpCircle className="h-4 w-4 shrink-0 text-brass" />
         {help.title ?? 'How this works'}
         {isOpen ? <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" /> : <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />}
       </button>
@@ -58,7 +58,7 @@ export function ScreenHelp({ id }: { id: string }) {
           </ul>
           {help.firstAction && (
             <p className="mt-2 flex items-center gap-1.5 font-medium text-foreground">
-              <ArrowRight className="h-3.5 w-3.5 text-[#A07D34]" /> {help.firstAction}
+              <ArrowRight className="h-3.5 w-3.5 text-brass" /> {help.firstAction}
             </p>
           )}
         </div>

@@ -295,7 +295,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
   }
 
   return (
-    <div className="tally-wrap min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
+    <div data-keyboard-owner="tally" className="tally-wrap page-wide min-h-[calc(100vh-9rem)] overflow-hidden rounded-lg border-2 border-[#0f2038] font-mono text-[13px] text-[#0f2038]" style={{ background: '#dfe6ee' }}>
       {/* Title bar */}
       <div className="flex items-center justify-between bg-[#1B2A4A] px-3 py-1.5 text-[#E9D9A8]">
         <span className="font-semibold tracking-wide">AMEYA TALLY</span>

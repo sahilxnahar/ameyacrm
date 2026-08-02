@@ -88,7 +88,7 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
 
       {addOpen && (
         <Card className="p-4">
-          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-[#A07D34]" /> Add a project</p>
+          <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-brass" /> Add a project</p>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-2">
             <Field label="Project name *"><Input name="name" required placeholder="e.g. Ameya 494" /></Field>
             <Field label="Short code (optional)"><Input name="code" placeholder="Auto-made from the name if left blank" /></Field>

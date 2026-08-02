@@ -16,7 +16,7 @@ const DUES: { day: string; what: string }[] = [
 export function StatutoryCalendar() {
   return (
     <Card className="p-4">
-      <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-[#A07D34]" /> Statutory due dates</p>
+      <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-brass" /> Statutory due dates</p>
       <p className="mb-3 text-xs text-muted-foreground">The recurring deadlines to keep in mind. Missing them costs interest and penalties.</p>
       <ul className="space-y-1.5 text-sm">
         {DUES.map((d) => (

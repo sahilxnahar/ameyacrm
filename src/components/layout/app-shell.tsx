@@ -9,8 +9,10 @@ import { CommandPalette } from './command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
 import { MobileDock } from './mobile-dock';
 import { SubNav } from './sub-nav';
+import { KeyboardShortcuts } from './keyboard-shortcuts';
 import { DemoBanner } from './demo-banner';
 import type { TopNavPrefs } from '@/lib/nav/top-nav-prefs';
+import type { NavMode } from '@/lib/nav/nav-mode';
 import { NavProgress } from './nav-progress';
 import { OfflineOutbox } from './offline-outbox';
 import { WhatsNew } from './whats-new';
@@ -36,6 +38,7 @@ export function AppShell({
   isSuperAdmin,
   navPrefs,
   topNavPrefs,
+  navMode,
   projects,
   activeProjectId,
   activeProjectName,
@@ -47,6 +50,7 @@ export function AppShell({
   isSuperAdmin: boolean;
   navPrefs: NavPrefs;
   topNavPrefs?: TopNavPrefs;
+  navMode?: NavMode;
   projects: ProjectOption[];
   activeProjectId: string | null;
   activeProjectName: string;
@@ -92,6 +96,14 @@ export function AppShell({
     };
   }, [mobileOpen]);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  // The sidebar's "Browse all" entry opens the palette without needing a prop
+  // threaded through every layer between them.
+  const openPalette = React.useCallback(() => setPaletteOpen(true), []);
+  React.useEffect(() => {
+    const open = () => setPaletteOpen(true);
+    window.addEventListener('amh:open-palette', open);
+    return () => window.removeEventListener('amh:open-palette', open);
+  }, []);
   const allowed = React.useMemo(() => new Set(permissionKeys), [permissionKeys]);
 
   // Desktop "icon rail" collapse — like the Google Cloud console. Off by default;
@@ -133,6 +145,8 @@ export function AppShell({
         isSuperAdmin={isSuperAdmin}
         mobileOpen={mobileOpen}
         navPrefs={navPrefs}
+        navMode={navMode}
+        topNavPrefs={topNavPrefs}
         collapsed={rail}
         onToggleRail={toggleRail}
         onClose={() => setMobileOpen(false)}
@@ -142,17 +156,39 @@ export function AppShell({
         {isGuest && <DemoBanner />}
         {/* Ameya OS desktop Top-Bar (md+). On phones the Mobile Dock takes over. */}
         <TopBar user={user} projects={projects} activeProjectId={activeProjectId} activeProjectName={activeProjectName} allowed={allowed} isSuperAdmin={isSuperAdmin} onMenu={() => setMobileOpen(true)} onSearch={() => setPaletteOpen(true)} />
-        <SubNav allowed={allowed} isSuperAdmin={isSuperAdmin} prefs={topNavPrefs} isGuest={isGuest} />
+        {/*
+          * Batch 2 — fewer navigation layers.
+          *
+          * This second row duplicated the sidebar: the same modules, listed
+          * twice, on every page. It existed because the top bar was overcrowded
+          * on a 13" screen; with the sidebar now short, the modules have a home
+          * and the row is redundant. It stays for the demo (whose nav lives
+          * here) and for anyone on the full "Everything" menu, who has opted
+          * into seeing more rather than less.
+          */}
+        {(isGuest || navMode === 'everything') && (
+          <SubNav allowed={allowed} isSuperAdmin={isSuperAdmin} prefs={topNavPrefs} isGuest={isGuest} />
+        )}
         <OfflineOutbox />
         <Breadcrumbs />
         {/* Keyed by route so page content eases in on every navigation — makes
             the app feel responsive and alive (U14). Honours reduced-motion. */}
         <main id="main" tabIndex={-1} className="w-full max-w-none flex-1 px-4 py-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 sm:py-6 lg:px-8 lg:pb-24">
-          <div key={pathname} className="animate-in mx-auto w-full max-w-[1800px]">{children}</div>
+          {/*
+            * A capped, centred column.
+            *
+            * 1800px was effectively uncapped: on a 27" monitor a line of text ran
+            * the full width and the eye loses the line on the way back. 1400px is
+            * wide enough for the big tables and matrices while keeping prose
+            * readable. Screens that genuinely need every pixel opt out with
+            * `page-wide` on their own wrapper.
+            */}
+          <div key={pathname} className="page-container animate-in mx-auto w-full max-w-[1400px]">{children}</div>
         </main>
       </div>
       {/* Ameya OS mobile Dock (< md) — Launchpad · Search · Quick-Upload · Alerts. */}
       <MobileDock onSearch={() => setPaletteOpen(true)} />
+      <KeyboardShortcuts onOpenSearch={openPalette} isGuest={isGuest} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} allowed={allowed} isSuperAdmin={isSuperAdmin} />
       <ShortcutsHelp />
       <AssistantLauncher />

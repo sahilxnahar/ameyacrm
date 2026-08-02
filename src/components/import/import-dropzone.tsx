@@ -60,13 +60,13 @@ export function ImportDropzone({
         take(e.dataTransfer.files?.[0]);
       }}
       className={cn(
-        'focus-ring flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-input px-4 py-6 text-center transition-colors hover:border-[#A07D34]/60 hover:bg-secondary/40',
-        over && 'border-[#A07D34] bg-[#A07D34]/10',
+        'focus-ring flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-input px-4 py-6 text-center transition-colors hover:border-brass/60 hover:bg-secondary/40',
+        over && 'border-brass bg-brass/10',
         disabled && 'cursor-not-allowed opacity-60',
         className,
       )}
     >
-      <UploadCloud className={cn('h-6 w-6 text-muted-foreground', over && 'text-[#A07D34]')} />
+      <UploadCloud className={cn('h-6 w-6 text-muted-foreground', over && 'text-brass')} />
       <p className="text-sm font-medium">{title}</p>
       <p className="text-xs text-muted-foreground">{hint}</p>
       <input

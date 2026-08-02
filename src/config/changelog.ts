@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v15.99';
+export const APP_VERSION = 'v16.2';
 
 export interface Release {
   version: string;
@@ -13,6 +13,37 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.2',
+    date: '2 Aug 2026',
+    highlights: [
+      'Keyboard shortcuts across the whole app, not just Ameya Tally. Press / to search, or g then a letter to jump \u2014 g s for Sales, g i for Inventory, g b for the books. Press ? for the full list.',
+      'Screens that drive themselves from the keyboard, like Ameya Tally, keep their own keys \u2014 the new shortcuts stand down rather than firing on top of them.',
+      'The duplicated second menu row is gone on the short menu; it stays if you switch to the full menu. Pinning moved into the sidebar, so it is available either way.',
+      'Pages no longer run the full width of a large monitor \u2014 long lines of text are hard to read. Screens that genuinely need the space, like the books and the unit matrix, still use all of it.',
+      'Page titles, headings and the gold accent are now consistent across every screen instead of varying by page.',
+    ],
+  },
+  {
+    version: 'v16.1',
+    date: '2 Aug 2026',
+    highlights: [
+      'The menu now starts short. Instead of 120 items in ten sections, you get the handful you use daily, whatever you have pinned, and where you have just been \u2014 with everything else one \u2318K away. Switch back to the full menu any time in Display \u2192 Menu.',
+      'The short menu adapts to what you are allowed to see, so nobody is left with a menu that has nothing useful in it.',
+      'A brand-new CRM no longer opens on a wall of zeros. Until there is something to measure, the home screen shows four things worth doing first and disappears on its own once you have done any of them.',
+      'Empty screens can now tell the difference between \u201cnothing here yet\u201d and \u201cnothing here because it is all done\u201d \u2014 the second is good news and now looks like it.',
+      'Display settings are reachable on a phone again.',
+    ],
+  },
+  {
+    version: 'v16.0',
+    date: '2 Aug 2026',
+    highlights: [
+      'Fixed being signed out over and over. A momentary database hiccup \u2014 the kind a sleeping serverless database causes when it wakes \u2014 was treated as \u201cnot signed in\u201d, so you were bounced to the login page mid-task. It now retries, and if the database really is unreachable it says so instead of quietly signing you out.',
+      'The session no longer ends after 30 minutes of inactivity. A lunch break used to kill it outright \u2014 and because idle expiry revokes the session, the only way back was a full sign-in. The window is now 8 hours.',
+      'The demo workspace is no longer slow. If seeding had ever failed partway, every page load rebuilt the whole sample dataset from scratch \u2014 and threw away anything the guest had just added. Seeding is now all-or-nothing, and repeat page loads do no work at all.',
+    ],
+  },
   {
     version: 'v15.99',
     date: '1 Aug 2026',

@@ -48,10 +48,10 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="page-wide space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-primary">Parking Matrix</h1>
+          <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">Parking Matrix</h1>
           <p className="text-sm text-muted-foreground">Every parking slot, which level it’s on and which unit it belongs to. Click a slot to assign it, block it or free it.</p>
         </div>
         <button onClick={() => setShowAdd((v) => !v)} className="rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63]">{showAdd ? 'Close' : 'Add slots'}</button>
@@ -87,7 +87,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
               <h2 className="mb-2 text-sm font-semibold text-primary">{lvl.level} <span className="font-normal text-muted-foreground">· {lvl.slots.length} slots</span></h2>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
                 {lvl.slots.map((s) => (
-                  <button key={s.id} onClick={() => setSelected(s)} title={s.unitCode ? `Assigned to ${s.unitCode}` : s.status} className={`rounded-md border p-2 text-left text-xs transition hover:ring-2 hover:ring-[#A07D34]/50 ${STATUS_STYLE[s.status] ?? STATUS_STYLE.Available} ${selected?.id === s.id ? 'ring-2 ring-[#1B2A4A]' : ''}`}>
+                  <button key={s.id} onClick={() => setSelected(s)} title={s.unitCode ? `Assigned to ${s.unitCode}` : s.status} className={`rounded-md border p-2 text-left text-xs transition hover:ring-2 hover:ring-brass/50 ${STATUS_STYLE[s.status] ?? STATUS_STYLE.Available} ${selected?.id === s.id ? 'ring-2 ring-[#1B2A4A]' : ''}`}>
                     <div className="font-semibold">{s.code}</div>
                     <div className="text-[11px] opacity-70">{s.type}</div>
                     {s.unitCode && <div className="mt-0.5 truncate text-[11px] font-medium">→ {s.unitCode}</div>}
@@ -114,7 +114,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
 
 function Chip({ label, value, tone }: { label: string; value: number; tone?: 'slate' | 'emerald' | 'rose' | 'gold' }) {
   const tones: Record<string, string> = {
-    slate: 'bg-slate-100 text-slate-700', emerald: 'bg-emerald-100 text-emerald-800', rose: 'bg-rose-100 text-rose-800', gold: 'bg-[#A07D34]/15 text-[#7a5f28]',
+    slate: 'bg-slate-100 text-slate-700', emerald: 'bg-emerald-100 text-emerald-800', rose: 'bg-rose-100 text-rose-800', gold: 'bg-brass/15 text-[#7a5f28]',
   };
   return <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${tone ? tones[tone] : 'bg-[#1B2A4A] text-white'}`}>{label}<span className="font-bold tabular-nums">{value}</span></span>;
 }

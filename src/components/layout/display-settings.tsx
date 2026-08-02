@@ -1,9 +1,10 @@
 'use client';
 import * as React from 'react';
-import { SlidersHorizontal, Type, Rows3, Palette, Languages, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, Type, Rows3, Palette, Languages, Sparkles, ListTree } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useT } from '@/components/i18n/language-provider';
 import { LANGS } from '@/lib/i18n';
+import { readNavMode, writeNavMode, type NavMode } from '@/lib/nav/nav-mode';
 
 /**
  * Personal display controls: text size (an accessibility need — some people
@@ -38,6 +39,7 @@ export function DisplaySettings() {
   const [scale, setScale] = React.useState<Scale>('m');
   const [density, setDensity] = React.useState<'comfortable' | 'compact' | 'spacious'>('comfortable');
   const [accent, setAccent] = React.useState<Accent>('brass');
+  const [navMode, setNavMode] = React.useState<NavMode>('essentials');
   const { lang, setLang } = useT();
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -48,6 +50,7 @@ export function DisplaySettings() {
     setScale(SCALES.includes(s) ? s : 'm');
     setDensity(d === 'compact' || d === 'spacious' ? d : 'comfortable');
     setAccent(ACCENTS.some((x) => x.key === a) ? a : 'brass');
+    setNavMode(readNavMode());
   }, []);
 
   React.useEffect(() => {
@@ -60,6 +63,7 @@ export function DisplaySettings() {
   const setTextScale = (s: Scale) => { setScale(s); localStorage.setItem(TEXT_KEY, s); apply(s, density, accent); };
   const setDens = (d: 'comfortable' | 'compact' | 'spacious') => { setDensity(d); localStorage.setItem(DENSITY_KEY, d); apply(scale, d, accent); };
   const setAccentColor = (a: Accent) => { setAccent(a); localStorage.setItem(ACCENT_KEY, a); apply(scale, density, a); };
+  const setMenu = (m: NavMode) => { setNavMode(m); writeNavMode(m); };
 
   // One-tap presets (U8). Sets text size and spacing together in a single apply,
   // so both take effect at once. "Easy view" is the roomy, large-text layout for
@@ -103,6 +107,24 @@ export function DisplaySettings() {
               </button>
             ))}
           </div>
+          {/* Menu detail sits above spacing because it changes the most. */}
+          <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><ListTree className="h-3.5 w-3.5" /> Menu</p>
+          <div className="grid grid-cols-1 gap-1">
+            {([
+              ['essentials', 'Essentials', 'The few you use daily'],
+              ['everything', 'Everything', 'All sections, grouped'],
+            ] as const).map(([v, lbl, desc]) => (
+              <button key={v} onClick={() => setMenu(v)}
+                className={cn('flex items-center justify-between rounded-md border px-2.5 py-1.5 text-left text-sm', navMode === v ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-secondary')}>
+                <span>{lbl}</span>
+                <span className="text-[11px] font-normal text-muted-foreground">{desc}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            On Essentials everything else is still one ⌘K away, and anything you pin stays in the menu.
+          </p>
+
           <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-xs font-semibold"><Rows3 className="h-3.5 w-3.5" /> Spacing</p>
           <div className="grid grid-cols-1 gap-1">
             {([['compact', 'Compact', 'More on screen'], ['comfortable', 'Comfortable', 'The balance'], ['spacious', 'Spacious', 'Extra room & open feel']] as const).map(([v, lbl, desc]) => (

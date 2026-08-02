@@ -47,6 +47,23 @@ export async function createSession(userId: string, deviceLabel?: string): Promi
   jar.set(SESSION_COOKIE, token, cookieOptions(expiresAt));
 }
 
+/**
+ * Raised when the session cannot be CHECKED — as opposed to being absent.
+ *
+ * The distinction matters more than it looks. Swallowing a database error and
+ * returning null means "not signed in", and the caller then redirects to the
+ * login page. So a momentary blip — a sleeping Neon instance waking up, a
+ * connection pool briefly exhausted — silently signed everybody out mid-task.
+ * From the user's side it is indistinguishable from being logged out at random
+ * on almost every page load, which is precisely the reported symptom.
+ */
+export class SessionUnavailableError extends Error {
+  constructor() {
+    super('Could not verify your session because the database did not respond.');
+    this.name = 'SessionUnavailableError';
+  }
+}
+
 /** Validate cookie → session; enforces absolute + idle expiry. */
 export async function readSession() {
   const jar = await cookies();
@@ -60,12 +77,26 @@ export async function readSession() {
       include: { user: true },
     });
   } catch {
-    // DB not reachable / tables not created yet — treat as signed-out instead of crashing.
-    return null;
+    // One retry, after a short pause. The overwhelmingly common cause is a
+    // serverless database that was asleep and needs a moment; the second
+    // attempt almost always succeeds.
+    await new Promise((r) => setTimeout(r, 250));
+    try {
+      session = await prisma.session.findUnique({
+        where: { tokenHash: sha256(token) },
+        include: { user: true },
+      });
+    } catch {
+      // Still unreachable. Say so — never quietly sign the person out over an
+      // infrastructure hiccup, because that destroys unsaved work and looks
+      // like a security event.
+      throw new SessionUnavailableError();
+    }
   }
   if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
 
-  // Idle timeout
+  // Idle timeout. `lastActiveAt` is refreshed at most once a minute while the
+  // person is using the app, so this only bites genuine inactivity.
   const idleMs = env.SESSION_IDLE_TIMEOUT_MINUTES * 60_000;
   if (Date.now() - session.lastActiveAt.getTime() > idleMs) {
     await prisma.session.update({

@@ -123,7 +123,7 @@ export function SignDocument({
 
       <div className="flex flex-wrap gap-2">
         <button onClick={submit} disabled={pending}
-          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[#A07D34] px-4 text-sm font-medium text-white disabled:opacity-60">
+          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-brass px-4 text-sm font-medium text-white disabled:opacity-60">
           {pending && <Loader2 className="h-4 w-4 animate-spin" />} Sign this document
         </button>
         <button onClick={decline} disabled={pending}

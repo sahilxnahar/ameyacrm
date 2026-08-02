@@ -64,7 +64,7 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
 
   const cls = 'rounded border border-slate-300 px-2 py-1 text-sm';
   return (
-    <div className="rounded-lg border border-[#A07D34]/40 bg-[#A07D34]/5 p-3">
+    <div className="rounded-lg border border-brass/40 bg-brass/5 p-3">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-primary">Scan a goods-receipt note (AI)</h3>
@@ -75,10 +75,10 @@ export function GrnScanner({ projectId }: { projectId: string | null }) {
 
       {open && (
         <div className="mt-3 space-y-3">
-          <DropZone onFiles={(files) => void handleFile(files[0])} disabled={reading} overlayLabel="Drop the challan to scan" className="flex flex-wrap items-center gap-2 border border-dashed border-[#A07D34]/40 p-2">
+          <DropZone onFiles={(files) => void handleFile(files[0])} disabled={reading} overlayLabel="Drop the challan to scan" className="flex flex-wrap items-center gap-2 border border-dashed border-brass/40 p-2">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" onChange={(e) => void handleFile(e.target.files?.[0])} disabled={reading} className="text-sm" />
             <span className="text-xs text-muted-foreground">or drag the challan here</span>
-            {reading && <span className="text-xs text-[#A07D34]">Reading the document…</span>}
+            {reading && <span className="text-xs text-brass">Reading the document…</span>}
           </DropZone>
           {preview && <DocumentPreview url={preview.url} name={preview.name} mime={preview.mime} heightClass="h-40" />}
 

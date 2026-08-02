@@ -55,7 +55,7 @@ export function ScanView() {
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-primary">Scan a QR or Barcode</h1>
+        <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">Scan a QR or Barcode</h1>
         <p className="text-sm text-muted-foreground">Point the camera at a unit QR, a material barcode or any code. Works on the phone camera and laptop webcams; you can also type a code by hand.</p>
       </div>
 
@@ -77,7 +77,7 @@ export function ScanView() {
       </form>
 
       {result && (
-        <div className="rounded-lg border border-[#A07D34]/40 bg-[#A07D34]/5 p-3">
+        <div className="rounded-lg border border-brass/40 bg-brass/5 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Scanned</span>
             <button onClick={() => void navigator.clipboard?.writeText(result).then(() => toast.success('Copied'))} className="text-xs text-primary hover:underline">Copy</button>

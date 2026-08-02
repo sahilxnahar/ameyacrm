@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check, ChevronRight, PanelLeftClose, PanelLeftOpen, GripVertical } from 'lucide-react';
+import { X, Pin, PinOff, ChevronUp, ChevronDown, EyeOff, Eye, SlidersHorizontal, RotateCcw, Check, ChevronRight, PanelLeftClose, PanelLeftOpen, GripVertical, Search } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { NAVIGATION, type NavItem } from '@/config/navigation';
+import { NAVIGATION, essentialsFor, type NavItem } from '@/config/navigation';
+import { readNavMode, DEFAULT_NAV_MODE, type NavMode } from '@/lib/nav/nav-mode';
+import { NavCustomiser } from './nav-customiser';
+import { EMPTY_TOP_NAV_PREFS, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import { APP_VERSION } from '@/config/changelog';
 import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
 import { applyOrder, applyGroupOrder, type NavPrefs } from '@/lib/nav/prefs';
@@ -22,6 +25,8 @@ export function Sidebar({
   isSuperAdmin,
   mobileOpen,
   navPrefs,
+  navMode: initialNavMode,
+  topNavPrefs,
   collapsed = false,
   onToggleRail,
   onClose,
@@ -30,6 +35,10 @@ export function Sidebar({
   isSuperAdmin: boolean;
   mobileOpen: boolean;
   navPrefs: NavPrefs;
+  /** Menu detail, read from the cookie on the server so the first paint is right. */
+  navMode?: NavMode;
+  /** Pins for the quick-access row; edited from the footer control below. */
+  topNavPrefs?: TopNavPrefs;
   /** Desktop icon-rail is collapsed. A per-device preference from the shell. */
   collapsed?: boolean;
   /** Collapse/expand the desktop rail. Pass a boolean to force a state. */
@@ -51,6 +60,17 @@ export function Sidebar({
 
   const canSee = (perm?: string) => !perm || isSuperAdmin || allowed.has(perm);
   const allItems = NAVIGATION.flatMap((g) => g.items).filter((i) => canSee(i.permission));
+
+  // Menu detail: "essentials" shows the daily few, "everything" the full map.
+  // Seeded from the cookie the server already read, so the first paint is
+  // correct and there is no flash of the wrong menu.
+  const [navMode, setNavMode] = React.useState<NavMode>(initialNavMode ?? DEFAULT_NAV_MODE);
+  React.useEffect(() => {
+    setNavMode(readNavMode());
+    const onChange = (e: Event) => setNavMode((e as CustomEvent<NavMode>).detail);
+    window.addEventListener('amh:nav-mode', onChange);
+    return () => window.removeEventListener('amh:nav-mode', onChange);
+  }, []);
   const byHref = new Map(allItems.map((i) => [i.href, i]));
 
   // Which groups are folded shut. Seeded from the saved prefs; toggling records
@@ -142,6 +162,7 @@ export function Sidebar({
         <div className="group flex flex-col">
           <Link
             href={item.href}
+              data-tour={`nav-${item.href}`}
             onClick={customising ? (e) => e.preventDefault() : onClose}
             title={rail ? item.label : item.blurb}
             aria-label={item.label}
@@ -155,14 +176,14 @@ export function Sidebar({
               rail && 'lg:justify-center lg:gap-0 lg:px-0',
             )}
           >
-            <Icon className={cn('shrink-0', showBlurb ? 'h-[18px] w-[18px]' : 'h-[18px] w-[18px]', active ? 'text-[#A07D34]' : 'text-[#6B6459]')} />
+            <Icon className={cn('shrink-0', showBlurb ? 'h-[18px] w-[18px]' : 'h-[18px] w-[18px]', active ? 'text-brass' : 'text-[#6B6459]')} />
             <span className={cn('flex min-w-0 flex-1 flex-col', rail && 'lg:hidden')}>
               <span className="truncate leading-tight">{item.label}</span>
               {showBlurb && (
                 <span className="mt-0.5 line-clamp-2 text-[11px] font-normal leading-snug text-muted-foreground">{item.blurb}</span>
               )}
             </span>
-            {!customising && isPinned && <Pin className={cn('h-3 w-3 shrink-0 text-[#A07D34]', rail && 'lg:hidden')} />}
+            {!customising && isPinned && <Pin className={cn('h-3 w-3 shrink-0 text-brass', rail && 'lg:hidden')} />}
           </Link>
 
           {/* The controls get their own row. Squeezed next to the label they
@@ -172,7 +193,7 @@ export function Sidebar({
               <CtrlButton onClick={() => move(item.href, -1, groupHrefs)} title="Move up"><ChevronUp className="h-3.5 w-3.5" /></CtrlButton>
               <CtrlButton onClick={() => move(item.href, 1, groupHrefs)} title="Move down"><ChevronDown className="h-3.5 w-3.5" /></CtrlButton>
               <CtrlButton onClick={() => togglePin(item.href)} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>
-                {isPinned ? <PinOff className="h-3.5 w-3.5 text-[#A07D34]" /> : <Pin className="h-3.5 w-3.5" />}
+                {isPinned ? <PinOff className="h-3.5 w-3.5 text-brass" /> : <Pin className="h-3.5 w-3.5" />}
               </CtrlButton>
               <CtrlButton onClick={() => toggleHide(item.href)} title={hidden ? 'Show this again' : 'Hide from my menu'}>
                 {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -245,7 +266,47 @@ export function Sidebar({
             </div>
           )}
 
-          {(() => {
+          {/*
+            * Essentials: a short flat list rather than ten collapsible groups.
+            * Anything pinned already appears above, so it is excluded here to
+            * avoid showing the same screen twice; anything hidden is respected.
+            */}
+          {!customising && navMode === 'essentials' && (
+            <div>
+              {(() => {
+                // Built from what this person may actually see, topped up so the
+                // menu is never a dead end, then ordered by their own preference.
+                const list = applyOrder(
+                  essentialsFor(allItems, { hidden: prefs.hidden }).filter((i) => !prefs.pinned.includes(i.href)),
+                  prefs,
+                );
+                if (list.length === 0) {
+                  return (
+                    <p className="px-2 py-3 text-[11px] leading-snug text-muted-foreground">
+                      Everything is pinned or hidden. Use <span className="font-medium">Browse all</span> below, or
+                      <span className="font-medium"> Customise this menu</span> to bring items back.
+                    </p>
+                  );
+                }
+                return <ul aria-label="Main menu" className="space-y-0.5">{list.map((i) => renderItem(i, []))}</ul>;
+              })()}
+              <button
+                type="button"
+                onClick={() => { onClose?.(); window.dispatchEvent(new CustomEvent('amh:open-palette')); }}
+                className={cn(
+                  'focus-ring mt-2 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground',
+                  rail && 'lg:justify-center lg:px-0',
+                )}
+                title="Browse everything (⌘K)"
+              >
+                <Search className="h-4 w-4 shrink-0" />
+                <span className={cn('flex-1 text-left', rail && 'lg:hidden')}>Browse all</span>
+                <kbd className={cn('rounded border bg-background px-1 text-[11px]', rail && 'lg:hidden')}>⌘K</kbd>
+              </button>
+            </div>
+          )}
+
+          {(navMode === 'everything' || customising) && (() => {
             const orderedGroups = applyGroupOrder(NAVIGATION, prefs).filter((g) => g.items.filter((i) => canSee(i.permission)).length > 0);
 
             // Customise mode: drag whole sections to reorder them, and drag items
@@ -321,6 +382,17 @@ export function Sidebar({
               <SlidersHorizontal className="h-3 w-3 shrink-0" /> <span className={cn(rail && 'lg:hidden')}>Customise this menu</span>
             </button>
           )}
+          {/*
+            * Top-row pins used to live only in the second navigation row. That
+            * row is now optional, which left the pin editor — and anything
+            * somebody had already pinned — unreachable with no explanation.
+            * It belongs here, where it is available whichever menu you choose.
+            */}
+          {!customising && (
+            <div className={cn('mt-1', rail && 'lg:hidden')} data-tour="nav-customise">
+              <NavCustomiser prefs={topNavPrefs ?? EMPTY_TOP_NAV_PREFS} defaults={allItems.slice(0, 12).map((i) => ({ href: i.href, label: i.label }))} />
+            </div>
+          )}
           <p className={cn('mt-1.5 px-2 text-[11px] text-muted-foreground', rail && 'lg:hidden')}>Ameya Heights CRM · {APP_VERSION}</p>
         </div>
       </aside>
@@ -356,7 +428,7 @@ function SortableRow({ item, hidden, isPinned, onTogglePin, onToggleHide }: { it
         </button>
         <Icon className="h-[18px] w-[18px] shrink-0 text-[#6B6459]" />
         <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{item.label}</span>
-        <CtrlButton onClick={onTogglePin} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>{isPinned ? <PinOff className="h-3.5 w-3.5 text-[#A07D34]" /> : <Pin className="h-3.5 w-3.5" />}</CtrlButton>
+        <CtrlButton onClick={onTogglePin} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>{isPinned ? <PinOff className="h-3.5 w-3.5 text-brass" /> : <Pin className="h-3.5 w-3.5" />}</CtrlButton>
         <CtrlButton onClick={onToggleHide} title={hidden ? 'Show this again' : 'Hide from my menu'}>{hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</CtrlButton>
       </div>
     </li>

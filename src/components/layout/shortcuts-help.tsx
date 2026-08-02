@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { GOTO } from './keyboard-shortcuts';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 /**
@@ -7,9 +8,22 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
  * pressing `?` anywhere you are not typing. A power user should never have to
  * guess what the keyboard can do; this is where they find out.
  */
+/**
+ * The one place shortcuts are documented.
+ *
+ * The "go to" pairs are DERIVED from the same map the handler uses, so the two
+ * cannot drift apart — the previous version of this list silently omitted every
+ * shortcut added in the rewrite, which meant the app's own help told people
+ * they did not exist.
+ */
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ['⌘', 'K'], label: 'Open the command palette — jump to any page or search any record' },
   { keys: ['Ctrl', 'K'], label: 'Command palette (Windows / Linux)' },
+  { keys: ['/'], label: 'Same as the command palette' },
+  ...Object.entries(GOTO).map(([key, dest]) => ({
+    keys: ['g', key],
+    label: `Go to ${dest.label}`,
+  })),
   { keys: ['?'], label: 'Show this shortcuts help' },
   { keys: ['↑', '↓'], label: 'Move through results in the palette' },
   { keys: ['↵'], label: 'Open the highlighted result' },

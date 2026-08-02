@@ -48,7 +48,7 @@ export function Topbar({
         <GuidedTour />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <NotificationsBell userId={user.id} />
-        <div className="hidden sm:block"><DisplaySettings /></div>
+        <DisplaySettings />
         <ThemeToggle />
         <UserMenu user={user} />
       </div>

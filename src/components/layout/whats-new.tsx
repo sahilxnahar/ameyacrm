@@ -38,7 +38,7 @@ export function WhatsNew() {
       <div className="w-full max-w-md rounded-xl border bg-card p-5 shadow-2xl">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10"><Sparkles className="h-4 w-4 text-[#A07D34]" /></span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10"><Sparkles className="h-4 w-4 text-brass" /></span>
             <div>
               <h2 className="font-display text-lg font-semibold">What's new</h2>
               <p className="text-xs text-muted-foreground">{release.version} · {release.date}</p>

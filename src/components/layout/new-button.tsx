@@ -60,7 +60,7 @@ export function NewButton({ allowed, isSuperAdmin }: { allowed: Set<string>; isS
                 onClick={() => setOpen(false)}
                 className={cn('flex items-center gap-3 rounded-md px-2.5 py-2 text-sm hover:bg-secondary')}
               >
-                <Icon className="h-4 w-4 text-[#A07D34]" />
+                <Icon className="h-4 w-4 text-brass" />
                 {i.label}
               </Link>
             );

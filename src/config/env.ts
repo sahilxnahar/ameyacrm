@@ -17,7 +17,11 @@ const schema = z.object({
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be a 32-byte base64/hex key'),
 
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(12),
-  SESSION_IDLE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
+  // 8 hours, not 30 minutes. A CRM is left open across a working day; a
+  // half-hour default meant a lunch break ended the session — and because idle
+  // expiry REVOKES the session, the cookie was dead and a full sign-in was
+  // needed. The absolute SESSION_TTL_HOURS below still caps the total lifetime.
+  SESSION_IDLE_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(480),
 
   // Auth policy
   MAX_FAILED_LOGINS: z.coerce.number().int().positive().default(5),

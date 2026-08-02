@@ -63,7 +63,7 @@ export function RecentRecords({ max = 6 }: { max?: number }) {
               href={r.href}
               className="inline-flex max-w-[15rem] items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs transition-colors hover:border-primary hover:bg-primary/5"
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 text-[#A07D34]" />
+              <Icon className="h-3.5 w-3.5 shrink-0 text-brass" />
               <span className="truncate">{r.label}</span>
             </Link>
           );

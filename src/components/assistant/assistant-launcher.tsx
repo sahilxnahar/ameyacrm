@@ -34,7 +34,7 @@ export function AssistantLauncher() {
             aria-label="AI assistant"
           >
             <div className="mb-2 flex items-center justify-between px-1">
-              <p className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-4 w-4 text-[#A07D34]" /> Assistant</p>
+              <p className="flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="h-4 w-4 text-brass" /> Assistant</p>
               <button onClick={() => setOpen(false)} aria-label="Close" className="focus-ring rounded-md p-1 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">

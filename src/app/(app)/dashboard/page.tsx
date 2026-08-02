@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { ActionCard } from '@/components/dashboard/action-card';
 import { QuickAddLead } from '@/components/dashboard/quick-add-lead';
+import { FirstRun } from '@/components/dashboard/first-run';
 import { CollapsibleSection } from '@/components/dashboard/collapsible-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,10 @@ export default async function DashboardPage() {
   const overdueAmount = num(overdue._sum.amount);
   const aiConfigured = activeProvider().kind !== 'none';
 
+  // Nothing has been entered yet — no leads and no units. Headline percentages
+  // computed from nothing are noise, so the space goes to getting started.
+  const isBrandNew = totalLeads === 0 && availableUnits === 0;
+
   return (
     <div className="2xl:flex 2xl:gap-6">
       <div className="min-w-0 flex-1">
@@ -60,12 +65,25 @@ export default async function DashboardPage() {
         <Button asChild size="sm"><Link href="/tasks?new=1"><Plus className="h-4 w-4" /> New task</Link></Button>
       </PageHeader>
 
+      {/*
+        * First run: nothing in the system at all.
+        *
+        * A grid reading "0 · 0 · 0% · 0% · 0" is the first thing a new user
+        * sees, and it answers none of the questions they have. When every
+        * headline figure is zero the numbers carry no information, so the space
+        * is better spent telling them where to start.
+        */}
       {/* Onboarding entry, always on Home. */}
       <Link href="/guide" className="mt-4 flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 transition-colors hover:bg-primary/10">
         <BookOpen className="h-5 w-5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 text-sm"><span className="font-semibold">New here, or need a hand?</span> Open your Guide — first steps and a walk through every feature.</span>
         <span className="shrink-0 text-xs font-medium text-primary">Open →</span>
       </Link>
+
+      {isBrandNew ? (
+        <FirstRun />
+      ) : (
+      <>
 
       {/* KPI strip */}
       <CollapsibleSection id="kpis" title="At a glance">
@@ -185,6 +203,8 @@ export default async function DashboardPage() {
         </Card>
       </div>
       </CollapsibleSection>
+      </>
+      )}
       </div>
 
       {/* Right-side assistant on the home page (desktop). Stacks below on smaller

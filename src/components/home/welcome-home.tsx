@@ -94,7 +94,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <div className="overflow-hidden rounded-2xl border bg-gradient-to-br from-[#A07D34]/12 via-card to-card p-6 sm:p-8">
+      <div className="overflow-hidden rounded-2xl border bg-gradient-to-br from-brass/12 via-card to-card p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="gold-shine font-display text-3xl font-semibold leading-tight sm:text-4xl">{greeting}, {firstName}</h1>
@@ -111,7 +111,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
             {wx && W && (
               <div className="rounded-xl border bg-card/70 p-3">
                 <div className="flex items-center gap-3">
-                  <W.Icon className="h-9 w-9 text-[#A07D34]" />
+                  <W.Icon className="h-9 w-9 text-brass" />
                   <div>
                     <p className="text-2xl font-semibold leading-none tabular-nums">{wx.temp}°C</p>
                     <p className="text-xs text-muted-foreground">{W.label}</p>
@@ -159,7 +159,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
           {QUICK_ACTIONS.map((q) => {
             const Icon = q.icon;
             return (
-              <Link key={q.href} href={q.href} className="group flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-[#A07D34]/50 hover:bg-[#A07D34]/5">
+              <Link key={q.href} href={q.href} className="group flex items-center gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-brass/50 hover:bg-brass/5">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#1B2A4A]/10 text-primary transition-colors group-hover:bg-[#1B2A4A] group-hover:text-white">
                   <Icon className="h-5 w-5" />
                 </span>
@@ -176,7 +176,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
       {/* Agenda (wide) + jump-to shortcuts */}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-4 sm:p-5 lg:col-span-2">
-          <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarClock className="h-4 w-4 text-[#A07D34]" /> Today’s agenda</p>
+          <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarClock className="h-4 w-4 text-brass" /> Today’s agenda</p>
           {agenda.length === 0 ? (
             <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Nothing due today — you’re all clear. 🎉</p>
           ) : (
@@ -205,7 +205,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
 
         <div className="space-y-6">
           <Card className="p-4 sm:p-5">
-            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarDays className="h-4 w-4 text-[#A07D34]" /> Next 7 days</p>
+            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><CalendarDays className="h-4 w-4 text-brass" /> Next 7 days</p>
             {next7.length === 0 ? (
               <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Nothing scheduled in the week ahead.</p>
             ) : (
@@ -227,7 +227,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
           </Card>
 
           <Card className="p-4 sm:p-5">
-            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><Megaphone className="h-4 w-4 text-[#A07D34]" /> Jump to</p>
+            <p className="mb-3 flex items-center gap-1.5 text-base font-semibold"><Megaphone className="h-4 w-4 text-brass" /> Jump to</p>
             <ul className="space-y-1">
               {JUMP_LINKS.map((j) => (
                 <li key={j.href}>
@@ -238,7 +238,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
                 </li>
               ))}
             </ul>
-            <p className="mt-3 rounded-lg bg-[#A07D34]/8 p-3 text-xs text-muted-foreground">Tip: press <kbd className="rounded border bg-background px-1">⌘K</kbd> anywhere to search and jump to any screen, or drag your menu into the order you like from <span className="font-medium">Customise this menu</span>.</p>
+            <p className="mt-3 rounded-lg bg-brass/8 p-3 text-xs text-muted-foreground">Tip: press <kbd className="rounded border bg-background px-1">⌘K</kbd> anywhere to search and jump to any screen, or drag your menu into the order you like from <span className="font-medium">Customise this menu</span>.</p>
           </Card>
         </div>
       </div>
@@ -248,9 +248,9 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
 
 function StatTile({ label, value, icon: Icon, href }: { label: string; value: string; icon: LucideIcon; href: string }) {
   return (
-    <Link href={href} className="group rounded-xl border bg-card p-3 transition-colors hover:border-[#A07D34]/50 hover:bg-[#A07D34]/5">
+    <Link href={href} className="group rounded-xl border bg-card p-3 transition-colors hover:border-brass/50 hover:bg-brass/5">
       <div className="mb-1 flex items-center justify-between">
-        <Icon className="h-4 w-4 text-[#A07D34]" />
+        <Icon className="h-4 w-4 text-brass" />
         <ArrowRight className="h-3 w-3 text-transparent transition-colors group-hover:text-muted-foreground" />
       </div>
       <p className="text-xl font-semibold tabular-nums text-[#1B2A4A] dark:text-foreground">{value}</p>

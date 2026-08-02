@@ -493,7 +493,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
           </div>
           <div className="space-y-4">
             <Card className="p-4">
-              <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Landmark className="h-4 w-4 text-[#A07D34]" /> Bank details</p>
+              <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Landmark className="h-4 w-4 text-brass" /> Bank details</p>
               <form onSubmit={saveBank} className="space-y-2">
                 <Field label="Account name"><Input name="bankAccountName" defaultValue={d.vendor.bankAccountName ?? ''} /></Field>
                 <Field label="Account number"><Input name="bankAccountNumber" defaultValue={d.vendor.bankAccountNumber ?? ''} /></Field>
@@ -506,7 +506,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
             </Card>
             {canManage && (
               <Card className="p-4">
-                <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><GitMerge className="h-4 w-4 text-[#A07D34]" /> Same person?</p>
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><GitMerge className="h-4 w-4 text-brass" /> Same person?</p>
                 <p className="mb-2 text-xs text-muted-foreground">If another payee is really <span className="font-medium">{d.vendor.name}</span>, merge them — their payments move here and the other name is removed.</p>
                 <select value={mergeInto} onChange={(e) => setMergeInto(e.target.value)} className="focus-ring mb-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm">
                   <option value="">Choose a payee to merge in…</option>
@@ -544,7 +544,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
         <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="flex items-center gap-1.5 text-sm font-semibold"><FileSpreadsheet className="h-4 w-4 text-[#A07D34]" /> Import payments</p>
+              <p className="flex items-center gap-1.5 text-sm font-semibold"><FileSpreadsheet className="h-4 w-4 text-brass" /> Import payments</p>
               <p className="text-xs text-muted-foreground">Export your Google Sheet / Excel as CSV, then upload or paste it. A ledger is built per payee automatically.</p>
             </div>
             <div className="flex gap-2">
@@ -585,7 +585,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
           </div>
 
           {tidy && (
-            <div className="rounded-md border border-[#A07D34]/40 bg-[#A07D34]/5 p-3 text-sm">
+            <div className="rounded-md border border-brass/40 bg-brass/5 p-3 text-sm">
               <p className="mb-2 text-muted-foreground">Tick every row that is really the <b>same payee</b> (e.g. all the “Arun” lines), choose which name to keep, then merge — their payments combine into one ledger.</p>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{selected.size} selected</span>
@@ -608,7 +608,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
               <button
                 key={l.id}
                 onClick={() => (tidy ? toggleSel(l.id) : router.push(`/ledgers?v=${l.id}`))}
-                className={cn('flex w-full items-center gap-3 p-3 text-left active:bg-secondary/60', tidy && selected.has(l.id) && 'bg-[#A07D34]/10')}
+                className={cn('flex w-full items-center gap-3 p-3 text-left active:bg-secondary/60', tidy && selected.has(l.id) && 'bg-brass/10')}
               >
                 {tidy && <input type="checkbox" checked={selected.has(l.id)} readOnly className="pointer-events-none h-4 w-4 shrink-0" />}
                 <div className="min-w-0 flex-1">
@@ -626,7 +626,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canHardDelete
                 {shown.map((l) => (
                   <tr
                     key={l.id}
-                    className={cn('border-t hover:bg-secondary/50', tidy ? 'cursor-pointer' : 'cursor-pointer', tidy && selected.has(l.id) && 'bg-[#A07D34]/10')}
+                    className={cn('border-t hover:bg-secondary/50', tidy ? 'cursor-pointer' : 'cursor-pointer', tidy && selected.has(l.id) && 'bg-brass/10')}
                     onClick={() => (tidy ? toggleSel(l.id) : router.push(`/ledgers?v=${l.id}`))}
                   >
                     {tidy && <td className="p-2"><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} onClick={(e) => e.stopPropagation()} /></td>}

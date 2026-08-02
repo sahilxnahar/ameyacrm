@@ -65,7 +65,7 @@ export function WelcomeWizard({ name }: { name: string }) {
                 )}
               >
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary">
-                  <Icon className="h-4 w-4 text-[#A07D34]" />
+                  <Icon className="h-4 w-4 text-brass" />
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-center gap-1 font-medium">{r.label} <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></span>

@@ -72,7 +72,7 @@ export function TopBar({
         <GuidedTour />
         <NewButton allowed={allowed} isSuperAdmin={isSuperAdmin} />
         <span data-tour="alerts" className="inline-flex"><NotificationsBell userId={user.id} /></span>
-        <div className="hidden sm:block"><DisplaySettings /></div>
+        <DisplaySettings />
         <ThemeToggle />
         <UserMenu user={user} />
       </div>

@@ -73,7 +73,7 @@ export function TelemetryView({ data, projects, canManage }: { data: TelemetryOv
         <Card className="border-primary/40 bg-primary/5 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-sm font-semibold"><KeyRound className="h-4 w-4 text-[#A07D34]" /> Device key for {newKey.name}</p>
+              <p className="flex items-center gap-1.5 text-sm font-semibold"><KeyRound className="h-4 w-4 text-brass" /> Device key for {newKey.name}</p>
               <p className="mt-1 text-xs text-muted-foreground">Copy it into the device now — it is shown once. Point the device at the ingestion URL below.</p>
               <code className="mt-2 block max-w-full truncate rounded bg-background px-2 py-1 font-mono text-xs">{newKey.key}</code>
             </div>

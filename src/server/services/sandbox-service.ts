@@ -1,5 +1,20 @@
 import 'server-only';
+import { cache } from 'react';
 import { prisma } from '@/lib/db/prisma';
+/**
+ * Only the writes seeding performs, typed structurally.
+ *
+ * Prisma's client and its transaction client have different generated model
+ * types and do not unify, so a union of the two is unusable as a parameter.
+ * Naming just the handful of calls used here satisfies both.
+ */
+type SeedClient = {
+  sandboxLead: { createMany: (a: { data: unknown[] }) => Promise<unknown> };
+  sandboxUnit: { createMany: (a: { data: unknown[] }) => Promise<unknown> };
+  sandboxTask: { createMany: (a: { data: unknown[] }) => Promise<unknown> };
+  sandboxLedgerEntry: { createMany: (a: { data: unknown[] }) => Promise<unknown> };
+  sandboxNote: { create: (a: { data: unknown }) => Promise<unknown> };
+};
 
 /**
  * The guest sandbox: a private, disposable copy of the CRM's data shapes.
@@ -11,7 +26,7 @@ import { prisma } from '@/lib/db/prisma';
 /** How long a guest's playground lives before it is wiped and re-seeded. */
 export const SANDBOX_TTL_HOURS = 24;
 
-export async function getOrCreateSandbox(userId: string): Promise<{ id: string; freshlySeeded: boolean }> {
+export const getOrCreateSandbox = cache(async (userId: string): Promise<{ id: string; freshlySeeded: boolean }> => {
   const now = new Date();
   const existing = await prisma.guestSandbox.findUnique({
     where: { userId },
@@ -28,14 +43,27 @@ export async function getOrCreateSandbox(userId: string): Promise<{ id: string; 
     await prisma.guestSandbox.delete({ where: { id: existing.id } }).catch(() => undefined);
   }
 
-  const sandbox = await prisma.guestSandbox.create({
-    data: { userId, expiresAt: new Date(now.getTime() + SANDBOX_TTL_HOURS * 3600_000) },
-    select: { id: true },
-  });
-  await seedSandbox(sandbox.id);
-  await prisma.guestSandbox.update({ where: { id: sandbox.id }, data: { seeded: true } });
-  return { id: sandbox.id, freshlySeeded: true };
-}
+  // Create, seed and mark seeded as ONE transaction.
+  //
+  // Previously these were three separate statements. If seeding failed partway
+  // — or the `seeded` flag never got written — the sandbox existed but was
+  // marked unseeded, so the branch above missed and EVERY subsequent page load
+  // deleted it and rebuilt ~46 rows from scratch. That is the "demo is slow"
+  // report, and it also silently threw away anything the guest had just added.
+  // A transaction makes a half-built sandbox impossible: either it exists fully
+  // seeded, or it does not exist.
+  const id = await prisma.$transaction(async (tx) => {
+    const sandbox = await tx.guestSandbox.create({
+      data: { userId, expiresAt: new Date(now.getTime() + SANDBOX_TTL_HOURS * 3600_000) },
+      select: { id: true },
+    });
+    await seedSandbox(sandbox.id, tx as unknown as SeedClient);
+    await tx.guestSandbox.update({ where: { id: sandbox.id }, data: { seeded: true } });
+    return sandbox.id;
+  }, { timeout: 20_000 });
+
+  return { id, freshlySeeded: true };
+});
 
 /**
  * Fill a new sandbox with believable demo data.
@@ -45,10 +73,10 @@ export async function getOrCreateSandbox(userId: string): Promise<{ id: string; 
  * because it would be misleading and because a demo account is exactly where a
  * plausible-looking figure would end up quoted back at somebody.
  */
-export async function seedSandbox(sandboxId: string): Promise<void> {
+export async function seedSandbox(sandboxId: string, tx: SeedClient = prisma as unknown as SeedClient): Promise<void> {
   const day = (n: number) => new Date(Date.now() + n * 86400_000);
 
-  await prisma.sandboxLead.createMany({
+  await tx.sandboxLead.createMany({
     data: [
       { sandboxId, name: 'Rohan Mehta', phone: '+91 90000 00001', email: 'rohan.demo@example.com', source: 'Website', status: 'QUALIFIED', budget: 9500000, note: 'Wants a 3BHK with a park view. Site visit done.' },
       { sandboxId, name: 'Priya Nair', phone: '+91 90000 00002', email: 'priya.demo@example.com', source: 'Walk-in', status: 'SITE_VISIT', budget: 7200000, note: 'Comparing us with two other projects nearby.' },
@@ -75,9 +103,9 @@ export async function seedSandbox(sandboxId: string): Promise<void> {
       }
     }
   }
-  await prisma.sandboxUnit.createMany({ data: units.map((u) => ({ sandboxId, ...u })) });
+  await tx.sandboxUnit.createMany({ data: units.map((u) => ({ sandboxId, ...u })) });
 
-  await prisma.sandboxTask.createMany({
+  await tx.sandboxTask.createMany({
     data: [
       { sandboxId, title: 'Call Rohan Mehta about the 3BHK', dueDate: day(0) },
       { sandboxId, title: 'Send the price list to Priya Nair', dueDate: day(1) },
@@ -87,7 +115,7 @@ export async function seedSandbox(sandboxId: string): Promise<void> {
     ],
   });
 
-  await prisma.sandboxLedgerEntry.createMany({
+  await tx.sandboxLedgerEntry.createMany({
     data: [
       { sandboxId, date: day(-20), narration: 'Booking amount — Imran Shaikh (A-1204)', debitAcc: 'Bank', creditAcc: 'Advance from Customers', amount: 500000 },
       { sandboxId, date: day(-14), narration: 'Cement purchase — 400 bags', debitAcc: 'Material Purchase', creditAcc: 'Sundry Creditors', amount: 140000 },
@@ -97,7 +125,7 @@ export async function seedSandbox(sandboxId: string): Promise<void> {
     ],
   });
 
-  await prisma.sandboxNote.create({
+  await tx.sandboxNote.create({
     data: { sandboxId, body: 'This is your own private demo workspace. Everything here is made up, and nothing you do affects real data. It resets automatically after a day.' },
   });
 }
@@ -112,7 +140,7 @@ export interface SandboxData {
   expiresAt: string;
 }
 
-export async function getSandboxData(userId: string): Promise<SandboxData> {
+export const getSandboxData = cache(async (userId: string): Promise<SandboxData> => {
   const { id } = await getOrCreateSandbox(userId);
   const [sandbox, leads, units, tasks, entries, notes] = await Promise.all([
     prisma.guestSandbox.findUnique({ where: { id }, select: { expiresAt: true } }),
@@ -137,7 +165,7 @@ export async function getSandboxData(userId: string): Promise<SandboxData> {
     totals: { leads: leads.length, units: units.length, available, pipelineValue, collected },
     expiresAt: (sandbox?.expiresAt ?? new Date()).toISOString(),
   };
-}
+});
 
 /** Housekeeping: drop sandboxes whose time is up. Called by the cron worker. */
 export async function pruneExpiredSandboxes(): Promise<number> {

@@ -515,3 +515,19 @@ html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --acc
   /* Never print a raw link URL after anchors inside a document view. */
   .print-document a[href]::after { content: '' !important; }
 }
+
+/* ─── Wide screens ──────────────────────────────────────────────────────────
+ * The main column is capped at 1400px so running text stays readable. A few
+ * screens are genuinely tabular — the Tally ledgers, the unit matrix, the
+ * parking grid — and lose information when squeezed. They opt out with this.
+ */
+.page-wide { width: 100%; }
+
+/* The cap is on the parent, so the parent has to be the one that lifts it —
+ * a max-width on a child cannot make it wider than its container. `:has()`
+ * lets the container react to what it holds. Browsers without `:has()` simply
+ * keep the 1400px cap, which is a perfectly usable fallback rather than a
+ * broken layout. */
+.page-container:has(.page-wide) {
+  max-width: none;
+}

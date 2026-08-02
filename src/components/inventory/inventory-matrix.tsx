@@ -73,7 +73,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
   };
 
   return (
-    <div>
+    <div className="page-wide">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select value={projectId ?? ''} onChange={(e) => router.push(`/inventory?project=${e.target.value}`)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
           {projects.length === 0 && <option value="">No projects</option>}

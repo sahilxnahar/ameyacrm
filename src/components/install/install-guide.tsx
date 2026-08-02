@@ -38,7 +38,7 @@ export function InstallGuide({ apkUrl, compact = false }: { apkUrl: string | nul
 
   const step = (n: number, text: React.ReactNode) => (
     <li key={n} className="flex gap-2.5">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#A07D34] text-[11px] font-semibold text-white">{n}</span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brass text-[11px] font-semibold text-white">{n}</span>
       <span>{text}</span>
     </li>
   );
@@ -51,7 +51,7 @@ export function InstallGuide({ apkUrl, compact = false }: { apkUrl: string | nul
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                tab === t.id ? 'border-[#A07D34] bg-[#A07D34] text-white' : 'border-[#D9D2C4] bg-white'}`}>
+                tab === t.id ? 'border-brass bg-brass text-white' : 'border-[#D9D2C4] bg-white'}`}>
               <Icon className="h-3.5 w-3.5" /> {t.label}
             </button>
           );
@@ -63,7 +63,7 @@ export function InstallGuide({ apkUrl, compact = false }: { apkUrl: string | nul
           {apkUrl ? (
             <>
               <a href={apkUrl} download
-                className="flex items-center justify-center gap-2 rounded-md bg-[#A07D34] px-4 py-2.5 font-medium text-white">
+                className="flex items-center justify-center gap-2 rounded-md bg-brass px-4 py-2.5 font-medium text-white">
                 <Download className="h-4 w-4" /> Download the Android app (.apk)
               </a>
               <ol className="space-y-2">
@@ -114,7 +114,7 @@ export function InstallGuide({ apkUrl, compact = false }: { apkUrl: string | nul
       )}
 
       <p className="flex items-start gap-2 rounded-md bg-[#F3EFE7] p-2.5 text-xs">
-        <BellRing className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A07D34]" />
+        <BellRing className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brass" />
         <span>Say yes to notifications. Overdue work is pushed to your phone every hour until it is closed — that only reaches you if notifications are allowed.</span>
       </p>
     </div>

@@ -63,7 +63,7 @@ export function MyAutomations({ prefs: initial }: { prefs: MyAutomationPrefs }) 
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-sm">
-          <Zap className="h-4 w-4 text-[#A07D34]" /><span className="font-semibold">{STARTER_AUTOMATIONS.length}</span> automations · <span className="font-semibold text-emerald-700">{onCount}</span> on for you
+          <Zap className="h-4 w-4 text-brass" /><span className="font-semibold">{STARTER_AUTOMATIONS.length}</span> automations · <span className="font-semibold text-emerald-700">{onCount}</span> on for you
         </div>
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -117,7 +117,7 @@ function Row({ a, pref, onUpdate }: { a: StarterAutomation; pref?: MyAutomationP
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-primary">{a.name}</span>
-          {a.startHere && <span className="rounded bg-[#A07D34]/15 px-1.5 py-0.5 text-[11px] font-medium text-[#7a5f28]">Start here</span>}
+          {a.startHere && <span className="rounded bg-brass/15 px-1.5 py-0.5 text-[11px] font-medium text-[#7a5f28]">Start here</span>}
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">{TRIGGER_LABEL[a.trigger] ?? a.trigger}</span>
         </div>
         <p className="text-xs text-muted-foreground">{a.what}</p>

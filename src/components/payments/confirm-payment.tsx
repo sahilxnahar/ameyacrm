@@ -32,9 +32,9 @@ export function ConfirmPayment({ token }: { token: string }) {
       <label htmlFor="ref" className="block text-sm font-medium">Already paid? Enter your transaction / UTR reference</label>
       <div className="flex gap-2">
         <input id="ref" name="ref" required placeholder="e.g. UTR123456789"
-          className="h-10 flex-1 rounded-md border border-[#D9D2C4] bg-white px-3 text-sm text-[#14120E] placeholder:text-[#A8A093] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A07D34]" />
+          className="h-10 flex-1 rounded-md border border-[#D9D2C4] bg-white px-3 text-sm text-[#14120E] placeholder:text-[#A8A093] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass" />
         <button type="submit" disabled={pending}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-[#A07D34] px-4 text-sm font-medium text-white disabled:opacity-60">
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-brass px-4 text-sm font-medium text-white disabled:opacity-60">
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}I&apos;ve paid
         </button>
       </div>

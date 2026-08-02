@@ -39,7 +39,7 @@ export function RelatedActivity({ items, canUnlink = true }: { items: RelatedRec
         const Icon = ICON[it.type] ?? Link2;
         const inner = (
           <span className="flex min-w-0 items-center gap-2">
-            <Icon className="h-4 w-4 shrink-0 text-[#A07D34]" />
+            <Icon className="h-4 w-4 shrink-0 text-brass" />
             <span className="min-w-0">
               <span className="block truncate text-sm">{it.label}</span>
               <span className="block text-[11px] text-muted-foreground">{it.typeLabel}{it.kind && it.kind !== 'related' ? ` · ${it.kind}` : ''}</span>

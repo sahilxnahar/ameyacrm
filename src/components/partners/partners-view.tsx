@@ -66,7 +66,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
       {canManage && (
         <Card className="mb-3 p-3">
           <button onClick={() => setConnectOpen((v) => !v)} className="flex w-full items-center gap-2 text-left text-sm font-medium">
-            <Globe className="h-4 w-4 text-[#A07D34]" /> Get website registrations here automatically
+            <Globe className="h-4 w-4 text-brass" /> Get website registrations here automatically
             <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${connectOpen ? 'rotate-180' : ''}`} />
           </button>
           {connectOpen && (
