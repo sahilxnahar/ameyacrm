@@ -186,7 +186,7 @@ function PersonRow({
   run: (fn: () => Promise<{ ok?: true } | { error: string }>, ok: string) => void;
 }) {
   return (
-    <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1.5', isMe && 'bg-primary/5')}>
+    <div className={cn('toolbar items-center gap-2 rounded-md px-2 py-1.5', isMe && 'bg-primary/5')}>
       <div className="flex min-w-0 items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold">
           {p.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}

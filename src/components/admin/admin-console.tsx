@@ -79,7 +79,7 @@ export function AdminConsole({ allowed }: { allowed: string[] }) {
 
 function ToolGrid({ tools }: { tools: AdminTool[] }) {
   return (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="stat-grid">
       {tools.map((t) => (
         <Link
           key={t.href} href={t.href}

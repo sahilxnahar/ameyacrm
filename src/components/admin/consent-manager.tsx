@@ -60,7 +60,7 @@ export function ConsentManager() {
           {CONSENT_PURPOSES.map((p) => {
             const st = current[p.key];
             return (
-              <div key={p.key} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+              <div key={p.key} className="toolbar items-center gap-2 rounded-md border px-3 py-2">
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{p.label}</div>
                   <div className="text-xs text-muted-foreground">{st ? (st === 'GIVEN' ? 'Consent given' : 'Withdrawn') : 'No record yet'}{p.blurb ? ` · ${p.blurb}` : ''}</div>

@@ -63,7 +63,7 @@ export function IpRegistryView({ counts, rows, projects }: {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="stat-grid">
         <StatCard label="Registered" value={counts.registered} icon={BadgeCheck} tone="success" />
         <StatCard label="Renewal due" value={counts.dueSoon} icon={AlertTriangle} tone={counts.dueSoon ? 'warning' : 'default'} />
         <StatCard label="Objected / opposed" value={counts.objected} icon={Gavel} tone={counts.objected ? 'destructive' : 'default'} />

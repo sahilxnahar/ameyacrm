@@ -25,7 +25,7 @@ export function useRunner(): [boolean, Runner] {
 
 export function PageHead({ title, blurb, children }: { title: string; blurb: string; children?: React.ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-5 toolbar items-start gap-3">
       <div>
         <h1 className="font-display text-2xl tracking-tight">{title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{blurb}</p>

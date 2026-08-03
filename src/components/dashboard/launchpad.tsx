@@ -70,7 +70,7 @@ export function Launchpad({ badges }: { badges: LaunchpadBadges }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+      <div className="stat-grid">
         {apps.map((app) => (
           <AppCard key={app.id} app={app} count={badges[app.id] ?? 0} />
         ))}

@@ -253,7 +253,7 @@ function ReconcileTab({ positions, activeAccountId, lines, suggByLine, candidate
             const s = suggByLine.get(l.id);
             return (
               <div key={l.id} className="rounded-lg border border-border p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="toolbar items-start gap-2">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className={cn('font-medium', l.amount >= 0 ? 'text-emerald-600' : 'text-destructive')}>{l.amount >= 0 ? '+' : ''}{inr(l.amount)}</span>
@@ -363,7 +363,7 @@ function LoansTab({ loans, projects, projectId, canManage, pending, openForm, se
         <Empty text="No loans on record. Track drawdowns, repayments and interest so outstanding is a number, not a guess." />
       ) : loans.map((l) => (
         <div key={l.id} className="rounded-lg border border-border p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="toolbar items-start gap-2">
             <div>
               <span className="font-medium">{l.lender}</span>
               <span className="ml-2 text-xs text-muted-foreground capitalize">{l.kind.replace(/_/g, ' ').toLowerCase()}{l.interestRate != null ? ` · ${l.interestRate}%` : ''}</span>

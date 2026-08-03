@@ -55,7 +55,7 @@ export function SequencesView({
         </Card>
       )}
 
-      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="stagger stat-grid">
         <Stat icon={Mail} label="Sent by sequences" value={String(sent)} />
         <Stat icon={MailOpen} label="Opened" value={`${openRate}%`} hint={`${opened} of ${sent}`} />
         <Stat icon={MessageSquareReply} label="Replied and exited" value={String(sequences.reduce((n, s) => n + s.replied, 0))} />
@@ -74,7 +74,7 @@ export function SequencesView({
         <div className="space-y-3">
           {sequences.map((s) => (
             <Card key={s.id} className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="toolbar items-start gap-2">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2 font-medium">
                     {s.name}

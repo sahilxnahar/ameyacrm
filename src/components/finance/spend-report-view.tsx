@@ -48,7 +48,7 @@ export function SpendReportView({ report, projectName }: { report: SpendReport; 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-stretch justify-between gap-3">
+      <div className="toolbar items-stretch gap-3">
         <Card className="flex-1 p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Total paid out · {projectName}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{formatCompactCurrency(report.total)}</p>

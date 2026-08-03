@@ -81,7 +81,7 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
       )}
 
       <Card className="p-4">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="stat-grid">
           <div className="space-y-1"><Label className="text-xs">Status</Label>
             <select className={sel} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
               <option value="">Any</option>{(STATUS[entity] ?? []).map((s) => <option key={s} value={s}>{pretty(s)}</option>)}

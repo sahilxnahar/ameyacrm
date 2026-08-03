@@ -61,7 +61,7 @@ export function PasskeyManager() {
 
   return (
     <section className="rounded-lg border border-border bg-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="toolbar items-start gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-semibold"><KeyRound className="h-4 w-4" />Passkeys</h2>
           <p className="mt-1 max-w-prose text-sm text-muted-foreground">

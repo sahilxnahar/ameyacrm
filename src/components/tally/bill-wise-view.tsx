@@ -38,7 +38,7 @@ export function BillWiseView({
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 toolbar items-center gap-2">
         <div>
           <h2 className="font-semibold">Bill-wise outstanding</h2>
           <p className="mt-0.5 text-[11px] text-[#5B4412]">

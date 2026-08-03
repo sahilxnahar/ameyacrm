@@ -74,7 +74,7 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
   return (
     <div className="space-y-5">
       {/* Portfolio totals */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stat-grid">
         <Tile label="Outstanding" value={inr(summary.totalOutstanding)} hint="Principal still owed across all lenders" />
         <Tile label="Interest due" value={inr(summary.totalNetInterestDue)} hint="Accrued, not yet paid" />
         <Tile label="Avg. rate" value={`${summary.weightedAvgRate.toFixed(2)}%`} hint="Balance-weighted, per year" />
@@ -97,7 +97,7 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
         <div className="space-y-4">
           {rows.map((r) => (
             <Card key={r.id} className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="toolbar items-start gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-display text-lg">{r.lender}</p>

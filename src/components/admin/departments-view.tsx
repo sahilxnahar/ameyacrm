@@ -53,7 +53,7 @@ export function DepartmentsView({
 
   return (
     <div className="space-y-6">
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <Card className="toolbar items-center gap-3 p-4">
         <div>
           <p className="text-sm font-medium">Standard real-estate structure</p>
           <p className="text-sm text-muted-foreground">
@@ -139,7 +139,7 @@ function Row({
   isDivision?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+    <div className="toolbar items-center gap-3 p-3">
       <div className="flex min-w-0 items-center gap-2">
         {!isDivision && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: dept.color ?? '#A07D34' }} />

@@ -211,7 +211,7 @@ function ParcelsTab({ parcels, canManage, projects, projectId, pending, openForm
         <Empty text="No parcels yet. Add the first one to start the acquisition pipeline." />
       ) : parcels.map((p) => (
         <div key={p.id} className="rounded-lg border border-border p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="toolbar items-start gap-2">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-lg font-semibold">{p.name}</h3>
@@ -372,7 +372,7 @@ function ApprovalsTab({ approvals, parcels, canManage, projects, projectId, pend
         <div className="space-y-2">
           {approvals.map((a) => (
             <div key={a.id} className="rounded-lg border border-border p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="toolbar items-start gap-2">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{a.authority}</span>

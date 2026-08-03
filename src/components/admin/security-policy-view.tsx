@@ -42,7 +42,7 @@ export function SecurityPolicyView({
 
   return (
     <div className="space-y-5">
-      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="stagger stat-grid">
         <Stat icon={ShieldCheck} label="Two-factor coverage" value={`${pct}%`} hint={`${enrolled} of ${people.length}`} tone={pct === 100 ? 'good' : pct >= 60 ? undefined : 'bad'} />
         <Stat icon={Clock} label="Still in grace" value={String(inGrace.length)} hint={inGrace.length ? 'blocked when it expires' : 'nobody waiting'} />
         <Stat icon={Smartphone} label="Trusted devices" value={String(devices.length)} />

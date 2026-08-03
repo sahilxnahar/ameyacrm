@@ -94,18 +94,18 @@ function StartClock({ candidates }: { candidates: Candidate[] }) {
         });
       }}
     >
-      <div className="space-y-1">
+      <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
         <Label htmlFor="mbill">Supplier bill</Label>
-        <select id="mbill" value={billId} onChange={(e) => setBillId(e.target.value)} className="h-9 w-80 rounded-md border bg-background px-2 text-sm">
+        <select id="mbill" value={billId} onChange={(e) => setBillId(e.target.value)} className="h-9 w-full max-w-full sm:w-80 rounded-md border bg-background px-2 text-sm">
           <option value="">Pick a bill…</option>
           {candidates.map((c) => (
             <option key={c.id} value={c.id}>{c.vendor} · {c.number} · {formatCurrency(c.amount)}</option>
           ))}
         </select>
       </div>
-      <div className="space-y-1">
+      <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
         <Label htmlFor="mudyam">Udyam number</Label>
-        <input id="mudyam" value={udyam} onChange={(e) => setUdyam(e.target.value)} className="h-9 w-56 rounded-md border bg-background px-2 font-mono text-sm" placeholder="UDYAM-KR-03-0001234" />
+        <input id="mudyam" value={udyam} onChange={(e) => setUdyam(e.target.value)} className="h-9 w-full max-w-full sm:w-56 rounded-md border bg-background px-2 font-mono text-sm" placeholder="UDYAM-KR-03-0001234" />
       </div>
       <label className="flex h-9 items-center gap-2 text-sm">
         <input type="checkbox" checked={hasAgreement} onChange={(e) => setHasAgreement(e.target.checked)} className="h-4 w-4" />

@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.8';
+export const APP_VERSION = 'v16.9';
 
 export interface Release {
   version: string;
@@ -13,6 +13,21 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.9',
+    date: '3 Aug 2026',
+    highlights: [
+      'The CRM now fits a 13-inch laptop properly. Nothing was ever overflowing \u2014 things simply stopped lining up, which is why it looked badly built rather than broken.',
+      'Buttons no longer jump to the left. A heading row put its description on the left and its buttons on the right, and when the row ran out of width the buttons dropped to a second line and snapped to the LEFT edge, misaligned with everything else on the screen. On a 13-inch that happened on almost every screen. Fixed in all 38 places.',
+      'Summary cards fit the screen they are on. Four cards went from half-width to quarter-width at exactly 1280px \u2014 the width of a 13-inch laptop \u2014 and anything between 1024 and 1279 got two enormous cards and a lot of empty space. They now size themselves to the space available, smoothly, from a phone to a 27-inch monitor.',
+      'The menu collapses to icons by default on a small laptop, which gives the page about 25% more width. It is only a default \u2014 collapse or expand it once and that choice is remembered, on every screen size.',
+      'The menu no longer looks cut in half. With fifteen modules it is taller than a laptop screen; it always scrolled, but the cut had no visual cue so the last item was sliced through the middle of its text. There is a soft fade now, and on a short screen the one-line descriptions step aside so four more modules fit.',
+      'Dialogs can no longer grow wider than the window they are in, or push their own Save button below the bottom of the screen.',
+      'The assistant button is smaller and quieter on a laptop \u2014 it was sitting on top of the right-hand column.',
+      'A test now fails the build if either layout mistake is reintroduced.',
+      'No database changes in this release.',
+    ],
+  },
   {
     version: 'v16.8',
     date: '3 Aug 2026',

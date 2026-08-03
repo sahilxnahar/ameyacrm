@@ -42,7 +42,7 @@ export function AccessRequestsView({
   return (
     <div className="space-y-6">
       <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="toolbar items-center gap-3">
           <div>
             <p className="text-sm font-medium">Who can sign themselves up</p>
             <p className="text-sm text-muted-foreground">
@@ -94,7 +94,7 @@ export function AccessRequestsView({
           <div className="space-y-3">
             {requests.map((r) => (
               <Card key={r.id} className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="toolbar items-start gap-3">
                   <div className="min-w-0">
                     <p className="flex items-center gap-2 font-medium">
                       {r.name}
@@ -141,7 +141,7 @@ export function AccessRequestsView({
           <h3 className="mb-3 font-display text-lg font-semibold">Recently admitted</h3>
           <Card className="divide-y">
             {recent.map((u) => (
-              <div key={u.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+              <div key={u.id} className="toolbar items-center gap-2 p-3 text-sm">
                 <span><span className="font-medium">{u.name}</span> <span className="text-muted-foreground">{u.email}</span></span>
                 <span className="flex items-center gap-2">
                   <Badge variant="secondary">{u.role.replace(/_/g, ' ')}</Badge>

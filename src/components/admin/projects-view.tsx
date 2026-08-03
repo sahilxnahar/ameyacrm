@@ -119,7 +119,7 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
                 </div>
               </form>
             ) : (
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="toolbar items-start gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{p.name}</p>

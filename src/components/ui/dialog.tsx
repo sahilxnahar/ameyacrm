@@ -21,7 +21,22 @@ export const DialogContent = React.forwardRef<
         // and never taller than the screen so the buttons stay reachable.
         'fixed z-popover grid gap-4 border bg-card shadow-lg data-[state=open]:animate-fade-in',
         'inset-x-0 bottom-0 max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
-        'sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:pb-6',
+        // On a desktop it is a centred panel. The width and height caps here are
+        // deliberately expressed against the viewport rather than as fixed sizes,
+        // because call sites routinely ask for `max-w-2xl` (672px) and `max-h-[92vh]`
+        // — which is wider than the window between 640 and 704px, and on an 800px
+        // laptop leaves 32px of breathing room, so a long form's buttons ended up
+        // pressed against the bottom edge of the screen. These two caps win over
+        // whatever a call site asks for, so no dialog can outgrow the display it
+        // is on.
+        // On a desktop it is a centred panel. The width is capped against the
+        // viewport as well as by the call site's `max-w-*`, because call sites
+        // routinely ask for `max-w-2xl` (672px) — wider than the window itself
+        // between 640 and 704px, where the panel then ran off both edges. The
+        // height cap uses dvh and wins over the call site's, so a long form on an
+        // 800px laptop cannot push its own buttons past the bottom of the screen.
+        'sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:pb-6',
+        'sm:w-[calc(100vw-3rem)] sm:!max-h-[88dvh]',
         className,
       )}
       {...props}

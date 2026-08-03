@@ -49,7 +49,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
 
   return (
     <div className="page-wide space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="toolbar items-center gap-3">
         <div>
           <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">Parking Matrix</h1>
           <p className="text-sm text-muted-foreground">Every parking slot, which level it’s on and which unit it belongs to. Click a slot to assign it, block it or free it.</p>

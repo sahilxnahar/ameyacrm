@@ -220,6 +220,78 @@
   .chip-row::-webkit-scrollbar { display: none; }
   .chip-row > * { flex-shrink: 0; }
 
+  /*
+   * A heading row with actions on the right.
+   *
+   * This was `flex flex-wrap justify-between` everywhere, which is right until
+   * it wraps — and on a 13" laptop it wraps constantly, because the content
+   * column there is only ~900px. `justify-between` justifies each LINE
+   * separately, so the moment the buttons dropped to a second line they snapped
+   * to the LEFT edge and sat under the description, misaligned with every other
+   * button group on the screen. That is the "alignment issue" people actually
+   * see: nothing overflows, things just stop lining up.
+   *
+   * An auto start-margin on the last child pins the actions to the right edge
+   * whether they share the line or have one to themselves. Same result at
+   * 1920px, correct result at 1280px.
+   */
+  .toolbar {
+    @apply flex flex-wrap;
+  }
+  .toolbar > :last-child:not(:only-child) {
+    margin-inline-start: auto;
+  }
+
+  /*
+   * A row of summary cards that fits the screen it is on.
+   *
+   * The old rule was `grid-cols-2 lg:grid-cols-2 xl:grid-cols-4`, and Tailwind's
+   * `xl` is exactly 1280px — the width of a 13" laptop. So the four cards went
+   * from half-width each to quarter-width each at the precise moment there was
+   * least room for them, and on anything from 1024 to 1279 you got two enormous
+   * cards with a metre of white space. This sizes on content instead of on
+   * breakpoints, so it degrades smoothly from a phone to a 27" monitor with no
+   * cliff at any width.
+   *
+   * The floor is deliberately low — 10.5rem, not the ~14rem a card actually
+   * wants. `auto-fit` collapses the empty tracks, so with four cards you get
+   * four equal columns of whatever width is going; the floor only decides when
+   * the row is allowed to BREAK. Set it near the card's natural width and a
+   * 900px column breaks four cards into 3 + 1 — one lonely card on its own
+   * line, which looks far more broken than four slightly narrow ones.
+   */
+  .stat-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+  }
+  @media (min-width: 640px) {
+    .stat-grid { gap: 1rem; }
+  }
+  /* Rows of six or more tiles, which can take a tighter floor still. */
+  .stat-grid-sm {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  }
+
+  /*
+   * The sidebar's scroll edge.
+   *
+   * With fifteen modules and a two-line description under each, the menu is
+   * taller than an 800px-high laptop screen. That is fine — it scrolls — but the
+   * cut came with no visual cue at all, so the last item was sliced through the
+   * middle and read as a rendering bug rather than as "there is more below".
+   */
+  .nav-scroll {
+    --nav-fade: 1.5rem;
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--nav-fade)), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - var(--nav-fade)), transparent 100%);
+  }
+  /* No fade once you have reached the end — otherwise the final item stays
+     permanently half-faded and looks broken in a different way. */
+  .nav-scroll[data-at-end='1'] {
+    --nav-fade: 0rem;
+  }
+
   /* Header sits below the status bar / Dynamic Island. viewport-fit=cover
      lets content run under it, so the inset must be added back by hand. */
   .app-topbar {

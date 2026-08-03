@@ -133,7 +133,7 @@ export function PartyReminderPanel({ ledgerId, party, onClose }: { ledgerId: str
           <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap rounded-md border bg-secondary/30 p-2.5 text-[11px] leading-relaxed">{preview}</pre>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-5 toolbar items-center gap-2">
           <div className="flex gap-2">
             <button type="button" onClick={showPreview} disabled={pending} className="focus-ring rounded-md border px-3 py-1.5 text-sm hover:bg-secondary disabled:opacity-50">
               See what they get

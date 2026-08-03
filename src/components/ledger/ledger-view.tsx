@@ -154,7 +154,7 @@ export function LedgerView({
           {!entries.length && <p className="text-sm text-muted-foreground">Nothing has been posted yet.</p>}
           {entries.map((e) => (
             <article key={e.id} className={cn('rounded-lg border border-border bg-card p-4', e.status === 'REVERSED' && 'opacity-60')}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="toolbar items-baseline gap-2">
                 <h3 className="text-sm font-semibold">
                   {e.number}
                   {e.status === 'REVERSED' && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px]">Reversed</span>}

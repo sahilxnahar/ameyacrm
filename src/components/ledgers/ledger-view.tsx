@@ -337,7 +337,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
     const d = detail;
     return (
       <div className="space-y-4 pb-24 sm:pb-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="toolbar items-center gap-2">
           <button onClick={() => router.push('/ledgers')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All ledgers</button>
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={downloadPassbook}><Download className="h-4 w-4" /> CSV</Button>
@@ -579,7 +579,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
 
       {canManage && (
         <Card className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="toolbar items-center gap-2">
             <div>
               <p className="flex items-center gap-1.5 text-sm font-semibold"><FileSpreadsheet className="h-4 w-4 text-brass" /> Import payments</p>
               <p className="text-xs text-muted-foreground">Export your Google Sheet / Excel as CSV, then upload or paste it. A ledger is built per payee automatically.</p>
@@ -620,7 +620,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
         <EmptyState icon={FileSpreadsheet} title="No payees yet" body="Import your payments (as a CSV) to build a ledger for each person you pay." />
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="toolbar items-center gap-2">
             <div className="relative max-w-xs flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search payees" className="pl-9" />

@@ -111,7 +111,7 @@ export function TallyImportView({ companies }: { companies: { id: string; name: 
       {/* Step 2 — preview */}
       {preview && (
         <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="toolbar items-center gap-2">
             <div className="text-sm font-semibold">2 · Review — nothing has been written yet</div>
             <Badge variant={preview.companyExisted ? 'secondary' : 'success'}>
               {preview.companyExisted ? `Adding to “${preview.company}”` : `New company “${preview.company}”`}

@@ -34,7 +34,7 @@ export function AnalyticsView({ kpis, sources, statuses, inventory, money }: {
 }) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="stat-grid">
         <Kpi icon={Users2} label="Total leads" value={kpis.leads} />
         <Kpi icon={TrendingUp} label="Bookings" value={kpis.bookings} tone="bg-emerald-500/10 text-emerald-600" />
         <Kpi icon={Home} label="Booked / Won" value={kpis.won} tone="bg-blue-500/10 text-blue-600" />

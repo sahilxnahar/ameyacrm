@@ -36,7 +36,7 @@ export function CustomisationView({ terms, stages }: { terms: Terminology; stage
   return (
     <div className="space-y-5">
       <Card className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="toolbar items-start gap-2">
           <div>
             <p className="text-sm font-semibold">What you call things</p>
             <p className="text-sm text-muted-foreground">
@@ -67,7 +67,7 @@ export function CustomisationView({ terms, stages }: { terms: Terminology; stage
       </Card>
 
       <Card className="p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="toolbar items-start gap-2">
           <div>
             <p className="text-sm font-semibold">Pipeline stages</p>
             <p className="text-sm text-muted-foreground">

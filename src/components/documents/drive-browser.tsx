@@ -130,7 +130,7 @@ export function DriveBrowser({
         )}
 
         {subfolders.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="stat-grid stat-grid-sm">
             {subfolders.map((f) => (
               <FolderCard key={f.id} node={f} onDropFiles={moveTo} />
             ))}

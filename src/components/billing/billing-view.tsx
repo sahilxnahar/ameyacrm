@@ -128,7 +128,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       onConfirm={() => { if (payTarget) payBill(payTarget.id, payTarget.number); }}
     />
     <Tabs defaultValue="invoices">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-4 toolbar items-center gap-2">
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="bills">Vendor Bills</TabsTrigger><TabsTrigger value="vendors">Vendors</TabsTrigger></TabsList>
         {/* Shown only to somebody who can actually save. These were rendered
             unconditionally, so a Department Head or Manager filled in the whole

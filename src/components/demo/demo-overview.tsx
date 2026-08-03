@@ -34,7 +34,7 @@ export function DemoOverview({ data, name }: { data: SandboxData; name: string }
         <ResetButton />
       </PageHead>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="stat-grid">
         <Kpi label="Leads in play" value={String(data.leads.length)} hint={`${data.leads.filter((l) => l.status === 'BOOKED').length} booked`} />
         <Kpi label="Flats available" value={`${data.totals.available} / ${data.totals.units}`} hint={`${booked} booked`} />
         <Kpi label="Pipeline value" value={crore(data.totals.pipelineValue)} hint="Sum of lead budgets" />

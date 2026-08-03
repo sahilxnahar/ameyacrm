@@ -84,7 +84,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
           {overview.inspections.length === 0 ? <Empty text="No inspections yet. Add hold points at the stages where work gets covered up — reinforcement, waterproofing, pre-pour." /> : (
             <div className="space-y-2">
               {overview.inspections.map((i) => (
-                <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+                <div key={i.id} className="toolbar items-center gap-2 rounded-lg border border-border p-3 text-sm">
                   <div>
                     <span className="font-medium">{i.title}</span>
                     {i.isHoldPoint && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600">hold point</span>}
@@ -118,7 +118,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
           {overview.ncrs.length === 0 ? <Empty text="No non-conformances raised." /> : (
             <div className="space-y-2">
               {overview.ncrs.map((n) => (
-                <div key={n.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+                <div key={n.id} className="toolbar items-center gap-2 rounded-lg border border-border p-3 text-sm">
                   <div>
                     <span className="font-medium">{n.title}</span>
                     <span className={cn('ml-2 rounded-full px-2 py-0.5 text-xs', n.severity === 'CRITICAL' ? 'bg-destructive/10 text-destructive' : n.severity === 'MAJOR' ? 'bg-amber-500/10 text-amber-600' : 'bg-muted text-muted-foreground')}>{n.severity.toLowerCase()}</span>
@@ -183,7 +183,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
           {overview.permits.length === 0 ? <Empty text="No permits issued." /> : (
             <div className="space-y-2">
               {overview.permits.map((p) => (
-                <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+                <div key={p.id} className="toolbar items-center gap-2 rounded-lg border border-border p-3 text-sm">
                   <div>
                     <span className="font-medium capitalize">{p.type.replace(/_/g, ' ').toLowerCase()}</span>
                     <span className="ml-2 text-xs text-muted-foreground">→ {p.issuedTo}{p.location ? ` · ${p.location}` : ''}{p.validTo ? ` · to ${fmtDate(p.validTo)}` : ''}</span>

@@ -34,7 +34,7 @@ export default async function ErrorsPage() {
         <div className="space-y-2">
           {errors.map((e) => (
             <Card key={e.id} className="p-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="toolbar items-start gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{e.message}</p>
                   <p className="text-xs text-muted-foreground">

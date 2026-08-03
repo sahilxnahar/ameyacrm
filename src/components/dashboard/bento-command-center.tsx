@@ -88,7 +88,7 @@ export function BentoCommandCenter({ tiles, urgent, firstName }: { tiles: AlertT
       ) : (
         <>
           {/* Uniform alert grid — every tile is an equal, gap-free target. */}
-          <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="stat-grid stat-grid-sm auto-rows-fr">
             {visible.map((t) => (
               <Link
                 key={t.key}

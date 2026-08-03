@@ -83,7 +83,7 @@ export default async function SystemHealthPage() {
         {r.stats.length > 0 && (
           <section>
             <h2 className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Right now</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="stat-grid">
               {r.stats.map((st) => (
                 <div key={st.label} className="card-elevated border p-3.5">
                   <p className="text-2xl font-semibold tabular-nums">{st.value}</p>

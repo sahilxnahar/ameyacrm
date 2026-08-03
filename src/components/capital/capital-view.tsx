@@ -105,7 +105,7 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
           )}
           {overview.investors.length === 0 ? <Empty text="No investors yet." /> : overview.investors.map((inv) => (
             <div key={inv.id} className="rounded-lg border border-border p-3 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="toolbar items-center gap-2">
                 <div><span className="font-medium">{inv.name}</span>{inv.contact ? <span className="ml-2 text-xs text-muted-foreground">{inv.contact}</span> : null}
                   <p className="mt-0.5 text-xs text-muted-foreground">Commitment {inr(inv.commitment)} · drawn {inr(inv.drawn)} · outstanding {inr(inv.outstanding)}{inv.unitsAllotted ? ` · ${inv.unitsAllotted} units` : ''}</p>
                 </div>

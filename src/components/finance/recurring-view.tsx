@@ -79,7 +79,7 @@ export function RecurringView({ rows, canManage }: { rows: Row[]; canManage: boo
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="toolbar items-center gap-2">
         <p className="text-sm text-muted-foreground">
           {rows.filter((r) => r.isActive).length} active
           {dueCount > 0 && <span className="ml-2 font-medium text-amber-600">· {dueCount} due now</span>}

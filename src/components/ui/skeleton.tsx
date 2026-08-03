@@ -13,7 +13,7 @@ export function PageSkeleton({ stats = 4, rows = 6 }: { stats?: number; rows?: n
         <Skeleton className="h-4 w-80 max-w-full" />
       </div>
       {stats > 0 && (
-        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-4 stat-grid">
           {Array.from({ length: stats }).map((_, i) => <Skeleton key={i} className="h-20" />)}
         </div>
       )}
@@ -31,7 +31,7 @@ export function LaunchpadSkeleton({ cards = 8 }: { cards?: number }) {
       <section className="space-y-3">
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-11 w-full rounded-xl" />
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+        <div className="stat-grid">
           {Array.from({ length: cards }).map((_, i) => (
             <div key={i} className="min-h-[7rem] rounded-2xl border bg-card p-4 sm:min-h-[8.5rem]">
               <Skeleton className="h-11 w-11 rounded-xl" />

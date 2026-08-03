@@ -53,7 +53,7 @@ export function CashBookView({
 
   return (
     <div className="space-y-4">
-      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="stagger stat-grid">
         <Stat label="Opened with" value={money(opening)} icon={Wallet} />
         <Stat label="Received" value={money(cashIn)} icon={ArrowDownLeft} tone="in" />
         <Stat label="Paid out" value={money(cashOut)} icon={ArrowUpRight} tone="out" />

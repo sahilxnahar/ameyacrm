@@ -91,7 +91,7 @@ export function BudgetView({
           </span>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="toolbar items-center gap-2">
         {budgetName
           ? <p className="text-xs text-muted-foreground">Comparing against {budgetName}.</p>
           : <span />}
@@ -119,7 +119,7 @@ export function BudgetView({
       )}
 
       {total && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stat-grid">
           <Stat label="Budget" value={inr(total.budget)} />
           <Stat label="Committed and incurred" value={inr(total.exposure)} hint={`${total.usedPct}% of budget`} />
           <Stat label="Paid" value={inr(total.paid)} hint="Money actually gone" />
@@ -221,12 +221,12 @@ function BudgetEditor({
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="toolbar items-end gap-3">
         <div className="space-y-1">
           <label htmlFor="budgetname" className="text-xs font-medium text-muted-foreground">What to call this version</label>
           <input
             id="budgetname" value={name} onChange={(e) => setName(e.target.value)}
-            className="focus-ring block w-64 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+            className="focus-ring block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm sm:w-64"
             placeholder="Approved budget"
           />
         </div>
@@ -274,7 +274,7 @@ function BudgetEditor({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="toolbar items-center gap-3">
         <p className="text-sm">
           {lines.length} head{lines.length === 1 ? '' : 's'} budgeted · total <strong className="tabular-nums">{inr(grand)}</strong>
         </p>

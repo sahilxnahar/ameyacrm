@@ -58,6 +58,51 @@ export function Sidebar({
   // and labels are usable — the icon-only rail has no room for them.
   const rail = collapsed && !customising;
 
+  /*
+   * Fade the bottom edge of the menu while there is more below it.
+   *
+   * Fifteen modules, each with a two-line description, is taller than an 800px
+   * laptop screen. The list scrolled correctly but the cut had no visual cue, so
+   * the last visible item was sliced cleanly through the middle of its text and
+   * read as a rendering fault. The fade turns the same pixels into an
+   * affordance; it lifts entirely once you are at the bottom, so the final item
+   * is never left permanently half-faded.
+   */
+  const navRef = React.useRef<HTMLElement | null>(null);
+  const [atEnd, setAtEnd] = React.useState(true);
+  const measure = React.useCallback(() => {
+    const el = navRef.current;
+    if (!el) return;
+    setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
+  }, []);
+  const onNavScroll = measure;
+  React.useEffect(() => {
+    measure();
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure, rail, customising]);
+
+  /*
+   * Drop the descriptions when the window is short.
+   *
+   * Each blurb adds ~18px to a row. On a 13" laptop — 800px tall, and closer to
+   * 700 once the browser chrome is taken off — that is the difference between
+   * seeing seven modules and seeing eleven. The descriptions are genuinely
+   * useful on a tall monitor and are the first thing to go when there is no
+   * room, which is the trade every native app makes.
+   */
+  const [roomy, setRoomy] = React.useState(true);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(min-height: 860px)');
+    const apply = () => setRoomy(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
   const canSee = (perm?: string) => !perm || isSuperAdmin || allowed.has(perm);
   const allItems = NAVIGATION.flatMap((g) => g.items).filter((i) => canSee(i.permission));
 
@@ -155,7 +200,7 @@ export function Sidebar({
     // Show the plain-language description beneath the label in the full menu.
     // Not on the icon rail (no room) and not while customising (the reorder
     // controls need the space and a compact row).
-    const showBlurb = !rail && !customising && !!item.blurb;
+    const showBlurb = !rail && !customising && roomy && !!item.blurb;
 
     return (
       <li key={(isPinnedRow ? 'p:' : '') + item.href} className={cn(customising && hidden && 'opacity-40')}>
@@ -250,7 +295,12 @@ export function Sidebar({
           </button>
         )}
 
-        <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]', rail ? 'px-2' : 'px-3')}>
+        <nav
+          ref={navRef}
+          onScroll={onNavScroll}
+          data-at-end={atEnd ? '1' : '0'}
+          className={cn('nav-scroll flex-1 space-y-5 overflow-y-auto py-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]', rail ? 'px-2' : 'px-3')}
+        >
           {!customising && pinned.length > 0 && (
             <div>
               <p className={cn('mb-2 flex items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]', rail && 'lg:hidden')}>

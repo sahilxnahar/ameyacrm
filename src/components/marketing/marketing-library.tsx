@@ -94,7 +94,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
       {/* Featured (bundled) */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-primary">Featured</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="stat-grid">
           {featured.map((c) => <FeaturedCard key={c.file} c={c} />)}
         </div>
       </section>
@@ -106,7 +106,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
         [...orderedCats, ...extraCats].map((cat) => (
           <section key={cat}>
             <h2 className="mb-2 text-sm font-semibold text-primary">{cat} <span className="font-normal text-muted-foreground">· {byCat.get(cat)!.length}</span></h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="stat-grid">
               {byCat.get(cat)!.map((it) => <ItemCard key={it.id} it={it} canManage={canManage} onRemove={remove} />)}
             </div>
           </section>

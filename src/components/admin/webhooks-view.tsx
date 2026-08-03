@@ -89,7 +89,7 @@ export function WebhooksView({ hooks }: { hooks: Hook[] }) {
         ) : (
           hooks.map((h) => (
             <Card key={h.id} className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="toolbar items-start gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{h.url}</span>

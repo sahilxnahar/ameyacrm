@@ -100,7 +100,7 @@ export function DataQualityView({ entities, dictionary }: { entities: EntityQual
           {active.duplicates.length === 0 ? (
             <Empty text={`No likely duplicate ${active.label.toLowerCase()} found.`} />
           ) : active.duplicates.map((d, i) => (
-            <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+            <div key={i} className="toolbar items-center gap-2 rounded-lg border border-border p-3 text-sm">
               <div>
                 <span className="font-medium">{d.aLabel}</span>
                 <span className="mx-2 text-muted-foreground">↔</span>

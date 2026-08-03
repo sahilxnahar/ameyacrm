@@ -32,7 +32,7 @@ export default async function IntegrationsPage() {
         description="Everything this CRM can connect to, whether it is switched on, and whether it is actually working."
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="mb-5 stat-grid">
         {(Object.keys(STATE) as Health[]).map((h) => {
           const S = STATE[h];
           return (

@@ -122,6 +122,30 @@ export function AppShell({
     });
   }, []);
 
+  /*
+   * Collapse to the icon rail by default on a small laptop.
+   *
+   * The sidebar is a fixed 18rem from 1024px upwards. On a 13" screen that is
+   * 288 of 1280 pixels — nearly a quarter of the display — and what is left
+   * after the page gutters is a ~900px column, which is exactly the width at
+   * which toolbars start wrapping and four summary cards stop fitting. Almost
+   * every alignment complaint on a 13" traces back to that one number.
+   *
+   * So below 1440px the rail is the default. It is still only a default: the
+   * moment somebody expands or collapses it themselves, that choice is stored
+   * and this never overrides it again, on any screen.
+   */
+  React.useEffect(() => {
+    let chosen = true;
+    try { chosen = window.localStorage.getItem(RAIL_KEY) !== null; } catch { /* ignore */ }
+    if (chosen) return;
+    const mq = window.matchMedia('(min-width: 1024px) and (max-width: 1439.98px)');
+    const apply = () => setRail(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+
   return (
     <div className="flex min-h-screen min-h-[100dvh] bg-background">
       {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.

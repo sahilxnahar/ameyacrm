@@ -103,7 +103,7 @@ export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { 
       </div>
 
       <div className="card-elevated p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="toolbar items-center gap-3">
           <div>
             <h2 className="font-display text-lg">Live check</h2>
             <p className="text-sm text-muted-foreground">
@@ -188,7 +188,7 @@ export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { 
       </div>
 
       <div className="card-elevated p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="toolbar items-center gap-3">
           <div>
             <h2 className="font-display text-lg">What the AI can see</h2>
             <p className="text-sm text-muted-foreground">

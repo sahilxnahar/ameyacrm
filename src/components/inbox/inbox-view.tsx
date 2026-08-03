@@ -96,7 +96,7 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="toolbar items-center gap-2">
         <p className="text-sm text-muted-foreground">Incoming mail (synced from Gmail) and WhatsApp live here — reply, or start a new one.</p>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setComposeOpen(true)} className="gap-1"><Mail className="h-4 w-4" /> New email</Button>

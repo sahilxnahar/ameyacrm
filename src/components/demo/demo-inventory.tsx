@@ -27,7 +27,7 @@ export function DemoInventory({ data }: { data: SandboxData }) {
         <ResetButton />
       </PageHead>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-4 stat-grid">
         <Kpi label="Total flats" value={String(data.units.length)} />
         <Kpi label="Available" value={String(count('AVAILABLE'))} />
         <Kpi label="On hold" value={String(count('HELD'))} />
@@ -45,7 +45,7 @@ export function DemoInventory({ data }: { data: SandboxData }) {
         ))}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="stat-grid stat-grid-sm">
         {shown.map((u) => (
           <div key={u.id} className="rounded-lg border bg-background p-3">
             <div className="flex items-start justify-between gap-2">

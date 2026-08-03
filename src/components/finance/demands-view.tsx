@@ -66,14 +66,14 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="stat-grid">
         <StatCard label="Outstanding demanded" value={formatCurrency(counts.outstanding)} icon={HandCoins} tone={counts.outstanding ? 'warning' : 'default'} />
         <StatCard label="Awaiting dispatch" value={counts.pending} icon={Clock} tone={counts.pending ? 'warning' : 'default'} />
         <StatCard label="Sent" value={counts.sent} icon={Send} />
         <StatCard label="Paid" value={counts.paid} icon={CheckCircle2} tone="success" />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="toolbar items-center gap-2">
         <p className="text-sm text-muted-foreground">Demands generate and dispatch automatically each day. Run a cycle now, or re-send anything still pending.</p>
         <div className="flex gap-2">
           {canManage && (
@@ -110,22 +110,22 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
             });
           }}
         >
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <label htmlFor="dbooking" className="block text-xs font-medium text-muted-foreground">Booking</label>
-            <select id="dbooking" name="bookingId" required className="h-9 w-72 rounded-md border bg-background px-2 text-sm" defaultValue="">
+            <select id="dbooking" name="bookingId" required className="h-9 w-full max-w-full sm:w-72 rounded-md border bg-background px-2 text-sm" defaultValue="">
               <option value="" disabled>Pick a booking…</option>
               {bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
             </select>
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <label htmlFor="dlabel" className="block text-xs font-medium text-muted-foreground">What for</label>
-            <input id="dlabel" name="label" required className="h-9 w-64 rounded-md border bg-background px-2 text-sm" placeholder="Maintenance deposit" />
+            <input id="dlabel" name="label" required className="h-9 w-full max-w-full sm:w-64 rounded-md border bg-background px-2 text-sm" placeholder="Maintenance deposit" />
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <label htmlFor="damount" className="block text-xs font-medium text-muted-foreground">Amount (₹)</label>
-            <input id="damount" name="amount" type="number" required inputMode="numeric" className="h-9 w-36 rounded-md border bg-background px-2 text-right text-sm tabular-nums" />
+            <input id="damount" name="amount" type="number" required inputMode="numeric" className="h-9 w-full max-w-full sm:w-36 rounded-md border bg-background px-2 text-right text-sm tabular-nums" />
           </div>
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
             <label htmlFor="ddue" className="block text-xs font-medium text-muted-foreground">Due</label>
             <input id="ddue" name="dueDate" type="date" className="h-9 rounded-md border bg-background px-2 text-sm" />
           </div>

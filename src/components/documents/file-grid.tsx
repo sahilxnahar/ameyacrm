@@ -138,7 +138,7 @@ export function FileGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="stat-grid stat-grid-sm">
       {documents.map((d) => {
         const Icon = iconFor(d.mimeType);
         const isSel = selected.has(d.id);

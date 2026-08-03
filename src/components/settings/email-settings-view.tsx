@@ -86,7 +86,7 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
 
       {/* ---- Outbound (send as me) ---- */}
       <div className="space-y-4 rounded-lg border p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="toolbar items-center gap-2">
           <div className="text-sm font-semibold">Outbound — how your sent mail leaves</div>
           {outbound.source === 'user'
             ? <Badge variant="success" className="gap-1"><Send className="h-3.5 w-3.5" /> Sends as you</Badge>

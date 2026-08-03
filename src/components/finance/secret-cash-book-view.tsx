@@ -105,7 +105,7 @@ export function SecretCashBookView({
         <StatTile label="Balance" value={formatCompactCurrency(balance)} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="toolbar items-center gap-2">
         <Button size="sm" onClick={() => setAddOpen((v) => !v)}>{addOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {addOpen ? 'Close' : 'Add entry'}</Button>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={exportCsv}><Download className="h-4 w-4" /> CSV</Button>

@@ -71,17 +71,17 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
           });
         }}
       >
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
           <Label htmlFor="uworker">Worker</Label>
-          <input id="uworker" name="workerName" className="h-9 w-48 rounded-md border bg-background px-2 text-sm" placeholder="Ramesh Kumar" />
+          <input id="uworker" name="workerName" className="h-9 w-full max-w-full sm:w-48 rounded-md border bg-background px-2 text-sm" placeholder="Ramesh Kumar" />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
           <Label htmlFor="uuan">UAN</Label>
-          <input id="uuan" name="uan" inputMode="numeric" maxLength={14} className="h-9 w-44 rounded-md border bg-background px-2 font-mono text-sm" placeholder="123456789012" />
+          <input id="uuan" name="uan" inputMode="numeric" maxLength={14} className="h-9 w-full max-w-full sm:w-44 rounded-md border bg-background px-2 font-mono text-sm" placeholder="123456789012" />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
           <Label htmlFor="uvendor">Sub-contractor</Label>
-          <select id="uvendor" className="h-9 w-52 rounded-md border bg-background px-2 text-sm" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+          <select id="uvendor" className="h-9 w-full max-w-full sm:w-52 rounded-md border bg-background px-2 text-sm" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
             <option value="">—</option>
             {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>

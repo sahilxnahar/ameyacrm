@@ -49,7 +49,7 @@ export function SsoView({ config, acsUrl }: { config: SamlConfig; acsUrl: string
       </Card>
 
       <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="toolbar items-center gap-2">
           <div className="flex items-center gap-2">
             <Switch id="enabled" checked={c.enabled} onCheckedChange={(v) => setC({ ...c, enabled: v })} />
             <Label htmlFor="enabled">Single sign-on is {c.enabled ? 'on' : 'off'}</Label>
