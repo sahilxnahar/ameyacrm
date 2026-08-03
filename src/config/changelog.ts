@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.14',
+    date: '3 Aug 2026',
+    highlights: [
+      'The Repair button was not repairing everything. Four columns added in recent releases had never made it into the schema Repair runs, so it reported success and changed nothing \u2014 which is the worst way for it to fail, because Repair is what you press when a screen is already broken. Fixed, and a test now compares the two on every build so it cannot drift again.',
+      'One migration file, MIGRATION_v16.14_all.sql, now carries every database change since v16.6 and prints a yes/no line per column at the end so you can see it worked. It replaces MIGRATION_v16.12_all.sql, which was missing one of the four columns.',
+    ],
+  },
+  {
     version: 'v16.13',
     date: '3 Aug 2026',
     highlights: [
