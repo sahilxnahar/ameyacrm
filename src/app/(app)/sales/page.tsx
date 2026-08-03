@@ -8,7 +8,8 @@ import { prisma } from '@/lib/db/prisma';
 import { getActiveProject, projectScope } from '@/server/services/active-project-service';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
-import { SalesPipeline } from '@/components/sales/sales-pipeline';
+import { SalesViews } from '@/components/sales/sales-views';
+import { can } from '@/lib/rbac/can';
 
 export const metadata: Metadata = { title: 'Sales & Leads' };
 
@@ -31,6 +32,8 @@ export default async function SalesPage() {
     prisma.lead.findMany({
       where: { deletedAt: null, ...scope, ...projectScope(active.id) }, orderBy: { updatedAt: 'desc' }, take: LEAD_PAGE_SIZE,
       include: { owner: { select: { name: true } }, project: { select: { name: true } } },
+      // phone, score and the follow-up date are what make a board card useful:
+      // without them every card looks the same and you have to open each one.
     }),
     prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
@@ -65,7 +68,20 @@ export default async function SalesPage() {
           Use search (⌘K) or narrow by project to reach the rest — none of them have been lost.
         </p>
       )}
-      <SalesPipeline leads={serialized} users={users} projects={projects} />
+      <SalesViews
+        leads={serialized}
+        users={users}
+        projects={projects}
+        board={leads.map((l) => ({
+          id: l.id, name: l.name, reference: l.reference, status: l.status,
+          phone: l.phone ?? null,
+          budget: l.budgetMax ? Number(l.budgetMax) : null,
+          score: typeof l.score === 'number' ? l.score : null,
+          ownerName: l.owner?.name ?? null,
+          nextFollowUp: l.nextFollowUp ? l.nextFollowUp.toISOString() : null,
+        }))}
+        canMove={can(ctx.permissions, 'lead.update')}
+      />
     </div>
   );
 }

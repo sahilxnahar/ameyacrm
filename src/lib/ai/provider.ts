@@ -339,3 +339,133 @@ export async function aiReadFile(
   }
   return { ok: false, error: pool.length > 1 ? `All ${pool.length} keys were refused. Last reason — ${lastError}` : lastError };
 }
+
+/** One key's verdict, in words a non-engineer can act on. */
+export interface KeyProbe {
+  label: string;
+  /** Never the key itself — only enough to tell them apart in a list. */
+  hint: string;
+  ok: boolean;
+  status: number | null;
+  ms: number;
+  verdict: string;
+}
+
+function keyHint(key: string): string {
+  if (key.length <= 12) return '••••';
+  return `${key.slice(0, 7)}…${key.slice(-4)}`;
+}
+
+/**
+ * Test EVERY key, one at a time, and say what each one did.
+ *
+ * The existing self-test asks the pool a question and reports whether an answer
+ * came back. That passes as long as ONE key works — so three dead spares look
+ * exactly like three healthy ones, right up until the live key runs dry and the
+ * assistant stops with no warning. The whole point of holding four keys is that
+ * you know all four are good.
+ *
+ * Each key gets its own minimal request. Nothing is cached and no key is skipped
+ * because an earlier one succeeded.
+ */
+export async function probeEveryKey(): Promise<{
+  provider: string;
+  model: string;
+  keys: KeyProbe[];
+  fallback: KeyProbe | null;
+  gemini: KeyProbe | null;
+  summary: string;
+}> {
+  const base = (env.AI_BASE_URL ?? '').replace(/\/$/, '');
+  const model = env.AI_MODEL ?? '';
+  const pool = keyPool();
+  const keys: KeyProbe[] = [];
+
+  for (const [i, key] of pool.entries()) {
+    const t0 = Date.now();
+    let ok = false, status: number | null = null, verdict = '';
+    try {
+      const res = await fetchWithTimeout(`${base}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+          'HTTP-Referer': env.APP_URL,
+          'X-Title': 'Ameya Heights CRM',
+        },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }),
+      }, 20000);
+      status = res.status;
+      ok = res.ok;
+      verdict = res.ok
+        ? 'Working.'
+        : humaniseAiError(res.status, await res.text().catch(() => '')) ;
+    } catch (e) {
+      verdict = e instanceof Error && /abort|timeout/i.test(e.message)
+        ? 'No answer within 20 seconds — the provider may be down.'
+        : 'Could not be reached at all. Check AI_BASE_URL.';
+    }
+    keys.push({
+      label: i === 0 ? 'AI_API_KEY (primary)' : `AI_API_KEYS #${i}`,
+      hint: keyHint(key), ok, status, ms: Date.now() - t0, verdict,
+    });
+  }
+
+  // The whole second provider — usually Gemini through its OpenAI-compatible endpoint.
+  let fallback: KeyProbe | null = null;
+  const spare = fallbackProvider();
+  if (spare) {
+    const t0 = Date.now();
+    let ok = false, status: number | null = null, verdict = '';
+    try {
+      const res = await fetchWithTimeout(`${spare.base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${spare.key}` },
+        body: JSON.stringify({ model: spare.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }),
+      }, 20000);
+      status = res.status; ok = res.ok;
+      verdict = res.ok ? 'Working — the assistant survives every key above failing.'
+        : humaniseAiError(res.status, await res.text().catch(() => ''));
+    } catch {
+      verdict = 'Could not be reached. Check AI_FALLBACK_BASE_URL.';
+    }
+    fallback = { label: `Backup provider (${spare.model})`, hint: keyHint(spare.key), ok, status, ms: Date.now() - t0, verdict };
+  }
+
+  // A direct Google key, if one is set — a different API from the one above.
+  let gemini: KeyProbe | null = null;
+  if (env.GEMINI_API_KEY) {
+    const t0 = Date.now();
+    let ok = false, status: number | null = null, verdict = '';
+    try {
+      const res = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${env.GEMINI_API_KEY}`, {}, 20000);
+      status = res.status; ok = res.ok;
+      verdict = res.ok ? 'Working.'
+        : res.status === 403 ? 'Google refused this key. Usually the Generative Language API is not enabled on that project, or the key is restricted.'
+        : res.status === 400 ? 'Google says the key is malformed.'
+        : res.status === 429 ? 'Out of quota for now.'
+        : `Google answered ${res.status}.`;
+    } catch {
+      verdict = 'Google could not be reached.';
+    }
+    gemini = { label: 'GEMINI_API_KEY (direct)', hint: keyHint(env.GEMINI_API_KEY), ok, status, ms: Date.now() - t0, verdict };
+  }
+
+  const good = keys.filter((k) => k.ok).length;
+  const haveBackup = Boolean(fallback?.ok || gemini?.ok);
+  const summary =
+    !pool.length && !haveBackup
+      ? 'No AI keys are configured at all. The assistant cannot run.'
+      : good === 0 && haveBackup
+        ? 'Every main key was refused. The assistant is running on the backup provider alone — fix the main keys before that runs out too.'
+        : good === 0
+          ? 'Every key was refused and there is no backup. The assistant is down.'
+          : good === keys.length && haveBackup
+            ? `All ${good} key${good === 1 ? '' : 's'} working, plus a backup provider. The assistant will not stop.`
+            : good === keys.length
+              ? `All ${good} key${good === 1 ? '' : 's'} working. Add a backup provider so a bad day at the provider cannot stop the assistant.`
+              : `${good} of ${keys.length} keys working${haveBackup ? ', plus a backup provider' : ''}. Replace the dead ones — you have less runway than you think.`;
+
+  return { provider: env.AI_BASE_URL ?? 'not set', model, keys, fallback, gemini, summary };
+}

@@ -1,8 +1,9 @@
 'use client';
 
+import { cn } from '@/lib/utils/cn';
 import { useState, useTransition } from 'react';
 import { CheckCircle2, XCircle, MinusCircle, Loader2, Play, AlertTriangle, Database, Lock, KeyRound } from 'lucide-react';
-import { checkAiHealth, reindexEverything, catchUpSummaries } from '@/server/actions/vouchers';
+import { checkAiHealth, reindexEverything, catchUpSummaries, testEveryAiKey } from '@/server/actions/vouchers';
 
 interface Probe { name: string; what: string; ok: boolean; ms: number; detail: string; note?: boolean }
 
@@ -56,6 +57,24 @@ export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { 
       catch (e) { setError(e instanceof Error ? e.message : 'The check itself failed to run.'); }
     });
 
+  /*
+   * Every key, one at a time.
+   *
+   * The self-test above asks the pool a question and reports whether an answer
+   * came back — which passes while three of your four spares are dead, because
+   * only the first working key is ever tried. Holding four keys is worth
+   * something only if you know all four are good.
+   */
+  type KeyProbe = { label: string; hint: string; ok: boolean; status: number | null; ms: number; verdict: string };
+  const [keys, setKeys] = useState<{ provider: string; model: string; keys: KeyProbe[]; fallback: KeyProbe | null; gemini: KeyProbe | null; summary: string } | null>(null);
+  const [keysPending, startKeys] = useTransition();
+  const testKeys = () =>
+    startKeys(async () => {
+      setError(null);
+      try { setKeys(await testEveryAiKey()); }
+      catch (e) { setError(e instanceof Error ? e.message : 'The key test failed to run.'); }
+    });
+
   // Known limitations of the chosen provider are not failures, and counting
   // them as such made a working setup look broken.
   const real = result?.probes.filter((p) => !p.note) ?? [];
@@ -71,6 +90,56 @@ export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { 
           <h2 className="font-display text-lg">Provider &amp; keys</h2>
         </div>
         <p className="text-sm text-muted-foreground">Read live from the server. Keys are never shown — only how many are loaded.</p>
+        <div className="mt-4">
+          <button
+            type="button" onClick={testKeys} disabled={keysPending}
+            className="focus-ring inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+          >
+            {keysPending ? 'Testing every key…' : 'Test every key now'}
+          </button>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sends one tiny request per key. Tells you which are alive, which are out of credit and which
+            have been revoked — before the live one runs dry.
+          </p>
+        </div>
+
+        {keys && (
+          <div className="mt-4 space-y-2">
+            <p className={cn('rounded-md border p-3 text-sm',
+              keys.keys.every((k) => k.ok) && (keys.fallback?.ok || keys.gemini?.ok)
+                ? 'border-emerald-500/40 bg-emerald-500/5'
+                : keys.keys.some((k) => k.ok) ? 'border-amber-500/40 bg-amber-500/5'
+                : 'border-destructive/40 bg-destructive/5')}>
+              {keys.summary}
+            </p>
+            <div className="overflow-hidden rounded-md border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Key</th>
+                    <th className="px-3 py-2 text-left">Which one</th>
+                    <th className="px-3 py-2 text-left">Result</th>
+                    <th className="px-3 py-2 text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...keys.keys, ...(keys.fallback ? [keys.fallback] : []), ...(keys.gemini ? [keys.gemini] : [])].map((k, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="px-3 py-2 font-medium">{k.label}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{k.hint}</td>
+                      <td className={cn('px-3 py-2', k.ok ? 'text-emerald-600' : 'text-destructive')}>
+                        <span className="font-semibold">{k.ok ? 'Working' : `Failed${k.status ? ` (${k.status})` : ''}`}</span>
+                        <span className="ml-2 text-muted-foreground">{k.verdict}</span>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{k.ms}ms</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <dl className="mt-4 grid gap-4 sm:grid-cols-3">
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Provider</dt>

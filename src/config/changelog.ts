@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.13',
+    date: '3 Aug 2026',
+    highlights: [
+      'Sales now has a board as well as a list. Drag a lead from one column to the next and the stage saves itself; if the server refuses, the card goes back and tells you why. Same leads, same numbers \u2014 just laid out so you can see where things are stuck.',
+      'Escape now leaves every customise mode. On the launchpad it abandons the colour and size changes; in the menu it puts the menu back as it was. Menu-customise mode makes every link inert, so people who opened it by accident thought the app had frozen.',
+      'The menu search is instant. It matches screens from what the browser already has instead of asking the server after each letter, and it no longer says \u201cNothing matched\u201d above a list of things that matched.',
+      'Pins are reachable again on a 13-inch laptop. The pin editor was hidden whenever the sidebar collapsed to icons \u2014 which is exactly what it does at that width.',
+      'Admin \u2192 AI Health can now test every API key one at a time and tell you which are alive, which are out of credit and which have been revoked. The old test went green as long as one key worked, so dead spares looked healthy until the live key ran dry. Keys are never shown, only a hint.',
+    ],
+  },
+  {
     version: 'v16.12',
     date: '3 Aug 2026',
     highlights: [

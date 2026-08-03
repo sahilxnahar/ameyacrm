@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import Link from 'next/link';
-import { Search, X, Sliders, RotateCcw, Check } from 'lucide-react';
+import { Search, X, Sliders, RotateCcw, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NAVIGATION } from '@/config/navigation';
 import {
@@ -45,6 +45,29 @@ export function FeatureExplorer({
   const [tone, setTone] = React.useState<Record<string, ModuleTone>>(tones as Record<string, ModuleTone>);
   const [weight, setWeight] = React.useState<Record<string, Weight>>(weights as Record<string, Weight>);
   const [pending, start] = React.useTransition();
+  // What the grid looked like when editing started, so Escape can put it back.
+  const snapshot = React.useRef<{ t: Record<string, ModuleTone>; w: Record<string, Weight> } | null>(null);
+
+  const cancelEditing = React.useCallback(() => {
+    if (snapshot.current) { setTone(snapshot.current.t); setWeight(snapshot.current.w); }
+    snapshot.current = null;
+    setEditing(false);
+  }, []);
+
+  /*
+   * Escape abandons the changes; it does not save them.
+   *
+   * Every other overlay in the app closes on Escape, so a person will press it
+   * here too — and the surprising thing would be silently keeping half-finished
+   * edits. Reverting to the snapshot means Escape always means "forget it",
+   * which is what the key means everywhere else.
+   */
+  React.useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') cancelEditing(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing, cancelEditing]);
 
   const allowedSet = React.useMemo(() => new Set(allowed), [allowed]);
   const canSee = React.useCallback(
@@ -103,31 +126,46 @@ export function FeatureExplorer({
             </button>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {editing && (
-            <button type="button" onClick={reset} disabled={pending}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm">
-              <RotateCcw className="h-4 w-4" /> Reset
-            </button>
+            <>
+              <button type="button" onClick={reset} disabled={pending}
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm">
+                <RotateCcw className="h-4 w-4" /> Reset all
+              </button>
+              <button type="button" onClick={cancelEditing} disabled={pending}
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm">
+                <X className="h-4 w-4" /> Cancel
+              </button>
+            </>
           )}
           <button
             type="button"
-            onClick={() => { if (editing) persist(); setEditing((v) => !v); }}
+            onClick={() => {
+              if (editing) { persist(); snapshot.current = null; setEditing(false); return; }
+              snapshot.current = { t: { ...tone }, w: { ...weight } };
+              setEditing(true);
+            }}
             disabled={pending}
             className={cn(
               'focus-ring inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium',
               editing ? 'bg-primary text-primary-foreground' : 'border border-input',
             )}
           >
-            {editing ? <><Check className="h-4 w-4" /> Done</> : <><Sliders className="h-4 w-4" /> Customise</>}
+            {pending
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+              : editing ? <><Check className="h-4 w-4" /> Save</> : <><Sliders className="h-4 w-4" /> Customise</>}
           </button>
         </div>
       </div>
 
       {editing && (
         <p className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-          Set any tile&rsquo;s colour and how much room it takes. This is yours alone — it changes nothing
-          for anyone else on the team.
+          Set any tile&rsquo;s colour and how much room it takes — <strong>the grid changes as you go</strong>,
+          so what you see is what you get. This is yours alone; it changes nothing for anyone else.
+          <span className="ml-1 text-muted-foreground">
+            Press <kbd className="rounded border px-1 text-xs">Esc</kbd> to abandon the changes.
+          </span>
         </p>
       )}
 

@@ -55,6 +55,28 @@ export function Sidebar({
 
   React.useEffect(() => setPrefs(navPrefs), [navPrefs]);
 
+  /*
+   * Escape leaves menu-customise mode, exactly as Cancel does.
+   *
+   * Rearranging the menu puts the whole sidebar into a mode where nothing
+   * navigates any more — every link is inert until you leave it. Someone who
+   * opens it by accident presses Escape, because that is what Escape does in
+   * every other panel in this app; when nothing happened they concluded the
+   * menu had frozen. Escape reverts to the saved menu, so it can never lose a
+   * saved arrangement — only an unsaved rearrangement, which is what
+   * "abandon" means.
+   */
+  React.useEffect(() => {
+    if (!customising) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setPrefs(navPrefs);
+      setCustomising(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [customising, navPrefs]);
+
   // While customising, the rail is always shown expanded so the reorder controls
   // and labels are usable — the icon-only rail has no room for them.
   const rail = collapsed && !customising;
@@ -447,7 +469,10 @@ export function Sidebar({
             * It belongs here, where it is available whichever menu you choose.
             */}
           {!customising && (
-            <div className={cn('mt-1', rail && 'lg:hidden')} data-tour="nav-customise">
+            <div
+              className={cn('mt-1', rail && 'lg:flex lg:justify-center lg:[&_.nav-label]:hidden')}
+              data-tour="nav-customise"
+            >
               <NavCustomiser prefs={topNavPrefs ?? EMPTY_TOP_NAV_PREFS} defaults={allItems.slice(0, 12).map((i) => ({ href: i.href, label: i.label }))} />
             </div>
           )}

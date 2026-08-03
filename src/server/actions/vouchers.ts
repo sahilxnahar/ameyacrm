@@ -266,3 +266,17 @@ export async function catchUpSummaries(): Promise<{ summarised: number; indexed:
   return { summarised: r.summarised, indexed: r.indexed, remaining: r.remaining, message: r.message };
 }
 
+
+/**
+ * Test every AI key individually and report what each one did.
+ *
+ * Distinct from `checkAiHealth`, which asks the pool one question and reports
+ * whether an answer came back — that goes green while three of your four spares
+ * are dead, because only the first working key is ever tried. Holding four keys
+ * is only worth anything if you know all four are good.
+ */
+export async function testEveryAiKey() {
+  await ensure('admin.setting.manage');
+  const { probeEveryKey } = await import('@/lib/ai/provider');
+  return probeEveryKey();
+}

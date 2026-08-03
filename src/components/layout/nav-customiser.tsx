@@ -6,6 +6,7 @@ import {
   Settings2, X, Search, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw,
   BookOpen, Building2, LayoutGrid, FileBarChart,
 } from 'lucide-react';
+import { NAVIGATION } from '@/config/navigation';
 import { saveTopNavPrefs, resetTopNavPrefs, searchNavTargets, type NavTarget } from '@/server/actions/top-nav';
 import { MAX_PINS, type NavPin, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 
@@ -41,17 +42,53 @@ export function NavCustomiser({ prefs, defaults }: Props) {
     if (open) { setHidden(prefs.hidden); setPins(prefs.pins); setQuery(''); }
   }, [open, prefs]);
 
-  // Debounced search — one request after typing settles, not one per keystroke.
+  /*
+   * Screens are matched in the browser; only records go to the server.
+   *
+   * Every keystroke used to fire a server action after 220ms — a full network
+   * round trip to answer "which screens contain the letters I just typed", when
+   * the entire menu is already sitting in the client bundle. On anything but a
+   * fast connection that is the lag: you type, nothing happens, then a burst of
+   * results arrives late and the list jumps under your finger.
+   *
+   * Local matching is instant and covers the common case completely. The server
+   * is still asked — a lead or a unit is not in the bundle — but only after a
+   * longer pause, and never for an empty box.
+   */
+  const localTargets = React.useMemo<NavTarget[]>(() => {
+    const q = query.trim().toLowerCase();
+    const all = NAVIGATION.flatMap((g) =>
+      g.items.map((i) => ({ href: i.href, label: i.label, kind: 'screen' as const })));
+    if (!q) return all.slice(0, 40);
+    return all.filter((i) => i.label.toLowerCase().includes(q) || i.href.includes(q)).slice(0, 40);
+  }, [query]);
+
   React.useEffect(() => {
     if (!open) return;
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
     const t = window.setTimeout(async () => {
-      const r = await searchNavTargets(query);
+      const r = await searchNavTargets(q);
       setResults('ok' in r ? r.targets : []);
       setSearching(false);
-    }, 220);
+    }, 400);
     return () => { window.clearTimeout(t); };
   }, [query, open]);
+
+  /** Screens first, from the bundle; then anything the server found. */
+  const shown = React.useMemo<NavTarget[]>(() => {
+    const seen = new Set(localTargets.map((t) => t.href));
+    return [...localTargets, ...results.filter((r) => !seen.has(r.href))];
+  }, [localTargets, results]);
+
+  // Escape closes it, as it does everywhere else in the app.
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
 
   const isPinned = (href: string) => pins.some((p) => p.href === href);
 
@@ -97,7 +134,11 @@ export function NavCustomiser({ prefs, defaults }: Props) {
         className="focus-ring inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
       >
         <Settings2 className="h-3.5 w-3.5 shrink-0" />
-        <span className="whitespace-nowrap">Customise</span>
+        {/* `nav-label` is hidden by the sidebar when it is collapsed to the icon
+            rail. Hiding the whole button there — which is what used to happen —
+            made pins unreachable on a 13-inch laptop, because that is exactly
+            the width at which the rail collapses itself. */}
+        <span className="nav-label whitespace-nowrap">Customise</span>
       </button>
 
       {open && (
@@ -175,9 +216,17 @@ export function NavCustomiser({ prefs, defaults }: Props) {
                 />
               </div>
               <div className="mt-2 max-h-56 overflow-y-auto rounded-md border">
-                {searching && <p className="p-3 text-sm text-muted-foreground">Searching…</p>}
-                {!searching && results.length === 0 && <p className="p-3 text-sm text-muted-foreground">Nothing matched.</p>}
-                {!searching && results.map((t) => {
+                {/* "Nothing matched" must look at what is actually on the list.
+                    It used to look only at the server's results, so once screens
+                    were matched in the browser the panel showed "Nothing matched."
+                    sitting directly on top of a dozen things that had matched. */}
+                {searching && shown.length === 0 && <p className="p-3 text-sm text-muted-foreground">Searching…</p>}
+                {!searching && shown.length === 0 && (
+                  <p className="p-3 text-sm text-muted-foreground">
+                    {query.trim() ? `Nothing matched “${query.trim()}”.` : 'Nothing to show.'}
+                  </p>
+                )}
+                {shown.map((t) => {
                   const Icon = KIND_ICON[t.kind] ?? LayoutGrid;
                   const already = isPinned(t.href);
                   return (
