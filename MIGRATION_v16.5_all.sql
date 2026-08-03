@@ -1,8 +1,16 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  Ameya OS — v16.5
 --
---  Run this once against the production database before deploying v16.5.
---  Every statement is idempotent: running it twice is safe.
+--  Run this against the production database. Every statement is idempotent, so
+--  running it twice is safe — and every step that names a table now checks the
+--  table is there first, so a database that is behind skips that one step and
+--  applies the rest instead of rolling the whole file back.
+--
+--  ORDER: if DB-DRIFT-CHECK.sql reports missing TABLES, use the app's Repair
+--  first (the red banner, or POST /api/admin/repair), then run this file. The
+--  counters below read those tables to find out what has already been issued,
+--  and a counter that could not be seeded will hand out a number that is
+--  already in use. Re-running this file after Repair fixes that.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- One transaction, all or nothing. v16.3 and v16.4 both did this; without it a
@@ -71,19 +79,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS "JournalEntry_source_once_idx"
 -- ways: an atomic counter, and MAX(number) read as text. They now share one
 -- allocator. Seeding it here from the real maximum means the first payment
 -- after the upgrade cannot collide with a number an import already used.
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT
-  'voucher:' || p.prefix,
-  GREATEST(1000, COALESCE(MAX(substring(v."number" from '[0-9]+$')::bigint), 1000)),
-  NOW()
-FROM (VALUES ('CR'), ('CP'), ('MR'), ('MI')) AS p(prefix)
-LEFT JOIN "Voucher" v
-  ON v."number" LIKE p.prefix || '-%'
- AND v."number" ~ ('^' || p.prefix || '-[0-9]+$')
-GROUP BY p.prefix
-ON CONFLICT ("key") DO UPDATE
-  SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
-      "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"Voucher"') IS NULL THEN
+    RAISE NOTICE 'Voucher table not present yet — voucher counters not seeded.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT
+      'voucher:' || p.prefix,
+      GREATEST(1000, COALESCE(MAX(substring(v."number" from '[0-9]+$')::bigint), 1000)),
+      NOW()
+    FROM (VALUES ('CR'), ('CP'), ('MR'), ('MI')) AS p(prefix)
+    LEFT JOIN "Voucher" v
+      ON v."number" LIKE p.prefix || '-%'
+     AND v."number" ~ ('^' || p.prefix || '-[0-9]+$')
+    GROUP BY p.prefix
+    ON CONFLICT ("key") DO UPDATE
+      SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
+          "updatedAt" = NOW();
+  END IF;
+END $$;
 
 -- Same for the invoice series, which used count()+1 and therefore reissued a
 -- number every time an invoice was deleted.
@@ -93,26 +107,38 @@ ON CONFLICT ("key") DO UPDATE
 -- nothing, left the counter at 0, and handed the next invoice a number that
 -- already existed: a unique-constraint failure on every invoice raised until
 -- the counter caught up. The trailing group is the sequence.
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT 'invoice:INV', GREATEST(0, COALESCE(MAX(substring("number" from '([0-9]+)$')::bigint), 0)), NOW()
-FROM "Invoice"
-WHERE "number" ~ '^INV-[0-9]{4}-[0-9]+$'
-ON CONFLICT ("key") DO UPDATE
-  SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
-      "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"Invoice"') IS NULL THEN
+    RAISE NOTICE 'Invoice table not present yet — invoice counter not seeded. Re-run this file after Repair.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT 'invoice:INV', GREATEST(0, COALESCE(MAX(substring("number" from '([0-9]+)$')::bigint), 0)), NOW()
+    FROM "Invoice"
+    WHERE "number" ~ '^INV-[0-9]{4}-[0-9]+$'
+    ON CONFLICT ("key") DO UPDATE
+      SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
+          "updatedAt" = NOW();
+  END IF;
+END $$;
 
 -- ── 4. Seed the RA-bill counter too ────────────────────────────────────────
 --
 -- RA bills were numbered by MAX(number) read as text, so RA-9999 sorted above
 -- RA-10000 and the series jammed at five digits. They now share the same atomic
 -- counter the vouchers use.
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT 'rabill:RA', GREATEST(1000, COALESCE(MAX(substring("number" from '[0-9]+$')::bigint), 1000)), NOW()
-FROM "RaBill"
-WHERE "number" ~ '^RA-[0-9]+$'
-ON CONFLICT ("key") DO UPDATE
-  SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
-      "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"RaBill"') IS NULL THEN
+    RAISE NOTICE 'RaBill table not present yet — RA counter not seeded. Re-run this file after Repair.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT 'rabill:RA', GREATEST(1000, COALESCE(MAX(substring("number" from '[0-9]+$')::bigint), 1000)), NOW()
+    FROM "RaBill"
+    WHERE "number" ~ '^RA-[0-9]+$'
+    ON CONFLICT ("key") DO UPDATE
+      SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"),
+          "updatedAt" = NOW();
+  END IF;
+END $$;
 
 -- ── 5. The other three series that were numbered by count()+1 ──────────────
 --
@@ -121,20 +147,38 @@ ON CONFLICT ("key") DO UPDATE
 -- the next insert collide, and two simultaneous ones always did. They now use
 -- the same atomic counter as everything else; these seeds carry across what
 -- has already been issued.
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT 'po:PO', GREATEST(0, COALESCE(MAX(substring("number" from '([0-9]+)$')::bigint), 0)), NOW()
-FROM "PurchaseOrder" WHERE "number" ~ '^PO-[0-9]{4}-[0-9]+$'
-ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"PurchaseOrder"') IS NULL THEN
+    RAISE NOTICE 'PurchaseOrder table not present yet — its counter was not seeded. Re-run this file after Repair.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT 'po:PO', GREATEST(0, COALESCE(MAX(substring("number" from '([0-9]+)$')::bigint), 0)), NOW()
+    FROM "PurchaseOrder" WHERE "number" ~ '^PO-[0-9]{4}-[0-9]+$'
+    ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+  END IF;
+END $$;
 
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT 'partner:CP', GREATEST(1000, COALESCE(MAX(substring("code" from '([0-9]+)$')::bigint), 1000)), NOW()
-FROM "ChannelPartner" WHERE "code" ~ '^CP-[0-9]+$'
-ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"ChannelPartner"') IS NULL THEN
+    RAISE NOTICE 'ChannelPartner table not present yet — its counter was not seeded. Re-run this file after Repair.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT 'partner:CP', GREATEST(1000, COALESCE(MAX(substring("code" from '([0-9]+)$')::bigint), 1000)), NOW()
+    FROM "ChannelPartner" WHERE "code" ~ '^CP-[0-9]+$'
+    ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+  END IF;
+END $$;
 
-INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
-SELECT 'payreq:PAY', GREATEST(1000, COALESCE(MAX(substring("reference" from '([0-9]+)$')::bigint), 1000)), NOW()
-FROM "PaymentRequest" WHERE "reference" ~ '^PAY-[0-9]+$'
-ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+DO $$ BEGIN
+  IF to_regclass('"PaymentRequest"') IS NULL THEN
+    RAISE NOTICE 'PaymentRequest table not present yet — its counter was not seeded. Re-run this file after Repair.';
+  ELSE
+    INSERT INTO "NumberSequence" ("key", "value", "updatedAt")
+    SELECT 'payreq:PAY', GREATEST(1000, COALESCE(MAX(substring("reference" from '([0-9]+)$')::bigint), 1000)), NOW()
+    FROM "PaymentRequest" WHERE "reference" ~ '^PAY-[0-9]+$'
+    ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", EXCLUDED."value"), "updatedAt" = NOW();
+  END IF;
+END $$;
 
 -- ── 6. The chart of accounts gained one account ────────────────────────────
 --
@@ -143,9 +187,15 @@ ON CONFLICT ("key") DO UPDATE SET "value" = GREATEST("NumberSequence"."value", E
 -- exist — so without this row every contractor payment with cess withheld would
 -- save and silently never reach the books. Seeding only runs on an empty chart,
 -- which is why an existing install needs it here.
-INSERT INTO "Account" ("id", "code", "name", "type", "side", "isGroup", "isSystem", "isActive", "openingBalance", "createdAt", "updatedAt")
-SELECT 'acc-2155-bocw', '2155', 'Labour cess payable (BOCW)', 'LIABILITY', 'CREDIT', false, true, true, 0, NOW(), NOW()
-WHERE EXISTS (SELECT 1 FROM "Account")            -- only where a chart already exists
-  AND NOT EXISTS (SELECT 1 FROM "Account" WHERE "code" = '2155');
+DO $$ BEGIN
+  IF to_regclass('"Account"') IS NULL THEN
+    RAISE NOTICE 'Account table not present yet — the BOCW cess account was not added.';
+  ELSE
+    INSERT INTO "Account" ("id", "code", "name", "type", "side", "isGroup", "isSystem", "isActive", "openingBalance", "createdAt", "updatedAt")
+    SELECT 'acc-2155-bocw', '2155', 'Labour cess payable (BOCW)', 'LIABILITY', 'CREDIT', false, true, true, 0, NOW(), NOW()
+    WHERE EXISTS (SELECT 1 FROM "Account")            -- only where a chart already exists
+      AND NOT EXISTS (SELECT 1 FROM "Account" WHERE "code" = '2155');
+  END IF;
+END $$;
 
 COMMIT;
