@@ -4,7 +4,10 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.10';
+// The version now lives in its own module so that the three places which need
+// only the number do not pull this 125KB file into the browser. Re-exported here
+// so existing imports keep working.
+export { APP_VERSION } from './version';
 
 export interface Release {
   version: string;
@@ -13,6 +16,32 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.12',
+    date: '3 Aug 2026',
+    highlights: [
+      'A supplier bill can now carry the supplier\u2019s own PDF or photograph. Anyone approving the payment can open the paperwork the figure came from instead of taking it on trust.',
+      'Each bill row now shows the whole trail \u2014 what it was for, whether it has been paid, on what date and against which voucher \u2014 rather than just a status word.',
+      'Every supplier bill can be downloaded as a PDF: the recorded figures, the GST split, and the payment against it, on Ameya letterhead.',
+      'Payment Demands no longer offers a form you cannot use. It is for money BUYERS owe you against a unit booking; with no bookings the button is hidden and the screen now says where a supplier\u2019s bill actually goes.',
+      'An invoice raised in error can be removed. A draft that was never issued is deleted; one already issued is voided \u2014 it keeps its number and its ledger entry is reversed, because deleting it would leave a gap in the invoice series that a GST audit looks for.',
+      'A super admin can now erase a person permanently, for a data-erasure request or an account made in error. It needs the email typed back, and financial records survive without their name on them. \u201cRemove\u201d is still there and is still the right choice almost always.',
+      'The Ameya emblem is now watermarked behind generated invoices, as it already was on receipts and statements.',
+      'Run MIGRATION_v16.12_all.sql, or press Repair, to add three columns to the supplier bill table.',
+    ],
+  },
+  {
+    version: 'v16.11',
+    date: '3 Aug 2026',
+    highlights: [
+      'The CRM is quicker to become usable. Every screen was downloading 873KB of shared code before your page even started \u2014 which is why buttons looked ready but did nothing for a few seconds. The shell is now 706KB and the rest loads only when needed.',
+      'The single worst offender: the release-notes file is 125KB of text and was being sent to every browser on every page load. It now loads only when the What\u2019s-new panel actually opens.',
+      'Each area of the business now has its own colour \u2014 Money red, Sales green, Build amber, Land \u0026 Legal indigo, Marketing fuchsia \u2014 in the menu, on the launchpad, and as a rule under every page title. With 122 screens you stop reading labels and start aiming.',
+      'Explore Features is now a proper launchpad. Tiles are sized by how central they are: Finance, Billing, Sales and Today\u2019s Priorities are large; occasional tools like the capital-gains simulator are small.',
+      'Press Customise on that screen to set any tile\u2019s colour and size yourself. It saves to your account and changes nothing for anyone else.',
+      'No database changes in this release.',
+    ],
+  },
   {
     version: 'v16.10',
     date: '3 Aug 2026',

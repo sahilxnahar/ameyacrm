@@ -7,10 +7,25 @@ import {
 import { requireAuth } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { activeProvider } from '@/lib/ai/provider';
-import { AssistantChat } from '@/components/assistant/assistant-chat';
+import nextDynamic from 'next/dynamic';
 import { getDashboardData } from '@/server/services/dashboard-service';
 import { getDashboardCharts } from '@/server/services/dashboard-charts-service';
-import { DashboardCharts } from '@/components/dashboard/dashboard-charts';
+/*
+ * The two heaviest things on the landing screen, loaded after it is interactive.
+ *
+ * The charts pull Recharts — 360KB on its own — and the assistant pulls the whole
+ * chat UI. Both were imported eagerly on the one page every person lands on
+ * after signing in, so they were on the critical path for the first click of the
+ * day. Neither is needed to read the numbers at the top of the page.
+ */
+const DashboardCharts = nextDynamic(
+  () => import('@/components/dashboard/dashboard-charts').then((m) => m.DashboardCharts),
+  { loading: () => <div className="h-[320px] animate-pulse rounded-lg bg-secondary" /> },
+);
+const AssistantChat = nextDynamic(
+  () => import('@/components/assistant/assistant-chat').then((m) => m.AssistantChat),
+  { loading: () => <div className="h-[420px] animate-pulse rounded-lg bg-secondary" /> },
+);
 import { PageHeader } from '@/components/layout/page-header';
 import { StatCard } from '@/components/layout/stat-card';
 import { ActionCard } from '@/components/dashboard/action-card';

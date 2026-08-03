@@ -347,9 +347,13 @@ export async function createVendorBill(input: unknown): Promise<BillingResult> {
       number: z.string().min(1), vendorId: z.string().optional().nullable(),
       amount: z.coerce.number().nonnegative(), gstAmount: z.coerce.number().nonnegative().default(0),
       billDate: z.string().optional().nullable(), dueDate: z.string().optional().nullable(),
+      attachmentUrl: z.string().optional().nullable(),
+      attachmentName: z.string().optional().nullable(),
+      notes: z.string().max(1000).optional().nullable(),
     }).parse(input);
     const bill = await prisma.vendorBill.create({
-      data: { number: d.number, vendorId: d.vendorId || null, amount: d.amount, gstAmount: d.gstAmount, billDate: d.billDate ? new Date(d.billDate) : new Date(), dueDate: d.dueDate ? new Date(d.dueDate) : null, createdById: ctx.user.id },
+      data: { number: d.number, vendorId: d.vendorId || null, amount: d.amount, gstAmount: d.gstAmount, billDate: d.billDate ? new Date(d.billDate) : new Date(), dueDate: d.dueDate ? new Date(d.dueDate) : null, createdById: ctx.user.id,
+        attachmentUrl: d.attachmentUrl?.trim() || null, attachmentName: d.attachmentName?.trim() || null, notes: d.notes?.trim() || null },
     });
     // A bill received IS a cost and a liability, on the day it is received —
     // not on the day it is paid. Booking it only at payment is cash accounting,
@@ -503,6 +507,9 @@ export async function updateVendorBill(input: unknown): Promise<BillingResult> {
       gstAmount: z.coerce.number().nonnegative().default(0),
       billDate: z.string().optional().nullable(),
       dueDate: z.string().optional().nullable(),
+      attachmentUrl: z.string().optional().nullable(),
+      attachmentName: z.string().optional().nullable(),
+      notes: z.string().max(1000).optional().nullable(),
     }).parse(input);
 
     const bill = await prisma.vendorBill.findUnique({
@@ -522,6 +529,9 @@ export async function updateVendorBill(input: unknown): Promise<BillingResult> {
         amount: d.amount, gstAmount: d.gstAmount,
         billDate: d.billDate ? new Date(d.billDate) : undefined,
         dueDate: d.dueDate ? new Date(d.dueDate) : null,
+        attachmentUrl: d.attachmentUrl?.trim() || null,
+        attachmentName: d.attachmentName?.trim() || null,
+        notes: d.notes?.trim() || null,
       },
     });
 
@@ -584,4 +594,68 @@ export async function voidVendorBill(billId: string, reason: string): Promise<Bi
     revalidatePath('/billing'); revalidatePath('/ledgers');
     return { ok: true, id: billId };
   } catch (err) { return toActionError(err); }
+}
+
+/**
+ * Delete an invoice raised in error.
+ *
+ * Deliberately narrow. An invoice that has been ISSUED is in the books and has
+ * been seen by a customer; deleting it would leave a hole in a numbered series,
+ * which is exactly what a GST audit looks for. So an issued invoice is VOIDED —
+ * it keeps its number, is marked void, and its ledger entry is reversed. Only a
+ * draft that was never issued and never collected against is truly removed.
+ *
+ * That distinction is not pedantry: "I typed it wrong before sending it" and "I
+ * sent it and the customer has it" are different problems with different
+ * correct answers.
+ */
+export async function deleteInvoice(id: string, reason: string): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.invoice.manage');
+    const why = (reason ?? '').trim();
+    if (why.length < 3) return { error: 'Say why it is being removed — this is kept in the audit trail.' };
+
+    const inv = await prisma.invoice.findUnique({
+      where: { id },
+      select: { id: true, number: true, status: true, total: true, amountPaid: true, clientName: true },
+    });
+    if (!inv) return { error: 'That invoice no longer exists.' };
+    if (Number(inv.amountPaid) > 0) {
+      return { error: `${inv.number} already has ${formatMoney(Number(inv.amountPaid))} collected against it. Refund or reallocate that first.` };
+    }
+
+    const entry = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'Invoice', sourceId: id, status: 'POSTED' },
+      select: { id: true },
+    });
+
+    if (inv.status === 'DRAFT' && !entry) {
+      // Never issued, never posted, nothing collected — genuinely safe to remove.
+      await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
+      await prisma.invoice.delete({ where: { id } });
+      await writeAudit({
+        actorId: ctx.user.id, action: 'DELETE', entityType: 'Invoice', entityId: id,
+        summary: `Deleted draft invoice ${inv.number} (${inv.clientName}) — ${why.slice(0, 200)}`,
+      });
+      revalidatePath('/billing'); revalidatePath('/ledgers');
+      return { ok: true, id };
+    }
+
+    // Issued: void it and reverse the books, keeping the number in the series.
+    await prisma.invoice.update({ where: { id }, data: { status: 'VOID' } });
+    if (entry) {
+      const { reverse } = await import('@/server/services/ledger-service');
+      await reverse(entry.id, `Invoice ${inv.number} voided — ${why.slice(0, 120)}`, ctx.user.id).catch(() => undefined);
+    }
+    await writeAudit({
+      actorId: ctx.user.id, action: 'UPDATE', entityType: 'Invoice', entityId: id,
+      summary: `Voided invoice ${inv.number} (${inv.clientName}) — ${why.slice(0, 200)}`,
+    });
+    revalidatePath('/billing'); revalidatePath('/ledgers');
+    return { ok: true, id };
+  } catch (err) { return toActionError(err); }
+}
+
+function formatMoney(n: number): string {
+  return `Rs ${n.toLocaleString('en-IN')}`;
 }

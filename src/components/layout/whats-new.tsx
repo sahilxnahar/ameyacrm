@@ -2,7 +2,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Sparkles, X } from 'lucide-react';
-import { APP_VERSION, CHANGELOG } from '@/config/changelog';
+import { APP_VERSION } from '@/config/version';
+import type { Release } from '@/config/changelog';
 
 const KEY = 'amh:seen-version';
 
@@ -43,6 +44,12 @@ const MAX_SHOWN = 6;
  */
 export function WhatsNew() {
   const [show, setShow] = React.useState(false);
+  // Loaded on demand. The changelog is 125KB of prose — every release note ever
+  // written — and it was imported at the top of this file, which sits in the app
+  // shell. That put all 125KB into the client bundle of every signed-in screen,
+  // on every navigation, to render a panel almost nobody sees on almost every
+  // visit. It is now fetched only in the one case where it is about to be shown.
+  const [release, setRelease] = React.useState<Release | null>(null);
 
   React.useEffect(() => {
     let seen: string | null = null;
@@ -56,7 +63,13 @@ export function WhatsNew() {
     // release once and missing it is a triviality; being unable to reach any
     // screen in the CRM is not.
     try { localStorage.setItem(KEY, APP_VERSION); } catch { /* ignore */ }
-    setShow(true);
+    let live = true;
+    void import('@/config/changelog').then((m) => {
+      if (!live) return;
+      const r = m.CHANGELOG[0];
+      if (r) { setRelease(r); setShow(true); }
+    }).catch(() => undefined);
+    return () => { live = false; };
   }, []);
 
   const dismiss = React.useCallback(() => setShow(false), []);
@@ -69,9 +82,7 @@ export function WhatsNew() {
     return () => window.removeEventListener('keydown', onKey);
   }, [show, dismiss]);
 
-  if (!show) return null;
-  const release = CHANGELOG[0];
-  if (!release) return null;
+  if (!show || !release) return null;
 
   const shown = release.highlights.slice(0, MAX_SHOWN);
   const hidden = release.highlights.length - shown.length;

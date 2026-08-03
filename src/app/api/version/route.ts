@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { APP_VERSION } from '@/config/changelog';
+import { APP_VERSION } from '@/config/version';
 
 /**
  * The version of the code currently deployed on the server. The browser boots

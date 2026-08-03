@@ -1,6 +1,7 @@
 import 'server-only';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
+import { EMBLEM_PNG_BASE64 } from '@/lib/pdf/brand-marks';
 
 // Brand colours (RGB 0..1)
 const BRASS = rgb(0.627, 0.49, 0.204);
@@ -33,6 +34,8 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
   const page = doc.addPage([595.28, 841.89]); // A4 pt
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  // The Ameya mark, drawn faintly behind the content by the letterhead helper.
+  const emblem = await doc.embedPng(Buffer.from(EMBLEM_PNG_BASE64, 'base64'));
   const W = 595.28;
   const M = 48;
   let y = 800;
@@ -52,7 +55,7 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
     email: d.company.email,
     website: d.company.website,
     gstin: d.company.gstin,
-  }, { compact: true });
+  }, { compact: true, emblem });
 
   y = headerBottom - 24;
   text('TAX INVOICE', M, y, 15, bold, BRASS);

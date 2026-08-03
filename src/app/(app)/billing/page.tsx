@@ -20,13 +20,33 @@ export default async function BillingPage() {
   const [invoices, pos, bills, projects, vendors, approvers, agg, myPendingSteps] = await Promise.all([
     prisma.invoice.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { project: { select: { name: true } } } }).catch(() => []),
     prisma.purchaseOrder.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { vendor: { select: { name: true } } } }).catch(() => []),
-    prisma.vendorBill.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { vendor: { select: { name: true } } } }).catch(() => []),
+    prisma.vendorBill.findMany({
+      orderBy: { createdAt: 'desc' }, take: 100,
+      select: {
+        id: true, number: true, amount: true, gstAmount: true, status: true,
+        billDate: true, dueDate: true, vendorId: true,
+        attachmentUrl: true, attachmentName: true, notes: true,
+        vendor: { select: { name: true } },
+      },
+    }).catch(() => []),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true } }).catch(() => []),
     prisma.vendor.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: VENDOR_CORE_SELECT }).catch(() => []),
     prisma.user.findMany({ where: { status: 'ACTIVE', role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD'] } }, select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
     prisma.invoice.aggregate({ _sum: { total: true, amountPaid: true } }).catch(() => ({ _sum: { total: null, amountPaid: null } })),
     prisma.approvalStep.findMany({ where: { approverId: ctx.user.id, status: 'PENDING', request: { entityType: 'PURCHASE_ORDER' } }, include: { request: { select: { entityId: true } } } }).catch(() => []),
   ]);
+
+  // The payment raised against each bill, so the row can show the whole trail —
+  // recorded, paid, with which voucher — instead of only a status word.
+  const billIds = bills.map((b) => b.id);
+  const vouchers = billIds.length
+    ? await prisma.voucher.findMany({
+        where: { vendorBillId: { in: billIds }, status: { not: 'CANCELLED' } },
+        select: { vendorBillId: true, number: true, voucherDate: true, status: true },
+        orderBy: { createdAt: 'desc' },
+      }).catch(() => [])
+    : [];
+  const payByBill = new Map(vouchers.map((v) => [v.vendorBillId!, v]));
 
   const billed = Number(agg._sum.total ?? 0);
   const paid = Number(agg._sum.amountPaid ?? 0);
@@ -63,6 +83,12 @@ export default async function BillingPage() {
           gstAmount: Number(b.gstAmount ?? 0),
           billDate: b.billDate ? b.billDate.toISOString().slice(0, 10) : null,
           dueDate: b.dueDate ? b.dueDate.toISOString().slice(0, 10) : null,
+          attachmentUrl: b.attachmentUrl ?? null,
+          attachmentName: b.attachmentName ?? null,
+          notes: b.notes ?? null,
+          paidVoucher: payByBill.get(b.id)?.number ?? null,
+          paidOn: payByBill.get(b.id)?.voucherDate?.toISOString().slice(0, 10) ?? null,
+          paidStatus: payByBill.get(b.id)?.status ?? null,
         }))}
       />
     </div>

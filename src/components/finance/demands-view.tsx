@@ -74,9 +74,26 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
       </div>
 
       <div className="toolbar items-center gap-2">
-        <p className="text-sm text-muted-foreground">Demands generate and dispatch automatically each day. Run a cycle now, or re-send anything still pending.</p>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">
+            Demands generate and dispatch automatically each day. Run a cycle now, or re-send anything still pending.
+          </p>
+          {/*
+            This screen is money BUYERS owe you, raised against a booking — a unit
+            sale. It is not where a supplier's bill goes. Offering "Raise a demand"
+            with an empty booking list produced a form that could never be
+            submitted and no explanation of why, so people assumed it was broken.
+          */}
+          {!bookings.length && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              This is for money <strong>buyers owe you</strong>, against a unit booking. If a supplier has
+              billed <em>you</em>, record it on <a href="/billing" className="text-brass hover:underline">Billing</a> and
+              pay it from <a href="/payments" className="text-brass hover:underline">Payments Made</a>.
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
-          {canManage && (
+          {canManage && bookings.length > 0 && (
             <Button variant="outline" onClick={() => setRaising((v) => !v)} className="gap-1">
               <Plus className="h-4 w-4" /> Raise a demand
             </Button>

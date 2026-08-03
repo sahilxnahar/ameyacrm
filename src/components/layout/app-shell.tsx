@@ -5,8 +5,6 @@ import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
 import { BrandWatermark } from './brand-watermark';
 import { Breadcrumbs } from './breadcrumbs';
-import { CommandPalette } from './command-palette';
-import { ShortcutsHelp } from './shortcuts-help';
 import { MobileDock } from './mobile-dock';
 import { SubNav } from './sub-nav';
 import { KeyboardShortcuts } from './keyboard-shortcuts';
@@ -14,13 +12,34 @@ import { DemoBanner } from './demo-banner';
 import type { TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import type { NavMode } from '@/lib/nav/nav-mode';
 import { NavProgress } from './nav-progress';
-import { OfflineOutbox } from './offline-outbox';
-import { WhatsNew } from './whats-new';
-import { UpdateBanner } from '@/components/pwa/update-banner';
-import { NotificationPrompt } from '@/components/pwa/notification-prompt';
-import { AssistantLauncher } from '@/components/assistant/assistant-launcher';
-import { PullToRefresh } from './pull-to-refresh';
 import type { NavPrefs } from '@/lib/nav/prefs';
+import { NAVIGATION } from '@/config/navigation';
+import { toneForPath } from '@/config/module-style';
+import nextDynamic from 'next/dynamic';
+
+/*
+ * Chrome that nobody has opened yet.
+ *
+ * All of these render nothing until something happens — a keystroke, a click, an
+ * upgrade, losing connectivity. They were imported at the top of this file,
+ * which wraps all 172 signed-in routes, so their code was downloaded, parsed and
+ * hydrated on every single page load before the page you actually asked for
+ * could become interactive. That is what "the buttons don't work" is: the screen
+ * is painted from the server, but React has not finished hydrating, so nothing
+ * responds yet.
+ *
+ * Loading them on demand takes that work off the critical path. `ssr: false`
+ * because none of them contributes anything to the first paint.
+ */
+const CommandPalette = nextDynamic(() => import('./command-palette').then((m) => m.CommandPalette), { ssr: false });
+const ShortcutsHelp = nextDynamic(() => import('./shortcuts-help').then((m) => m.ShortcutsHelp), { ssr: false });
+const WhatsNew = nextDynamic(() => import('./whats-new').then((m) => m.WhatsNew), { ssr: false });
+const OfflineOutbox = nextDynamic(() => import('./offline-outbox').then((m) => m.OfflineOutbox), { ssr: false });
+const PullToRefresh = nextDynamic(() => import('./pull-to-refresh').then((m) => m.PullToRefresh), { ssr: false });
+const AssistantLauncher = nextDynamic(() => import('@/components/assistant/assistant-launcher').then((m) => m.AssistantLauncher), { ssr: false });
+const NotificationPrompt = nextDynamic(() => import('@/components/pwa/notification-prompt').then((m) => m.NotificationPrompt), { ssr: false });
+const UpdateBanner = nextDynamic(() => import('@/components/pwa/update-banner').then((m) => m.UpdateBanner), { ssr: false });
+
 import type { ProjectOption } from './project-switcher';
 
 export interface ShellUser {
@@ -207,7 +226,14 @@ export function AppShell({
             * readable. Screens that genuinely need every pixel opt out with
             * `page-wide` on their own wrapper.
             */}
-          <div key={pathname} className="page-container animate-in mx-auto w-full max-w-[1400px]">{children}</div>
+          {/* One attribute is all it takes for every screen to carry its area's
+              colour: the page header and anything else that wants it reads
+              `var(--tone)`, which the CSS derives from this. */}
+          <div
+            key={pathname}
+            data-tone={toneForPath(pathname ?? '', NAVIGATION)}
+            className="page-container animate-in mx-auto w-full max-w-[1400px]"
+          >{children}</div>
         </main>
       </div>
       {/* Ameya OS mobile Dock (< md) — Launchpad · Search · Quick-Upload · Alerts. */}

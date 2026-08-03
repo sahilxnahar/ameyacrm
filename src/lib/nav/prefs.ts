@@ -3,16 +3,38 @@
  * `groups` holds the labels of sections in the person's preferred top-to-bottom
  * order — anything they have not dragged keeps its standard position.
  */
-export interface NavPrefs { pinned: string[]; order: string[]; hidden: string[]; collapsed: string[]; groups: string[] }
+/**
+ * `tones` and `weights` are per-screen personal overrides of the colour and the
+ * tile size defined in `config/module-style.ts`. They live in the same JSON
+ * column as the rest of the menu preferences, so making the launchpad
+ * customisable needed no schema change and no migration for anyone to run.
+ */
+export interface NavPrefs {
+  pinned: string[]; order: string[]; hidden: string[]; collapsed: string[]; groups: string[];
+  tones: Record<string, string>;
+  weights: Record<string, string>;
+}
 
-export const EMPTY_PREFS: NavPrefs = { pinned: [], order: [], hidden: [], collapsed: [], groups: [] };
+export const EMPTY_PREFS: NavPrefs = { pinned: [], order: [], hidden: [], collapsed: [], groups: [], tones: {}, weights: {} };
 
 /** Read whatever is stored on the user, tolerating older or malformed shapes. */
 export function readPrefs(raw: unknown): NavPrefs {
   if (!raw || typeof raw !== 'object') return EMPTY_PREFS;
   const o = raw as Partial<Record<keyof NavPrefs, unknown>>;
   const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
-  return { pinned: arr(o.pinned), order: arr(o.order), hidden: arr(o.hidden), collapsed: arr(o.collapsed), groups: arr(o.groups) };
+  const map = (v: unknown): Record<string, string> => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === 'string') out[k] = val;
+    }
+    return out;
+  };
+  return {
+    pinned: arr(o.pinned), order: arr(o.order), hidden: arr(o.hidden),
+    collapsed: arr(o.collapsed), groups: arr(o.groups),
+    tones: map(o.tones), weights: map(o.weights),
+  };
 }
 
 /**

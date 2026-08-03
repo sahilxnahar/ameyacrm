@@ -2259,6 +2259,15 @@ model VendorBill {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  /// The supplier's own bill, as they sent it — the PDF or the photograph.
+  /// Kept against the bill rather than filed loose in Documents, because the
+  /// question people actually ask is "show me what they invoiced", and an
+  /// approval you cannot see the paperwork for is not an approval.
+  attachmentUrl  String?
+  attachmentName String?
+  /// What the bill is for, in the payer's own words.
+  notes          String?
+
   vendor    Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   createdBy User?   @relation("VendorBillCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 

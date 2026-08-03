@@ -2,8 +2,9 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Trash2, Loader2, Check, X, Pencil } from 'lucide-react';
-import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill, updateVendorBill, voidVendorBill } from '@/server/actions/billing';
+import { Plus, Trash2, Loader2, Check, X, Pencil, Paperclip, FileDown, ExternalLink } from 'lucide-react';
+import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill, updateVendorBill, voidVendorBill, deleteInvoice } from '@/server/actions/billing';
+import { UniversalUploader } from '@/components/shared/universal-uploader';
 import { VendorPortalLink } from './vendor-portal-link';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -29,11 +30,14 @@ interface Vendor {
 export interface Bill {
   id: string; number: string; vendor: string; status: string; amount: number;
   vendorId: string | null; gstAmount: number; billDate: string | null; dueDate: string | null;
+  attachmentUrl: string | null; attachmentName: string | null; notes: string | null;
+  /** The payment raised against this bill, if there is one. */
+  paidVoucher: string | null; paidOn: string | null; paidStatus: string | null;
 }
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 function statusVariant(s: string) { return s === 'PAID' || s === 'APPROVED' ? 'success' : ['OVERDUE', 'VOID', 'CANCELLED', 'REJECTED'].includes(s) ? 'destructive' : s === 'DRAFT' ? 'secondary' : s === 'PENDING_APPROVAL' ? 'warning' : 'default'; }
 
-type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | 'void' | null;
+type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | 'void' | 'killInvoice' | null;
 
 export function BillingView({ invoices, pos, bills, vendors, projects, approvers, canApprove, canManage, geminiEnabled }: {
   invoices: { id: string; number: string; client: string; status: string; total: number; project: string | null; dueDate: string | null }[];
@@ -57,7 +61,11 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
   // corrected, and saving that silently overwrote it a second time.
   const [editingBill, setEditingBill] = React.useState<Bill | null>(null);
   const [voidTarget, setVoidTarget] = React.useState<Bill | null>(null);
-  const close = () => { setOpen(null); setEditingBill(null); setVoidTarget(null); };
+  // The supplier's own paperwork, carried on the bill so an approval is never
+  // made against a figure nobody can check.
+  const [attach, setAttach] = React.useState<{ url: string; name: string } | null>(null);
+  const [killTarget, setKillTarget] = React.useState<{ id: string; number: string; client: string; status: string } | null>(null);
+  const close = () => { setOpen(null); setEditingBill(null); setVoidTarget(null); setKillTarget(null); setAttach(null); };
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
@@ -95,11 +103,26 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
   // no void, so the only way out was a second bill to cancel the first, which
   // leaves two wrong numbers in the payables ledger instead of one.
   const submitBill = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
-    const d = { number: fd.get('number'), vendorId: fd.get('vendorId') || null, amount: fd.get('amount'), gstAmount: fd.get('gstAmount') || 0, billDate: fd.get('billDate') || null, dueDate: fd.get('dueDate') || null };
+    const d = {
+      number: fd.get('number'), vendorId: fd.get('vendorId') || null,
+      amount: fd.get('amount'), gstAmount: fd.get('gstAmount') || 0,
+      billDate: fd.get('billDate') || null, dueDate: fd.get('dueDate') || null,
+      notes: fd.get('notes') || null,
+      attachmentUrl: attach?.url ?? editingBill?.attachmentUrl ?? null,
+      attachmentName: attach?.name ?? editingBill?.attachmentName ?? null,
+    };
     run(
       () => editingBill ? updateVendorBill({ ...d, billId: editingBill.id }) : createVendorBill(d),
       editingBill ? 'Bill corrected — the ledger has been re-posted' : 'Vendor bill recorded',
     ); };
+  const submitKillInvoice = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const reason = String(new FormData(e.currentTarget).get('reason') ?? '');
+    if (!killTarget) return;
+    const id = killTarget.id;
+    const wasDraft = killTarget.status === 'DRAFT';
+    run(() => deleteInvoice(id, reason), wasDraft ? 'Draft invoice deleted' : 'Invoice voided and the ledger reversed');
+  };
   const submitVoid = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     const reason = String(fd.get('reason') ?? '');
     if (!voidTarget) return;
@@ -173,6 +196,15 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                   {pending && busyId === i.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Issue'}
                 </Button>
               )}
+              {canManage && i.status !== 'VOID' && (
+                <Button
+                  size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs text-destructive"
+                  title={i.status === 'DRAFT' ? 'Delete this draft' : 'Void this invoice and reverse the ledger'}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setKillTarget({ id: i.id, number: i.number, client: i.client, status: i.status }); setOpen('killInvoice'); }}
+                >
+                  <Trash2 className="h-3 w-3" /> {i.status === 'DRAFT' ? 'Delete' : 'Void'}
+                </Button>
+              )}
               <Badge variant={statusVariant(i.status) as never} className="shrink-0">{titleCase(i.status)}</Badge>
               <div className="w-24 shrink-0 text-right font-medium tabular-nums">{formatCurrency(i.total)}</div>
             </div>
@@ -211,11 +243,27 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
               <Monogram name={b.vendor} />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{b.vendor}</div>
-                <div className="truncate font-mono text-xs text-muted-foreground">{b.number}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  <span className="font-mono">{b.number}</span>
+                  {b.notes ? ` · ${b.notes}` : ''}
+                  {b.paidVoucher
+                    ? <span className="ml-1 text-success">· paid {b.paidOn ? formatDate(b.paidOn) : ''} ({b.paidVoucher})</span>
+                    : <span className="ml-1">· not yet paid</span>}
+                </div>
               </div>
+              {b.attachmentUrl && (
+                <a href={b.attachmentUrl} target="_blank" rel="noreferrer" title={b.attachmentName ?? "The supplier's own bill"}
+                   className="focus-ring inline-flex h-7 shrink-0 items-center gap-1 rounded border px-2 text-xs text-muted-foreground hover:bg-secondary">
+                  <Paperclip className="h-3 w-3" /> Their bill
+                </a>
+              )}
+              <a href={`/api/billing/bills/${b.id}/pdf`} target="_blank" rel="noreferrer" title="Download this bill as a PDF"
+                 className="focus-ring inline-flex h-7 shrink-0 items-center gap-1 rounded border px-2 text-xs text-muted-foreground hover:bg-secondary">
+                <FileDown className="h-3 w-3" /> PDF
+              </a>
               {canManage && b.status !== 'PAID' && b.status !== 'VOID' && (
                 <>
-                  <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setEditingBill(b); setOpen('bill'); }}>
+                  <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setEditingBill(b); setAttach(null); setOpen('bill'); }}>
                     <Pencil className="h-3 w-3" /> Edit
                   </Button>
                   <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs text-destructive" onClick={() => { setVoidTarget(b); setOpen('void'); }}>
@@ -327,6 +375,34 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
               <div className="space-y-2"><Label htmlFor="bbilldate">Bill date</Label><Input id="bbilldate" name="billDate" type="date" defaultValue={editingBill?.billDate ?? ''} /></div>
               <div className="space-y-2"><Label htmlFor="bdue">Due date</Label><Input id="bdue" name="dueDate" type="date" defaultValue={editingBill?.dueDate ?? ''} /></div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="bnotes">What it is for</Label>
+              <Input id="bnotes" name="notes" placeholder="Borewell pump — Tower B" defaultValue={editingBill?.notes ?? ''} />
+            </div>
+            <div className="space-y-2">
+              <Label>The supplier&rsquo;s own bill</Label>
+              <p className="text-xs text-muted-foreground">
+                Attach the PDF or a photograph. Anyone approving the payment can then see the paperwork
+                the figure came from, instead of taking it on trust.
+              </p>
+              {(attach || editingBill?.attachmentUrl) && (
+                <p className="flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-brass" />
+                  <span className="min-w-0 flex-1 truncate">{attach?.name ?? editingBill?.attachmentName ?? 'Attached'}</span>
+                  <a href={attach?.url ?? editingBill?.attachmentUrl ?? '#'} target="_blank" rel="noreferrer"
+                     className="inline-flex items-center gap-1 text-brass hover:underline">
+                    <ExternalLink className="h-3 w-3" /> Open
+                  </a>
+                </p>
+              )}
+              <UniversalUploader
+                compact
+                preview={false}
+                label="Drop the bill here, or click to browse"
+                hint="PDF, JPEG or PNG"
+                onUploaded={(f) => setAttach({ url: f.url, name: f.name })}
+              />
+            </div>
             {editingBill && (
               <p className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
                 Saving reverses what this bill posted to the ledger and posts the corrected figure. The old entry stays
@@ -335,6 +411,39 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
               </p>
             )}
             <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={close}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}{editingBill ? 'Save correction' : 'Record'}</Button></div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Removing an invoice.
+          A draft that was never issued is deleted outright. One that HAS been
+          issued is voided instead: it keeps its number, is marked void and its
+          ledger entry is reversed. Deleting an issued invoice would leave a hole
+          in a numbered series, which is exactly what a GST audit looks for. */}
+      <Dialog open={open === 'killInvoice'} onOpenChange={(o) => !o && close()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {killTarget?.status === 'DRAFT' ? `Delete draft ${killTarget?.number}?` : `Void ${killTarget?.number}?`}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={submitKillInvoice} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {killTarget?.status === 'DRAFT'
+                ? `This draft was never issued, so it is removed completely. ${killTarget?.client ?? ''} will see nothing.`
+                : `${killTarget?.number} has been issued, so it keeps its number and is marked Void — deleting it outright would leave a gap in the invoice series. Whatever it posted to the ledger is reversed.`}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="killreason">Why</Label>
+              <Input id="killreason" name="reason" required minLength={3} placeholder="Raised against the wrong client" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={pending}>
+                {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {killTarget?.status === 'DRAFT' ? 'Delete it' : 'Void it'}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

@@ -53,3 +53,64 @@ export async function resetNavPrefs(): Promise<NavResult> {
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
+
+/**
+ * Save one person's colour and size choices for the launchpad.
+ *
+ * Kept separate from `saveNavPrefs` so that setting a tile's colour cannot
+ * accidentally clobber a pinned list, and merged into the existing JSON rather
+ * than replacing it. Everything is keyed by href, so renaming a page's title
+ * never loses somebody's layout.
+ */
+export async function saveModuleStyle(input: {
+  tones?: Record<string, string>;
+  weights?: Record<string, string>;
+}): Promise<NavResult> {
+  try {
+    const ctx = await ensure('dashboard.view');
+    const TONES = ['money', 'sales', 'build', 'legal', 'people', 'documents', 'insight', 'marketing', 'admin', 'day'];
+    const WEIGHTS = ['hero', 'large', 'medium', 'small'];
+
+    const clean = (src: Record<string, string> | undefined, allowed: string[]) => {
+      const out: Record<string, string> = {};
+      for (const [href, v] of Object.entries(src ?? {})) {
+        if (!href.startsWith('/') || !allowed.includes(v)) continue;
+        out[href] = v;
+        if (Object.keys(out).length >= 200) break;
+      }
+      return out;
+    };
+
+    const row = await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { navPrefs: true } });
+    const existing = (row?.navPrefs && typeof row.navPrefs === 'object' && !Array.isArray(row.navPrefs))
+      ? (row.navPrefs as Record<string, unknown>)
+      : {};
+
+    await prisma.user.update({
+      where: { id: ctx.user.id },
+      data: {
+        navPrefs: {
+          ...existing,
+          ...(input.tones ? { tones: clean(input.tones, TONES) } : {}),
+          ...(input.weights ? { weights: clean(input.weights, WEIGHTS) } : {}),
+        },
+      },
+    });
+    revalidatePath('/', 'layout');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}
+
+/** Put every colour and size back to the standard. */
+export async function resetModuleStyle(): Promise<NavResult> {
+  try {
+    const ctx = await ensure('dashboard.view');
+    const row = await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { navPrefs: true } });
+    const existing = (row?.navPrefs && typeof row.navPrefs === 'object' && !Array.isArray(row.navPrefs))
+      ? (row.navPrefs as Record<string, unknown>) : {};
+    delete existing.tones; delete existing.weights;
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { navPrefs: existing as never } });
+    revalidatePath('/', 'layout');
+    return { ok: true };
+  } catch (e) { return toActionError(e); }
+}

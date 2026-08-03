@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/current-user';
 import { AppShell } from '@/components/layout/app-shell';
+import { EMPTY_PREFS } from '@/lib/nav/prefs';
 import { EMPTY_TOP_NAV_PREFS } from '@/lib/nav/top-nav-prefs';
 
 /**
@@ -25,7 +26,7 @@ export default async function DemoLayout({ children }: { children: React.ReactNo
       user={{ id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl, role: user.role, designation: user.designation }}
       permissionKeys={[]}
       isSuperAdmin={false}
-      navPrefs={{ pinned: [], order: [], hidden: [], collapsed: [], groups: [] }}
+      navPrefs={EMPTY_PREFS}
       topNavPrefs={EMPTY_TOP_NAV_PREFS}
       projects={[]}
       activeProjectId={null}

@@ -12,12 +12,13 @@ import { NAVIGATION, essentialsFor, type NavItem } from '@/config/navigation';
 import { readNavMode, DEFAULT_NAV_MODE, type NavMode } from '@/lib/nav/nav-mode';
 import { NavCustomiser } from './nav-customiser';
 import { EMPTY_TOP_NAV_PREFS, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
-import { APP_VERSION } from '@/config/changelog';
+import { APP_VERSION } from '@/config/version';
 import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
-import { applyOrder, applyGroupOrder, type NavPrefs } from '@/lib/nav/prefs';
+import { applyOrder, applyGroupOrder, EMPTY_PREFS, type NavPrefs } from '@/lib/nav/prefs';
 import { RecentNav } from './recent-nav';
 import { BrandLogo } from './brand-logo';
 import { useT } from '@/components/i18n/language-provider';
+import { GROUP_TONE, toneStyle } from '@/config/module-style';
 import { cn } from '@/lib/utils/cn';
 
 export function Sidebar({
@@ -186,7 +187,7 @@ export function Sidebar({
   const reset = () =>
     start(async () => {
       await resetNavPrefs();
-      setPrefs({ pinned: [], order: [], hidden: [], collapsed: [], groups: [] });
+      setPrefs(EMPTY_PREFS);
       setCollapsedGroups([]);
       toast.success('Back to the standard menu');
       router.refresh();
@@ -401,13 +402,20 @@ export function Sidebar({
                     type="button"
                     onClick={() => toggleGroup(group.label)}
                     aria-expanded={showItems}
-                    className={cn('mb-2 flex w-full items-center gap-1 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
+                    className={cn('mb-2 flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
                     title={isCollapsedGroup ? 'Open this section' : 'Fold this section'}
                   >
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
+                    {/* The section's colour, so the eye finds "Money" without reading it. */}
+                    <span className={cn('h-2.5 w-1 shrink-0 rounded-full', toneStyle(GROUP_TONE[group.label] ?? 'day').dot)} />
                     {t(group.label)}
                   </button>
-                  {showItems && <ul className="space-y-0.5">{items.map((item) => renderItem(item, groupHrefs))}</ul>}
+                  {showItems && (
+                    <ul className={cn('space-y-0.5', !rail && 'border-l-2 pl-1',
+                      !rail && toneStyle(GROUP_TONE[group.label] ?? 'day').border)}>
+                      {items.map((item) => renderItem(item, groupHrefs))}
+                    </ul>
+                  )}
                 </div>
               );
             });

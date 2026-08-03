@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, KeyRound, Ban, CheckCircle2, ShieldCheck, Trash2, Download, Undo2 } from 'lucide-react';
-import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager, generateTemporaryPassword, deleteUser, restoreUser, exportUsers } from '@/server/actions/admin';
+import { createUser, setUserStatus, forcePasswordReset, createDepartment, setUserManager, generateTemporaryPassword, deleteUser, restoreUser, exportUsers, purgeUser } from '@/server/actions/admin';
 import { ROLE_LABELS } from '@/lib/rbac/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,11 @@ const ROLES = ['SUPER_ADMIN','ADMIN','DEPARTMENT_HEAD','MANAGER','EXECUTIVE','EM
 interface U { id: string; name: string; username: string; email: string; role: string; status: string; department: string | null; twoFactor: boolean; managerId: string | null; deletedAt?: string | null }
 interface D { id: string; name: string; users: number; head: string | null; active: boolean }
 
-export function AdminView({ users, departments, deptOptions }: { users: U[]; departments: D[]; deptOptions: { id: string; name: string }[] }) {
+export function AdminView({ users, departments, deptOptions, isSuperAdmin = false }: {
+  users: U[]; departments: D[]; deptOptions: { id: string; name: string }[];
+  /** Permanent erasure is owner-only; the server checks this again. */
+  isSuperAdmin?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [userOpen, setUserOpen] = React.useState(false);
@@ -71,6 +75,25 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
     // something to do by mis-click, and there is no undo button on the row.
     if (!window.confirm(`Remove ${u.name}?\n\nThey will be signed out and can no longer sign in. Their history — audit trail, vouchers, leads — is kept.`)) return;
     act(() => deleteUser(u.id), 'User removed');
+  };
+
+  /**
+   * Erase somebody permanently.
+   *
+   * Separate from "Remove", and deliberately harder: removing keeps the history
+   * so "who approved this in March" still has an answer, which is what you want
+   * almost every time. This is for a DPDP erasure request or an account created
+   * in error. The email has to be typed back, and the server checks it again.
+   */
+  const confirmPurge = (u: { id: string; name: string; email: string }) => {
+    const typed = window.prompt(
+      `PERMANENTLY ERASE ${u.name}?\n\n` +
+      'This destroys their account and personal data. It cannot be undone.\n' +
+      'Their financial and audit records are kept, but no longer carry their name.\n\n' +
+      `Type their email address to confirm:\n${u.email}`,
+    );
+    if (!typed) return;
+    act(() => purgeUser(u.id, typed), 'User permanently erased');
   };
 
   const askRestore = (u: { id: string; name: string }) => {
@@ -135,7 +158,14 @@ export function AdminView({ users, departments, deptOptions }: { users: U[]; dep
                         : <DropdownMenuItem onClick={() => act(() => setUserStatus(u.id, 'ACTIVE'), 'User activated')}><CheckCircle2 className="h-4 w-4" /> Activate</DropdownMenuItem>}
                       {u.deletedAt
                         ? <DropdownMenuItem onClick={() => askRestore(u)}><Undo2 className="h-4 w-4" /> Restore user</DropdownMenuItem>
-                        : <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(u)}><Trash2 className="h-4 w-4" /> Remove user</DropdownMenuItem>}
+                        : <>
+                            <DropdownMenuItem className="text-destructive" onClick={() => confirmDelete(u)}><Trash2 className="h-4 w-4" /> Remove user</DropdownMenuItem>
+                            {isSuperAdmin && (
+                              <DropdownMenuItem className="text-destructive" onClick={() => confirmPurge({ id: u.id, name: u.name, email: u.email })}>
+                                <Trash2 className="h-4 w-4" /> Erase permanently…
+                              </DropdownMenuItem>
+                            )}
+                          </>}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

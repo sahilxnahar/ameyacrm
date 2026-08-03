@@ -217,6 +217,27 @@
     @apply -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0;
     scrollbar-width: none;
   }
+  /*
+   * The colour of whatever section you are currently in.
+   *
+   * The shell puts `data-tone` on the content wrapper from the URL, and the page
+   * header draws its rule in `var(--tone)`. That means every one of the 122
+   * screens picks up its area's colour with no change to the page itself — and a
+   * screen added later is right automatically, because the mapping is derived
+   * from the navigation rather than kept in a second list.
+   */
+  [data-tone] { --tone: hsl(var(--brass)); }
+  [data-tone='money']     { --tone: #E11D48; }
+  [data-tone='sales']     { --tone: #059669; }
+  [data-tone='build']     { --tone: #D97706; }
+  [data-tone='legal']     { --tone: #4F46E5; }
+  [data-tone='people']    { --tone: #7C3AED; }
+  [data-tone='documents'] { --tone: #475569; }
+  [data-tone='insight']   { --tone: #0891B2; }
+  [data-tone='marketing'] { --tone: #C026D3; }
+  [data-tone='admin']     { --tone: #57534E; }
+  [data-tone='day']       { --tone: hsl(var(--brass)); }
+
   .chip-row::-webkit-scrollbar { display: none; }
   .chip-row > * { flex-shrink: 0; }
 

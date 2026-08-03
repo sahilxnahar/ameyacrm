@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { RefreshCw, X } from 'lucide-react';
-import { APP_VERSION } from '@/config/changelog';
+import { APP_VERSION } from '@/config/version';
 
 /**
  * "A new version is ready" bar. The app boots with APP_VERSION baked into its

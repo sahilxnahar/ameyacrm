@@ -16,6 +16,9 @@ export function PageHeader({
   return (
     <div className={cn('mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between', className)}>
       <div className="min-w-0">
+        {/* The current section's colour, inherited from `data-tone` on the
+            content wrapper. Every screen gets it without changing the screen. */}
+        <span aria-hidden className="mb-2 block h-1 w-10 rounded-full" style={{ background: 'var(--tone, hsl(var(--brass)))' }} />
         <h1 className="break-words gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">
           {title}
           {(helpTermId || helpText) && <HelpTip termId={helpTermId} text={helpText} className="ml-2 align-middle" />}

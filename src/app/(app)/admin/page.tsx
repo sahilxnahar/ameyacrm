@@ -60,6 +60,7 @@ export default async function AdminPage() {
         users={users.map((u) => ({ id: u.id, name: u.name, username: u.username, email: u.email, role: u.role, status: u.status, department: u.department?.name ?? null, twoFactor: u.twoFactorEnabled, managerId: u.managerId ?? null, deletedAt: u.deletedAt ? u.deletedAt.toISOString() : null }))}
         departments={departments.map((d) => ({ id: d.id, name: d.name, users: d._count.users, head: d.head?.name ?? null, active: d.isActive }))}
         deptOptions={departments.map((d) => ({ id: d.id, name: d.name }))}
+        isSuperAdmin={ctx.permissions.isSuperAdmin}
       />
     </div>
   );

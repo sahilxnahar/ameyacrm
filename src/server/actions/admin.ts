@@ -441,3 +441,86 @@ export async function exportUsers(userIds?: string[]): Promise<ExportResult> {
     return toActionError(err);
   }
 }
+
+/**
+ * Erase a person from the database entirely.
+ *
+ * `deleteUser` above is the right answer almost always: it disables the account,
+ * frees the email address, hands their open work to somebody and keeps the
+ * history, so "who approved this payment in March" still has an answer. This is
+ * the other thing — a genuine purge, for a DPDP erasure request or an account
+ * created in error.
+ *
+ * It is guarded harder than anything else in the app, because it is the one
+ * action that destroys evidence:
+ *
+ *   - super admin only, not merely `admin.user.manage`;
+ *   - never the last super admin, and never yourself;
+ *   - the exact email must be typed back, so it cannot be a mis-click;
+ *   - anything they created that is part of the money trail — vouchers, journal
+ *     entries, invoices, audit records — is DETACHED, not deleted. The record of
+ *     what happened survives the person; only the personal data goes.
+ */
+export async function purgeUser(userId: string, confirmEmail: string): Promise<AdminResult> {
+  try {
+    const ctx = await ensure('admin.user.manage');
+    if (ctx.user.role !== 'SUPER_ADMIN') {
+      return { error: 'Only a super admin can erase somebody permanently. An administrator can remove them, which keeps the history.' };
+    }
+    if (userId === ctx.user.id) return { error: 'You cannot erase your own account.' };
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    if (!target) return { error: 'That user no longer exists.' };
+
+    const typed = (confirmEmail ?? '').trim().toLowerCase();
+    if (!typed || typed !== (target.email ?? '').trim().toLowerCase()) {
+      return { error: `Type ${target.email} exactly to confirm. This cannot be undone.` };
+    }
+
+    if (target.role === 'SUPER_ADMIN') {
+      const others = await prisma.user.count({
+        where: { role: 'SUPER_ADMIN', status: 'ACTIVE', deletedAt: null, id: { not: userId } },
+      });
+      if (others === 0) return { error: 'This is the only super admin. Make somebody else a super admin first.' };
+    }
+
+    // Their open work goes to whoever is doing the erasing, before the account
+    // disappears — otherwise those leads and tasks fall out of every queue.
+    const reassigned = await reassignOpenWork(userId, ctx.user.id).catch(() => ({ leads: 0, tasks: 0 }));
+
+    // The audit trail keeps the ACT but loses the actor's account. A summary
+    // line already carries their name, so "who did this" is still answerable
+    // from the history even though the row no longer points at a live user.
+    await prisma.auditLog.updateMany({ where: { actorId: userId }, data: { actorId: null } }).catch(() => undefined);
+
+    const label = `${target.name ?? ''} <${target.email}>`.trim();
+    await prisma.$transaction(async (tx) => {
+      // Sessions, devices and credentials go with the person.
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.backupCode.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.trustedDevice.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.webAuthnCredential.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.loginHistory.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.passwordHistory.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.notification.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.pushSubscription.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.userPermission.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.departmentMember.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.taskAssignee.deleteMany({ where: { userId } }).catch(() => undefined);
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    await writeAudit({
+      actorId: ctx.user.id, action: 'DELETE', entityType: 'User', entityId: userId,
+      summary: `PERMANENTLY ERASED ${label} — account and personal data destroyed; financial and audit records kept without the actor link; ${reassigned.leads} lead(s) and ${reassigned.tasks} task(s) reassigned`,
+    });
+    revalidatePath('/admin'); revalidatePath('/team');
+    return {
+      ok: true, id: userId,
+      message: `${label} has been permanently erased. Their financial records remain, without their name attached.`,
+    };
+  } catch (err) { return toActionError(err); }
+}
