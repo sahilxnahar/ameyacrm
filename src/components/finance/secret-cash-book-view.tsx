@@ -207,8 +207,8 @@ export function SecretCashBookView({
       )}
 
       {eraseOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Confirm master erase">
-          <Card className="w-full max-w-md p-5">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-label="Confirm master erase">
+          <Card className="my-auto w-full max-w-md p-5">
             <div className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /><h3 className="font-display text-lg">Erase the entire Secret Cash Book?</h3></div>
             <p className="mt-2 text-sm text-muted-foreground">
               Every entry is backed up (encrypted) and then removed. You can bring it back any time from “Backups &amp; restore”. Type <strong>ERASE</strong> to confirm.

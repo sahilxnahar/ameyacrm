@@ -209,7 +209,7 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
       </div>
 
       {composeOpen && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh]" role="dialog" aria-modal="true" aria-label="Compose email">
+        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-label="Compose email">
           <div className="w-full max-w-lg rounded-lg border bg-background p-5 shadow-xl">
             <div className="mb-3 flex items-center gap-2"><Mail className="h-5 w-5 text-primary" /><h2 className="font-display text-lg">New email</h2></div>
             <form onSubmit={compose} className="space-y-3">
@@ -227,7 +227,7 @@ export function InboxView({ threads }: { threads: ThreadSummary[] }) {
       )}
 
       {waOpen && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh]" role="dialog" aria-modal="true" aria-label="Compose WhatsApp">
+        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh] overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-label="Compose WhatsApp">
           <div className="w-full max-w-lg rounded-lg border bg-background p-5 shadow-xl">
             <div className="mb-3 flex items-center gap-2"><MessageCircle className="h-5 w-5 text-primary" /><h2 className="font-display text-lg">New WhatsApp</h2></div>
             <form onSubmit={composeWa} className="space-y-3">

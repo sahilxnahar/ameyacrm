@@ -82,3 +82,74 @@ describe('responsive layout', () => {
     expect(css).toMatch(/\.nav-scroll\s*\{/);
   });
 });
+
+/**
+ * The failure mode that made the whole CRM unusable behind an un-closeable
+ * changelog, in v16.9.
+ *
+ * A flex child that is centred in a `fixed inset-0` container and is TALLER than
+ * that container overflows equally off the top and the bottom, and neither end
+ * can be scrolled to — the container is exactly viewport-height, so there is
+ * nothing to scroll. Measured on the real build: a 929px panel in a 705px window
+ * put its close button 89px above the screen and its confirm button 51px below.
+ * Both dismiss controls were unreachable.
+ *
+ * Any one of three things prevents it: the overlay scrolls, the panel is capped
+ * and scrolls internally, or the panel carries an auto block margin (which
+ * centres when it fits and flows when it does not). This requires at least one.
+ */
+describe('overlays cannot trap the user', () => {
+  const OVERLAY = /className="(fixed inset-0 [^"]*flex[^"]*justify-center[^"]*)"/g;
+
+  it('never centres an uncapped panel in a viewport-height container', () => {
+    const bad: string[] = [];
+    for (const f of FILES) {
+      const lines = f.src.split('\n');
+      lines.forEach((line, i) => {
+        OVERLAY.lastIndex = 0;
+        const m = OVERLAY.exec(line);
+        if (!m) return;
+        const cls = m[1] ?? '';
+        if (/pointer-events-none/.test(cls)) return;      // decorative, not a dialog
+        const overlayScrolls = /overflow-(y-)?auto|overflow-(y-)?scroll/.test(cls);
+        // the panel itself, on the next few lines
+        const child = lines.slice(i + 1, i + 6).join('\n');
+        const childHandles =
+          /max-h-\[/.test(child) ||
+          /overflow-(y-)?auto/.test(child) ||
+          /\bm[yb]-auto\b/.test(child) ||
+          /sm:m[yb]-auto\b/.test(child);
+        if (!overlayScrolls && !childHandles) {
+          bad.push(`${f.path}:${i + 1}  ${cls.slice(0, 70)}`);
+        }
+      });
+    }
+    expect(
+      bad,
+      'A full-screen overlay must either scroll itself, or hold a panel that is ' +
+      'capped, scrolls, or has an auto block margin — otherwise tall content ' +
+      'puts the dismiss controls off-screen with no way to reach them:\n' + bad.join('\n'),
+    ).toEqual([]);
+  });
+
+  /**
+   * The loop is what turned a layout bug into an outage: the version is marked
+   * seen on dismiss, so a panel that cannot be dismissed returns on every page
+   * load for ever. Recording on show makes the worst case one stuck screen that
+   * a reload clears.
+   */
+  it("records the seen version when What's New is shown, not only when dismissed", () => {
+    const f = FILES.find((x) => x.path.endsWith('whats-new.tsx'));
+    expect(f, 'whats-new.tsx not found').toBeTruthy();
+    const src = f!.src;
+    const effect = src.slice(src.indexOf('React.useEffect'), src.indexOf('const dismiss'));
+    expect(effect).toMatch(/setItem\(KEY, APP_VERSION\)[\s\S]*setShow\(true\)/);
+  });
+
+  it("gives What's New more than one way out", () => {
+    const src = FILES.find((x) => x.path.endsWith('whats-new.tsx'))!.src;
+    expect(src, 'no Escape handler').toMatch(/Escape/);
+    expect(src, 'no backdrop dismiss').toMatch(/onClick=\{dismiss\}/);
+    expect(src, 'panel not height-capped').toMatch(/max-h-\[\d+dvh\]/);
+  });
+});

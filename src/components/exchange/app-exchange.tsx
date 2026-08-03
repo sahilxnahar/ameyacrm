@@ -134,8 +134,8 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
       {filtered.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No connectors match. Try a different search or category.</p>}
 
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail(null)}>
-          <div className="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto overscroll-contain" onClick={() => setDetail(null)}>
+          <div className="my-auto w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <Monogram name={detail.name} />
               <div className="flex-1">

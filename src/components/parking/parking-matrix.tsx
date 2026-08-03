@@ -178,8 +178,8 @@ function SlotEditor({ slot, units, pending, onAssign, onStatus, onDelete, onClos
   const [unitId, setUnitId] = React.useState(slot.unitId ?? '');
   React.useEffect(() => setUnitId(slot.unitId ?? ''), [slot]);
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-xl bg-white p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
+      <div className="sm:my-auto w-full max-w-md rounded-t-xl bg-white p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-primary">Slot {slot.code}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700">✕</button>

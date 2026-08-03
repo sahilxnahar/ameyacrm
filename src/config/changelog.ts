@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.9';
+export const APP_VERSION = 'v16.10';
 
 export interface Release {
   version: string;
@@ -13,6 +13,18 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.10',
+    date: '3 Aug 2026',
+    highlights: [
+      'Fixed the \u201cWhat\u2019s new\u201d pop-up, which could not be closed. It had no height limit, so on a normal laptop window it was taller than the screen and \u2014 because it centres itself \u2014 it hung off the top AND the bottom equally. The \u2715 sat above the screen and the \u201cGot it\u201d button below it, with nothing to scroll.',
+      'That is why the CRM seemed broken after the last update: the \u201cseen\u201d flag is only written when you dismiss the panel, so a panel you could not dismiss came back on every single page load and sat over every screen.',
+      'It now fits any window, the header and the button stay put while the list scrolls, and Escape or a click outside also closes it. The version is recorded the moment it opens, so this can never loop again even if something else about it breaks.',
+      'Ten other pop-ups in the app had the same weakness and were fixed the same way \u2014 among them the connector setup, the app details, the welcome wizard, the parking assignment and the compose windows.',
+      'A test now fails the build on any pop-up that can put its own close button off-screen.',
+      'No database changes in this release.',
+    ],
+  },
   {
     version: 'v16.9',
     date: '3 Aug 2026',

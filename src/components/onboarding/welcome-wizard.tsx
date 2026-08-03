@@ -40,8 +40,8 @@ export function WelcomeWizard({ name }: { name: string }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 overflow-y-auto overscroll-contain">
+      <div className="my-auto w-full max-w-lg rounded-xl border bg-card p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-2xl font-semibold">Welcome, {firstName} 👋</h2>

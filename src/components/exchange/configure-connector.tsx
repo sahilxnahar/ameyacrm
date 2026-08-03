@@ -50,8 +50,8 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
+      <div className="my-auto w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Configure {name}</div>
           <button onClick={onClose}><X className="h-4 w-4 text-muted-foreground" /></button>
@@ -161,8 +161,8 @@ function InboundConfig({ slug, name, blurb, onClose }: { slug: string; name: str
   const copy = (t: string) => { navigator.clipboard.writeText(t); toast.success('Copied'); };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
+      <div className="my-auto w-full max-w-lg rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Receive {name} leads</div>
           <button onClick={onClose}><X className="h-4 w-4 text-muted-foreground" /></button>
