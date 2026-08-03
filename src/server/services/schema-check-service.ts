@@ -23,6 +23,15 @@ const REQUIRED: Array<[string, string]> = [
   ['User', 'activeProjectId'],
   ['Project', 'isActive'],
 
+  // v16.4 — MSME clock on the vendor master
+  ['Vendor', 'isMsme'],
+  ['Vendor', 'udyamNumber'],
+  ['Vendor', 'msmeHasAgreement'],
+  // v16.5 — money withheld from a contractor payment, and bill settlement
+  ['Voucher', 'vendorBillId'],
+  ['Voucher', 'cessAmount'],
+  ['Voucher', 'deductionAmount'],
+
   ['Task', 'repeatEvery'],
   ['Voucher', 'utr'],
   ['Vendor', 'bankIfsc'],
@@ -66,7 +75,22 @@ const REQUIRED_TABLES = [
   'TelemetryDevice', 'SiteReading',
   // Internal chat / direct messaging
   'Conversation', 'ConversationMember', 'ChatMessage', 'ChatAttachment',
+  // Contractor running-account billing — the whole module, and it was absent
+  // from a live database while this check happily reported "up to date".
+  'RaBill', 'RaBillLine',
+  // v16.4 — scheduled payment reminders
+  'TallyPartyReminder', 'TallyPartyReminderSend',
+  // Multi-company Tally, guest sandbox, atomic counters, outbound webhooks
+  'TallyCompany', 'TallyImportBatch', 'TallyBill', 'TallyBillAllocation', 'TallyVoucherAudit',
+  'GuestSandbox', 'SandboxLead', 'SandboxUnit', 'SandboxTask', 'SandboxNote', 'SandboxLedgerEntry',
+  'NumberSequence', 'Webhook', 'MsmePaymentClock',
 ];
+
+// NOTE: this list is hand-maintained and therefore always at risk of lagging —
+// which is exactly what happened: it reported "up to date" while RaBill,
+// RaBillLine, Webhook and both reminder tables were missing from production.
+// `DB-DRIFT-CHECK.sql` is generated from prisma/schema.prisma and is the
+// authoritative answer; this is the cheap in-app approximation of it.
 
 export interface SchemaState { behind: boolean; missing: string[] }
 
