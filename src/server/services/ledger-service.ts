@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import type { JournalStatus } from '@prisma/client';
 import { checkEntry, reverseLines, rupees, signedBalance, type DraftLine, type CheckedLine } from '@/lib/ledger/entry';
 import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { CHART_OF_ACCOUNTS, normalSide, REQUIRED_CODES } from '@/config/chart-of-accounts';
@@ -179,6 +180,28 @@ export async function reverse(entryId: string, reason: string, actorId?: string)
 
 // ── Reading the books ───────────────────────────────────────────────────────
 
+/**
+ * Which entries count towards a balance.
+ *
+ * BOTH halves of a reversal, and this is not a detail — it is the difference
+ * between a correct set of books and a silently wrong one.
+ *
+ * `reverse()` does two things: it posts the opposite entry, and it marks the
+ * original REVERSED. The pair is designed to net to zero. Every reader used to
+ * filter `status: 'POSTED'`, which drops the original and keeps the reversal —
+ * so cancelling a ₹10,00,000 payment moved the books by ₹10,00,000 in the wrong
+ * direction rather than by nothing. Bank went UP by the amount, the expense went
+ * NEGATIVE, and because both sides moved together `balanced` stayed true and
+ * nothing complained.
+ *
+ * A reversed entry is history, not a deletion. Its lines count, precisely
+ * because its reversal counts too.
+ *
+ * DRAFT is excluded: nothing creates a DRAFT journal entry today, and if
+ * something ever does it is by definition not yet in the books.
+ */
+export const COUNTS_TOWARDS_BALANCE: { in: JournalStatus[] } = { in: ['POSTED', 'REVERSED'] };
+
 export interface TrialRow {
   code: string; name: string; type: string; isGroup: boolean;
   debit: number; credit: number; balance: number;
@@ -203,7 +226,7 @@ export async function trialBalance(opts: { upto?: Date; from?: Date; projectId?:
       _sum: { debit: true, credit: true },
       where: {
         entry: {
-          status: 'POSTED',
+          status: COUNTS_TOWARDS_BALANCE,
           // `from` narrows to movement WITHIN a period (used by the P&L). Without
           // it the query stays cumulative, which is what a balance sheet needs.
           ...(opts.upto || opts.from
@@ -305,7 +328,7 @@ export async function partyLedger(opts: { vendorId?: string; customerId?: string
     where: {
       ...(opts.vendorId ? { vendorId: opts.vendorId } : {}),
       ...(opts.customerId ? { customerId: opts.customerId } : {}),
-      entry: { status: 'POSTED', ...(opts.upto ? { entryDate: { lte: opts.upto } } : {}) },
+      entry: { status: COUNTS_TOWARDS_BALANCE, ...(opts.upto ? { entryDate: { lte: opts.upto } } : {}) },
     },
     include: {
       entry: { select: { number: true, entryDate: true, narration: true, sourceType: true, sourceId: true } },

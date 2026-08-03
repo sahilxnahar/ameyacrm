@@ -177,6 +177,8 @@ export interface SettlementLike extends VoucherLike {
   retentionAmount?: number | string | null;
   /** BOCW labour cess withheld — owed to the welfare board, not saved. */
   cessAmount?: number | string | null;
+  /** Ad-hoc recovery, usually a mobilisation advance being set off. */
+  deductionAmount?: number | string | null;
 }
 
 /**
@@ -197,9 +199,11 @@ export function contractorSettlementLines(v: SettlementLike): RuleResult {
   const tds = Math.max(0, Number(v.tdsAmount ?? 0) || 0);
   const retention = Math.max(0, Number(v.retentionAmount ?? 0) || 0);
   const cess = Math.max(0, Number(v.cessAmount ?? 0) || 0);
-  if (tds === 0 && retention === 0 && cess === 0) return voucherLines({ ...v, kind: v.kind });
+  const deduction = Math.max(0, Number(v.deductionAmount ?? 0) || 0);
+  if (tds === 0 && retention === 0 && cess === 0 && deduction === 0) return voucherLines({ ...v, kind: v.kind });
 
-  const gross = Math.round((net + tds + retention + cess) * 100) / 100;
+  // The certified value of the work, which is the cost — not the cheque.
+  const gross = Math.round((net + tds + retention + cess + deduction) * 100) / 100;
   const money = moneyAccount(v.mode);
   const party = { vendorId: v.vendorId ?? null, customerId: v.customerId ?? null, projectId: v.projectId ?? null };
   const head = v.accountCode || '5410';
@@ -208,6 +212,10 @@ export function contractorSettlementLines(v: SettlementLike): RuleResult {
   if (tds > 0) lines.push({ accountCode: '2150', credit: tds, ...party });          // TDS payable
   if (retention > 0) lines.push({ accountCode: '2130', credit: retention, ...party }); // Retention payable
   if (cess > 0) lines.push({ accountCode: '2155', credit: cess, ...party });             // BOCW cess payable
+  // A recovery is not a discount: it clears the advance you already paid this
+  // contractor. Dropping it understated project cost AND left the advance
+  // sitting on the balance sheet as an asset for ever.
+  if (deduction > 0) lines.push({ accountCode: '1140', credit: deduction, ...party });    // Advances to vendors
   lines.push({ accountCode: money, credit: net, ...party });
 
   return {

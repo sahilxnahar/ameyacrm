@@ -4158,6 +4158,10 @@ model Voucher {
   /// BOCW labour cess withheld from a contractor payment. Withheld money you
   /// still owe the welfare board — a liability, not a smaller cost.
   cessAmount        Decimal?  @db.Decimal(14, 2)
+  /// Ad-hoc recovery withheld from a contractor payment — usually a
+  /// mobilisation advance being set off. It reduces the cheque without
+  /// reducing the cost, so it has to clear the advance, not vanish.
+  deductionAmount   Decimal?  @db.Decimal(14, 2)
   tdsRate           Decimal?  @db.Decimal(5, 2)
   tdsSection        String? // Indian TDS section applied, e.g. 194C / 194J / 194I
   tdsChallanNo      String? // challan/BSR reference once deposited to the government

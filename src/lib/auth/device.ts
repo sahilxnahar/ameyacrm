@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes, createHash, timingSafeEqual, randomInt } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { addMinutes, addDays } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
@@ -59,7 +59,12 @@ export async function beginDeviceApproval(
   // A fresh device token; it only becomes trusted once the code is entered.
   const deviceToken = randomBytes(24).toString('hex');
   const token = randomBytes(24).toString('hex');
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // CSPRNG, not Math.random — the same rule the emailed sign-in code already
+  // follows. This six-digit code IS an authentication factor: entering it
+  // creates a session. V8's Math.random state is recoverable from a handful of
+  // observed outputs, so an attacker holding a stolen password who can trigger
+  // approvals could predict the next code inside the attempt window.
+  const code = String(randomInt(100000, 1000000));
 
   await prisma.deviceApproval.create({
     data: {
@@ -121,12 +126,23 @@ export async function beginDeviceApproval(
 
   // If the code could not be sent, the person is standing at an empty code box
   // with no way forward. Say so rather than letting them guess.
-  // Either channel arriving is enough to let the person carry on.
-  const delivered = sent.ok || whatsappSent;
+  //
+  // `sent.ok` is not enough: with no mail provider configured the transport is
+  // `console`, which logs the subject and reports success. That combination —
+  // device approval on by default, email not set up yet — meant the very first
+  // administrator to sign in to a new deployment was told a code had been sent,
+  // received nothing, and could not turn device approval off without signing in
+  // first. `delivered` is the honest signal. Either channel is enough.
+  const emailDelivered = sent.ok && sent.delivered !== false;
+  const delivered = emailDelivered || whatsappSent;
   return {
     token,
     emailed: delivered,
-    error: delivered ? null : sent.error ?? 'The code could not be sent by email or WhatsApp.',
+    error: delivered
+      ? null
+      : sent.delivered === false
+        ? 'Email is not configured on this deployment, so the code was written to the server log instead of sent. Set EMAIL_PROVIDER and the mail credentials — the code is in the log in the meantime.'
+        : sent.error ?? 'The code could not be sent by email or WhatsApp.',
   };
 }
 

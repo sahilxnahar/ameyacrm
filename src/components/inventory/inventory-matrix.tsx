@@ -14,12 +14,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 interface UnitCell { id: string; code: string; tower: string | null; floor: number | null; typology: string | null; facing: string | null; carpetAreaSqft: number | null; price: number | null; status: string; holdUntil: string | null; tokenAmount: number | null; holdNote: string | null }
 interface Opt { id: string; name: string }
 
+// Each needs a dark variant: without one these are dark text on a dark tile in
+// dark mode, and the unit code, typology and price in every cell of the matrix
+// become unreadable.
 const STYLE: Record<string, string> = {
-  AVAILABLE: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-800 hover:bg-emerald-500/25',
-  HELD: 'bg-amber-500/15 border-amber-500/50 text-amber-800 hover:bg-amber-500/25',
-  BOOKED: 'bg-blue-500/15 border-blue-500/50 text-blue-800 hover:bg-blue-500/25',
-  SOLD: 'bg-rose-500/15 border-rose-500/50 text-rose-800 hover:bg-rose-500/25',
-  BLOCKED: 'bg-slate-400/20 border-slate-400/50 text-slate-700 hover:bg-slate-400/30',
+  AVAILABLE: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-500/25',
+  HELD: 'bg-amber-500/15 border-amber-500/50 text-amber-800 dark:text-amber-200 hover:bg-amber-500/25',
+  BOOKED: 'bg-blue-500/15 border-blue-500/50 text-blue-800 dark:text-blue-200 hover:bg-blue-500/25',
+  SOLD: 'bg-rose-500/15 border-rose-500/50 text-rose-800 dark:text-rose-200 hover:bg-rose-500/25',
+  BLOCKED: 'bg-slate-400/20 border-slate-400/50 text-slate-700 dark:text-slate-200 hover:bg-slate-400/30',
 };
 const STATUSES = ['AVAILABLE', 'HELD', 'BOOKED', 'SOLD', 'BLOCKED'];
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
@@ -180,7 +183,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                     {sel.holdUntil && <Spec k="Held until" v={new Date(sel.holdUntil).toLocaleString('en-IN')} />}
                     {sel.tokenAmount ? <Spec k="Token" v={money(sel.tokenAmount)} /> : null}
                   </div>
-                  {sel.holdNote && <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800">{sel.holdNote}</p>}
+                  {sel.holdNote && <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200">{sel.holdNote}</p>}
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => setMode('cost')}><FileText className="h-4 w-4" /> Cost sheet</Button>
                     {canManage && <Button size="sm" variant="outline" onClick={() => setMode('edit')}><Pencil className="h-4 w-4" /> Edit</Button>}

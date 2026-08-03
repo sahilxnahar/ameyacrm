@@ -13,9 +13,17 @@ import { ensure, toActionError } from './_helpers';
 
 export type ConnectorResult = { ok: true } | { error: string };
 
-/** Slugs of connectors this workspace has installed, with their status. */
+/**
+ * Slugs of connectors this workspace has installed, with their status.
+ *
+ * Gated, because every exported function in a `'use server'` file is a callable
+ * POST endpoint whether or not any page imports it. This one returned each
+ * install's raw `config` JSON — endpoints, account ids, tenant identifiers —
+ * to anybody who could name it.
+ */
 export async function connectorInstalls(): Promise<Record<string, { status: string; config: Record<string, unknown> | null }>> {
   try {
+    await ensure('admin.setting.manage');
     const rows = await prisma.connectorInstall.findMany({ select: { slug: true, status: true, config: true } });
     const out: Record<string, { status: string; config: Record<string, unknown> | null }> = {};
     for (const r of rows) out[r.slug] = { status: r.status, config: (r.config as Record<string, unknown> | null) ?? null };

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, Loader2, Check, X } from 'lucide-react';
 import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill } from '@/server/actions/billing';
 import { VendorPortalLink } from './vendor-portal-link';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { AiBillImport } from './ai-bill-import';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,10 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
   const router = useRouter();
   const [open, setOpen] = React.useState<DialogKind>(null);
   const [pending, start] = React.useTransition();
+  // Which row is working. A single shared `pending` put a spinner on every
+  // Issue and every Pay button on the screen when one of them was clicked.
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [payTarget, setPayTarget] = React.useState<{ id: string; number: string; vendor: string; amount: number } | null>(null);
   const [invItems, setInvItems] = React.useState([{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
   const [poItems, setPoItems] = React.useState([{ description: '', quantity: '1', unit: 'nos', rate: '', gstRate: '18' }]);
   const [approverIds, setApproverIds] = React.useState<string[]>([]);
@@ -48,17 +53,27 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
   // Issuing is what puts the sale in the books, so it is a deliberate second
   // step rather than something that happens quietly when the invoice is saved.
-  const issue = (id: string, number: string) =>
-    start(async () => { const r = await issueInvoice(id); if ('error' in r) { toast.error(r.error); return; } toast.success(`${number} issued — posted to the ledger`); router.refresh(); });
+  const issue = (id: string, number: string) => {
+    setBusyId(id);
+    start(async () => {
+      const r = await issueInvoice(id);
+      setBusyId(null);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(`${number} issued — posted to the ledger`); router.refresh();
+    });
+  };
   // Paying a bill from here is what clears the payable. Recording the same
   // payment as a loose expense voucher instead books the cost a second time and
   // leaves the creditor standing.
-  const payBill = (id: string, number: string) =>
+  const payBill = (id: string, number: string) => {
+    setBusyId(id);
     start(async () => {
       const r = await settleVendorBill({ billId: id, mode: 'BANK_TRANSFER' });
+      setBusyId(null); setPayTarget(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`${number} settled`); router.refresh();
     });
+  };
   const decide = (id: string, decision: 'APPROVED' | 'REJECTED') =>
     start(async () => { const r = await decidePurchaseOrder(id, decision); if ('error' in r) { toast.error(r.error); return; } toast.success(`PO ${decision.toLowerCase()}`); router.refresh(); });
 
@@ -80,6 +95,16 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
     }), editingVendor ? 'Vendor updated' : 'Vendor added'); };
 
   return (
+    <>
+    <ConfirmDialog
+      open={payTarget !== null}
+      title={`Pay ${payTarget?.number ?? ''}?`}
+      body={payTarget ? `This records a bank payment of ${formatCurrency(payTarget.amount)} to ${payTarget.vendor}, clears what you owe on this bill, and posts it to the ledger. Every other money action asks first; so does this one.` : ''}
+      confirmLabel="Record the payment"
+      pending={pending}
+      onCancel={() => setPayTarget(null)}
+      onConfirm={() => { if (payTarget) payBill(payTarget.id, payTarget.number); }}
+    />
     <Tabs defaultValue="invoices">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="bills">Vendor Bills</TabsTrigger><TabsTrigger value="vendors">Vendors</TabsTrigger></TabsList>
@@ -114,8 +139,8 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 </div>
               </a>
               {i.status === 'DRAFT' && (
-                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending} onClick={() => issue(i.id, i.number)}>
-                  {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Issue'}
+                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending && busyId === i.id} onClick={() => issue(i.id, i.number)}>
+                  {pending && busyId === i.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Issue'}
                 </Button>
               )}
               <Badge variant={statusVariant(i.status) as never} className="shrink-0">{titleCase(i.status)}</Badge>
@@ -159,8 +184,8 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <div className="truncate font-mono text-xs text-muted-foreground">{b.number}</div>
               </div>
               {b.status !== 'PAID' && (
-                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending} onClick={() => payBill(b.id, b.number)}>
-                  {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Pay'}
+                <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending && busyId === b.id} onClick={() => setPayTarget({ id: b.id, number: b.number, vendor: b.vendor, amount: b.amount })}>
+                  {pending && busyId === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Pay'}
                 </Button>
               )}
               <Badge variant={statusVariant(b.status) as never} className="shrink-0">{titleCase(b.status)}</Badge>
@@ -307,5 +332,6 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
         </DialogContent>
       </Dialog>
     </Tabs>
+    </>
   );
 }

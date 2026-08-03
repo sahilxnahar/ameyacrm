@@ -113,6 +113,12 @@ export function CashBookView({
               {shown.map((v) => {
                 const meta = KIND_META[v.kind as VoucherKind];
                 const cancelled = v.status === 'CANCELLED';
+                // Raised, over the approval limit, not yet approved — so no
+                // money has moved. The totals above already exclude it (they
+                // count POSTED only); showing an amount in the In/Out column
+                // made the visible rows disagree with the stated closing
+                // balance, which is the one thing a cash book must never do.
+                const awaiting = v.status === 'DRAFT';
                 const isIn = IN_KINDS.has(v.kind);
                 const isOut = OUT_KINDS.has(v.kind);
                 return (
@@ -133,8 +139,11 @@ export function CashBookView({
                       {!v.materialName && <span className="block">{PAY_MODE_LABEL[v.mode] ?? v.mode}</span>}
                       {cancelled && v.cancelReason && <span className="block text-destructive">{v.cancelReason}</span>}
                     </td>
-                    <td className="p-3 text-right tabular text-success">{isIn && !cancelled ? money(v.amount) : ''}</td>
-                    <td className="p-3 text-right tabular text-destructive">{isOut && !cancelled ? money(v.amount) : ''}</td>
+                    <td className="p-3 text-right tabular text-success">{isIn && !cancelled && !awaiting ? money(v.amount) : ''}</td>
+                    <td className="p-3 text-right tabular text-destructive">
+                      {isOut && !cancelled && !awaiting ? money(v.amount) : ''}
+                      {awaiting && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">awaiting approval</span>}
+                    </td>
                     <td className="p-3 text-right">
                       {canManage && !cancelled && (
                         <Button size="sm" variant="ghost" className="h-7 gap-1.5 px-2 text-xs text-destructive" disabled={pending}

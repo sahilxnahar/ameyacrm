@@ -4,7 +4,7 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageLoadError } from '@/components/layout/page-load-error';
-import { decisions, sops, lessons } from '@/server/services/compliance-service';
+import { decisions, sops, lessons, registerCounts } from '@/server/services/compliance-service';
 import { KnowledgeRegister } from '@/components/compliance/knowledge-register';
 import { RegisterTabs } from '@/components/compliance/register-tabs';
 import { SopRegister, LessonsRegister } from '@/components/compliance/extra-registers';
@@ -26,11 +26,12 @@ export default async function KnowledgePage({ searchParams }: { searchParams: Pr
   const view = ['decisions', 'sops', 'lessons'].includes(sp.view ?? '') ? sp.view! : 'decisions';
 
   try {
-    const [projects, decisionRows, sopRows, lessonRows] = await Promise.all([
+    const [projects, counts, decisionRows, sopRows, lessonRows] = await Promise.all([
       prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
-      decisions(projectId),
-      sops(),
-      lessons(projectId),
+      registerCounts(projectId),
+      view === 'decisions' ? decisions(projectId) : Promise.resolve([]),
+      view === 'sops' ? sops() : Promise.resolve([]),
+      view === 'lessons' ? lessons(projectId) : Promise.resolve([]),
     ]);
 
     return (
@@ -41,9 +42,9 @@ export default async function KnowledgePage({ searchParams }: { searchParams: Pr
           current={view}
           projectId={projectId}
           tabs={[
-            { key: 'decisions', label: 'Decision log', count: decisionRows.length },
-            { key: 'sops', label: 'SOPs', count: sopRows.length },
-            { key: 'lessons', label: 'Lessons learned', count: lessonRows.length },
+            { key: 'decisions', label: 'Decision log', count: counts.decision },
+            { key: 'sops', label: 'SOPs', count: counts.sop },
+            { key: 'lessons', label: 'Lessons learned', count: counts.lesson },
           ]}
         />
         {view === 'decisions' && <KnowledgeRegister canManage={canManage} projects={projects} projectId={projectId} rows={decisionRows} />}

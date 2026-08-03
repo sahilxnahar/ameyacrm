@@ -1,16 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/auth/constants';
+import { isPublicPath } from '@/lib/auth/public-paths';
 
 /**
  * Edge middleware — cheap presence gate for authenticated routes. Full session
  * validation (DB lookup, expiry, idle timeout, RBAC) runs in `requireAuth()` on
  * the server. Public paths and assets are skipped by the matcher below.
  */
-const PUBLIC_PATHS = ['/login', '/signup', '/verify', '/sign', '/install', '/plan', '/api/auth', '/device-check', '/two-factor', '/forbidden', '/setup', '/portal', '/pay'];
+
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+  if (isPublicPath(pathname)) return NextResponse.next();
 
   const hasSession = req.cookies.has(SESSION_COOKIE);
   if (!hasSession) {

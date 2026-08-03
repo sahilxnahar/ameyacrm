@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { nextSequence } from '@/lib/db/sequence';
 import { writeAudit } from '@/lib/audit/log';
 import { nextReference } from '@/lib/utils/reference';
 import { ensure, toActionError } from './_helpers';
@@ -40,7 +41,9 @@ export async function createChannelPartner(input: unknown): Promise<PartnerResul
   try {
     const ctx = await ensure('booking.manage');
     const d = cpSchema.parse(input);
-    const code = `CP-${1000 + (await prisma.channelPartner.count()) + 1}`;
+    // Atomic, not count()+1 — `ChannelPartner.code` is unique, so a reissued
+    // number after a deletion is a partner who cannot be added.
+    const code = `CP-${await nextSequence('partner:CP', prisma, 1000)}`;
     const cp = await prisma.channelPartner.create({
       data: {
         code, firmName: d.firmName, contactName: d.contactName, phone: d.phone, email: d.email || null,

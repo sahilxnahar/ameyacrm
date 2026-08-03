@@ -18,7 +18,11 @@ import { notifyMany } from '@/lib/notifications/notify';
 /** Admin sets the review threshold. */
 export async function setPaymentApprovalLimit(amount: number): Promise<LedgerActionResult> {
   try {
-    const ctx = await ensure('billing.bill.manage');
+    // NOT `billing.bill.manage` — that is the permission that RAISES payments.
+    // Whoever can set the threshold can set it to zero and switch approval off
+    // for their own next payment, which makes the whole control theatre. The
+    // person who spends and the person who sets the limit must be different.
+    const ctx = await ensure('admin.setting.manage');
     const n = Math.max(0, Math.round(Number(amount) || 0));
     await prisma.setting.upsert({ where: { key: 'finance.payment_approval_limit' }, create: { key: 'finance.payment_approval_limit', value: n }, update: { value: n } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Payment review threshold set to Rs ${n.toLocaleString('en-IN')}` });
@@ -59,7 +63,11 @@ export async function approveVendorPayment(voucherId: string): Promise<LedgerAct
     await postVoucherById(voucherId, ctx.user.id);
     // Anything that was held pending this payment is settled now.
     await prisma.raBill.updateMany({ where: { voucherId, status: 'CERTIFIED' }, data: { status: 'PAID' } }).catch(() => undefined);
-    if (v.vendorBillId) await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'PAID' } }).catch(() => undefined);
+    if (v.vendorBillId) {
+      await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'PAID' } }).catch(() => undefined);
+      const { closeMsmeClockForBill } = await import('@/server/services/msme-service');
+      await closeMsmeClockForBill(v.vendorBillId, voucherId);
+    }
     await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number} to ${v.partyName} — Rs ${Number(v.amount).toLocaleString('en-IN')}` });
     if (v.createdById) {
       await notifyMany([v.createdById], { type: 'APPROVAL', title: `Payment ${v.number} approved`, link: '/payments' }).catch(() => undefined);
@@ -114,6 +122,9 @@ async function releaseHoldsFor(voucherId: string): Promise<void> {
   await prisma.raBill.updateMany({ where: { voucherId, status: 'PAID' }, data: { status: 'CERTIFIED' } }).catch(() => undefined);
   if (v?.vendorBillId) {
     await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'DRAFT' } }).catch(() => undefined);
+    // The bill is unpaid again, so the statutory clock starts running again.
+    const { reopenMsmeClockForBill } = await import('@/server/services/msme-service');
+    await reopenMsmeClockForBill(v.vendorBillId);
   }
 }
 
@@ -399,13 +410,25 @@ export async function addVendorPayment(input: {
 
     const retentionAmount = Number(input.retentionAmount) > 0 ? Math.round(Number(input.retentionAmount) * 100) / 100 : null;
     const tdsRate = Number(input.tdsRate) > 0 ? Number(input.tdsRate) : null;
+    // TDS is a percentage OF THE BILL, so it is computed on what was entered.
     const tdsAmount = tdsRate ? Math.round(((amount * tdsRate) / 100) * 100) / 100 : null;
+
+    // `Voucher.amount` is money that actually moved — that is what the cash
+    // book, the payments screen and every spend report mean by it, and what the
+    // RA-bill path already stores. The form asks for the BILL and then holds TDS
+    // and retention back from it, so the cheque is smaller than the number typed.
+    // Storing the bill value here overstated cash out by the deductions on every
+    // such payment and made bank reconciliation impossible; the ledger then
+    // reconstructed a gross that was too high by the same amount.
+    const withheld = (tdsAmount ?? 0) + (retentionAmount ?? 0);
+    const paidOut = Math.round((amount - withheld) * 100) / 100;
+    if (paidOut < 0) return { error: 'The TDS and retention come to more than the payment itself.' };
 
     const v = await prisma.voucher.create({
       data: {
         number, kind: mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: flagged ? 'DRAFT' : 'POSTED',
         voucherDate: when, paidOn: mode === 'CASH' ? null : when,
-        partyName: vendor.name, vendorId: vendor.id, amount, mode,
+        partyName: vendor.name, vendorId: vendor.id, amount: paidOut, mode,
         reference: opt(input.reference ?? ''), utr,
         utrEnteredById: utr ? ctx.user.id : null, utrEnteredAt: utr ? new Date() : null,
         narration: note,
@@ -618,13 +641,18 @@ export async function attachPaymentProof(voucherId: string, url: string): Promis
  */
 export async function unpostedLedgerBacklog(): Promise<{ ok: true; count: number; total: number; rows: { id: string; number: string; partyName: string; amount: number; date: string }[] } | { error: string }> {
   try {
-    await ensure('finance.ledger.view');
-    const { unpostedVouchers } = await import('@/lib/ledger/post-voucher');
-    const rows = await unpostedVouchers(200);
+    // Only somebody who can act on it — this runs on every mount of the ledger
+    // screen, and there is no point costing a query for a banner the caller
+    // would not be shown.
+    await ensure('billing.bill.manage');
+    const { unpostedVoucherCount, unpostedVouchers } = await import('@/lib/ledger/post-voucher');
+    const summary = await unpostedVoucherCount();
+    if (summary.count === 0) return { ok: true, count: 0, total: 0, rows: [] };
+    const rows = await unpostedVouchers(50);
     return {
       ok: true,
-      count: rows.length,
-      total: rows.reduce((t, r) => t + r.amount, 0),
+      count: summary.count,
+      total: summary.total,
       rows: rows.map((r) => ({ id: r.id, number: r.number, partyName: r.partyName, amount: r.amount, date: r.voucherDate.toISOString() })),
     };
   } catch (e) { return toActionError(e) as { error: string }; }

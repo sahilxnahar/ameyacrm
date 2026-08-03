@@ -185,7 +185,7 @@ export async function settleRaBill(id: string): Promise<RaResult> {
         projectId: bill.projectId, amount: bill.netPayable, mode: 'BANK_TRANSFER',
         reference: bill.number, narration: `Settlement of RA bill ${bill.number}`, accountCode: '5410',
         tdsAmount: bill.tdsAmount, tdsRate: bill.tdsRate, tdsSection: bill.tdsSection,
-        retentionAmount: bill.retentionAmount, cessAmount: bill.cessAmount, createdById: ctx.user.id,
+        retentionAmount: bill.retentionAmount, cessAmount: bill.cessAmount, deductionAmount: bill.deductions, createdById: ctx.user.id,
       },
     });
     await prisma.raBill.update({ where: { id: billId }, data: { status: needsApproval ? 'CERTIFIED' : 'PAID', voucherId: voucher.id } });

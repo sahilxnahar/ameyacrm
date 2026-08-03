@@ -36,20 +36,36 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const guest = user.role === 'GUEST';
   if (guest) redirect(DEMO_ROOT);
 
-  const row = await getNavPrefsRow(user.id);
+  // ── Nothing below this line may take the whole app down ────────────────────
+  //
+  // This layout wraps every signed-in route, and an error thrown HERE is not
+  // caught by this segment's own error boundary — it bubbles to the root one,
+  // which replaces the entire page with "Something went wrong" and no way out.
+  // So one missing database column (`User.topNavPrefs`, say, after a deploy
+  // without its migration) took down all 200 screens at once, including every
+  // screen carrying the Repair button that fixes it. The recovery tool sat
+  // behind the failure it recovers from, and the only route left was the
+  // address bar.
+  //
+  // Everything the layout reads is therefore optional. If the database is
+  // behind, you get default navigation, no project switcher and a red banner
+  // telling you exactly what is missing — a degraded CRM instead of no CRM.
+  const row = await getNavPrefsRow(user.id).catch(() => null);
   const navPrefs = readPrefs(row?.navPrefs);
   const topNavPrefs = readTopNavPrefs(row?.topNavPrefs);
   const navMode = navModeFromCookie((await cookies()).get(NAV_MODE_COOKIE)?.value);
   const [active, projects] = await Promise.all([
-    getActiveProject(user.id),
-    prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' } }),
+    getActiveProject(user.id).catch(() => ({ id: null, name: 'All projects' })),
+    prisma.project
+      .findMany({ where: { isActive: true }, select: { id: true, name: true, code: true }, orderBy: { name: 'asc' } })
+      .catch(() => [] as { id: string; name: string; code: string }[]),
   ]);
 
   // 2FA is still required, but we no longer trap people on the security page on
   // every visit. They land on their home screen; a dismissible reminder shows
   // here and a periodic email nudge (see the daily cron) does the enforcing.
   // Enrolled users compute `false` and never see the reminder.
-  const needsTwoFactor = mustEnroll2FA(user, await getSecurityPolicy());
+  const needsTwoFactor = mustEnroll2FA(user, await getSecurityPolicy().catch(() => null) ?? { require2FA: false, require2FAForAdmins: false } as never);
 
   // F-21 / F-10: loop-SAFE enforcement.
   // Only redirect when we can positively confirm the current path AND that it is

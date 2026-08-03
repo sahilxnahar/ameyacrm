@@ -22,9 +22,15 @@ const packageSchema = z.object({
   items: z.array(itemSchema).min(1).max(50),
 });
 
-/** Package ids currently installed. */
+/**
+ * Package ids currently installed.
+ *
+ * Gated for the same reason as `connectorInstalls`: an exported server action
+ * is a POST endpoint regardless of which page imports it.
+ */
 export async function installedPackages(): Promise<Array<{ packageId: string; source: string }>> {
   try {
+    await ensure('admin.setting.manage');
     const rows = await prisma.appPackageInstall.findMany({ select: { packageId: true, source: true } });
     return rows;
   } catch { return []; }

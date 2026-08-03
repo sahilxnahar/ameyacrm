@@ -14,9 +14,15 @@ export const metadata: Metadata = { title: 'Security' };
 export default async function SecurityPage({ searchParams }: { searchParams: Promise<{ enroll?: string; force?: string }> }) {
   const { user } = await requireAuth();
   const sp = await searchParams;
+
+  // Two history panels must never stop you changing your password.
+  //
+  // `mustChangePassword` redirects every other route here, so this is the one
+  // screen a locked-out person can reach — and if it throws, there is nowhere
+  // left to go at all. The lists are decoration; the form is the way out.
   const [sessions, logins] = await Promise.all([
-    prisma.session.findMany({ where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { lastActiveAt: 'desc' }, take: 10 }),
-    prisma.loginHistory.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    prisma.session.findMany({ where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { lastActiveAt: 'desc' }, take: 10 }).catch(() => []),
+    prisma.loginHistory.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 10 }).catch(() => []),
   ]);
   return (
     <div className="max-w-3xl space-y-6">

@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { detectAnomalies, type Anomaly } from '@/lib/ai/anomaly';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 
@@ -32,7 +33,7 @@ export interface InsightsResult {
  */
 export async function getInsights(thresholdPct = 40): Promise<InsightsResult> {
   const vouchers = await prisma.voucher.findMany({
-    where: { materialName: { not: null }, rate: { not: null }, cancelledAt: null },
+    where: { materialName: { not: null }, rate: { not: null }, ...NOT_CANCELLED_OR_PENDING },
     select: { id: true, number: true, materialName: true, rate: true, voucherDate: true },
     take: 20000,
   });

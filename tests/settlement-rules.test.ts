@@ -74,3 +74,30 @@ describe('BOCW labour cess', () => {
     expect(r.lines.some((l) => l.accountCode === '2155')).toBe(true);
   });
 });
+
+describe('an ad-hoc recovery on an RA bill', () => {
+  it('clears the advance instead of quietly shrinking the cost', () => {
+    // Certified ₹50,00,000, ₹5,00,000 mobilisation advance recovered,
+    // 1% cess, 5% retention, 1% TDS → the contractor receives ₹41,50,000.
+    const r = contractorSettlementLines({
+      kind: 'BANK_PAID', amount: 4150000,
+      deductionAmount: 500000, cessAmount: 50000, retentionAmount: 250000, tdsAmount: 50000,
+      mode: 'BANK_TRANSFER', partyName: 'Civil Co', accountCode: '5410', projectId: null,
+    });
+    if (!('ok' in r)) throw new Error(r.error);
+    expect(sum(r.lines, 'debit')).toBeCloseTo(sum(r.lines, 'credit'), 2);
+    // The cost is the certified value, not the cheque and not the cheque plus
+    // some of the deductions.
+    expect(Number(r.lines.find((l) => l.accountCode === '5410')?.debit)).toBeCloseTo(5000000, 2);
+    // The recovery comes off the advance sitting on the balance sheet.
+    expect(Number(r.lines.find((l) => l.accountCode === '1140')?.credit)).toBeCloseTo(500000, 2);
+    expect(Number(r.lines.find((l) => l.accountCode === '1121')?.credit)).toBeCloseTo(4150000, 2);
+  });
+
+  it('uses the contractor rule when a recovery is the only thing withheld', () => {
+    const r = contractorSettlementLines({ kind: 'BANK_PAID', amount: 90000, deductionAmount: 10000, mode: 'BANK_TRANSFER', partyName: 'X', projectId: null });
+    if (!('ok' in r)) throw new Error(r.error);
+    expect(r.lines.some((l) => l.accountCode === '1140')).toBe(true);
+    expect(sum(r.lines, 'debit')).toBeCloseTo(100000, 2);
+  });
+});

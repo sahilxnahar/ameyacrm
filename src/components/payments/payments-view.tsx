@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge, FileSpreadsheet } from 'lucide-react';
 import { recordUtr, readPaymentAdvice } from '@/server/actions/vouchers';
 import { approveVendorPayment, rejectVendorPayment } from '@/server/actions/vendor-ledger';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PAY_MODE_LABEL } from '@/config/vouchers';
@@ -22,6 +23,10 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '2
 export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = false }: { payments: PaymentRow[]; totalPaid: number; missingUtr: number; canApprove?: boolean }) {
   const router = useRouter();
   const [deciding, startDecide] = useTransition();
+  // Which row is busy — not "is anything busy". One shared flag turned every
+  // Approve and Reject on screen into a spinner when one was clicked.
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<{ id: string; number: string } | null>(null);
   const [q, setQ] = useState('');
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [modeFilter, setModeFilter] = useState('');
@@ -64,15 +69,12 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
   // rather than sitting in it looking like every other paid row.
   const awaiting = useMemo(() => payments.filter((p) => p.status === 'DRAFT'), [payments]);
 
-  const decide = (id: string, number: string, approve: boolean) => {
-    let why = '';
-    if (!approve) {
-      const answer = window.prompt(`Why is ${number} not approved? The person who raised it will see this.`);
-      if (answer === null) return;
-      why = answer;
-    }
+  const run = (id: string, number: string, approve: boolean, why = '') => {
+    setBusyId(id);
     startDecide(async () => {
       const r = approve ? await approveVendorPayment(id) : await rejectVendorPayment(id, why);
+      setBusyId(null);
+      setRejecting(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(approve ? `${number} approved — now in the books` : `${number} turned down`);
       router.refresh();
@@ -97,8 +99,10 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
                 <span className="text-xs text-muted-foreground">{day(p.dated)}</span>
                 {canApprove ? (
                   <span className="flex items-center gap-2">
-                    <button type="button" disabled={deciding} onClick={() => decide(p.id, p.number, true)} className="focus-ring rounded border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/10 disabled:opacity-60 dark:text-emerald-300">Approve</button>
-                    <button type="button" disabled={deciding} onClick={() => decide(p.id, p.number, false)} className="focus-ring rounded border border-destructive/40 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-60">Reject</button>
+                    <button type="button" disabled={deciding && busyId === p.id} onClick={() => run(p.id, p.number, true)} className="focus-ring rounded border border-emerald-500/40 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/10 disabled:opacity-60 dark:text-emerald-300">
+                      {deciding && busyId === p.id ? 'Working…' : 'Approve'}
+                    </button>
+                    <button type="button" disabled={deciding && busyId === p.id} onClick={() => setRejecting({ id: p.id, number: p.number })} className="focus-ring rounded border border-destructive/40 px-2 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-60">Reject</button>
                   </span>
                 ) : (
                   <span className="text-xs text-muted-foreground">waiting on an approver</span>
@@ -108,6 +112,17 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
           </ul>
         </div>
       )}
+
+      <ReasonDialog
+        open={rejecting !== null}
+        title={`Turn down ${rejecting?.number ?? ''}`}
+        description="The person who raised this payment will see your reason, and the payment goes back to them to re-raise."
+        label="Why is it not approved?"
+        confirmLabel="Turn it down"
+        pending={deciding}
+        onCancel={() => setRejecting(null)}
+        onConfirm={(why) => { if (rejecting) run(rejecting.id, rejecting.number, false, why); }}
+      />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Total paid out" value={inr(totalPaid)} />

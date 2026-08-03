@@ -60,7 +60,7 @@ export function StatTile({
  * swipeable strip — each one comfortably sized and readable — instead of three
  * or five squeezed side by side. On a wide screen it's the usual grid.
  */
-export function StatTileRow({ cols = 4, children, className }: { cols?: 3 | 4 | 5; children: ReactNode; className?: string }) {
+export function StatTileRow({ cols = 4, children, className }: { cols?: 1 | 2 | 3 | 4 | 5; children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -69,6 +69,11 @@ export function StatTileRow({ cols = 4, children, className }: { cols?: 3 | 4 | 
         '-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:w-[44%] [&>*]:shrink-0 [&>*]:snap-start',
         // Desktop: the grid, tiles full width again.
         'sm:mx-0 sm:grid sm:snap-none sm:overflow-visible sm:px-0 sm:pb-0 sm:[&>*]:w-auto',
+        // A register with one or two tiles used to be forced into a 3-column
+        // grid, leaving a lone tile a third of the width with two empty columns
+        // beside it — the alignment complaint on a 13" screen.
+        cols === 1 && 'sm:grid-cols-1',
+        cols === 2 && 'sm:grid-cols-2',
         cols === 3 && 'sm:grid-cols-3',
         cols === 4 && 'md:grid-cols-3 xl:grid-cols-4',
         cols === 5 && 'sm:grid-cols-5',

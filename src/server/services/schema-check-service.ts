@@ -11,11 +11,22 @@ import { prisma } from '@/lib/db/prisma';
  * per request and says so plainly.
  */
 const REQUIRED: Array<[string, string]> = [
+  // ── Read by the signed-in layout on EVERY route ──────────────────────────
+  //
+  // These four are the fatal ones. The layout reads them before anything it
+  // wraps renders, so if one is missing every screen in the CRM fails at once
+  // rather than one screen failing — and this warning, which lives inside that
+  // layout, is exactly what does not get shown. They are listed first because
+  // they are the drift worth naming before any other.
+  ['User', 'navPrefs'],
+  ['User', 'topNavPrefs'],
+  ['User', 'activeProjectId'],
+  ['Project', 'isActive'],
+
   ['Task', 'repeatEvery'],
   ['Voucher', 'utr'],
   ['Vendor', 'bankIfsc'],
   ['DocChunk', 'requiredPermission'],
-  ['User', 'activeProjectId'],
   ['TrustedDevice', 'lastSeenAt'],
   ['MailThreadMessage', 'vendorId'],
   ['MessageTemplate', 'departmentId'],

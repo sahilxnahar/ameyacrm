@@ -37,6 +37,7 @@ export interface PostableVoucher {
   tdsAmount?: unknown;
   retentionAmount?: unknown;
   cessAmount?: unknown;
+  deductionAmount?: unknown;
   /** Set when this payment settles a vendor bill already booked in the ledger. */
   vendorBillId?: string | null;
 }
@@ -45,7 +46,7 @@ const SELECT = {
   id: true, kind: true, amount: true, gstAmount: true, mode: true,
   partyName: true, projectId: true, voucherDate: true, number: true,
   accountCode: true, vendorId: true, customerId: true,
-  tdsAmount: true, retentionAmount: true, cessAmount: true, vendorBillId: true,
+  tdsAmount: true, retentionAmount: true, cessAmount: true, deductionAmount: true, vendorBillId: true,
 } as const;
 
 async function note(v: { id: string; number: string }, actorId: string | null, why: string): Promise<void> {
@@ -83,6 +84,7 @@ export async function postVoucherToLedger(v: PostableVoucher, actorId: string | 
     const tds = Number(v.tdsAmount ?? 0) || 0;
     const retention = Number(v.retentionAmount ?? 0) || 0;
     const cess = Number(v.cessAmount ?? 0) || 0;
+    const deduction = Number(v.deductionAmount ?? 0) || 0;
     const accountCode = await usableCode(v.accountCode);
 
     const common = {
@@ -110,8 +112,8 @@ export async function postVoucherToLedger(v: PostableVoucher, actorId: string | 
     // started posting and payments carried on posting as though they had not.
     const rule = isPayment && v.vendorBillId
       ? billSettlementLines({ amount: Number(v.amount), mode: v.mode, vendorId: v.vendorId ?? null, projectId: v.projectId, partyName: v.partyName, tdsAmount: tds, retentionAmount: retention })
-      : isPayment && (tds > 0 || retention > 0 || cess > 0)
-        ? contractorSettlementLines({ kind: v.kind, ...common, tdsAmount: tds, retentionAmount: retention, cessAmount: cess })
+      : isPayment && (tds > 0 || retention > 0 || cess > 0 || deduction > 0)
+        ? contractorSettlementLines({ kind: v.kind, ...common, tdsAmount: tds, retentionAmount: retention, cessAmount: cess, deductionAmount: deduction })
         : voucherLines({ kind: v.kind, ...common });
 
     // No rule for this voucher kind yet — not an error worth an audit line.
@@ -159,19 +161,40 @@ export async function postVoucherById(voucherId: string, actorId: string | null)
  * trial balance for good.
  */
 export async function unpostedVouchers(limit = 200): Promise<{ id: string; number: string; partyName: string; amount: number; voucherDate: Date }[]> {
-  const posted = await prisma.journalEntry.findMany({
-    where: { sourceType: 'Voucher', status: { not: 'REVERSED' } },
-    select: { sourceId: true },
-  });
-  const done = new Set(posted.map((p) => p.sourceId).filter((x): x is string => !!x));
+  // One anti-join, done by the database.
+  //
+  // The first version pulled EVERY journal entry into a Set and then looked at
+  // only the 2,000 most recent vouchers — so it fetched tens of thousands of
+  // rows to answer a question about a handful, and an unposted voucher older
+  // than those 2,000 was invisible for ever, which meant the catch-up button
+  // could never clear it.
+  const rows = await prisma.$queryRaw<Array<{ id: string; number: string; partyName: string; amount: string | number; voucherDate: Date }>>`
+    SELECT v."id", v."number", v."partyName", v."amount", v."voucherDate"
+    FROM "Voucher" v
+    WHERE v."status" = 'POSTED'
+      AND NOT EXISTS (
+        SELECT 1 FROM "JournalEntry" j
+        WHERE j."sourceType" = 'Voucher' AND j."sourceId" = v."id" AND j."status" <> 'REVERSED'
+      )
+    ORDER BY v."voucherDate" DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((v) => ({ ...v, amount: Number(v.amount) }));
+}
 
-  const candidates = await prisma.voucher.findMany({
-    where: { status: 'POSTED' },
-    orderBy: { voucherDate: 'desc' },
-    take: 2000,
-    select: { id: true, number: true, partyName: true, amount: true, voucherDate: true },
-  });
-  return candidates.filter((v) => !done.has(v.id)).slice(0, limit).map((v) => ({ ...v, amount: Number(v.amount) }));
+/** Just the count, for a banner that does not need the rows. */
+export async function unpostedVoucherCount(): Promise<{ count: number; total: number }> {
+  const rows = await prisma.$queryRaw<Array<{ count: bigint; total: string | null }>>`
+    SELECT COUNT(*)::bigint AS count, COALESCE(SUM(v."amount"), 0) AS total
+    FROM "Voucher" v
+    WHERE v."status" = 'POSTED'
+      AND NOT EXISTS (
+        SELECT 1 FROM "JournalEntry" j
+        WHERE j."sourceType" = 'Voucher' AND j."sourceId" = v."id" AND j."status" <> 'REVERSED'
+      )
+  `;
+  const r = rows[0];
+  return { count: Number(r?.count ?? 0), total: Number(r?.total ?? 0) };
 }
 
 /** Post everything in that backlog. Safe to run repeatedly. */

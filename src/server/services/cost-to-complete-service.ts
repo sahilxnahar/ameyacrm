@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 
@@ -41,7 +42,7 @@ export async function getCostToComplete(): Promise<CostRow[]> {
         _sum: { total: true },
       }),
       prisma.voucher.aggregate({
-        where: { projectId: p.id, kind: { in: ['CASH_PAID', 'BANK_PAID'] }, cancelledAt: null },
+        where: { projectId: p.id, kind: { in: ['CASH_PAID', 'BANK_PAID'] }, ...NOT_CANCELLED_OR_PENDING },
         _sum: { amount: true },
       }),
     ]);

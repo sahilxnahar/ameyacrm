@@ -38,7 +38,13 @@ export function DailyLogForm({
   onSaved?: () => void;
 }) {
   const [projectId, setProjectId] = React.useState(activeProjectId ?? projects[0]?.id ?? '');
-  const [date, setDate] = React.useState(todayISO());
+  // Computed after mount, never during render. The server renders in UTC and
+  // the phone is in IST, so between 00:00 and 05:30 IST the two disagree about
+  // what day it is — a hydration mismatch and, worse, a site log dated
+  // yesterday for anyone filling it in at night.
+  const [date, setDate] = React.useState('');
+  const [today, setToday] = React.useState('');
+  React.useEffect(() => { const t = todayISO(); setToday(t); setDate((d) => d || t); }, []);
   const [weather, setWeather] = React.useState<string>(WEATHER_OPTIONS[0]);
   const [labor, setLabor] = React.useState(0);
   const [notes, setNotes] = React.useState('');
@@ -70,6 +76,7 @@ export function DailyLogForm({
 
   function submit() {
     if (!projectId) { toast.error('Pick a project.'); return; }
+    if (!date) { toast.error('Pick a date.'); return; }
     setSaving(true);
     saveDailySiteLog({
       projectId,
@@ -106,7 +113,7 @@ export function DailyLogForm({
         </div>
         <div>
           <Label>Date</Label>
-          <Input type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
+          <Input type="date" value={date} max={today || undefined} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
           <Label className="flex items-center gap-1"><CloudSun className="h-3.5 w-3.5" /> Weather</Label>

@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { projectScope } from '@/server/services/active-project-service';
 import { CATEGORY_LABEL } from '@/config/expense-categories';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 const PAID_KINDS = ['CASH_PAID', 'BANK_PAID'] as const;
@@ -27,7 +28,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  */
 export async function getSpendReport(activeProjectId: string | null): Promise<SpendReport> {
   const rows = await prisma.voucher.findMany({
-    where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, ...projectScope(activeProjectId) },
+    where: { kind: { in: [...PAID_KINDS] }, ...NOT_CANCELLED_OR_PENDING, ...projectScope(activeProjectId) },
     select: { amount: true, voucherDate: true, accountCode: true, partyName: true, projectId: true, tdsAmount: true },
     take: 20000,
   });

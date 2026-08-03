@@ -7,7 +7,7 @@ import { ScreenHelp } from '@/components/layout/screen-help';
 import { PageLoadError } from '@/components/layout/page-load-error';
 import { landOverview } from '@/server/services/land-service';
 import { LandView } from '@/components/land/land-view';
-import { powersOfAttorney, jointDevelopmentAgreements } from '@/server/services/compliance-service';
+import { powersOfAttorney, jointDevelopmentAgreements, registerCounts } from '@/server/services/compliance-service';
 import { RegisterTabs } from '@/components/compliance/register-tabs';
 import { PoaRegister, JdaRegister } from '@/components/compliance/extra-registers';
 
@@ -25,11 +25,14 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
     });
     const projectId = sp.project ?? null;
     const view = ['parcels', 'poa', 'jda'].includes(sp.view ?? '') ? sp.view! : 'parcels';
-    const [data, poaRows, jdaRows, parcelOpts] = await Promise.all([
+    const [data, counts, poaRows, jdaRows, parcelOpts] = await Promise.all([
       landOverview(new Date(), projectId),
-      powersOfAttorney(projectId),
-      jointDevelopmentAgreements(),
-      prisma.landParcel.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 }),
+      registerCounts(projectId),
+      view === 'poa' ? powersOfAttorney(projectId) : Promise.resolve([]),
+      view === 'jda' ? jointDevelopmentAgreements() : Promise.resolve([]),
+      view === 'jda'
+        ? prisma.landParcel.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 500 })
+        : Promise.resolve([] as { id: string; name: string }[]),
     ]);
 
     return (
@@ -48,8 +51,8 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
           projectId={projectId}
           tabs={[
             { key: 'parcels', label: 'Parcels & approvals', count: data.parcels.length },
-            { key: 'poa', label: 'Powers of attorney', count: poaRows.length },
-            { key: 'jda', label: 'JDAs', count: jdaRows.length },
+            { key: 'poa', label: 'Powers of attorney', count: counts.poa },
+            { key: 'jda', label: 'JDAs', count: counts.jda },
           ]}
         />
         {view === 'poa' && <PoaRegister canManage={canManage} projects={projects} projectId={projectId} rows={poaRows} />}

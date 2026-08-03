@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 const PAID_KINDS = ['CASH_PAID', 'BANK_PAID'] as const;
@@ -17,8 +18,8 @@ export async function listLedgers(): Promise<LedgerRow[]> {
     select: { id: true, name: true, gstin: true, bankAccountNumber: true, upiId: true },
   });
   const [byVendor, byParty, unpaidBills] = await Promise.all([
-    prisma.voucher.groupBy({ by: ['vendorId'], where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, vendorId: { not: null } }, _sum: { amount: true }, _count: { _all: true } }),
-    prisma.voucher.groupBy({ by: ['partyName'], where: { kind: { in: [...PAID_KINDS] }, cancelledAt: null, vendorId: null }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.voucher.groupBy({ by: ['vendorId'], where: { kind: { in: [...PAID_KINDS] }, ...NOT_CANCELLED_OR_PENDING, vendorId: { not: null } }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.voucher.groupBy({ by: ['partyName'], where: { kind: { in: [...PAID_KINDS] }, ...NOT_CANCELLED_OR_PENDING, vendorId: null }, _sum: { amount: true }, _count: { _all: true } }),
     // What we still owe: vendor bills not yet fully paid (anything but PAID/VOID).
     prisma.vendorBill.groupBy({ by: ['vendorId'], where: { vendorId: { not: null }, status: { notIn: ['PAID', 'VOID'] } }, _sum: { amount: true, gstAmount: true } }),
   ]);
@@ -46,7 +47,7 @@ export async function getLedger(vendorId: string): Promise<LedgerDetail | null> 
   if (!vendor) return null;
   const vouchers = await prisma.voucher.findMany({
     where: {
-      kind: { in: [...PAID_KINDS] }, cancelledAt: null,
+      kind: { in: [...PAID_KINDS] }, ...NOT_CANCELLED_OR_PENDING,
       OR: [{ vendorId }, { vendorId: null, partyName: { equals: vendor.name, mode: 'insensitive' } }],
     },
     orderBy: { voucherDate: 'desc' }, take: 1000,

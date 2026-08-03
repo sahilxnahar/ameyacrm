@@ -150,6 +150,10 @@ export async function settleVendorBill(input: unknown): Promise<BillingResult> {
     } else {
       await prisma.vendorBill.update({ where: { id: bill.id }, data: { status: 'PAID' } });
       await postVoucherById(v.id, ctx.user.id);
+      // The 45-day s.43B(h) clock stops when the money moves, not when somebody
+      // remembers to tick it off.
+      const { closeMsmeClockForBill } = await import('@/server/services/msme-service');
+      await closeMsmeClockForBill(bill.id, v.id);
     }
 
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id, summary: `Bill ${bill.number} settled → ${v.number} (Rs ${gross.toLocaleString('en-IN')})${needsApproval ? ' — awaiting approval' : ''}` });
@@ -292,7 +296,10 @@ export async function createPurchaseOrder(input: unknown): Promise<BillingResult
       subTotal += amount; taxTotal += tax;
       return { description: i.description, hsnSac: i.hsnSac || null, unit: i.unit, quantity: i.quantity, rate: i.rate, gstRate: i.gstRate, amount };
     });
-    const seq = (await prisma.purchaseOrder.count()) + 1;
+    // count()+1 reissues a number as soon as one PO is deleted, and gives two
+    // simultaneous POs the same one. `PurchaseOrder.number` is unique, so that
+    // is a failed save, not a cosmetic problem.
+    const seq = await nextSequence('po:PO', prisma, 0);
     const po = await prisma.purchaseOrder.create({
       data: {
         number: docNumber('PO', seq), vendorId: d.vendorId || null, projectId: d.projectId || null,

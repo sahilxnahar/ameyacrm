@@ -3,7 +3,7 @@ import { requirePermission } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageLoadError } from '@/components/layout/page-load-error';
-import { incidents, accessReviews } from '@/server/services/compliance-service';
+import { incidents, accessReviews, registerCounts } from '@/server/services/compliance-service';
 import { SecopsRegister } from '@/components/compliance/secops-register';
 import { RegisterTabs } from '@/components/compliance/register-tabs';
 import { AccessReviewRegister } from '@/components/compliance/extra-registers';
@@ -23,7 +23,11 @@ export default async function SecopsPage({ searchParams }: { searchParams: Promi
   const view = ['incidents', 'access'].includes(sp.view ?? '') ? sp.view! : 'incidents';
 
   try {
-    const [incidentRows, reviewRows] = await Promise.all([incidents(), accessReviews()]);
+    const [counts, incidentRows, reviewRows] = await Promise.all([
+      registerCounts(null),
+      view === 'incidents' ? incidents() : Promise.resolve([]),
+      view === 'access' ? accessReviews() : Promise.resolve([]),
+    ]);
     return (
       <div className="space-y-6">
         <PageHeader title="Security Operations" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.incidents!} />
@@ -31,8 +35,8 @@ export default async function SecopsPage({ searchParams }: { searchParams: Promi
           basePath="/security-ops"
           current={view}
           tabs={[
-            { key: 'incidents', label: 'Incidents', count: incidentRows.length },
-            { key: 'access', label: 'Access reviews', count: reviewRows.length },
+            { key: 'incidents', label: 'Incidents', count: counts.incident },
+            { key: 'access', label: 'Access reviews', count: counts.access },
           ]}
         />
         {view === 'incidents' && <SecopsRegister canManage={canManage} rows={incidentRows} />}

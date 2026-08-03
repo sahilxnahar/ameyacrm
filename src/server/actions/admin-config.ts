@@ -13,6 +13,23 @@ export async function setRolePermissions(role: RoleName, allowedKeys: string[]):
   try {
     const ctx = await ensure('admin.role.manage');
     if (role === 'SUPER_ADMIN') return { error: 'Super Admin always has full access and cannot be restricted.' };
+
+    // You may not rewrite the grants of the role you hold.
+    //
+    // Blocking SUPER_ADMIN as a target was not enough: an Admin holds
+    // `admin.role.manage`, so an Admin could grant the Admin role every key in
+    // the system and walk straight through the separations this codebase is
+    // careful about elsewhere — `billing.approve` (which exists so a payment
+    // cannot be approved by whoever raised it) and `finance.access.manage`
+    // (whose own comment says "if an Admin could appoint, they could appoint
+    // themselves"). They could. The same edit in reverse — an empty list — locks
+    // every Admin out with nobody left able to undo it.
+    //
+    // A Super Admin is unaffected: their permissions do not come from this
+    // table, so they remain the way to change an Admin's rights.
+    if (!ctx.permissions.isSuperAdmin && role === ctx.user.role) {
+      return { error: `You cannot change what the ${role} role is allowed to do while you are ${role === 'ADMIN' ? 'an' : 'a'} ${role.toLowerCase().replace(/_/g, ' ')}. Ask a Super Admin.` };
+    }
     const perms = await prisma.permission.findMany({ select: { id: true, key: true } });
     const idByKey = new Map(perms.map((p) => [p.key, p.id]));
     const data = allowedKeys

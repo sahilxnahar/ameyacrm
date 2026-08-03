@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 
@@ -26,7 +27,7 @@ export async function getVendorPortal(token: string): Promise<VendorPortalData |
   const [pos, bills, vouchers] = await Promise.all([
     prisma.purchaseOrder.findMany({ where: { vendorId: access.vendorId }, orderBy: { orderDate: 'desc' }, take: 200, select: { number: true, status: true, orderDate: true, total: true } }),
     prisma.vendorBill.findMany({ where: { vendorId: access.vendorId }, orderBy: { billDate: 'desc' }, take: 200, select: { number: true, status: true, billDate: true, dueDate: true, amount: true, gstAmount: true } }),
-    prisma.voucher.findMany({ where: { vendorId: access.vendorId, cancelledAt: null }, orderBy: { voucherDate: 'desc' }, take: 200, select: { number: true, voucherDate: true, amount: true, status: true, utr: true } }),
+    prisma.voucher.findMany({ where: { vendorId: access.vendorId, ...NOT_CANCELLED_OR_PENDING }, orderBy: { voucherDate: 'desc' }, take: 200, select: { number: true, voucherDate: true, amount: true, status: true, utr: true } }),
   ]);
 
   const billed = bills.reduce((s, b) => s + num(b.amount) + num(b.gstAmount), 0);

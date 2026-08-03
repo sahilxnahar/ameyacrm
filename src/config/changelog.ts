@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.5';
+export const APP_VERSION = 'v16.6';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.6',
+    date: '3 Aug 2026',
+    highlights: [
+      'Fixed the reason every screen was showing \u201cSomething went wrong\u201d. The signed-in layout read four things from the database on every page and gave up if any were missing, so one column left behind by a deploy took the whole CRM down \u2014 including the Repair button that fixes exactly that. It now falls back to default navigation and tells you what is missing.',
+      'Repair can now actually repair. The schema it applied had drifted four releases behind, and it only ever created missing TABLES \u2014 never missing columns \u2014 so it could not fix the thing that broke you. It is regenerated from the live schema and adds columns too.',
+      'Password reset and invitations work again. Every reset email and every invite link was being redirected to the login screen \u2014 the one page the person could not get past. Same for the buyer, channel-partner and vendor portals.',
+      'Cancelling a payment no longer breaks the books. A reversal moved the trial balance by TWICE the amount and still reported itself as balanced: cancel a \u20b910,00,000 payment and the bank went UP by \u20b910,00,000 while the expense went negative. Every report is affected, and all of them are fixed.',
+      'A payment awaiting approval is no longer counted as money spent \u2014 it was showing in the spend report, the vendor ledger, cost-to-complete, the TDS dashboard and the vendor\u2019s own portal, which told the vendor they had been paid.',
+      'Contractor payments now book what actually happened: the cost is the certified value, and the TDS, retention, BOCW cess and any advance recovered are each carried as what they are. The cheque figure recorded is what really leaves the bank, so the cash book reconciles.',
+      'The MSME 45-day clock now stops when you pay. It never did, so paid bills stayed \u201coverdue\u201d for ever and the s.43B(h) warnings became noise.',
+      'Invoice, purchase-order, partner and payment-request numbering is now atomic. All four counted rows and added one, which reissues a number the moment anything is deleted \u2014 and all four columns are unique, so that is a failed save.',
+      'Security: the device-approval code now comes from a proper random source; two internal endpoints that returned connector settings to anyone are locked down; an Admin can no longer grant their own role every permission; and the payment approval limit can no longer be changed by the same person who raises payments.',
+      'Run MIGRATION_v16.5_all.sql before deploying this one. If you were locked out, run UNBLOCK-LOGIN.sql first.',
+    ],
+  },
   {
     version: 'v16.5',
     date: '2 Aug 2026',

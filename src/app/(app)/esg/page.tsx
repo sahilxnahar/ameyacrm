@@ -4,7 +4,7 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageLoadError } from '@/components/layout/page-load-error';
-import { envConditions, wasteManifests } from '@/server/services/compliance-service';
+import { envConditions, wasteManifests, registerCounts } from '@/server/services/compliance-service';
 import { EsgRegister } from '@/components/compliance/esg-register';
 import { RegisterTabs } from '@/components/compliance/register-tabs';
 import { WasteRegister } from '@/components/compliance/extra-registers';
@@ -25,10 +25,11 @@ export default async function EsgPage({ searchParams }: { searchParams: Promise<
   const view = ['conditions', 'waste'].includes(sp.view ?? '') ? sp.view! : 'conditions';
 
   try {
-    const [projects, condRows, wasteRows] = await Promise.all([
+    const [projects, counts, condRows, wasteRows] = await Promise.all([
       prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
-      envConditions(projectId),
-      wasteManifests(projectId),
+      registerCounts(projectId),
+      view === 'conditions' ? envConditions(projectId) : Promise.resolve([]),
+      view === 'waste' ? wasteManifests(projectId) : Promise.resolve([]),
     ]);
 
     return (
@@ -39,8 +40,8 @@ export default async function EsgPage({ searchParams }: { searchParams: Promise<
           current={view}
           projectId={projectId}
           tabs={[
-            { key: 'conditions', label: 'Clearance conditions', count: condRows.length },
-            { key: 'waste', label: 'Waste manifests', count: wasteRows.length },
+            { key: 'conditions', label: 'Clearance conditions', count: counts.env },
+            { key: 'waste', label: 'Waste manifests', count: counts.waste },
           ]}
         />
         {view === 'conditions' && <EsgRegister canManage={canManage} projects={projects} projectId={projectId} rows={condRows} />}

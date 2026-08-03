@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatCompactCurrency, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { ReasonDialog } from '@/components/ui/reason-dialog';
 
 const TEMPLATE = 'Payee,Amount,Date,Mode,Reference,UTR,Note\nArun,50000,01/07/2026,Bank,NEFT001,UTR12345,Slab work\nOctos Infra,25000,05/07/2026,UPI,,,Steel supply\n';
 
@@ -186,11 +187,11 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
     });
   };
 
-  const reject = (voucherId: string) => {
-    const why = window.prompt('Why is this payment not approved? The person who raised it will see this.');
-    if (why === null) return;
+  const [rejecting, setRejecting] = React.useState<string | null>(null);
+  const reject = (voucherId: string, why: string) => {
     start(async () => {
       const r = await rejectVendorPayment(voucherId, why);
+      setRejecting(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Payment turned down'); router.refresh();
     });
@@ -381,7 +382,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
               </div>
               {showAdd && canManage && (
                 <form onSubmit={submitPayment} className="grid gap-2 border-b bg-muted/20 p-3 sm:grid-cols-2">
-                  <Field label="Amount (₹) *"><Input name="amount" type="number" step="1" required placeholder="100000" /></Field>
+                  <Field label="Bill amount (₹) *" hint="What the bill is for. TDS and retention below are held back from this — the payment is recorded for what actually leaves the bank."><Input name="amount" type="number" step="1" required placeholder="100000" /></Field>
                   <Field label="Date paid"><Input name="date" type="date" /></Field>
                   <Field label="Mode">
                     <select name="mode" defaultValue="Bank" className="focus-ring w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm">
@@ -446,7 +447,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
                     {p.tdsAmount ? <p className="text-[11px] text-amber-600">TDS {formatCurrency(p.tdsAmount)}</p> : null}
                     <div className="flex flex-wrap items-center gap-1.5">
                       {p.status === 'DRAFT' && (
-                        <><Badge variant="warning" className="gap-1 text-[11px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>{canApprove && <><button onClick={() => approve(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Approve</button><button onClick={() => reject(p.id)} disabled={pending} className="text-[11px] text-destructive hover:underline disabled:opacity-60">Reject</button></>}</>
+                        <><Badge variant="warning" className="gap-1 text-[11px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>{canApprove && <><button onClick={() => approve(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Approve</button><button onClick={() => setRejecting(p.id)} disabled={pending} className="text-[11px] text-destructive hover:underline disabled:opacity-60">Reject</button></>}</>
                       )}
                       {p.isAdvance && (
                         <><Badge variant={p.advanceSettled ? 'secondary' : 'warning'} className="text-[11px]">{p.advanceSettled ? 'Advance · settled' : 'Advance'}</Badge>{canManage && !p.advanceSettled && <button onClick={() => doSettle(p.id)} disabled={pending} className="text-[11px] text-primary hover:underline disabled:opacity-60">Settle</button>}</>
@@ -478,7 +479,7 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
                           {p.status === 'DRAFT' && (
                             <span className="mt-1 flex items-center gap-1">
                               <Badge variant="warning" className="gap-1 text-[11px]"><ShieldAlert className="h-3 w-3" /> Review</Badge>
-                              {canApprove && <><button onClick={() => approve(p.id)} disabled={pending} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline disabled:opacity-60"><BadgeCheck className="h-3 w-3" /> Approve</button><button onClick={() => reject(p.id)} disabled={pending} className="text-[11px] text-destructive hover:underline disabled:opacity-60">Reject</button></>}
+                              {canApprove && <><button onClick={() => approve(p.id)} disabled={pending} className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline disabled:opacity-60"><BadgeCheck className="h-3 w-3" /> Approve</button><button onClick={() => setRejecting(p.id)} disabled={pending} className="text-[11px] text-destructive hover:underline disabled:opacity-60">Reject</button></>}
                             </span>
                           )}
                           {p.isAdvance && (
@@ -559,6 +560,16 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
   const shown = query.trim() ? ledgers.filter((l) => l.name.toLowerCase().includes(query.toLowerCase())) : ledgers;
   return (
     <div className="space-y-4">
+      <ReasonDialog
+        open={rejecting !== null}
+        title="Turn this payment down"
+        description="The person who raised it will see your reason, and can raise it again once the objection is dealt with."
+        label="Why is it not approved?"
+        confirmLabel="Turn it down"
+        pending={pending}
+        onCancel={() => setRejecting(null)}
+        onConfirm={(why) => { if (rejecting) reject(rejecting, why); }}
+      />
       <StatTileRow cols={4}>
         <StatTile label="Payees" value={String(ledgers.length)} />
         <StatTile label="Total paid out" value={formatCompactCurrency(total)} />

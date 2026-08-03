@@ -40,6 +40,24 @@ type Res = { ok: true; message: string; id?: string } | { error: string };
  * batch's typed server action is passed in as `onCreate`. This is Batch 1's
  * design-system principle applied to whole screens.
  */
+/**
+ * Add `project` to a base path that may already carry a query.
+ *
+ * v16.5 put several registers on one screen behind `?view=`, so `basePath`
+ * became `/governance?view=contracts`. Appending `?project=…` produced
+ * `/governance?view=contracts?project=abc` — Next reads `view` as the literal
+ * string "contracts?project=abc", which fails the tab whitelist, so filtering
+ * by project silently threw you back to the first tab and applied no filter.
+ */
+function withProject(basePath: string, projectId: string | null): string {
+  const [path, query = ''] = basePath.split('?');
+  const params = new URLSearchParams(query);
+  if (projectId) params.set('project', projectId);
+  else params.delete('project');
+  const q = params.toString();
+  return q ? `${path}?${q}` : path!;
+}
+
 export function RegisterScreen<R extends { id: string }>({
   basePath, projects, projectId, tiles, columns, rows, fields, onCreate, addLabel = 'Add', emptyText, canManage,
 }: {
@@ -89,13 +107,13 @@ export function RegisterScreen<R extends { id: string }>({
     <div className="space-y-4">
       {projects && projects.length > 1 && (
         <ChipRow>
-          <ChipLink href={basePath} active={projectId == null}>All</ChipLink>
-          {projects.map((p) => <ChipLink key={p.id} href={`${basePath}?project=${p.id}`} active={p.id === projectId}>{p.name}</ChipLink>)}
+          <ChipLink href={withProject(basePath, null)} active={projectId == null}>All</ChipLink>
+          {projects.map((p) => <ChipLink key={p.id} href={withProject(basePath, p.id)} active={p.id === projectId}>{p.name}</ChipLink>)}
         </ChipRow>
       )}
 
       {tiles && tiles.length > 0 && (
-        <StatTileRow cols={(Math.min(4, Math.max(3, tiles.length)) as 3 | 4)}>
+        <StatTileRow cols={(Math.min(4, Math.max(1, tiles.length)) as 1 | 2 | 3 | 4)}>
           {tiles.map((t, i) => <StatTile key={i} label={t.label} value={t.value} sub={t.sub} tone={t.tone} />)}
         </StatTileRow>
       )}
@@ -168,8 +186,11 @@ export function RegisterScreen<R extends { id: string }>({
       ) : (
         <>
           {/* Desktop / tablet: a table. */}
+          {/* `overflow-x-auto` only does something if the table is allowed to be
+              wider than the box. Without a min-width a seven-column register
+              just squeezed and wrapped every cell at 1280px with the sidebar. */}
           <div className="hidden overflow-x-auto rounded-lg border border-border sm:block">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[56rem] text-sm">
               <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left">{columns.map((c, i) => <th key={i} className={cn('p-2', c.className)}>{c.label}</th>)}</tr></thead>
               <tbody>
                 {rows.map((row) => (

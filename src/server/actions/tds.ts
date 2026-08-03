@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { TDS_SECTION_CODES } from '@/config/tds-sections';
 import { ensure, toActionError } from './_helpers';
+import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
 
 export interface TdsEntry {
   id: string;
@@ -51,7 +52,7 @@ export async function tdsDashboard(): Promise<{
   try {
     await ensure('finance.ledger.view');
     const rows = await prisma.voucher.findMany({
-      where: { tdsAmount: { gt: 0 }, cancelledAt: null },
+      where: { tdsAmount: { gt: 0 }, ...NOT_CANCELLED_OR_PENDING },
       orderBy: { voucherDate: 'desc' }, take: 1000, select: SELECT,
     });
     let accrued = 0, deposited = 0, pendingCount = 0;
@@ -108,7 +109,7 @@ export async function tdsLookup(query: string): Promise<{ ok: true; entries: Tds
     // 2) all TDS vouchers for those vendors, OR matching the party/bank text directly.
     const rows = await prisma.voucher.findMany({
       where: {
-        tdsAmount: { gt: 0 }, cancelledAt: null,
+        tdsAmount: { gt: 0 }, ...NOT_CANCELLED_OR_PENDING,
         OR: [
           ...(vendorIds.length ? [{ vendorId: { in: vendorIds } }] : []),
           { partyName: { contains: q, mode: 'insensitive' } },

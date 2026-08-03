@@ -9,7 +9,7 @@ const num = (d: unknown): number => (d == null ? 0 : Number(d));
 // Batch 3 — statutory calendar
 export interface ObligationRow { id: string; title: string; kind: string; authority: string | null; frequency: string; owner: string | null; nextDue: Date | null; lastFiled: Date | null; status: string; }
 export async function obligations(projectId: string | null): Promise<ObligationRow[]> {
-  const rows = await prisma.statutoryObligation.findMany({ where: projectId ? { projectId } : undefined, orderBy: [{ status: 'asc' }, { nextDue: 'asc' }] });
+  const rows = await prisma.statutoryObligation.findMany({ where: projectId ? { projectId } : undefined, orderBy: [{ status: 'asc' }, { nextDue: 'asc' }], take: 1000 });
   return rows.map((o) => ({ id: o.id, title: o.title, kind: o.kind, authority: o.authority, frequency: o.frequency, owner: o.owner, nextDue: o.nextDue, lastFiled: o.lastFiled, status: o.status }));
 }
 
@@ -26,7 +26,7 @@ export async function goodsReceipts(projectId: string | null): Promise<GrnRow[]>
 // Batch 22 — risk register
 export interface RiskRow { id: string; title: string; category: string | null; likelihood: string; impact: string; owner: string | null; status: string; score: number; band: RiskBand; }
 export async function risks(projectId: string | null): Promise<RiskRow[]> {
-  const rows = await prisma.riskEntry.findMany({ where: projectId ? { projectId } : undefined, orderBy: { createdAt: 'desc' } });
+  const rows = await prisma.riskEntry.findMany({ where: projectId ? { projectId } : undefined, orderBy: { createdAt: 'desc' }, take: 1000 });
   return rows.map((r) => { const s = riskScore(r.likelihood as never, r.impact as never); return { id: r.id, title: r.title, category: r.category, likelihood: r.likelihood, impact: r.impact, owner: r.owner, status: r.status, score: s.score, band: s.band }; })
     .sort((a, b) => b.score - a.score);
 }
@@ -48,7 +48,7 @@ export async function decisions(projectId: string | null): Promise<DecisionRow[]
 // Batch 23 — environmental clearance conditions
 export interface EnvRow { id: string; condition: string; authority: string | null; status: string; dueOn: Date | null; evidence: string | null; }
 export async function envConditions(projectId: string | null): Promise<EnvRow[]> {
-  const rows = await prisma.envClearanceCondition.findMany({ where: projectId ? { projectId } : undefined, orderBy: [{ status: 'asc' }, { dueOn: 'asc' }] });
+  const rows = await prisma.envClearanceCondition.findMany({ where: projectId ? { projectId } : undefined, orderBy: [{ status: 'asc' }, { dueOn: 'asc' }], take: 1000 });
   return rows.map((e) => ({ id: e.id, condition: e.condition, authority: e.authority, status: e.status, dueOn: e.dueOn, evidence: e.evidence }));
 }
 
@@ -152,4 +152,32 @@ export async function upcomingExpiries(withinDays = 90): Promise<ExpiryRow[]> {
     ...poas.filter((p) => p.validUntil).map((p) => ({ id: p.id, kind: 'Power of attorney' as const, title: `${p.grantor} → ${p.attorney}`, who: null, on: p.validUntil!, days: days(p.validUntil!), href: '/land?view=poa' })),
   ];
   return out.sort((a, b) => a.on.getTime() - b.on.getTime());
+}
+
+/**
+ * Counts for the tab strip.
+ *
+ * A tabbed screen shows one register and a number on each of the others. Loading
+ * every tab's full rows to produce those numbers meant Governance fetched up to
+ * four thousand rows to display one thousand, on a `force-dynamic` page with no
+ * caching. Counts are what the badges actually need.
+ */
+export async function registerCounts(projectId: string | null): Promise<Record<string, number>> {
+  const scope = projectId ? { projectId } : {};
+  const [risk, contract, policy, renewal, decision, sop, lesson, env, waste, incident, access, poa, jda] = await Promise.all([
+    prisma.riskEntry.count({ where: scope }).catch(() => 0),
+    prisma.contractRecord.count({ where: scope }).catch(() => 0),
+    prisma.insurancePolicy.count({ where: scope }).catch(() => 0),
+    prisma.complianceDocExpiry.count({ where: scope }).catch(() => 0),
+    prisma.decisionLog.count({ where: scope }).catch(() => 0),
+    prisma.sop.count().catch(() => 0),
+    prisma.lessonLearned.count({ where: scope }).catch(() => 0),
+    prisma.envClearanceCondition.count({ where: scope }).catch(() => 0),
+    prisma.wasteManifest.count({ where: scope }).catch(() => 0),
+    prisma.securityIncident.count().catch(() => 0),
+    prisma.accessReview.count().catch(() => 0),
+    prisma.powerOfAttorney.count({ where: scope }).catch(() => 0),
+    prisma.jointDevelopmentAgreement.count().catch(() => 0),
+  ]);
+  return { risk, contract, policy, renewal, decision, sop, lesson, env, waste, incident, access, poa, jda };
 }

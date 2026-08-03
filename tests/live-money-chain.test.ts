@@ -29,6 +29,38 @@ suite('money chain, end to end', () => {
     process.env.DATABASE_URL = process.env.LIVE_DB!;
     const { seedChartOfAccounts } = await import('@/server/services/ledger-service');
     await seedChartOfAccounts();
+
+    // Re-runnable against the same database. Without this the `once` guard and
+    // the unique indexes refuse the second run and the failures look like
+    // product bugs rather than a dirty fixture.
+    const stale = await prisma.journalEntry.findMany({ where: { sourceId: { startsWith: 'e2e-' } }, select: { id: true } });
+    const ids = stale.map((e) => e.id);
+    if (ids.length) {
+      await prisma.journalLine.deleteMany({ where: { entryId: { in: ids } } });
+      await prisma.journalEntry.deleteMany({ where: { id: { in: ids } } });
+    }
+    await prisma.tallyVoucherLine.deleteMany({ where: { voucher: { company: { name: 'E2E Books' } } } });
+    await prisma.tallyVoucher.deleteMany({ where: { company: { name: 'E2E Books' } } });
+    await prisma.numberSequence.deleteMany({ where: { key: { in: ['voucher:CP', 'rabill:RA'] } } });
+    await prisma.voucher.deleteMany({ where: { number: { startsWith: 'CP-9' } } });
+    await prisma.voucher.deleteMany({ where: { partyName: { in: ['Legacy', 'Contractor Co'] } } });
+    await prisma.numberSequence.deleteMany({ where: { key: 'voucher:ZQ' } });
+    await prisma.raBill.deleteMany({ where: { number: { in: ['RA-9001', 'RA-10000'] } } });
+    await prisma.programmeActivity.deleteMany({ where: { name: 'Slab 3 casting' } });
+    await prisma.constructionUpdate.deleteMany({ where: { milestone: 'Slab 3' } });
+    for (const del of [
+      () => prisma.contractRecord.deleteMany({ where: { title: 'Lift AMC' } }),
+      () => prisma.insurancePolicy.deleteMany({ where: { name: 'CAR' } }),
+      () => prisma.complianceDocExpiry.deleteMany({ where: { title: 'Fire NOC' } }),
+      () => prisma.sop.deleteMany({ where: { title: 'Releasing a held unit' } }),
+      () => prisma.lessonLearned.deleteMany({ where: { title: 'RMC lead time' } }),
+      () => prisma.wasteManifest.deleteMany({ where: { wasteType: 'C&D debris' } }),
+      () => prisma.accessReview.deleteMany({ where: { subject: 'Finance permissions' } }),
+      () => prisma.jointDevelopmentAgreement.deleteMany({ where: { landownerName: 'C' } }),
+      () => prisma.powerOfAttorney.deleteMany({ where: { grantor: 'A' } }),
+      () => prisma.landParcel.deleteMany({ where: { name: 'E2E Parcel' } }),
+      () => prisma.unit.deleteMany({ where: { tower: 'E' } }),
+    ]) await del().catch(() => undefined);
     const u = await prisma.user.upsert({
       where: { email: 'e2e@ameya.test' },
       create: { email: 'e2e@ameya.test', username: 'e2e', name: 'E2E', role: 'SUPER_ADMIN', passwordHash: 'x' },
@@ -287,16 +319,19 @@ suite('things that used to be wrong', () => {
   });
 
   it('seeds the voucher counter from the numbers already in use', async () => {
-    // An import wrote CP-1001…CP-1400 before the counter had ever been touched.
-    await prisma.numberSequence.deleteMany({ where: { key: 'voucher:CP' } });
+    // A dedicated prefix, so nothing another test creates can move the answer —
+    // the whole point here is what the seed reads, not what else exists.
+    await prisma.numberSequence.deleteMany({ where: { key: 'voucher:ZQ' } });
+    await prisma.voucher.deleteMany({ where: { number: { startsWith: 'ZQ-' } } });
+
+    // An import wrote ZQ-1001…ZQ-10000 before the counter had ever been touched.
     for (const n of [1001, 1400, 9999, 10000]) {
-      await prisma.voucher.create({ data: { number: `CP-${n}`, kind: 'CASH_PAID', partyName: 'Legacy', amount: 1, mode: 'CASH' } });
+      await prisma.voucher.create({ data: { number: `ZQ-${n}`, kind: 'CASH_PAID', partyName: 'Legacy', amount: 1, mode: 'CASH' } });
     }
     const { nextVoucherNumber } = await import('@/lib/db/voucher-number');
-    const first = await nextVoucherNumber('CP');
-    // Read as an integer: CP-10000 is the highest, not CP-9999.
-    expect(first).toBe('CP-10001');
-    expect(await nextVoucherNumber('CP')).toBe('CP-10002');
+    // Read as an integer: ZQ-10000 is the highest, not ZQ-9999.
+    expect(await nextVoucherNumber('ZQ')).toBe('ZQ-10001');
+    expect(await nextVoucherNumber('ZQ')).toBe('ZQ-10002');
   }, 30_000);
 });
 

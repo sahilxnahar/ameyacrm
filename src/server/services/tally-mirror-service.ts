@@ -77,27 +77,6 @@ export function tallyTypeFor(sourceType: string | null | undefined, hasBank: boo
   }
 }
 
-/**
- * Find or create the Tally ledger that stands for a CRM account.
- *
- * Matched by name, because that is what the accountant recognises and what an
- * existing imported Tally company will already contain — matching on a code the
- * imported books have never heard of would create a duplicate ledger beside
- * every real one.
- */
-async function ledgerFor(companyId: string, account: { code: string; name: string; type: string }): Promise<string> {
-  const existing = await prisma.tallyLedger.findFirst({
-    where: { companyId, name: account.name },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-
-  const created = await prisma.tallyLedger.create({
-    data: { companyId, name: account.name, group: tallyGroupFor(account.code, account.type) },
-    select: { id: true },
-  });
-  return created.id;
-}
 
 /**
  * Mirror one posted journal entry.
@@ -130,7 +109,11 @@ export async function mirrorJournalEntry(entryId: string): Promise<{ ok: true; c
         },
       },
     });
-    if (!entry || entry.status !== 'POSTED' || entry.lines.length < 2) return { ok: true, created: false };
+    // A REVERSED entry is mirrored too. Its reversal is mirrored as its own
+    // voucher, so leaving the original out would put the same asymmetry into
+    // Tally that it used to have in the CRM — the reversal without the thing it
+    // reverses. Both, or neither.
+    if (!entry || entry.status === 'DRAFT' || entry.lines.length < 2) return { ok: true, created: false };
 
     const hasBank = entry.lines.some((l) => l.account.code.startsWith('111') || l.account.code.startsWith('112'));
     // A receipt is money arriving: cash or bank on the debit side.
@@ -139,14 +122,35 @@ export async function mirrorJournalEntry(entryId: string): Promise<{ ok: true; c
     );
     const type = tallyTypeFor(entry.sourceType, hasBank, isReceipt);
 
-    const lines: { ledgerId: string; debit: number; credit: number }[] = [];
-    for (const l of entry.lines) {
-      lines.push({
-        ledgerId: await ledgerFor(companyId, l.account),
-        debit: Number(l.debit),
-        credit: Number(l.credit),
+    // All of this entry's ledgers in one round trip, then create only what is
+    // genuinely new. Resolving them one line at a time meant 1–2 queries per
+    // line on the user's own request — a six-line contractor settlement cost a
+    // dozen sequential round trips, and a 2,000-row import tens of thousands.
+    const accounts = new Map(entry.lines.map((l) => [l.account.name, l.account]));
+    const existing = await prisma.tallyLedger.findMany({
+      where: { companyId, name: { in: [...accounts.keys()] } },
+      select: { id: true, name: true },
+    });
+    const byName = new Map(existing.map((l) => [l.name, l.id]));
+    const missing = [...accounts.values()].filter((a) => !byName.has(a.name));
+    if (missing.length) {
+      await prisma.tallyLedger.createMany({
+        data: missing.map((a) => ({ companyId, name: a.name, group: tallyGroupFor(a.code, a.type) })),
+        skipDuplicates: true,
       });
+      const added = await prisma.tallyLedger.findMany({
+        where: { companyId, name: { in: missing.map((a) => a.name) } },
+        select: { id: true, name: true },
+      });
+      for (const l of added) byName.set(l.name, l.id);
     }
+
+    const lines = entry.lines.map((l) => ({
+      ledgerId: byName.get(l.account.name)!,
+      debit: Number(l.debit),
+      credit: Number(l.credit),
+    }));
+    if (lines.some((l) => !l.ledgerId)) return { error: 'A Tally ledger could not be resolved for this entry.' };
 
     // Continue the company's own series for this voucher type, so mirrored
     // vouchers sit in the same numbering the accountant already reads.
@@ -198,17 +202,18 @@ export async function backfillMirror(limit = 500): Promise<{ mirrored: number; s
   // Only what is NOT already there. Taking the oldest N unfiltered meant that
   // past the first N entries the backfill re-scanned the same block every run
   // and anything the live mirror had missed beyond it was unreachable.
-  const already = await prisma.tallyVoucher.findMany({
-    where: { companyId, tallyGuid: { startsWith: 'crm:' } },
-    select: { tallyGuid: true },
-  });
-  const done = new Set(already.map((m) => m.tallyGuid?.slice(4)).filter((x): x is string => !!x));
-
-  const entries = (await prisma.journalEntry.findMany({
-    where: { status: 'POSTED' },
-    orderBy: [{ entryDate: 'asc' }, { number: 'asc' }],
-    select: { id: true },
-  })).filter((e) => !done.has(e.id)).slice(0, limit);
+  // Ask the database for the difference rather than loading both sides.
+  const entries = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT j."id"
+    FROM "JournalEntry" j
+    WHERE j."status" IN ('POSTED', 'REVERSED')
+      AND NOT EXISTS (
+        SELECT 1 FROM "TallyVoucher" t
+        WHERE t."companyId" = ${companyId} AND t."tallyGuid" = 'crm:' || j."id"
+      )
+    ORDER BY j."entryDate" ASC, j."number" ASC
+    LIMIT ${limit}
+  `;
 
   let mirrored = 0, skipped = 0;
   for (const e of entries) {

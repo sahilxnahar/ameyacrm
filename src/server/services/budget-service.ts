@@ -62,7 +62,8 @@ export async function budgetVersusActual(projectId: string): Promise<{
 
   // Actuals that can be attributed to a head, via the ledger.
   const lines = await prisma.journalLine.findMany({
-    where: { projectId, entry: { status: 'POSTED' } },
+    // Both halves of a reversal — see COUNTS_TOWARDS_BALANCE in ledger-service.
+    where: { projectId, entry: { status: { in: ['POSTED', 'REVERSED'] } } },
     select: { debit: true, credit: true, costCode: true, account: { select: { code: true } } },
   });
 

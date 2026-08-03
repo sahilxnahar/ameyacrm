@@ -4,7 +4,7 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { PageLoadError } from '@/components/layout/page-load-error';
-import { risks, contracts, insurancePolicies, licenceRenewals } from '@/server/services/compliance-service';
+import { risks, contracts, insurancePolicies, licenceRenewals, registerCounts } from '@/server/services/compliance-service';
 import { GovernanceRegister } from '@/components/compliance/governance-register';
 import { RegisterTabs } from '@/components/compliance/register-tabs';
 import { ContractsRegister, InsuranceRegister, RenewalsRegister } from '@/components/compliance/extra-registers';
@@ -27,12 +27,13 @@ export default async function GovernancePage({ searchParams }: { searchParams: P
   const view = ['risks', 'contracts', 'insurance', 'renewals'].includes(sp.view ?? '') ? sp.view! : 'risks';
 
   try {
-    const [projects, riskRows, contractRows, policyRows, renewalRows] = await Promise.all([
+    const [projects, counts, riskRows, contractRows, policyRows, renewalRows] = await Promise.all([
       prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
-      risks(projectId),
-      contracts(projectId),
-      insurancePolicies(projectId),
-      licenceRenewals(projectId),
+      registerCounts(projectId),
+      view === 'risks' ? risks(projectId) : Promise.resolve([]),
+      view === 'contracts' ? contracts(projectId) : Promise.resolve([]),
+      view === 'insurance' ? insurancePolicies(projectId) : Promise.resolve([]),
+      view === 'renewals' ? licenceRenewals(projectId) : Promise.resolve([]),
     ]);
 
     return (
@@ -43,10 +44,10 @@ export default async function GovernancePage({ searchParams }: { searchParams: P
           current={view}
           projectId={projectId}
           tabs={[
-            { key: 'risks', label: 'Risk register', count: riskRows.length },
-            { key: 'contracts', label: 'Contracts', count: contractRows.length },
-            { key: 'insurance', label: 'Insurance', count: policyRows.length },
-            { key: 'renewals', label: 'Licences & renewals', count: renewalRows.length },
+            { key: 'risks', label: 'Risk register', count: counts.risk },
+            { key: 'contracts', label: 'Contracts', count: counts.contract },
+            { key: 'insurance', label: 'Insurance', count: counts.policy },
+            { key: 'renewals', label: 'Licences & renewals', count: counts.renewal },
           ]}
         />
         {view === 'risks' && <GovernanceRegister canManage={canManage} projects={projects} projectId={projectId} rows={riskRows} />}

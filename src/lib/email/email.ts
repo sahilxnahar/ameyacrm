@@ -19,7 +19,15 @@ export interface SendOptions { asUserId?: string }
  * Pluggable email transport. Swap providers via EMAIL_PROVIDER without touching
  * callers. `console` just logs — perfect for local dev.
  */
-export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Promise<{ ok: boolean; error?: string }> {
+/**
+ * `ok` means "nothing went wrong". `delivered` means "it actually left the
+ * building". They are not the same thing, and conflating them locked people
+ * out: with EMAIL_PROVIDER unset the transport is `console`, which logs the
+ * subject and returns success, so a sign-in code the user never received was
+ * reported as sent and the screen said "check your email". Anything that gates
+ * ACCESS on an email arriving must check `delivered`.
+ */
+export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Promise<{ ok: boolean; delivered?: boolean; error?: string }> {
   try {
     // Per-user outbound: send from the signed-in user's own mailbox when they've
     // connected one (and haven't opted out). Falls through to the provider switch
@@ -29,7 +37,7 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
       if (config && source === 'user') {
         if (env.EMAIL_PROVIDER === 'console') {
           console.info('📧 [email:console:as-user]', { to: payload.to, subject: payload.subject, from: config.from }); // F-38: never log the body/links/OTP
-          return { ok: true };
+          return { ok: true, delivered: false };
         }
         const transport = nodemailer.createTransport({
           host: config.host, port: config.port, secure: config.secure,
@@ -44,7 +52,7 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
     switch (env.EMAIL_PROVIDER) {
       case 'console':
         console.info('📧 [email:console]', { to: payload.to, subject: payload.subject, from: env.EMAIL_FROM }); // F-38: never log the body/links/OTP
-        return { ok: true };
+        return { ok: true, delivered: false };
 
       case 'resend': {
         if (!env.RESEND_API_KEY) return { ok: false, error: 'RESEND_API_KEY missing' };

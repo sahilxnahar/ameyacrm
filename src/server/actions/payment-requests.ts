@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { nextSequence } from '@/lib/db/sequence';
 import { sendEmail } from '@/lib/email/email';
 import { getCompanyDetails } from '@/server/services/company-service';
 import { bankBlock } from '@/config/company';
@@ -40,7 +41,8 @@ export async function createPaymentRequest(input: unknown): Promise<PayResult> {
   try {
     const ctx = await ensure('billing.invoice.manage');
     const d = createSchema.parse(input);
-    const seq = (await prisma.paymentRequest.count()) + 1001;
+    // Atomic, not count()+1 — `PaymentRequest.reference` is unique.
+    const seq = await nextSequence('payreq:PAY', prisma, 1000);
     const reference = `PAY-${seq}`;
     const token = randomBytes(20).toString('hex');
 
