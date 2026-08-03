@@ -21,11 +21,14 @@
  * with the request, so the server renders the right menu the first time.
  */
 
-export type NavMode = 'essentials' | 'everything';
-
-export const NAV_MODE_KEY = 'amh:nav-mode';
-export const NAV_MODE_COOKIE = 'amh_nav_mode';
-export const DEFAULT_NAV_MODE: NavMode = 'essentials';
+// The shared, server-safe half lives in its own module WITHOUT a 'use client'
+// directive, because that directive applies to a whole file: while these lived
+// here, a server component importing `navModeFromCookie` compiled fine and threw
+// at runtime, taking every signed-in screen down with it.
+export { NAV_MODE_KEY, NAV_MODE_COOKIE, DEFAULT_NAV_MODE, navModeFromCookie } from './nav-mode-shared';
+import { NAV_MODE_KEY, NAV_MODE_COOKIE, DEFAULT_NAV_MODE } from './nav-mode-shared';
+export type { NavMode } from './nav-mode-shared';
+import type { NavMode } from './nav-mode-shared';
 
 export function readNavMode(): NavMode {
   if (typeof window === 'undefined') return DEFAULT_NAV_MODE;
@@ -40,11 +43,6 @@ export function readNavMode(): NavMode {
   } catch {
     return DEFAULT_NAV_MODE;
   }
-}
-
-/** Parse the cookie header on the server. */
-export function navModeFromCookie(value: string | undefined): NavMode {
-  return value === 'everything' || value === 'essentials' ? value : DEFAULT_NAV_MODE;
 }
 
 export function writeNavMode(mode: NavMode): void {

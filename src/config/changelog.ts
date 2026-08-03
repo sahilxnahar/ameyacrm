@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.6';
+export const APP_VERSION = 'v16.7';
 
 export interface Release {
   version: string;
@@ -13,6 +13,17 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.7',
+    date: '3 Aug 2026',
+    highlights: [
+      'Fixed the actual reason every signed-in screen said \u201cSomething went wrong\u201d \u2014 and it was not the database. A navigation helper lived in a file marked as browser-only, and the signed-in layout called it on the server. That throws in a production build, a layout cannot catch its own error, so every screen in the CRM went down together. One import.',
+      'The symptom looked exactly like a database problem, which is why it took so long to find. A test now fails the build if any server file calls into a browser-only module again.',
+      '\u201cRepair database\u201d is now a page with a button, at Admin \u2192 Repair Database. It used to be reachable only by sending a POST, which you cannot do from an address bar \u2014 a recovery tool that needed the developer console was only half a recovery tool.',
+      '/api/health now reports the running version, whether the database is reachable, and what is missing \u2014 without signing in, so it answers while the app is down.',
+      'The in-app \u201cdatabase is behind\u201d check no longer claims you are up to date when whole tables are missing.',
+    ],
+  },
   {
     version: 'v16.6',
     date: '3 Aug 2026',

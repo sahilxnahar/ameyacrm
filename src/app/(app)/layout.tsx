@@ -9,7 +9,7 @@ import { EmailDormantBanner } from '@/components/layout/email-dormant-banner';
 import { readPrefs } from '@/lib/nav/prefs';
 import { getNavPrefsRow } from '@/server/services/nav-prefs-service';
 import { readTopNavPrefs } from '@/lib/nav/top-nav-prefs';
-import { navModeFromCookie, NAV_MODE_COOKIE } from '@/lib/nav/nav-mode';
+import { navModeFromCookie, NAV_MODE_COOKIE } from '@/lib/nav/nav-mode-shared';
 import { cookies } from 'next/headers';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { prisma } from '@/lib/db/prisma';

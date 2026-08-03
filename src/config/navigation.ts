@@ -207,6 +207,7 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'My Apps', href: '/apps', icon: Package, permission: 'admin.setting.manage', blurb: 'The apps you have installed, and quick access to manage them.' },
       { label: 'App Exchange', href: '/app-exchange', icon: Plug, permission: 'admin.setting.manage', blurb: 'Browse and connect 140+ apps — CRM, payments, chat, storage, portals.' },
       { label: 'Email Health', href: '/admin/email-health', icon: Mail, permission: 'admin.setting.manage', blurb: 'Test whether password-reset and 2FA emails actually send, and get told what to fix.' },
+      { label: 'Repair Database', href: '/api/admin/repair', icon: Wrench, permission: 'admin.setting.manage', blurb: 'Add anything this version needs that the database does not have. Only ever adds; safe to run twice. Also works when every screen is broken.' },
       { label: 'Developers', href: '/developers', icon: Braces, permission: 'admin.setting.manage', blurb: 'REST API playground, OpenAPI spec, sandbox test endpoint and webhook tooling.' },
       { label: 'App Packages', href: '/admin/app-packages', icon: Package, permission: 'admin.setting.manage', blurb: 'Install ready-made bundles of fields, automations and views — or author, import and export your own.' },
       { label: 'Security Operations', href: '/security-ops', icon: KeyRound, permission: 'secops.view', blurb: 'Security incidents tracked to resolution, and scheduled reviews of who still has access to what.' },
