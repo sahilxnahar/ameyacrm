@@ -1,13 +1,13 @@
 'use client';
 import * as React from 'react';
 import { toast } from 'sonner';
-import { Send, Clock, CheckCircle2, HandCoins, Play, RefreshCw, X } from 'lucide-react';
+import { Send, Clock, CheckCircle2, HandCoins, Play, RefreshCw, X, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RecordList } from '@/components/shared/record-row';
 import { formatCurrency } from '@/lib/utils/format';
-import { runDemands, resendPendingDemands, cancelDemand, setBuyerLanguage } from '@/server/actions/demands';
+import { runDemands, resendPendingDemands, cancelDemand, setBuyerLanguage, createDemand } from '@/server/actions/demands';
 import { DEMAND_LANGS } from '@/lib/i18n/demand-templates';
 
 interface Row {
@@ -21,8 +21,16 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secon
   PAID: 'success', SENT: 'secondary', PENDING: 'warning', CANCELLED: 'destructive',
 };
 
-export function DemandsView({ counts, rows }: { counts: { pending: number; sent: number; paid: number; outstanding: number }; rows: Row[] }) {
-  const [busy, setBusy] = React.useState<null | 'run' | 'resend'>(null);
+export interface BookingOption { id: string; label: string }
+
+export function DemandsView({ counts, rows, bookings = [], canManage = false }: {
+  counts: { pending: number; sent: number; paid: number; outstanding: number };
+  rows: Row[];
+  bookings?: BookingOption[];
+  canManage?: boolean;
+}) {
+  const [busy, setBusy] = React.useState<null | 'run' | 'resend' | 'raise'>(null);
+  const [raising, setRaising] = React.useState(false);
 
   function run() {
     setBusy('run');
@@ -68,10 +76,64 @@ export function DemandsView({ counts, rows }: { counts: { pending: number; sent:
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Demands generate and dispatch automatically each day. Run a cycle now, or re-send anything still pending.</p>
         <div className="flex gap-2">
+          {canManage && (
+            <Button variant="outline" onClick={() => setRaising((v) => !v)} className="gap-1">
+              <Plus className="h-4 w-4" /> Raise a demand
+            </Button>
+          )}
           <Button variant="outline" onClick={resend} disabled={busy !== null} className="gap-1"><RefreshCw className="h-4 w-4" /> {busy === 'resend' ? 'Sending…' : 'Re-send pending'}</Button>
           <Button onClick={run} disabled={busy !== null} className="gap-1"><Play className="h-4 w-4" /> {busy === 'run' ? 'Running…' : 'Run demand cycle'}</Button>
         </div>
       </div>
+
+      {/* A one-off ask — a maintenance deposit, a corpus contribution, an agreed
+          part-payment. Nothing on this screen could be raised by hand before, so
+          anything outside the payment schedule got sent from somebody's own
+          WhatsApp and never chased. */}
+      {raising && canManage && (
+        <form
+          className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            setBusy('raise');
+            createDemand({
+              bookingId: String(fd.get('bookingId') ?? ''),
+              label: String(fd.get('label') ?? ''),
+              amount: Number(fd.get('amount') ?? 0),
+              dueDate: String(fd.get('dueDate') ?? '') || null,
+            }).then((r) => {
+              setBusy(null);
+              if ('error' in r) { toast.error(r.error); return; }
+              toast.success(`${r.number} raised — it will go out on the next dispatch`);
+              setRaising(false); location.reload();
+            });
+          }}
+        >
+          <div className="space-y-1">
+            <label htmlFor="dbooking" className="block text-xs font-medium text-muted-foreground">Booking</label>
+            <select id="dbooking" name="bookingId" required className="h-9 w-72 rounded-md border bg-background px-2 text-sm" defaultValue="">
+              <option value="" disabled>Pick a booking…</option>
+              {bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="dlabel" className="block text-xs font-medium text-muted-foreground">What for</label>
+            <input id="dlabel" name="label" required className="h-9 w-64 rounded-md border bg-background px-2 text-sm" placeholder="Maintenance deposit" />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="damount" className="block text-xs font-medium text-muted-foreground">Amount (₹)</label>
+            <input id="damount" name="amount" type="number" required inputMode="numeric" className="h-9 w-36 rounded-md border bg-background px-2 text-right text-sm tabular-nums" />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="ddue" className="block text-xs font-medium text-muted-foreground">Due</label>
+            <input id="ddue" name="dueDate" type="date" className="h-9 rounded-md border bg-background px-2 text-sm" />
+          </div>
+          <Button type="submit" disabled={busy !== null}>{busy === 'raise' ? 'Raising…' : 'Raise it'}</Button>
+          <Button type="button" variant="ghost" onClick={() => setRaising(false)}>Cancel</Button>
+          {!bookings.length && <p className="w-full text-xs text-muted-foreground">There are no bookings to raise a demand against yet.</p>}
+        </form>
+      )}
 
       <RecordList empty="No demands yet. When a payment milestone falls due or goes overdue, a reminder is raised here automatically.">
         {rows.map((d) => (

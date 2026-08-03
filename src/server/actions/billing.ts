@@ -427,3 +427,161 @@ export async function extractBill(formData: FormData): Promise<{ ok: true; draft
     return { ok: true, draft };
   } catch (err) { return toActionError(err); }
 }
+
+/**
+ * Record a bill you RECEIVED, resolving the supplier by name.
+ *
+ * The AI importer had a button labelled "Import bill" that called
+ * `createInvoice` — so scanning a supplier's bill booked it as one of YOUR
+ * sales invoices: money owed to you rather than by you, in the wrong direction
+ * on the balance sheet and in your GSTR-1. This is what that button should
+ * always have done.
+ *
+ * The supplier is matched by name and created if new, because a bill arrives
+ * with a name on it, not with an id from your vendor master.
+ */
+export async function createVendorBillFromImport(input: unknown): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const d = z.object({
+      vendorName: z.string().min(2, 'Whose bill is it?').max(160),
+      number: z.string().min(1, 'A bill needs its number.').max(60),
+      amount: z.coerce.number().nonnegative(),
+      gstAmount: z.coerce.number().nonnegative().default(0),
+      billDate: z.string().optional().nullable(),
+      dueDate: z.string().optional().nullable(),
+      notes: z.string().max(500).optional().nullable(),
+    }).parse(input);
+
+    if (d.amount + d.gstAmount <= 0) return { error: 'The bill has no amount on it.' };
+
+    const name = d.vendorName.trim();
+    const existing = await prisma.vendor.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    const vendorId = existing?.id
+      ?? (await prisma.vendor.create({ data: { name }, select: { id: true } })).id;
+
+    // Same supplier, same bill number is the same bill — an importer that runs
+    // twice must not double the payable.
+    const dupe = await prisma.vendorBill.findFirst({
+      where: { vendorId, number: d.number.trim() },
+      select: { id: true, number: true },
+    });
+    if (dupe) return { error: `Bill ${dupe.number} from ${name} is already recorded.` };
+
+    return await createVendorBill({
+      number: d.number.trim(),
+      vendorId,
+      amount: d.amount,
+      gstAmount: d.gstAmount,
+      billDate: d.billDate || null,
+      dueDate: d.dueDate || null,
+    });
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+/**
+ * Correct a bill.
+ *
+ * There was no way to. A bill entered with the wrong amount was permanent —
+ * and because a bill now posts to the ledger the moment it is recorded, the
+ * wrong number was in the books too. Editing re-posts, so the books follow the
+ * correction instead of keeping the mistake.
+ */
+export async function updateVendorBill(input: unknown): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const d = z.object({
+      billId: z.string().min(1),
+      number: z.string().min(1).max(60),
+      vendorId: z.string().optional().nullable(),
+      amount: z.coerce.number().nonnegative(),
+      gstAmount: z.coerce.number().nonnegative().default(0),
+      billDate: z.string().optional().nullable(),
+      dueDate: z.string().optional().nullable(),
+    }).parse(input);
+
+    const bill = await prisma.vendorBill.findUnique({
+      where: { id: d.billId },
+      select: { id: true, number: true, status: true },
+    });
+    if (!bill) return { error: 'That bill no longer exists.' };
+    if (bill.status === 'PAID') return { error: `Bill ${bill.number} has been paid. Withdraw the payment first, then correct it.` };
+
+    const settled = await prisma.voucher.findFirst({ where: { vendorBillId: bill.id, status: { not: 'CANCELLED' } }, select: { number: true } });
+    if (settled) return { error: `Payment ${settled.number} is already raised against this bill. Withdraw it first.` };
+
+    await prisma.vendorBill.update({
+      where: { id: d.billId },
+      data: {
+        number: d.number.trim(), vendorId: d.vendorId || null,
+        amount: d.amount, gstAmount: d.gstAmount,
+        billDate: d.billDate ? new Date(d.billDate) : undefined,
+        dueDate: d.dueDate ? new Date(d.dueDate) : null,
+      },
+    });
+
+    // The books have to follow the correction. Reverse what the old figure
+    // posted, then post the new one — never edit a journal entry in place.
+    const entry = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'VendorBill', sourceId: bill.id, status: 'POSTED' },
+      select: { id: true },
+    });
+    if (entry) {
+      const { reverse } = await import('@/server/services/ledger-service');
+      await reverse(entry.id, `Bill ${bill.number} corrected`, ctx.user.id).catch(() => undefined);
+    }
+    const vendorName = d.vendorId
+      ? (await prisma.vendor.findUnique({ where: { id: d.vendorId }, select: { name: true } }).catch(() => null))?.name ?? 'vendor'
+      : 'vendor';
+    const rule = vendorBillLines({
+      amount: d.amount + d.gstAmount, gstAmount: d.gstAmount,
+      vendorId: d.vendorId || null, vendorName,
+    });
+    if ('ok' in rule) {
+      await post({
+        entryDate: d.billDate ? new Date(d.billDate) : new Date(),
+        narration: `${d.number.trim()} — ${rule.narration} (corrected)`,
+        lines: rule.lines, sourceType: 'VendorBill', sourceId: bill.id,
+        createdById: ctx.user.id,
+      }).catch(() => undefined);
+    }
+
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'VendorBill', entityId: bill.id, summary: `Corrected bill ${bill.number} → ${d.number.trim()} (Rs ${(d.amount + d.gstAmount).toLocaleString('en-IN')})` });
+    revalidatePath('/billing'); revalidatePath('/ledgers');
+    return { ok: true, id: bill.id };
+  } catch (err) { return toActionError(err); }
+}
+
+/** Void a bill that should never have been recorded. The row stays, marked VOID. */
+export async function voidVendorBill(billId: string, reason: string): Promise<BillingResult> {
+  try {
+    const ctx = await ensure('billing.bill.manage');
+    const why = (reason ?? '').trim();
+    if (why.length < 3) return { error: 'Say why it is being voided.' };
+
+    const bill = await prisma.vendorBill.findUnique({ where: { id: billId }, select: { id: true, number: true, status: true } });
+    if (!bill) return { error: 'That bill no longer exists.' };
+    if (bill.status === 'PAID') return { error: `Bill ${bill.number} has been paid. Withdraw the payment first.` };
+
+    await prisma.vendorBill.update({ where: { id: billId }, data: { status: 'VOID' } });
+
+    // A voided bill must not leave a payable standing in the books.
+    const entry = await prisma.journalEntry.findFirst({
+      where: { sourceType: 'VendorBill', sourceId: billId, status: 'POSTED' }, select: { id: true },
+    });
+    if (entry) {
+      const { reverse } = await import('@/server/services/ledger-service');
+      await reverse(entry.id, `Bill ${bill.number} voided — ${why.slice(0, 120)}`, ctx.user.id).catch(() => undefined);
+    }
+    await prisma.msmePaymentClock.deleteMany({ where: { vendorBillId: billId } }).catch(() => undefined);
+
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'VendorBill', entityId: billId, summary: `Voided bill ${bill.number} — ${why.slice(0, 200)}` });
+    revalidatePath('/billing'); revalidatePath('/ledgers');
+    return { ok: true, id: billId };
+  } catch (err) { return toActionError(err); }
+}

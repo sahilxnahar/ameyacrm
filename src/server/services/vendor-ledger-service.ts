@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { NOT_CANCELLED_OR_PENDING } from '@/lib/ledger/spent';
+import { VENDOR_CORE_SELECT } from '@/lib/db/vendor-select';
 
 const num = (d: unknown): number => (d == null ? 0 : Number(d));
 const PAID_KINDS = ['CASH_PAID', 'BANK_PAID'] as const;
@@ -43,7 +44,7 @@ export interface LedgerDetail {
 }
 
 export async function getLedger(vendorId: string): Promise<LedgerDetail | null> {
-  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
+  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: VENDOR_CORE_SELECT });
   if (!vendor) return null;
   const vouchers = await prisma.voucher.findMany({
     where: {

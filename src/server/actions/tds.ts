@@ -159,3 +159,104 @@ export async function setVendorTdsSection(vendorId: string, section: string | nu
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
+
+const manualSchema = z.object({
+  partyName: z.string().min(2, 'Who was paid?').max(160),
+  vendorId: z.string().optional().nullable(),
+  section: z.string().min(1, 'Pick the section.'),
+  base: z.coerce.number().positive('Enter the amount the deduction is calculated on.'),
+  rate: z.coerce.number().min(0).max(30).optional(),
+  tds: z.coerce.number().min(0).optional(),
+  date: z.string().optional().nullable(),
+  mode: z.enum(['CASH', 'BANK_TRANSFER', 'CHEQUE', 'UPI']).default('BANK_TRANSFER'),
+  bankName: z.string().max(80).optional().nullable(),
+  reference: z.string().max(80).optional().nullable(),
+  narration: z.string().max(500).optional().nullable(),
+});
+
+/**
+ * Record a deduction that did not come from a vendor payment.
+ *
+ * The TDS screen could total, group and mark-deposited — and there was no way to
+ * enter a deduction on it. Everything it showed had to arrive from the vendor
+ * ledger, so rent under 194I, professional fees under 194J, commission under
+ * 194H and anything paid to somebody who is not on the vendor master could be
+ * deducted in real life and never appear here. Come 26Q time that is a return
+ * filed short.
+ *
+ * A deduction is a payment, so this creates a real voucher and posts it, rather
+ * than a TDS-only record floating outside the books. `amount` is what actually
+ * left the bank — the base less the deduction — because that is what the cash
+ * book and bank reconciliation mean by it everywhere else in this app.
+ */
+export async function recordTdsDeduction(input: unknown): Promise<{ ok: true; id: string; number: string } | { error: string }> {
+  try {
+    const ctx = await ensure('finance.ledger.manage');
+    const d = manualSchema.parse(input);
+    if (!TDS_SECTION_CODES.includes(d.section)) return { error: 'That is not a TDS section this build knows.' };
+
+    const { tdsSection } = await import('@/config/tds-sections');
+    const sec = tdsSection(d.section);
+    // Rate typed wins; otherwise the statutory rate for the section. An explicit
+    // amount wins over both, because a CA overriding the arithmetic is the whole
+    // reason a manual entry exists.
+    const rate = d.rate != null && d.rate > 0 ? d.rate : sec?.rate ?? 0;
+    const tds = d.tds != null && d.tds > 0
+      ? Math.round(d.tds * 100) / 100
+      : Math.round(((d.base * rate) / 100) * 100) / 100;
+    if (tds <= 0) return { error: 'That works out to no deduction. Enter the TDS amount if the rate is nil.' };
+    if (tds > d.base) return { error: 'The deduction is larger than the amount it is deducted from.' };
+
+    const when = d.date ? new Date(d.date) : new Date();
+    if (Number.isNaN(when.getTime())) return { error: 'That date does not look right.' };
+
+    const { nextVoucherNumber } = await import('@/lib/db/voucher-number');
+    const { postVoucherById } = await import('@/lib/ledger/post-voucher');
+    const number = await nextVoucherNumber('CP');
+    const paidOut = Math.round((d.base - tds) * 100) / 100;
+
+    const v = await prisma.voucher.create({
+      data: {
+        number, kind: d.mode === 'CASH' ? 'CASH_PAID' : 'BANK_PAID', status: 'POSTED',
+        voucherDate: when, paidOn: d.mode === 'CASH' ? null : when,
+        partyName: d.partyName.trim(), vendorId: d.vendorId || null,
+        amount: paidOut, mode: d.mode,
+        bankName: d.bankName?.trim() || null,
+        reference: d.reference?.trim() || null,
+        narration: d.narration?.trim() || `TDS u/s ${d.section} on ${d.partyName.trim()}`,
+        tdsSection: d.section, tdsRate: rate || null, tdsAmount: tds,
+        createdById: ctx.user.id,
+      },
+      select: { id: true },
+    });
+    await postVoucherById(v.id, ctx.user.id).catch(() => undefined);
+
+    await writeAudit({
+      actorId: ctx.user.id, action: 'CREATE', entityType: 'Voucher', entityId: v.id,
+      summary: `TDS ${number} — Rs ${tds.toLocaleString('en-IN')} u/s ${d.section} on ${d.partyName.trim()}`,
+    });
+    revalidatePath('/tds'); revalidatePath('/payments'); revalidatePath('/ledgers');
+    return { ok: true, id: v.id, number };
+  } catch (err) { return toActionError(err); }
+}
+
+/**
+ * Put a section against a deduction that has none.
+ *
+ * The vendor-payment form captures a TDS rate and amount but no section, so
+ * everything entered that way lands under "Unmapped" — which is exactly the
+ * bucket that cannot be filed. This is how it gets classified after the fact.
+ */
+export async function setVoucherTdsSection(voucherId: string, section: string | null): Promise<{ ok: true } | { error: string }> {
+  try {
+    const ctx = await ensure('finance.ledger.manage');
+    const id = z.string().min(1).parse(voucherId);
+    const sec = section && TDS_SECTION_CODES.includes(section) ? section : null;
+    const v = await prisma.voucher.findUnique({ where: { id }, select: { number: true } });
+    if (!v) return { error: 'That payment no longer exists.' };
+    await prisma.voucher.update({ where: { id }, data: { tdsSection: sec } });
+    await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Voucher', entityId: id, summary: sec ? `${v.number} classified under TDS ${sec}` : `${v.number} TDS section cleared` });
+    revalidatePath('/tds');
+    return { ok: true };
+  } catch (err) { return toActionError(err); }
+}

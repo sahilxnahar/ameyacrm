@@ -13,6 +13,7 @@ import { getActiveProject } from '@/server/services/active-project-service';
 import { categorizeExpense } from '@/config/expense-categories';
 import { sendViaOpenWA } from '@/server/services/whatsapp-service';
 import { notifyMany } from '@/lib/notifications/notify';
+import { VENDOR_CORE_SELECT } from '@/lib/db/vendor-select';
 
 
 /** Admin sets the review threshold. */
@@ -275,7 +276,10 @@ export async function mergeVendors(keepId: string, mergeId: string): Promise<Led
   try {
     const ctx = await ensure('billing.bill.manage');
     if (!keepId || !mergeId || keepId === mergeId) return { error: 'Pick two different payees.' };
-    const [keep, merge] = await Promise.all([prisma.vendor.findUnique({ where: { id: keepId } }), prisma.vendor.findUnique({ where: { id: mergeId } })]);
+    const [keep, merge] = await Promise.all([
+      prisma.vendor.findUnique({ where: { id: keepId }, select: VENDOR_CORE_SELECT }),
+      prisma.vendor.findUnique({ where: { id: mergeId }, select: VENDOR_CORE_SELECT }),
+    ]);
     if (!keep || !merge) return { error: 'One of those payees no longer exists.' };
 
     // All-or-nothing: every reference is repointed and the duplicate removed in

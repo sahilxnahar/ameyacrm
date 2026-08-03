@@ -22,6 +22,29 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
     const projectId = sp.project ?? ctx.user.activeProjectId ?? projects[0]?.id ?? null;
     const costCodeCount = await prisma.costCode.count();
 
+    // The heads you can budget against, and what the current version put on each.
+    // Without these the screen could show a variance but never set the figure the
+    // variance is measured from — `saveBudget` existed and nothing called it, so
+    // every project read as 100% unbudgeted no matter how much planning had gone
+    // into it.
+    const [costCodes, currentBudget] = await Promise.all([
+      prisma.costCode.findMany({
+        where: { isActive: true, isGroup: false },
+        select: { id: true, code: true, name: true, parentId: true },
+        orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+      }).catch(() => []),
+      projectId
+        ? prisma.budget.findFirst({
+            where: { projectId },
+            orderBy: { version: 'desc' },
+            select: {
+              id: true, name: true, version: true,
+              lines: { select: { amount: true, note: true, costCode: { select: { code: true } } } },
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
     const data = projectId
       ? await budgetVersusActual(projectId)
       : { heads: [], total: null, hasBudget: false, budgetName: null };
@@ -37,6 +60,12 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
           projects={projects}
           projectId={projectId}
           costCodeCount={costCodeCount}
+          costCodes={costCodes}
+          currentVersion={currentBudget?.version ?? null}
+          currentName={currentBudget?.name ?? null}
+          currentLines={(currentBudget?.lines ?? []).map((l) => ({
+            costCode: l.costCode.code, amount: Number(l.amount), note: l.note,
+          }))}
           heads={data.heads}
           total={data.total}
           hasBudget={data.hasBudget}

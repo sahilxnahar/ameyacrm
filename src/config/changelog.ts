@@ -4,7 +4,7 @@
  * saw (stored on their device) is older than this one. Keep each line plain and
  * benefit-first — this is read by everyone, not just the person who built it.
  */
-export const APP_VERSION = 'v16.7';
+export const APP_VERSION = 'v16.8';
 
 export interface Release {
   version: string;
@@ -13,6 +13,22 @@ export interface Release {
 }
 
 export const CHANGELOG: Release[] = [
+  {
+    version: 'v16.8',
+    date: '3 Aug 2026',
+    highlights: [
+      'You can now correct or void a supplier bill. A bill typed with the wrong figure used to be permanent \u2014 the only way out was a second bill to cancel the first, which leaves two wrong numbers in the payables ledger instead of one. Correcting reverses what the old figure posted and re-posts the new one; voiding needs a reason and clears the payable.',
+      'Budgets can be set. \u201cWhat each head was allowed\u201d was a screen that could compare against a budget and never let you enter one \u2014 so every project read as 100% unbudgeted no matter how much planning had gone into it. Saving files a new version and keeps the old one, because \u201cwhat did we originally think this would cost\u201d is the question that makes the next estimate better.',
+      'Meetings and site visits can be put in the calendar. The month grid drew events from day one and there was no way to add one, so the only things it could ever show were tasks and follow-ups made elsewhere.',
+      'TDS deducted outside a vendor payment \u2014 rent, professional fees, commission, a one-off payee \u2014 can now be recorded, and deductions sitting under \u201cUnmapped\u201d can be given their section. Unmapped is exactly the pile you cannot file a 26Q from.',
+      'A supplier bill can be put on the MSME 45-day clock after the fact. Section 43B(h) does not care whether anybody ticked a box when the bill was typed, and until now nothing could start that countdown.',
+      'A payment demand can be raised by hand \u2014 a maintenance deposit, a corpus contribution, an agreed part-payment. Everything outside the payment schedule was being sent from somebody\u2019s own WhatsApp and never chased.',
+      'A single worker\u2019s UAN can be checked at the gate without pretending he is a bulk roster.',
+      'The AI bill importer was booking bills you RECEIVED as sales invoices you had issued \u2014 inflating revenue and leaving the supplier unpaid in the books. It now records them as supplier bills.',
+      'Billing and the vendor ledger render again on a database that is behind: they were reading every column of every vendor, so one missing column blanked the whole screen \u2014 which is why \u201cI cannot add a bill\u201d and \u201cthe page looks empty\u201d were the same bug.',
+      'Administrators were missing 42 permissions that no role held at all, including the finance ledger. Those screens were unreachable by anybody.',
+    ],
+  },
   {
     version: 'v16.7',
     date: '3 Aug 2026',

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RecordList } from '@/components/shared/record-row';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
-import { bulkImportUans } from '@/server/actions/uan';
+import { bulkImportUans, addUan } from '@/server/actions/uan';
 
 interface Row { id: string; workerName: string; uan: string; status: string; vendor: string | null }
 const TONE: Record<string, 'success' | 'destructive' | 'warning'> = { VALID: 'success', INVALID: 'destructive', PENDING: 'warning' };
@@ -50,6 +50,45 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
         <StatCard label="Invalid — blocked" value={counts.invalid} icon={ShieldX} tone={counts.invalid ? 'destructive' : 'default'} />
         <StatCard label="Total workers" value={counts.total} icon={Users} />
       </div>
+      {/* One worker at a time.
+          `addUan` existed and nothing called it: the only way in was a bulk paste,
+          so a single labourer turning up at the gate meant typing a one-line
+          "roster" into a bulk-import box to get him checked. */}
+      <form
+        className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const name = String(fd.get('workerName') ?? '').trim();
+          const uan = String(fd.get('uan') ?? '').trim();
+          if (!name || !uan) { toast.error('Both the name and the UAN are needed.'); return; }
+          setBusy(true);
+          addUan(name, uan, vendorId || null).then((r) => {
+            setBusy(false);
+            if ('error' in r) { toast.error(r.error); return; }
+            toast.success(`${name} checked`);
+            location.reload();
+          });
+        }}
+      >
+        <div className="space-y-1">
+          <Label htmlFor="uworker">Worker</Label>
+          <input id="uworker" name="workerName" className="h-9 w-48 rounded-md border bg-background px-2 text-sm" placeholder="Ramesh Kumar" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="uuan">UAN</Label>
+          <input id="uuan" name="uan" inputMode="numeric" maxLength={14} className="h-9 w-44 rounded-md border bg-background px-2 font-mono text-sm" placeholder="123456789012" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="uvendor">Sub-contractor</Label>
+          <select id="uvendor" className="h-9 w-52 rounded-md border bg-background px-2 text-sm" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+            <option value="">—</option>
+            {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </div>
+        <Button type="submit" variant="outline" disabled={busy}>{busy ? 'Checking…' : 'Check this one'}</Button>
+      </form>
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Paste one worker per line as “Name, 123456789012”. Format-checking is instant; a live EPFO check can be layered on later.</p>
         <Dialog open={open} onOpenChange={setOpen}>

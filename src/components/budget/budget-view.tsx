@@ -2,16 +2,20 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Loader2, Play } from 'lucide-react';
-import { setUpCostCodes, explainVariance } from '@/server/actions/budgets';
+import { AlertTriangle, Loader2, Play, PencilLine } from 'lucide-react';
+import { setUpCostCodes, explainVariance, saveBudget } from '@/server/actions/budgets';
 import type { HeadResult } from '@/lib/budget/variance';
 import type { rollUp } from '@/lib/budget/variance';
 import { cn } from '@/lib/utils/cn';
 
 const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
+export interface CostCodeOption { id: string; code: string; name: string; parentId: string | null }
+export interface BudgetLineInput { costCode: string; amount: number; note: string | null }
+
 export function BudgetView({
   canManage, projects, projectId, costCodeCount, heads, total, hasBudget, budgetName,
+  costCodes = [], currentVersion = null, currentName = null, currentLines = [],
 }: {
   canManage: boolean;
   projects: Array<{ id: string; name: string }>;
@@ -21,10 +25,15 @@ export function BudgetView({
   total: ReturnType<typeof rollUp> | null;
   hasBudget: boolean;
   budgetName: string | null;
+  costCodes?: CostCodeOption[];
+  currentVersion?: number | null;
+  currentName?: string | null;
+  currentLines?: BudgetLineInput[];
 }) {
   const router = useRouter();
   const [msg, setMsg] = useState<{ bad: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
+  const [editing, setEditing] = useState(false);
 
   if (costCodeCount === 0) {
     return (
@@ -82,7 +91,32 @@ export function BudgetView({
           </span>
         </div>
       )}
-      {budgetName && <p className="text-xs text-muted-foreground">Comparing against {budgetName}.</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {budgetName
+          ? <p className="text-xs text-muted-foreground">Comparing against {budgetName}.</p>
+          : <span />}
+        {canManage && projectId && !editing && (
+          <button
+            type="button" onClick={() => setEditing(true)}
+            className="focus-ring inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+          >
+            <PencilLine className="h-4 w-4" />
+            {currentVersion ? `Revise the budget (v${currentVersion})` : 'Set the budget'}
+          </button>
+        )}
+      </div>
+
+      {editing && projectId && (
+        <BudgetEditor
+          projectId={projectId}
+          costCodes={costCodes}
+          currentLines={currentLines}
+          currentName={currentName}
+          currentVersion={currentVersion}
+          onCancel={() => setEditing(false)}
+          onSaved={(text, bad) => { setMsg({ text, bad }); if (!bad) setEditing(false); router.refresh(); }}
+        />
+      )}
 
       {total && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,6 +168,132 @@ export function BudgetView({
       </div>
 
       {msg && <p className={cn('text-sm', msg.bad ? 'text-destructive' : 'text-emerald-600')}>{msg.text}</p>}
+    </div>
+  );
+}
+
+/**
+ * Type the figures each head is allowed.
+ *
+ * Every head is listed, not just the ones already budgeted, because a budget you
+ * have to remember to add rows to is a budget with holes in it. Leave a head at
+ * zero and it is simply not budgeted; the comparison table will show whatever is
+ * spent on it as unbudgeted, which is the honest answer.
+ *
+ * Saving never overwrites. `saveBudget` files a new version and marks the old one
+ * superseded, so "what did we originally think this would cost" stays answerable —
+ * that question is the only reason the next estimate gets better.
+ */
+function BudgetEditor({
+  projectId, costCodes, currentLines, currentName, currentVersion, onCancel, onSaved,
+}: {
+  projectId: string;
+  costCodes: CostCodeOption[];
+  currentLines: BudgetLineInput[];
+  currentName: string | null;
+  currentVersion: number | null;
+  onCancel: () => void;
+  onSaved: (text: string, bad: boolean) => void;
+}) {
+  const seeded = new Map(currentLines.map((l) => [l.costCode, l]));
+  const [name, setName] = useState(currentName ?? 'Approved budget');
+  const [rows, setRows] = useState<Record<string, { amount: string; note: string }>>(() =>
+    Object.fromEntries(costCodes.map((c) => [c.code, {
+      amount: seeded.get(c.code)?.amount ? String(seeded.get(c.code)!.amount) : '',
+      note: seeded.get(c.code)?.note ?? '',
+    }])),
+  );
+  const [pending, start] = useTransition();
+
+  const lines = costCodes
+    .map((c) => ({ costCode: c.code, amount: Number(rows[c.code]?.amount ?? 0), note: rows[c.code]?.note?.trim() || null }))
+    .filter((l) => Number.isFinite(l.amount) && l.amount > 0);
+  const grand = lines.reduce((s, l) => s + l.amount, 0);
+
+  if (!costCodes.length) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+        There are no budgetable heads — every cost code is still a heading. Add heads underneath them first.
+        <button type="button" onClick={onCancel} className="focus-ring ml-2 underline">Close</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1">
+          <label htmlFor="budgetname" className="text-xs font-medium text-muted-foreground">What to call this version</label>
+          <input
+            id="budgetname" value={name} onChange={(e) => setName(e.target.value)}
+            className="focus-ring block w-64 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+            placeholder="Approved budget"
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Saves as <strong className="text-foreground">version {(currentVersion ?? 0) + 1}</strong>
+          {currentVersion ? ` — version ${currentVersion} is kept and marked superseded.` : '.'}
+        </p>
+      </div>
+
+      <div className="max-h-[26rem] overflow-y-auto rounded-md border border-border">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Code</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Head</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Budget (₹)</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Basis (optional)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {costCodes.map((c) => (
+              <tr key={c.id} className="border-t border-border">
+                <td className="px-3 py-1 text-xs text-muted-foreground">{c.code}</td>
+                <td className="px-3 py-1">{c.name}</td>
+                <td className="px-3 py-1 text-right">
+                  <input
+                    type="number" min={0} inputMode="numeric"
+                    value={rows[c.code]?.amount ?? ''}
+                    onChange={(e) => setRows((p) => ({ ...p, [c.code]: { amount: e.target.value, note: p[c.code]?.note ?? '' } }))}
+                    className="focus-ring w-36 rounded-md border border-input bg-background px-2 py-1 text-right text-sm tabular-nums"
+                    placeholder="0"
+                  />
+                </td>
+                <td className="px-3 py-1">
+                  <input
+                    value={rows[c.code]?.note ?? ''}
+                    onChange={(e) => setRows((p) => ({ ...p, [c.code]: { amount: p[c.code]?.amount ?? '', note: e.target.value } }))}
+                    className="focus-ring w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                    placeholder="400 t at ₹65,000"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">
+          {lines.length} head{lines.length === 1 ? '' : 's'} budgeted · total <strong className="tabular-nums">{inr(grand)}</strong>
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel} className="focus-ring rounded-md border border-input px-3 py-1.5 text-sm">Cancel</button>
+          <button
+            type="button" disabled={pending || !lines.length || name.trim().length < 2}
+            onClick={() => start(async () => {
+              const r = await saveBudget({ projectId, name: name.trim(), lines });
+              onSaved('error' in r ? r.error : r.message, 'error' in r);
+            })}
+            className="focus-ring inline-flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-60"
+          >
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save version {(currentVersion ?? 0) + 1}
+          </button>
+        </div>
+      </div>
+      {!lines.length && <p className="text-xs text-muted-foreground">Put a figure against at least one head before saving.</p>}
     </div>
   );
 }

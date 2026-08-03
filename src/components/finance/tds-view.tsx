@@ -1,7 +1,9 @@
 'use client';
 import * as React from 'react';
 import { toast } from 'sonner';
-import { Landmark, Wallet, AlertTriangle, Search, Calculator, Check } from 'lucide-react';
+import { Landmark, Wallet, AlertTriangle, Search, Calculator, Check, Plus, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatCard } from '@/components/layout/stat-card';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +14,7 @@ import { formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { TDS_SECTIONS } from '@/config/tds-sections';
 import { computeTds } from '@/lib/tax/tds';
-import { tdsLookup, depositTds, type TdsEntry } from '@/server/actions/tds';
+import { tdsLookup, depositTds, recordTdsDeduction, setVoucherTdsSection, type TdsEntry } from '@/server/actions/tds';
 
 interface Dashboard {
   accrued: number; deposited: number; pending: number; count: number; pendingCount: number;
@@ -22,8 +24,41 @@ interface Dashboard {
 
 function inr(n: number) { return formatCurrency(n); }
 
+/**
+ * Classify a deduction that came in without a section.
+ *
+ * The vendor-payment form captures a rate and an amount but never a section, so
+ * everything entered that way piles up under "Unmapped" — and "Unmapped" is
+ * precisely the pile you cannot file a 26Q from. One dropdown per row fixes it
+ * where you are already looking.
+ */
+function SectionPicker({ e, onDone }: { e: TdsEntry; onDone: () => void }) {
+  const [pending, start] = React.useTransition();
+  return (
+    <select
+      defaultValue={e.section ?? ''}
+      disabled={pending}
+      onClick={(ev) => ev.stopPropagation()}
+      onChange={(ev) => {
+        const value = ev.target.value || null;
+        start(async () => {
+          const r = await setVoucherTdsSection(e.id, value);
+          if ('error' in r) { toast.error(r.error); return; }
+          toast.success(value ? `${e.number} classified under ${value}` : `${e.number} unclassified`);
+          onDone();
+        });
+      }}
+      className={cn('h-7 shrink-0 rounded-md border bg-background px-1 text-xs', !e.section && 'border-amber-500/60 text-amber-700 dark:text-amber-500')}
+      title="TDS section"
+    >
+      <option value="">Unmapped</option>
+      {TDS_SECTIONS.map((s) => <option key={s.code} value={s.code}>{s.code}</option>)}
+    </select>
+  );
+}
+
 /** One TDS ledger row — colour-coded by deposit status. */
-function TdsRow({ e, selected, onToggle, selectable }: { e: TdsEntry; selected: boolean; onToggle: () => void; selectable: boolean }) {
+function TdsRow({ e, selected, onToggle, selectable, onChanged }: { e: TdsEntry; selected: boolean; onToggle: () => void; selectable: boolean; onChanged?: () => void }) {
   const status = e.deposited ? 'paid' : 'pending';
   return (
     <div className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(status))}>
@@ -45,6 +80,7 @@ function TdsRow({ e, selected, onToggle, selectable }: { e: TdsEntry; selected: 
         <div>{new Date(e.date).toLocaleDateString('en-IN')}</div>
       </div>
       <div className="w-24 shrink-0 text-right font-medium tabular-nums">{inr(e.tds)}</div>
+      {selectable && onChanged && <SectionPicker e={e} onDone={onChanged} />}
       <Badge variant={e.deposited ? 'success' : 'warning'} className="shrink-0">
         {e.deposited ? 'Deposited' : 'Pending'}
       </Badge>
@@ -88,6 +124,44 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
     });
   }
 
+  // ── Manual entry ──
+  //
+  // Rent, professional fees, commission, and anything paid to somebody who is not
+  // on the vendor master: all deductible, none of them enterable before this,
+  // because every row on this screen had to arrive from the vendor ledger.
+  const [recording, setRecording] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [entrySection, setEntrySection] = React.useState('194J');
+  const [entryBase, setEntryBase] = React.useState('');
+  const [entryTds, setEntryTds] = React.useState('');
+  const entryRate = TDS_SECTIONS.find((s) => s.code === entrySection)?.rate ?? 0;
+  const suggestedTds = Math.round(((Number(entryBase) || 0) * entryRate) / 100);
+
+  function submitEntry(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    const fd = new FormData(ev.currentTarget);
+    setSaving(true);
+    start(async () => {
+      const r = await recordTdsDeduction({
+        partyName: fd.get('partyName'),
+        section: entrySection,
+        base: entryBase,
+        rate: entryRate,
+        tds: entryTds || suggestedTds,
+        date: fd.get('date') || null,
+        mode: fd.get('mode') || 'BANK_TRANSFER',
+        bankName: fd.get('bankName') || null,
+        reference: fd.get('reference') || null,
+        narration: fd.get('narration') || null,
+      });
+      setSaving(false);
+      if ('error' in r) { toast.error(r.error); return; }
+      toast.success(`Recorded as ${r.number}`);
+      setRecording(false); setEntryBase(''); setEntryTds('');
+      location.reload();
+    });
+  }
+
   // ── Calculator ──
   const [calcSection, setCalcSection] = React.useState('194C');
   const [calcAmount, setCalcAmount] = React.useState('');
@@ -96,6 +170,58 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
 
   return (
     <div className="space-y-6">
+      <Dialog open={recording} onOpenChange={setRecording}>
+        <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
+          <DialogHeader><DialogTitle>Record a TDS deduction</DialogTitle></DialogHeader>
+          <form onSubmit={submitEntry} className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              For a deduction that did not come from a vendor payment — rent, professional fees, commission, a one-off
+              payee. This creates the payment voucher too, so the bank figure is the amount actually paid out, net of
+              the deduction.
+            </p>
+            <div className="space-y-2"><Label htmlFor="tparty">Who was paid</Label><Input id="tparty" name="partyName" required placeholder="Landlord / consultant / broker" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tsec">Section</Label>
+                <select id="tsec" value={entrySection} onChange={(e) => { setEntrySection(e.target.value); setEntryTds(''); }} className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm">
+                  {TDS_SECTIONS.map((s) => <option key={s.code} value={s.code}>{s.code} — {s.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2"><Label htmlFor="tdate">Date</Label><Input id="tdate" name="date" type="date" /></div>
+              <div className="space-y-2">
+                <Label htmlFor="tbase">Amount before TDS (₹)</Label>
+                <Input id="tbase" value={entryBase} onChange={(e) => setEntryBase(e.target.value)} type="number" required inputMode="numeric" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ttds">TDS to deduct (₹)</Label>
+                <Input id="ttds" value={entryTds} onChange={(e) => setEntryTds(e.target.value)} type="number" inputMode="numeric" placeholder={String(suggestedTds)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tmode">Paid by</Label>
+                <select id="tmode" name="mode" defaultValue="BANK_TRANSFER" className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm">
+                  <option value="BANK_TRANSFER">Bank transfer</option>
+                  <option value="CHEQUE">Cheque</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CASH">Cash</option>
+                </select>
+              </div>
+              <div className="space-y-2"><Label htmlFor="tbank">Bank</Label><Input id="tbank" name="bankName" placeholder="Kotak — current" /></div>
+            </div>
+            <div className="space-y-2"><Label htmlFor="tref">Reference</Label><Input id="tref" name="reference" placeholder="Cheque no. / UTR / invoice" /></div>
+            <div className="space-y-2"><Label htmlFor="tnarr">Narration</Label><Input id="tnarr" name="narration" placeholder="Office rent — July" /></div>
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Statutory rate for {entrySection}</span><span className="font-medium">{entryRate}%</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Deduction</span><span className="font-semibold text-primary">{inr(Number(entryTds) || suggestedTds)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Actually paid out</span><span className="font-medium">{inr(Math.max(0, (Number(entryBase) || 0) - (Number(entryTds) || suggestedTds)))}</span></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setRecording(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}Record deduction</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Position */}
       <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
         <StatCard label="TDS liability accrued" value={inr(dashboard.accrued)} icon={Landmark} hint={`${dashboard.count} deductions`} />
@@ -113,6 +239,7 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
             </div>
             <Button type="submit" disabled={searching}>{searching ? 'Searching…' : 'Search'}</Button>
             {results && <Button type="button" variant="ghost" onClick={() => { setResults(null); setQ(''); }}>Clear</Button>}
+            {canManage && <Button type="button" variant="outline" onClick={() => setRecording(true)}><Plus className="h-4 w-4" /> Record a deduction</Button>}
           </form>
 
           <div className="flex items-center justify-between text-sm">
@@ -122,7 +249,10 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
 
           <RecordList empty={results ? 'No TDS entries for that account.' : 'No TDS deducted yet.'}>
             {shown.map((e) => (
-              <TdsRow key={e.id} e={e} selected={sel.has(e.id)} onToggle={() => toggle(e.id)} selectable={canManage} />
+              <TdsRow
+                key={e.id} e={e} selected={sel.has(e.id)} onToggle={() => toggle(e.id)} selectable={canManage}
+                onChanged={() => { if (results) lookup(); else location.reload(); }}
+              />
             ))}
           </RecordList>
 

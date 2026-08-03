@@ -18,6 +18,27 @@ export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
     'admin.user.*', 'admin.department.manage', 'admin.role.manage',
     'admin.project.manage', 'admin.setting.manage', 'admin.notification.manage',
     'audit.view', 'audit.export', 'marketing.*', 'lease.*', 'architecture.*',
+
+    // ── The forty-two that belonged to nobody ────────────────────────────────
+    //
+    // These keys were defined, used to guard ~45 screens, and granted to no
+    // role at all — so every one of those screens redirected everybody except
+    // the Super Admin to /forbidden. Land, treasury, programme, quality,
+    // procurement, governance, the whole of the finance ledger: an owner
+    // signing in as Super Admin saw a complete product and nobody else could
+    // reach half of it, which is what "there are so many sections where I
+    // cannot add data" actually was.
+    //
+    // An Admin is the person who runs the company in this product, so an Admin
+    // gets them. They stay OFF the lower roles, where they should be appointed
+    // deliberately rather than inherited.
+    'finance.ledger.view', 'finance.ledger.manage',
+    'land.*', 'treasury.*', 'programme.*', 'quality.*', 'capital.*',
+    'pricing.*', 'feasibility.*', 'statutory.*', 'procurement.*',
+    'governance.*', 'secops.*', 'knowledge.*', 'esg.*', 'variations.*',
+    'people.*', 'association.*', 'workrequest.*', 'telemetry.*', 'data.view',
+    // NOT 'finance.access.manage' — who may see the books is a Super Admin
+    // decision, and an Admin able to appoint themselves is not a control.
   ],
   DEPARTMENT_HEAD: [
     'dashboard.view', 'task.*', 'lead.view', 'lead.update', 'booking.view',
@@ -25,6 +46,12 @@ export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
     'calendar.*', 'report.view', 'report.export', 'admin.user.view', 'audit.view',
     'marketing.view', 'marketing.manage', 'marketing.approve', 'lease.view', 'lease.manage',
     'architecture.view', 'architecture.manage',
+    // The operational registers a department head is expected to keep.
+    'programme.view', 'programme.manage', 'quality.view', 'quality.manage',
+    'procurement.view', 'procurement.manage', 'statutory.view',
+    'governance.view', 'knowledge.view', 'knowledge.manage', 'esg.view',
+    'variations.view', 'variations.manage', 'people.view', 'land.view',
+    'workrequest.view', 'workrequest.create', 'workrequest.manage', 'data.view',
   ],
   MANAGER: [
     'dashboard.view', 'task.view', 'task.create', 'task.update', 'task.assign',
@@ -35,6 +62,9 @@ export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
     'report.view', 'report.export',
     'marketing.view', 'marketing.manage', 'lease.view', 'lease.manage',
     'architecture.view', 'architecture.manage',
+    'programme.view', 'programme.manage', 'quality.view', 'quality.manage',
+    'procurement.view', 'knowledge.view', 'esg.view', 'variations.view',
+    'workrequest.view', 'workrequest.create',
   ],
   EXECUTIVE: [
     'dashboard.view', 'task.view', 'task.create', 'task.update', 'task.comment',
@@ -43,11 +73,13 @@ export const ROLE_DEFAULTS: Record<RoleName, string[]> = {
     'material.create', 'email.send', 'calendar.view', 'calendar.manage',
     'report.view',
     'marketing.view', 'marketing.manage', 'lease.view', 'architecture.view', 'architecture.manage',
+    'programme.view', 'quality.view', 'quality.manage', 'workrequest.view', 'workrequest.create',
   ],
   EMPLOYEE: [
     'dashboard.view', 'task.view', 'task.update', 'task.comment', 'document.view',
     'document.download', 'material.view', 'material.create', 'calendar.view',
     'marketing.view', 'lease.view', 'architecture.view',
+    'quality.view', 'workrequest.view', 'workrequest.create',
   ],
   READ_ONLY: [
     'dashboard.view', 'task.view', 'lead.view', 'booking.view', 'document.view',

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, Upload, Trash2, Plus, FileSpreadsheet, ArrowRight, PencilLine } from 'lucide-react';
-import { extractBill, createInvoice } from '@/server/actions/billing';
+import { extractBill, createVendorBillFromImport } from '@/server/actions/billing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,9 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   const [pending, start] = React.useTransition();
   const [head, setHead] = React.useState({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' });
   const [items, setItems] = React.useState<Item[]>([]);
+  // The supplier's own bill number — what you quote back to them, and what
+  // stops the same bill being recorded twice.
+  const [billNumber, setBillNumber] = React.useState('');
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [dropName, setDropName] = React.useState('');
   const [over, setOver] = React.useState(false);
@@ -33,7 +36,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   const [src, setSrc] = React.useState<{ url: string; name: string; mime: string } | null>(null);
 
   const clearSrc = () => setSrc((s) => { if (s) URL.revokeObjectURL(s.url); return null; });
-  const reset = () => { setStage('upload'); setItems([]); setDropName(''); clearSrc(); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
+  const reset = () => { setStage('upload'); setItems([]); setDropName(''); clearSrc(); setBillNumber(''); setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' }); };
   const close = () => { setOpen(false); reset(); };
   const patch = (i: number, k: keyof Item, v: string) => setItems((arr) => arr.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
 
@@ -47,16 +50,31 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
       const r = await extractBill(fd);
       if ('error' in r) { toast.error(r.error); return; }
       const d = r.draft;
-      setHead({ clientName: d.clientName, clientGstin: d.clientGstin ?? '', issueDate: d.invoiceDate ?? '', projectId: '', intraState: true, notes: `AI-imported from ${file.name}${d.invoiceNumber ? ` · vendor inv ${d.invoiceNumber}` : ''}` });
+      setHead({ clientName: d.clientName, clientGstin: d.clientGstin ?? '', issueDate: d.invoiceDate ?? '', projectId: '', intraState: true, notes: `AI-imported from ${file.name}` });
+      setBillNumber(d.invoiceNumber ?? '');
       setItems(d.items.length ? d.items.map((i) => ({ description: i.description, quantity: String(i.quantity), rate: String(i.rate), gstRate: String(i.gstRate) })) : [{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
       setStage('review'); toast.success('Bill read — review & save');
     });
   };
 
   const save = () => start(async () => {
-    const r = await createInvoice({ clientName: head.clientName, clientGstin: head.clientGstin, projectId: head.projectId || null, issueDate: head.issueDate || undefined, notes: head.notes, intraState: head.intraState, items: items.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), rate: Number(i.rate), gstRate: Number(i.gstRate) })) });
+    // A bill you RECEIVED is a payable. This used to call `createInvoice`,
+    // which booked the supplier's bill as one of YOUR sales invoices — money
+    // owed to you instead of by you, wrong on the balance sheet and wrong in
+    // GSTR-1.
+    const lines = items.filter((i) => i.description);
+    const net = lines.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0), 0);
+    const gst = lines.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.rate) || 0) * ((Number(i.gstRate) || 0) / 100), 0);
+    const r = await createVendorBillFromImport({
+      vendorName: head.clientName,
+      number: billNumber || `BILL-${new Date().toISOString().slice(0, 10)}`,
+      amount: Math.round(net * 100) / 100,
+      gstAmount: Math.round(gst * 100) / 100,
+      billDate: head.issueDate || null,
+      notes: head.notes,
+    });
     if ('error' in r) { toast.error(r.error); return; }
-    toast.success('Invoice created from bill'); close(); router.refresh();
+    toast.success('Bill recorded — it now shows as money you owe'); close(); router.refresh();
   });
 
   // The no-AI path: skip extraction entirely and go straight to a blank bill
@@ -64,6 +82,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
   // never stops someone entering a bill by hand.
   const manual = () => {
     setHead({ clientName: '', clientGstin: '', issueDate: '', projectId: '', intraState: true, notes: '' });
+    setBillNumber('');
     setItems([{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
     setStage('review');
   };
@@ -142,7 +161,8 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
                 </div>
               ) : null}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Company / vendor</Label><Input value={head.clientName} onChange={(e) => setHead({ ...head, clientName: e.target.value })} /></div>
+                <div className="space-y-1"><Label>Supplier who sent the bill</Label><Input value={head.clientName} onChange={(e) => setHead({ ...head, clientName: e.target.value })} placeholder="Cement Corporation" /></div>
+                <div className="space-y-1"><Label>Their bill number</Label><Input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} placeholder="INV/2026/4471" /></div>
                 <div className="space-y-1"><Label>GST number</Label><Input value={head.clientGstin} onChange={(e) => setHead({ ...head, clientGstin: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Bill date</Label><Input type="date" value={head.issueDate} onChange={(e) => setHead({ ...head, issueDate: e.target.value })} /></div>
                 <div className="space-y-1"><Label>Project</Label><select value={head.projectId} onChange={(e) => setHead({ ...head, projectId: e.target.value })} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
@@ -163,7 +183,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={head.intraState} onChange={(e) => setHead({ ...head, intraState: e.target.checked })} /> Intra-state (CGST + SGST)</label>
               <div className="space-y-1"><Label>Notes</Label><Input value={head.notes} onChange={(e) => setHead({ ...head, notes: e.target.value })} /></div>
               <div className="flex items-center justify-between border-t pt-3"><span className="text-sm text-muted-foreground">Est. total incl GST</span><span className="font-semibold">₹{nf.format(total)}</span></div>
-              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setStage('upload')}>Back</Button><Button onClick={save} disabled={pending || !head.clientName}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Create invoice</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setStage('upload')}>Back</Button><Button onClick={save} disabled={pending || !head.clientName}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Record this bill</Button></div>
             </div>
           )}
         </DialogContent>

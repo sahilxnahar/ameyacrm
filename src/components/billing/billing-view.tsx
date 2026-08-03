@@ -2,8 +2,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus, Trash2, Loader2, Check, X } from 'lucide-react';
-import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill } from '@/server/actions/billing';
+import { Plus, Trash2, Loader2, Check, X, Pencil } from 'lucide-react';
+import { createInvoice, createPurchaseOrder, createVendorBill, createVendor, decidePurchaseOrder, issueInvoice, settleVendorBill, updateVendorBill, voidVendorBill } from '@/server/actions/billing';
 import { VendorPortalLink } from './vendor-portal-link';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -26,16 +26,20 @@ interface Vendor {
   bankAccountName: string | null; bankAccountNumber: string | null; bankIfsc: string | null;
   bankName: string | null; bankBranch: string | null; upiId: string | null; paymentNotes: string | null;
 }
+export interface Bill {
+  id: string; number: string; vendor: string; status: string; amount: number;
+  vendorId: string | null; gstAmount: number; billDate: string | null; dueDate: string | null;
+}
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 function statusVariant(s: string) { return s === 'PAID' || s === 'APPROVED' ? 'success' : ['OVERDUE', 'VOID', 'CANCELLED', 'REJECTED'].includes(s) ? 'destructive' : s === 'DRAFT' ? 'secondary' : s === 'PENDING_APPROVAL' ? 'warning' : 'default'; }
 
-type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | null;
+type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | 'void' | null;
 
-export function BillingView({ invoices, pos, bills, vendors, projects, approvers, canApprove, geminiEnabled }: {
+export function BillingView({ invoices, pos, bills, vendors, projects, approvers, canApprove, canManage, geminiEnabled }: {
   invoices: { id: string; number: string; client: string; status: string; total: number; project: string | null; dueDate: string | null }[];
   pos: { id: string; number: string; vendor: string; status: string; total: number; needsMyApproval: boolean }[];
-  bills: { id: string; number: string; vendor: string; status: string; amount: number }[];
-  vendors: Vendor[]; projects: Opt[]; approvers: Opt[]; canApprove: boolean; geminiEnabled: boolean;
+  bills: Bill[];
+  vendors: Vendor[]; projects: Opt[]; approvers: Opt[]; canApprove: boolean; canManage: boolean; geminiEnabled: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState<DialogKind>(null);
@@ -47,7 +51,13 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
   const [invItems, setInvItems] = React.useState([{ description: '', quantity: '1', rate: '', gstRate: '18' }]);
   const [poItems, setPoItems] = React.useState([{ description: '', quantity: '1', unit: 'nos', rate: '', gstRate: '18' }]);
   const [approverIds, setApproverIds] = React.useState<string[]>([]);
-  const close = () => setOpen(null);
+  // One dialog serves both "record a new bill" and "correct this one", so closing
+  // has to clear the row being worked on too. Leaving `editingBill` set after a
+  // save meant the next "+ Bill" opened pre-filled with the bill you just
+  // corrected, and saving that silently overwrote it a second time.
+  const [editingBill, setEditingBill] = React.useState<Bill | null>(null);
+  const [voidTarget, setVoidTarget] = React.useState<Bill | null>(null);
+  const close = () => { setOpen(null); setEditingBill(null); setVoidTarget(null); };
 
   const run = (fn: () => Promise<{ ok: true; id: string } | { error: string }>, ok: string) =>
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
@@ -81,8 +91,20 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
     run(() => createInvoice({ clientName: fd.get('clientName'), clientGstin: fd.get('clientGstin'), projectId: fd.get('projectId') || null, dueDate: fd.get('dueDate') || null, notes: fd.get('notes'), intraState: fd.get('intraState') === 'on', items: invItems.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), rate: Number(i.rate), gstRate: Number(i.gstRate) })) }), 'Invoice created'); };
   const submitPO = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     run(() => createPurchaseOrder({ vendorId: fd.get('vendorId') || null, projectId: fd.get('projectId') || null, expectedAt: fd.get('expectedAt') || null, notes: fd.get('notes'), approverIds, items: poItems.filter((i) => i.description).map((i) => ({ description: i.description, quantity: Number(i.quantity), unit: i.unit, rate: Number(i.rate), gstRate: Number(i.gstRate) })) }), 'PO created'); };
+  // A bill typed with the wrong figure used to be permanent: there was no edit and
+  // no void, so the only way out was a second bill to cancel the first, which
+  // leaves two wrong numbers in the payables ledger instead of one.
   const submitBill = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
-    run(() => createVendorBill({ number: fd.get('number'), vendorId: fd.get('vendorId') || null, amount: fd.get('amount'), gstAmount: fd.get('gstAmount') || 0, billDate: fd.get('billDate') || null, dueDate: fd.get('dueDate') || null }), 'Vendor bill recorded'); };
+    const d = { number: fd.get('number'), vendorId: fd.get('vendorId') || null, amount: fd.get('amount'), gstAmount: fd.get('gstAmount') || 0, billDate: fd.get('billDate') || null, dueDate: fd.get('dueDate') || null };
+    run(
+      () => editingBill ? updateVendorBill({ ...d, billId: editingBill.id }) : createVendorBill(d),
+      editingBill ? 'Bill corrected — the ledger has been re-posted' : 'Vendor bill recorded',
+    ); };
+  const submitVoid = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
+    const reason = String(fd.get('reason') ?? '');
+    if (!voidTarget) return;
+    const id = voidTarget.id;
+    run(() => voidVendorBill(id, reason), 'Bill voided'); };
   const [editingVendor, setEditingVendor] = React.useState<Vendor | null>(null);
   const submitVendor = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget);
     run(() => createVendor({
@@ -108,13 +130,21 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
     <Tabs defaultValue="invoices">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <TabsList><TabsTrigger value="invoices">Invoices</TabsTrigger><TabsTrigger value="pos">Purchase Orders</TabsTrigger><TabsTrigger value="bills">Vendor Bills</TabsTrigger><TabsTrigger value="vendors">Vendors</TabsTrigger></TabsList>
-        <div className="flex gap-2">
-          <AiBillImport geminiEnabled={geminiEnabled} projects={projects} />
-          <Button size="sm" variant="outline" onClick={() => { setEditingVendor(null); setOpen('vendor'); }}><Plus className="h-4 w-4" /> Vendor</Button>
-          <Button size="sm" variant="outline" onClick={() => setOpen('bill')}><Plus className="h-4 w-4" /> Bill</Button>
-          <Button size="sm" variant="outline" onClick={() => setOpen('po')}><Plus className="h-4 w-4" /> PO</Button>
-          <Button size="sm" onClick={() => setOpen('invoice')}><Plus className="h-4 w-4" /> Invoice</Button>
-        </div>
+        {/* Shown only to somebody who can actually save. These were rendered
+            unconditionally, so a Department Head or Manager filled in the whole
+            dialog and was told "You do not have permission to do that" at the
+            end — the worst possible moment to find out. */}
+        {canManage ? (
+          <div className="flex gap-2">
+            <AiBillImport geminiEnabled={geminiEnabled} projects={projects} />
+            <Button size="sm" variant="outline" onClick={() => { setEditingVendor(null); setOpen('vendor'); }}><Plus className="h-4 w-4" /> Vendor</Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen('bill')}><Plus className="h-4 w-4" /> Bill</Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen('po')}><Plus className="h-4 w-4" /> PO</Button>
+            <Button size="sm" onClick={() => setOpen('invoice')}><Plus className="h-4 w-4" /> Invoice</Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">You can see billing but not raise anything here — ask an administrator for billing rights.</p>
+        )}
       </div>
 
       <TabsContent value="invoices">
@@ -183,7 +213,17 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <div className="truncate font-medium">{b.vendor}</div>
                 <div className="truncate font-mono text-xs text-muted-foreground">{b.number}</div>
               </div>
-              {b.status !== 'PAID' && (
+              {canManage && b.status !== 'PAID' && b.status !== 'VOID' && (
+                <>
+                  <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setEditingBill(b); setOpen('bill'); }}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs text-destructive" onClick={() => { setVoidTarget(b); setOpen('void'); }}>
+                    Void
+                  </Button>
+                </>
+              )}
+              {b.status !== 'PAID' && b.status !== 'VOID' && (
                 <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" disabled={pending && busyId === b.id} onClick={() => setPayTarget({ id: b.id, number: b.number, vendor: b.vendor, amount: b.amount })}>
                   {pending && busyId === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Pay'}
                 </Button>
@@ -276,23 +316,53 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
 
       {/* Vendor bill dialog */}
       <Dialog open={open === 'bill'} onOpenChange={(o) => !o && close()}>
-        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Record vendor bill</DialogTitle></DialogHeader>
-          <form onSubmit={submitBill} className="space-y-4">
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editingBill ? `Correct ${editingBill.number}` : 'Record vendor bill'}</DialogTitle></DialogHeader>
+          <form onSubmit={submitBill} className="space-y-4" key={editingBill?.id ?? 'new'}>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label htmlFor="bnumber">Bill number</Label><Input id="bnumber" name="number" required /></div>
-              <div className="space-y-2"><Label htmlFor="bvendor">Vendor</Label><select id="bvendor" name="vendorId" className={selectCls} defaultValue=""><option value="">—</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
-              <div className="space-y-2"><Label htmlFor="bamount">Amount (₹)</Label><Input id="bamount" name="amount" type="number" required /></div>
-              <div className="space-y-2"><Label htmlFor="bgst">GST (₹)</Label><Input id="bgst" name="gstAmount" type="number" /></div>
-              <div className="space-y-2"><Label htmlFor="bbilldate">Bill date</Label><Input id="bbilldate" name="billDate" type="date" /></div>
-              <div className="space-y-2"><Label htmlFor="bdue">Due date</Label><Input id="bdue" name="dueDate" type="date" /></div>
+              <div className="space-y-2"><Label htmlFor="bnumber">Bill number</Label><Input id="bnumber" name="number" required defaultValue={editingBill?.number ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="bvendor">Vendor</Label><select id="bvendor" name="vendorId" className={selectCls} defaultValue={editingBill?.vendorId ?? ''}><option value="">—</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></div>
+              <div className="space-y-2"><Label htmlFor="bamount">Amount (₹)</Label><Input id="bamount" name="amount" type="number" required defaultValue={editingBill?.amount ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="bgst">GST (₹)</Label><Input id="bgst" name="gstAmount" type="number" defaultValue={editingBill?.gstAmount ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="bbilldate">Bill date</Label><Input id="bbilldate" name="billDate" type="date" defaultValue={editingBill?.billDate ?? ''} /></div>
+              <div className="space-y-2"><Label htmlFor="bdue">Due date</Label><Input id="bdue" name="dueDate" type="date" defaultValue={editingBill?.dueDate ?? ''} /></div>
             </div>
-            <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={close}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Record</Button></div>
+            {editingBill && (
+              <p className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+                Saving reverses what this bill posted to the ledger and posts the corrected figure. The old entry stays
+                visible with its reversal, because a journal entry is never edited in place. If a payment has already been
+                raised against it, withdraw that first.
+              </p>
+            )}
+            <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={close}>Cancel</Button><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}{editingBill ? 'Save correction' : 'Record'}</Button></div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Void a bill — a reason is required, because "why is this bill gone" is the
+          first question an auditor asks and the answer has to be in the record. */}
+      <Dialog open={open === 'void'} onOpenChange={(o) => !o && close()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Void {voidTarget?.number ?? 'bill'}?</DialogTitle></DialogHeader>
+          <form onSubmit={submitVoid} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The bill stays on file marked Void and what it posted to the ledger is reversed, so it stops counting as
+              money you owe. Nothing is deleted.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="voidreason">Why</Label>
+              <Input id="voidreason" name="reason" required minLength={3} placeholder="Duplicate of AH/24-25/119" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Void this bill</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Vendor dialog */}
-      <Dialog open={open === 'vendor'} onOpenChange={(o) => { if (!o) { setEditingVendor(null); close(); } }}>
+      <Dialog open={open === 'vendor'} onOpenChange={(o) => !o && close()}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader><DialogTitle>{editingVendor ? editingVendor.name : 'New vendor'}</DialogTitle></DialogHeader>
           <form onSubmit={submitVendor} className="space-y-4">
@@ -325,7 +395,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => { setEditingVendor(null); close(); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button>
               <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}{editingVendor ? 'Save changes' : 'Add vendor'}</Button>
             </div>
           </form>
