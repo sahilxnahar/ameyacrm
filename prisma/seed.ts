@@ -8,11 +8,27 @@
  */
 import { PrismaClient, type RoleName } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { PERMISSIONS, ALL_PERMISSION_KEYS, moduleOf } from '../src/lib/rbac/permissions';
 import { ROLE_DEFAULTS, expandRolePermissions } from '../src/lib/rbac/roles';
 
 const prisma = new PrismaClient();
-const DEFAULT_PASSWORD = 'Ameya@Heights2026';
+/**
+ * AMH-063 — the seeded password is generated, not published.
+ *
+ * This was the literal string `Ameya@Heights2026`, and docs/INSTALLATION.md
+ * printed it next to the username. Anyone who ran `npm run db:seed` against a
+ * real database and did not immediately change it had a SUPER_ADMIN account
+ * whose credentials were in the repository — and "change it afterwards" is a
+ * convention, not a control.
+ *
+ * Now: a random password per run, printed ONCE to the console of whoever ran
+ * the seed, and every seeded account carries `mustChangePassword`, so the first
+ * sign-in has to replace it whether they read the console or not.
+ *
+ * SEED_PASSWORD is honoured for the CI fixtures that need a known value.
+ */
+const DEFAULT_PASSWORD = process.env.SEED_PASSWORD || `Ameya-${randomBytes(9).toString('base64url')}`;
 
 const DEPARTMENTS = [
   'Architecture', 'Billing', 'Management', 'Marketing', 'Sales', 'NRI', 'Lease',
@@ -111,7 +127,7 @@ async function main() {
       update: {},
       create: {
         name: u.name, username: u.username, email: u.email, role: u.role,
-        designation: u.designation, passwordHash, status: 'ACTIVE',
+        designation: u.designation, passwordHash, status: 'ACTIVE', mustChangePassword: true,
         departmentId: deptByName.get(u.dept), joiningDate: new Date('2025-02-01'),
         employeeId: 'AH-' + (100 + userByUsername.size + 1),
       },
@@ -121,7 +137,9 @@ async function main() {
   // Department heads
   await prisma.department.update({ where: { id: deptByName.get('Sales')! }, data: { headId: userByUsername.get('priya.sales') } });
   await prisma.department.update({ where: { id: deptByName.get('Architecture')! }, data: { headId: userByUsername.get('anita.arch') } });
-  console.log(`  ✓ ${userByUsername.size} users (default password: ${DEFAULT_PASSWORD})`);
+  console.log(`  ✓ ${userByUsername.size} users`);
+  console.log(`  ⚠ One-time password for every seeded account: ${DEFAULT_PASSWORD}`);
+  console.log('    It is not stored anywhere else, and each account must change it at first sign-in.');
 
   // 6) Task labels
   const labels = [

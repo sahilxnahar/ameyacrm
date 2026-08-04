@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { formatCurrency } from '@/lib/utils/format';
 import { Search, Download, Phone, AlertTriangle } from 'lucide-react';
 import type { DueRow } from '@/server/services/receivables-service';
+import { csvRow } from '@/lib/export/csv';
 
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : 'no date set');
 
@@ -37,7 +38,10 @@ export function ReceivablesView({
   const csv = () => {
     const head = ['Buyer', 'Phone', 'Booking', 'Unit', 'Instalment', 'Amount', 'Due', 'Days late'];
     const body = shown.map((r) => [r.buyer, r.buyerPhone ?? '', r.bookingRef, r.unit ?? '', r.label, r.amount, day(r.dueDate), r.daysLate > 0 ? r.daysLate : 0]);
-    const text = [head, ...body].map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    // AMH-060: csvRow neutralises a cell that starts a formula. `buyer` is a
+    // lead name — typed by a rep, or arriving through the lead-ingest API — and
+    // this file is opened by finance.
+    const text = [head, ...body].map(csvRow).join('\n');
     const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url; a.download = `money-owed-${new Date().toISOString().slice(0, 10)}.csv`; a.click();

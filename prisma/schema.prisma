@@ -406,6 +406,7 @@ enum AuditAction {
   PERMISSION_CHANGE
   TWO_FACTOR_ENABLED
   TWO_FACTOR_DISABLED
+  TWO_FACTOR_RESET_REFUSED
   EXPORT
   VIEW
   IMPERSONATE
@@ -1298,6 +1299,7 @@ model User {
   // Security
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String? // AES-256-GCM encrypted TOTP secret
+  twoFactorLastStep  BigInt? // AMH-053: last consumed TOTP time-step, so a code cannot be replayed
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime?
   passwordChangedAt  DateTime  @default(now())

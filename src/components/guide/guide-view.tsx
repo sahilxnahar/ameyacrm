@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils/cn';
 
 /** First things a new person should do, in order. */
 const GETTING_STARTED: { title: string; body: string }[] = [
-  { title: '1. Check your profile', body: 'Top-right avatar → Settings. Confirm your name, set a photo, and change your password (minimum 8 characters).' },
+  { title: '1. Check your profile', body: 'Top-right avatar → Settings. Confirm your name, set a photo, and change your password (minimum 12 characters).' },
   { title: '2. Set a comfortable view', body: 'Top bar → the sliders icon → “Quick view”. Tap “Easy view” for roomy spacing and larger text, or fine-tune Spacing and Text size yourself. It’s remembered on your device.' },
   { title: '3. Make the menu yours', body: 'In the left menu, use “Customise this menu” to pin the screens you use daily to the top and hide the ones you don’t. Or collapse the whole menu to a slim icon rail.' },
   { title: '4. Learn one shortcut', body: 'Press ⌘K (Ctrl+K on Windows) anywhere to jump to any screen or search any lead, task, buyer or file — the fastest way to move around.' },

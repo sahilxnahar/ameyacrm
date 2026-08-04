@@ -18,9 +18,18 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   const [code, setCode] = React.useState('');
   const [backup, setBackup] = React.useState<string[] | null>(null);
 
-  const begin = () => start(async () => {
-    const res = await startTwoFactorSetup();
-    if ('error' in res) { toast.error(res.error); return; }
+  const begin = (password?: string) => start(async () => {
+    const res = await startTwoFactorSetup(password);
+    if ('error' in res) {
+      // AMH-052: replacing a second factor that already works costs a password.
+      if (res.error === 'PASSWORD_REQUIRED') {
+        const pw = prompt('You already have two-factor on. Confirm your password to set up a new authenticator:');
+        if (pw) begin(pw);
+        return;
+      }
+      toast.error(res.error);
+      return;
+    }
     setQr(res.qr); setSecret(res.secret);
   });
   const confirm = () => start(async () => {
@@ -73,7 +82,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
             </div>
           </div>
         ) : (
-          <Button onClick={begin} disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<ShieldCheck className="h-4 w-4" /> Enable 2FA</Button>
+          <Button onClick={() => begin()} disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<ShieldCheck className="h-4 w-4" /> Enable 2FA</Button>
         )}
       </CardContent>
     </Card>

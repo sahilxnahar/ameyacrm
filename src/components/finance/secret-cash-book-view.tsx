@@ -12,6 +12,7 @@ import { Field } from '@/components/ui/field';
 import { StatTile } from '@/components/ui/stat-tile';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatCompactCurrency, formatDate } from '@/lib/utils/format';
+import { csvRow } from '@/lib/export/csv';
 
 interface Row { id: string; date: string; direction: string; amount: number; party: string; mode: string; reference: string | null; note: string | null; balance: number }
 const inputCls = 'focus-ring w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm';
@@ -89,7 +90,8 @@ export function SecretCashBookView({
   const exportCsv = () => {
     const lines = ['Date,Direction,Amount,Party,Mode,Reference,Note,Balance'];
     for (const r of [...rows].reverse()) {
-      lines.push([formatDate(r.date), r.direction, r.amount, `"${r.party.replace(/"/g, '""')}"`, r.mode, r.reference ?? '', `"${(r.note ?? '').replace(/"/g, '""')}"`, r.balance].join(','));
+      // AMH-060: party and note are free text.
+      lines.push(csvRow([formatDate(r.date), r.direction, r.amount, r.party, r.mode, r.reference ?? '', r.note ?? '', r.balance]));
     }
     const a = document.createElement('a');
     a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(lines.join('\n'))}`;

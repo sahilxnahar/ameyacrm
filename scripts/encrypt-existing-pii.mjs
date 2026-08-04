@@ -71,8 +71,12 @@ function encrypt(plain, k) {
 }
 
 // table, column — quoted for Postgres' case sensitivity.
+// Keep in step with PROTECTED in src/lib/security/pii-crypto.ts —
+// tests/security-gates.test.ts asserts the two lists match.
 const TARGETS = [
   ['NriComplianceProfile', 'passportNo'],
+  ['NriComplianceProfile', 'overseasAddress'],
+  ['Vendor', 'upiId'],
   ['ChannelPartner', 'bankDetails'],
   ['ChannelPartner', 'panNumber'],
   ['Vendor', 'bankAccountNumber'],

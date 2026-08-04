@@ -13,4 +13,4 @@
  * page load. Import the version from here; import the changelog only where the
  * changelog is actually rendered.
  */
-export const APP_VERSION = 'v16.24';
+export const APP_VERSION = 'v16.25';

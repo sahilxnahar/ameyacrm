@@ -257,7 +257,7 @@ describe('sorting happens in the database, not over the fetched window', () => {
     const page = read('src/app/(app)/reports/explorer/page.tsx');
     expect(page).toContain('resolveSort(sp');
     // The resolved orderBy has to reach the query, or the sort is theatre.
-    expect(page).toMatch(/runExplorer\(entity, filters, 500, sort\.orderBy\)/);
+    expect(page).toMatch(/runExplorer\(ctx, entity, filters, 500, sort\.orderBy\)/); // ctx added by AMH-059
 
     const service = read('src/server/services/explorer-service.ts');
     // Every branch takes the caller's orderBy, with its old value as the default.

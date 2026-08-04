@@ -4,10 +4,10 @@ import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { writeAudit } from '@/lib/audit/log';
+import { escapeCsvCell as esc } from '@/lib/export/csv';
 
 export const dynamic = 'force-dynamic';
 
-const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 /** The month's cash book as a spreadsheet, for the accountant. */
 export async function GET(req: NextRequest) {

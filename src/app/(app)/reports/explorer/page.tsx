@@ -27,7 +27,7 @@ export default async function ExplorerPage({ searchParams }: { searchParams: Pro
     defaultDirection: fallback.direction,
   });
   const [result, owners, projects, views] = await Promise.all([
-    runExplorer(entity, filters, 500, sort.orderBy),
+    runExplorer(ctx, entity, filters, 500, sort.orderBy),
     prisma.user.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.savedView.findMany({ where: { OR: [{ ownerId: ctx.user.id }, { isShared: true }] }, orderBy: { createdAt: 'desc' }, take: 50 }),

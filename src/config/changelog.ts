@@ -17,6 +17,24 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.25',
+    date: '4 Aug 2026',
+    highlights: [
+      'Your edge middleware was never running. It sat at the top of the project, and because this codebase keeps its code under src/, Next.js looked in src/ and ignored it — silently, with no warning at build or boot. Three security controls were dead the whole time: the cross-origin write guard, ENFORCE_2FA, and the forced password change. All three are now verified working against a running server, and a test reads the compiled build output rather than the source, because the source was never the problem.',
+      'Two-factor authentication was proved end to end against a real database, and two holes were closed. A code can no longer be replayed — it used to stay valid for its whole 90-second window and could be used as many times as it was presented, so a code seen once over a shoulder or through a phishing page was enough if you also had the password. And replacing somebody’s authenticator now costs a password, exactly like switching it off does; it used to need nothing but a session, which made stealing the second factor easier than removing it.',
+      'Turning on two-factor used to switch OFF two other controls. The country restriction, the device-approval code and the new-sign-in alert all lived on the password-only path, so a 2FA account could be opened from any country, on any machine, with no email to the real owner. Every way in now runs the same gates.',
+      'Customer portal links created by CSV import were generated with Math.random — not a real random source. Holding one link was enough to compute everyone else’s in the same import, and each one opens a buyer’s agreement value, payment schedule and document vault. They now use the same generator and 180-day expiry as every other link in the app.',
+      'The Explorer export ignored the hierarchy limits the screens apply. A department head could download every name, phone, email and budget in the company as a CSV, while the same data on screen was correctly limited to their own team. Collections exports had the same gap.',
+      'Spreadsheet exports can no longer carry a formula. A lead name or a payment narration beginning with = ran as a formula when the accountant opened the file in Excel. One escaper now, shared by the server and the browser, instead of five that each did half the job.',
+      'A lead name can no longer write your outbound email. Drip-sequence emails interpolated the name straight into HTML, so whoever supplied it could author the message — sent from your mail server, correctly signed for your domain.',
+      'Self-signup accepted an eight-character password while everything else required twelve, and every form on screen still promised eight. One floor now, applied and advertised. The seeded and first-run admin passwords are generated per install and printed once, instead of being a fixed string published in the README.',
+      'NRI overseas addresses and vendor UPI IDs are now encrypted at rest, alongside the passport and account numbers already beside them.',
+      'Backups are bounded by count as well as age, and the index no longer forgets objects it has not deleted — which left them in storage permanently, unnameable.',
+      'Every dependency vulnerability is cleared: 25 down to 0, including one critical. Verified by rebuilding and running the whole suite, not just by the version numbers.',
+      'This release adds one column and one audit action. Run MIGRATION_v16.25_all.sql, or press Repair in Admin → Settings.',
+    ],
+  },
+  {
     version: 'v16.24',
     date: '4 Aug 2026',
     highlights: [

@@ -1,5 +1,6 @@
 import 'server-only';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { PrismaClient, type RoleName } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { PERMISSIONS, ALL_PERMISSION_KEYS, moduleOf } from '@/lib/rbac/permissions';
@@ -100,7 +101,19 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // Super Admin
   const username = process.env.SETUP_USERNAME || 'superadmin';
   const email = (process.env.SETUP_EMAIL || 'admin@ameyaheights.com').toLowerCase();
-  const password = process.env.SETUP_PASSWORD || 'Ameya@Heights2026';
+  /*
+   * AMH-063 — the first-run password is generated when SETUP_PASSWORD is unset.
+   *
+   * It used to fall back to a literal that README.md, DEPLOY.md and
+   * docs/INSTALLATION.md all printed. A fresh deployment therefore had a
+   * SUPER_ADMIN account whose password was public for as long as it took the
+   * owner to sign in — and whoever reached it first got to set the new one,
+   * because `mustChangePassword` prompts whoever arrives, not whoever should.
+   *
+   * The generated value is returned to the caller (the setup screen shows it
+   * once) and is not written down anywhere else.
+   */
+  const password = process.env.SETUP_PASSWORD || `Ameya-${randomBytes(9).toString('base64url')}`;
   await prisma.user.create({
     data: {
       name: process.env.SETUP_NAME || 'Sahil Nahar', username, email, role: 'SUPER_ADMIN', status: 'ACTIVE',

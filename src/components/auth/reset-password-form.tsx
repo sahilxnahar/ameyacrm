@@ -52,7 +52,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <div className="relative mt-1">
           <input
             type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password" required minLength={8}
+            autoComplete="new-password" required minLength={12}
             className="focus-ring w-full rounded-md border bg-background px-3 py-2 pr-10 text-base"
           />
           <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'}
@@ -61,7 +61,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           </button>
         </div>
         <span className={`mt-1 block text-xs ${tooShort ? 'text-destructive' : 'text-muted-foreground'}`}>
-          At least 8 characters. A short phrase you will remember is fine.
+          At least 12 characters. A short phrase you will remember is fine.
         </span>
       </label>
 

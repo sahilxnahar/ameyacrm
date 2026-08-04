@@ -32,7 +32,7 @@ docker compose up -d --build
 | MinIO console | http://localhost:9001 (minioadmin / minioadmin) |
 | Mailpit (captured email) | http://localhost:8025 |
 
-Sign in with `superadmin` / `Ameya@Heights2026` and change the password immediately.
+Sign in with `superadmin` / the one-time password the setup screen (or `npm run db:seed`) prints once and change the password immediately.
 
 To disable auto‑seed after first run, set `SEED_ON_START=false` for the `app` service.
 

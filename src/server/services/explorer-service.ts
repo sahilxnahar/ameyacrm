@@ -1,5 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { leadScope, bookingScope } from '@/lib/rbac/scope';
+import type { AuthContext } from '@/types/auth';
 
 export type ExplorerEntity = 'leads' | 'bookings' | 'units' | 'collections';
 export interface ExplorerFilters { status?: string; source?: string; ownerId?: string; projectId?: string; q?: string; from?: string; to?: string; temperature?: string }
@@ -59,15 +61,33 @@ const dateRange = (f: ExplorerFilters) => {
 const money = (v: unknown) => (v == null ? '' : Number(v));
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : '');
 
-/** One query builder shared by the on-screen explorer and the CSV export. */
+/**
+ * One query builder shared by the on-screen explorer and the CSV export.
+ *
+ * AMH-059 — `ctx` is REQUIRED, and it is the first argument, because this
+ * function forgot the hierarchy scope that `leads.csv` and `bookings.csv`
+ * apply. `report.export` is a broad permission: a DEPARTMENT_HEAD holds it
+ * without holding `lead.assign`, so the scoped lists on screen showed them
+ * their own team while `GET /api/reports/explorer.csv?entity=leads` handed back
+ * ten thousand rows of every name, phone, email and budget in the company. Same
+ * for `entity=bookings` and `entity=collections` — buyer names and payment
+ * schedules. A read, so the cross-origin write guard never saw it.
+ *
+ * Putting the context in the signature rather than leaving it optional means a
+ * caller cannot omit it by accident; the compiler asks.
+ *
+ * Units carry no personal data and are the same inventory for everyone, so they
+ * are deliberately unscoped.
+ */
 export async function runExplorer(
+  ctx: AuthContext,
   entity: ExplorerEntity,
   f: ExplorerFilters,
   limit = 500,
   orderBy?: Record<string, unknown> | Array<Record<string, unknown>>,
 ): Promise<ExplorerResult> {
   if (entity === 'bookings') {
-    const where = { ...(f.status ? { status: f.status as never } : {}), ...(dateRange(f) ? { bookedAt: dateRange(f) } : {}) };
+    const where = { ...(await bookingScope(ctx)), ...(f.status ? { status: f.status as never } : {}), ...(dateRange(f) ? { bookedAt: dateRange(f) } : {}) };
     const [rows, total] = await Promise.all([
       prisma.booking.findMany({ where, include: { lead: { select: { name: true } }, unit: { select: { code: true } } }, orderBy: orderBy ?? { bookedAt: 'desc' }, take: limit }),
       prisma.booking.count({ where }),
@@ -89,7 +109,13 @@ export async function runExplorer(
     };
   }
   if (entity === 'collections') {
-    const where = { ...(f.status ? { status: f.status as never } : {}), ...(dateRange(f) ? { dueDate: dateRange(f) } : {}) };
+    // A milestone is only as visible as the booking it hangs off.
+    const bScope = await bookingScope(ctx);
+    const where = {
+      ...(Object.keys(bScope).length ? { booking: bScope } : {}),
+      ...(f.status ? { status: f.status as never } : {}),
+      ...(dateRange(f) ? { dueDate: dateRange(f) } : {}),
+    };
     const [rows, total] = await Promise.all([
       prisma.paymentMilestone.findMany({ where, include: { booking: { select: { reference: true, lead: { select: { name: true } } } } }, orderBy: orderBy ?? { dueDate: 'asc' }, take: limit }),
       prisma.paymentMilestone.count({ where }),
@@ -102,6 +128,7 @@ export async function runExplorer(
   // leads (default)
   const where = {
     deletedAt: null,
+    ...(await leadScope(ctx)),
     ...(f.status ? { status: f.status as never } : {}),
     ...(f.source ? { source: f.source as never } : {}),
     ...(f.temperature ? { temperature: f.temperature as never } : {}),

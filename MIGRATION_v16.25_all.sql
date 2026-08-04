@@ -1,0 +1,53 @@
+-- Ameya OS — MIGRATION_v16.25_all.sql
+--
+-- One nullable column. Nothing is rewritten, nothing is dropped, and running it
+-- twice is a no-op.
+--
+--   psql "$DATABASE_URL" -f MIGRATION_v16.25_all.sql
+--
+-- The in-app Repair button (Admin → Settings) does the same thing.
+--
+-- ── What this is for ───────────────────────────────────────────────────────
+--
+-- TOTP replay (AMH-053). A six-digit authenticator code is accepted for its own
+-- 30-second step plus one either side — about 90 seconds — and, until now, as
+-- many times as it was presented inside that window.
+--
+-- That is the difference between "you must hold the phone" and "you must have
+-- seen the phone once". A code read over a shoulder, left on screen during a
+-- call, or relayed by a phishing page could be replayed by anyone who also had
+-- the password, for the rest of its window.
+--
+-- "twoFactorLastStep" records the step number that was consumed at the last
+-- successful verification. Anything from that step or earlier is refused, so a
+-- code is good exactly once. NULL means "no code consumed yet" — which is the
+-- correct state for every existing row, including users who already have 2FA
+-- on, so no backfill is needed and nobody is locked out by this migration.
+--
+-- BIGINT rather than INTEGER: the step is unix-seconds/30, which passes the
+-- 32-bit ceiling in 2038.
+
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "twoFactorLastStep" BIGINT;
+
+-- ── And one audit action ───────────────────────────────────────────────────
+--
+-- AMH-052. Replacing a second factor that already works now costs a password,
+-- exactly like switching it off does. A wrong password on that path is worth a
+-- line in the audit trail: it is what an attacker holding a stolen session
+-- looks like when they try to swap the authenticator for their own.
+--
+-- ADD VALUE IF NOT EXISTS appends, so the declaration order Postgres sorts this
+-- enum by is unchanged and nothing that reads it needs to know.
+ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'TWO_FACTOR_RESET_REFUSED';
+
+-- Verification (expect one row, data_type = bigint, is_nullable = YES):
+--
+--   SELECT column_name, data_type, is_nullable
+--     FROM information_schema.columns
+--    WHERE table_name = 'User' AND column_name = 'twoFactorLastStep';
+--
+-- And the enum value (expect one row):
+--
+--   SELECT enumlabel FROM pg_enum
+--     JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+--    WHERE typname = 'AuditAction' AND enumlabel = 'TWO_FACTOR_RESET_REFUSED';

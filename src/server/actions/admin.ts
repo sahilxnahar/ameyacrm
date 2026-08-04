@@ -24,7 +24,7 @@ const userSchema = z.object({
   designation: z.string().max(120).optional(),
   role: z.enum(['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER', 'EXECUTIVE', 'EMPLOYEE', 'READ_ONLY', 'GUEST']),
   departmentId: z.string().optional().nullable(),
-  password: z.string().min(8),
+  password: z.string().min(12),
 });
 
 export async function createUser(input: unknown): Promise<AdminResult> {

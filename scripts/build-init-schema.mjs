@@ -60,9 +60,21 @@ for (const stmt of statements) {
   const enumMatch = stmt.match(/^CREATE TYPE "([^"]+)" AS ENUM \(([\s\S]*)\)$/);
   if (enumMatch) {
     enums++;
+    const [, typeName, values] = enumMatch;
     out.push(
-      `DO $$ BEGIN\n  CREATE TYPE "${enumMatch[1]}" AS ENUM (${enumMatch[2]});\nEXCEPTION WHEN duplicate_object THEN NULL;\nEND $$;`,
+      `DO $$ BEGIN\n  CREATE TYPE "${typeName}" AS ENUM (${values});\nEXCEPTION WHEN duplicate_object THEN NULL;\nEND $$;`,
     );
+    // A CREATE that swallows duplicate_object repairs a MISSING enum and
+    // nothing else — an enum that already exists is left exactly as it was, so
+    // a value added to it later could never reach an existing database. Repair
+    // then looked like it worked and the app fell over on the first insert that
+    // used the new value. Same reasoning as ADD COLUMN IF NOT EXISTS below.
+    //
+    // ADD VALUE IF NOT EXISTS is idempotent and appends, so declaration order —
+    // which is what Postgres sorts an enum by — is preserved.
+    for (const v of values.split(',').map((s) => s.trim()).filter(Boolean)) {
+      out.push(`ALTER TYPE "${typeName}" ADD VALUE IF NOT EXISTS ${v};`);
+    }
     continue;
   }
 

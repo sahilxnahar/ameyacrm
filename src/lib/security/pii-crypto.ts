@@ -26,7 +26,14 @@ import { encrypt, decryptSafe, looksEncrypted } from '@/lib/utils/crypto';
 // Exact model.field pairs to protect. Model names are Prisma's delegate names
 // (lower-camel), matching what the extension receives.
 const PROTECTED: Record<string, Set<string>> = {
-  Vendor: new Set(['bankAccountNumber', 'pan']),
+  /*
+   * AMH-062 — `upiId` joined the account number. A UPI handle is not an
+   * identifier you look someone up by; it is an address you can send money to,
+   * which is precisely the class of thing `bankAccountNumber` is here for.
+   * `bankIfsc` and `bankAccountName` stay in the clear on the reasoning above:
+   * an IFSC is a public branch code and the name is already on every invoice.
+   */
+  Vendor: new Set(['bankAccountNumber', 'pan', 'upiId']),
   /*
    * AMH-022 — `bankDetails` was not here.
    *
@@ -42,8 +49,15 @@ const PROTECTED: Record<string, Set<string>> = {
    * A passport number is the identity document Ameya holds for NRI buyers, and
    * it is worth more to whoever takes a copy of this table than the PAN beside
    * it. It was stored in the clear.
+   *
+   * AMH-062 — `overseasAddress` joined it, for the same reason `bankDetails`
+   * joined `panNumber` above: it is the buyer's home address, sitting in the
+   * same row as the encrypted passport number. Whatever the passport was being
+   * protected from reached the address untouched, and an address plus a
+   * passport number is a materially better identity-theft package than either
+   * alone.
    */
-  NriComplianceProfile: new Set(['passportNo']),
+  NriComplianceProfile: new Set(['passportNo', 'overseasAddress']),
 };
 
 // Flat set of every protected field name, for fast result-tree walking where the

@@ -1,5 +1,20 @@
 # Ameya Heights CRM — Master Details
 
+> 🔴 **ROTATE THESE — they were sitting in the repository.**
+>
+> Section 4 below holds live ngrok, OpenWA and OpenRouter keys in plaintext, and
+> until August 2026 nothing in `.gitignore` matched this file. The banner said
+> "do not commit"; `git add .` does not read banners. The ignore rule is in
+> place now, but an ignore rule added after the fact protects nothing that has
+> already been pushed — and these keys should be treated as exposed regardless.
+>
+> **Do this:** rotate all six (ngrok authtoken, OpenWA API key, the four
+> OpenRouter keys), put the new ones in Vercel's environment variables or a
+> password manager, and replace section 4 here with a pointer rather than the
+> values. `AMEYA-SETUP-AND-ONBOARDING.md` already states, correctly, that AI
+> keys are "never written into the codebase or any document, by policy" — this
+> file is the exception that broke it.
+
 > ⚠️ **PRIVATE — DO NOT COMMIT TO GITHUB OR SHARE.** This file contains live
 > secrets. Keep it only in the `KEEP-PRIVATE` folder on your own machine. If it
 > ever leaks, rotate every key listed here.

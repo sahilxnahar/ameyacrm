@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatCompactCurrency } from '@/lib/utils/format';
 import type { SpendReport, SpendSlice } from '@/server/services/spend-report-service';
+import { csvRow } from '@/lib/export/csv';
 
 function SliceTable({ title, icon: Icon, slices, total }: { title: string; icon: typeof PieChart; slices: SpendSlice[]; total: number }) {
   const max = Math.max(1, ...slices.map((s) => s.total));
@@ -35,7 +36,8 @@ function SliceTable({ title, icon: Icon, slices, total }: { title: string; icon:
 export function SpendReportView({ report, projectName }: { report: SpendReport; projectName: string }) {
   const exportCsv = () => {
     const lines: string[] = ['Section,Name,Amount,Payments'];
-    const add = (section: string, slices: SpendSlice[]) => slices.forEach((s) => lines.push(`${section},"${s.label.replace(/"/g, '""')}",${Math.round(s.total)},${s.count}`));
+    // AMH-060: the label is a payee / category / project name.
+    const add = (section: string, slices: SpendSlice[]) => slices.forEach((s) => lines.push(csvRow([section, s.label, Math.round(s.total), s.count])));
     add('Category', report.byCategory);
     add('Payee', report.byVendor);
     add('Project', report.byProject);

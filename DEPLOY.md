@@ -61,7 +61,7 @@ Optional but recommended:
 - `/api/setup` **creates the database schema (all tables) if missing, then seeds** RBAC,
   departments, the project, and the Super Admin — no `prisma migrate` needed.
 - The response returns the **Super Admin credentials** (default `superadmin` /
-  `Ameya@Heights2026`, or your `SETUP_*` overrides). Sign in and **change the password
+  the one-time password the setup screen (or `npm run db:seed`) prints once, or your `SETUP_*` overrides). Sign in and **change the password
   immediately** (you’ll be prompted).
 
 You’re live. Re-deploys are automatic on every GitHub push.

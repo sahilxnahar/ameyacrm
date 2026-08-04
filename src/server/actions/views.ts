@@ -40,9 +40,9 @@ export async function deleteView(id: string): Promise<ViewResult> {
 /** Push the current Explorer result straight into the connected Google Sheet. */
 export async function pushToSheet(entity: string, filters: Record<string, string>): Promise<{ ok: true; rows: number } | { error: string }> {
   try {
-    await ensure('report.export');
+    const ctx = await ensure('report.export');
     const e = (['leads', 'bookings', 'units', 'collections'].includes(entity) ? entity : 'leads') as ExplorerEntity;
-    const res = await runExplorer(e, filters, 5000);
+    const res = await runExplorer(ctx, e, filters, 5000);
     const rows = res.rows.map((r) => res.columns.map((c) => (r[c] ?? '') as string | number));
     return await writeSheet(e, res.columns, rows);
   } catch (err) { return toActionError(err); }

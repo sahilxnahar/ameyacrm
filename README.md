@@ -49,14 +49,20 @@ npm run db:seed               # seed baseline data
 npm run dev                   # http://localhost:3000
 ```
 
-### Seeded logins (change immediately)
+### Seeded logins
 
-| Username | Role | Password |
-|---|---|---|
-| `superadmin` | Super Admin | `Ameya@Heights2026` |
-| `itadmin` | Admin | `Ameya@Heights2026` |
-| `priya.sales` | Department Head (Sales) | `Ameya@Heights2026` |
-| `rahul.mgr` | Manager (Sales) | `Ameya@Heights2026` |
+The seed and the first-run setup screen both generate a **random one-time
+password** and print it once — to the console for `npm run db:seed`, and on
+screen for `/setup`. It is not stored anywhere else, and every seeded account
+must replace it at first sign-in. Set `SEED_PASSWORD` / `SETUP_PASSWORD` if you
+need a known value (CI does).
+
+| Username | Role |
+|---|---|
+| `superadmin` | Super Admin |
+| `itadmin` | Admin |
+| `priya.sales` | Department Head (Sales) |
+| `rahul.mgr` | Manager (Sales) |
 
 ## Documentation
 

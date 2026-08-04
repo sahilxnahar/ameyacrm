@@ -1,5 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/db/prisma';
 import { nextReference } from '@/lib/utils/reference';
 import { findDuplicateLead } from '@/lib/leads/dedup';
@@ -106,7 +107,7 @@ export async function runImport(
           }
           if (!dryRun) {
             if (existing) await prisma.customer.update({ where: { id: existing.id }, data: { name, phone: r.phone || null, ...(bookingId ? { bookingId } : {}) } });
-            else await prisma.customer.create({ data: { name, email, phone: r.phone || null, projectId, bookingId, portalToken: cryptoToken() } });
+            else await prisma.customer.create({ data: { name, email, phone: r.phone || null, projectId, bookingId, portalToken: cryptoToken(), portalTokenExpiresAt: new Date(Date.now() + PORTAL_TOKEN_TTL_MS) } });
           }
           existing ? updated++ : created++;
           results.push({ row: line, ok: true, message: existing ? `${name} updated` : `${name} created` });
@@ -268,6 +269,27 @@ export async function runImport(
   } catch (err) { return toActionError(err); }
 }
 
+/**
+ * AMH-058 — a customer portal token, from the CSPRNG.
+ *
+ * This was named `cryptoToken` and used `Math.random()`. V8's Math.random is
+ * xorshift128+: a 128-bit state, unseeded from any secret, and every character
+ * emitted here leaks four bits of it. Forty characters is a hundred and sixty
+ * bits of output — more than the state — so anyone holding ONE token from an
+ * import batch can solve for the generator and reconstruct the tokens of every
+ * other customer imported alongside them.
+ *
+ * A buyer holds their own token by definition: it is the link they were sent.
+ * And `/portal/[token]` is where their agreement value, payment schedule and
+ * document vault (PAN, Aadhaar, sale deed, receipts) live — so this was one
+ * buyer away from every other buyer's KYC. DPDP Act 2023 territory.
+ *
+ * It also set no expiry, while every other issuer in the app sets 180 days.
+ * Both now match `customers.ts`, which is where the same token is minted by
+ * hand — one convention, not two.
+ */
 function cryptoToken() {
-  return Array.from({ length: 40 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+  return randomBytes(20).toString('hex');
 }
+
+const PORTAL_TOKEN_TTL_MS = 180 * 864e5;

@@ -101,3 +101,30 @@ describe('the jobs that were never scheduled now are (AMH-025)', () => {
     expect(text.split('.')).toHaveLength(3); // iv.tag.ciphertext
   });
 });
+
+/**
+ * AMH-064 — retention has to bound COUNT as well as age, and it must never
+ * forget an object it has not deleted.
+ */
+describe('backup retention actually bounds what is kept', () => {
+  it('rotateBackups takes a count cap and applies it newest-first', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/server/services/retention-service.ts', 'utf8');
+    expect(src).toMatch(/export async function rotateBackups\(now: Date, keepDays = \d+, keepMax = \d+\)/);
+    const body = src.slice(src.indexOf('export async function rotateBackups'), src.indexOf('function readIndex') >= 0 ? src.length : src.length);
+    expect(body).toMatch(/const tooOld =/);
+    expect(body).toMatch(/const tooMany = i >= keepMax/);
+    // Sorted before the index is used, or "newest" is whatever order it landed in.
+    expect(body).toMatch(/\.sort\(\(a, b\) => \(a\.date < b\.date \? 1 : -1\)\)/);
+  });
+
+  it('recordBackup no longer trims the index, which orphaned the objects', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/server/services/retention-service.ts', 'utf8');
+    const record = src.slice(src.indexOf('export async function recordBackup'));
+    // There is no `list` on the storage interface: an entry dropped from the
+    // index is an object nothing can name again, so it can never be deleted.
+    expect(record).not.toMatch(/\.slice\(0, keepMax\)/);
+    expect(record).toMatch(/writeIndex\(\[\{ date: date\.toISOString\(\), key \}, \.\.\.index\]\)/);
+  });
+});

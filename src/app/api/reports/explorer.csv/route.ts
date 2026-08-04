@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const entity = (sp.get('entity') || 'leads') as ExplorerEntity;
   const filters = { status: sp.get('status') || undefined, source: sp.get('source') || undefined, ownerId: sp.get('ownerId') || undefined, projectId: sp.get('projectId') || undefined, q: sp.get('q') || undefined, from: sp.get('from') || undefined, to: sp.get('to') || undefined };
-  const res = await runExplorer(entity, filters, 10000);
+  const res = await runExplorer(ctx, entity, filters, 10000);
   await writeAudit({ actorId: ctx.user.id, action: 'EXPORT', entityType: entity, summary: `Explorer export (${res.rows.length} rows)` });
   return new NextResponse(toCsv(res.rows), { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': `attachment; filename="${entity}-export.csv"` } });
 }

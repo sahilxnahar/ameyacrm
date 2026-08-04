@@ -72,7 +72,7 @@ export async function runRetentionSweep(now: Date): Promise<{ enabled: boolean; 
  * fixed window and delete the one that has just aged out — no directory listing
  * needed, because the key is deterministic from the date.
  */
-export async function rotateBackups(now: Date, keepDays = 180): Promise<void> {
+export async function rotateBackups(now: Date, keepDays = 180, keepMax = 120): Promise<void> {
   /*
    * ── Why this keeps an index ────────────────────────────────────────────────
    *
@@ -97,10 +97,29 @@ export async function rotateBackups(now: Date, keepDays = 180): Promise<void> {
     const index = await readIndex();
     if (!index.length) return;
 
+    /*
+     * ── AMH-064: a count cap as well as an age cap ────────────────────────────
+     *
+     * Age alone assumes one backup a day. This snapshot is also taken by the
+     * manual route, by an external scheduler, and by anyone who presses the
+     * button — and on the machine where this was found there were seven
+     * identical 45 MB snapshots from a single day, every one of them 180 days
+     * from being eligible for deletion. At that rate the age cap is not a
+     * retention policy, it is a countdown.
+     *
+     * Newest first, keep `keepMax`, drop the rest regardless of age. The floor
+     * still holds: nothing inside `keepDays` is dropped unless there are more
+     * than `keepMax` newer than it, so a real recovery window is never traded
+     * away for disk.
+     */
+    const ordered = [...index].sort((a, b) => (a.date < b.date ? 1 : -1));
+
     const keep: BackupEntry[] = [];
     const drop: BackupEntry[] = [];
-    for (const entry of index) {
-      (new Date(entry.date) < cutoff ? drop : keep).push(entry);
+    for (const [i, entry] of ordered.entries()) {
+      const tooOld = new Date(entry.date) < cutoff;
+      const tooMany = i >= keepMax;
+      (tooOld || tooMany ? drop : keep).push(entry);
     }
     if (!drop.length) return;
 
@@ -155,11 +174,22 @@ async function writeIndex(entries: BackupEntry[]): Promise<void> {
   });
 }
 
-/** Record a stored backup so rotation can find it again. */
-export async function recordBackup(date: Date, key: string, keepMax = 400): Promise<void> {
+/**
+ * Record a stored backup so rotation can find it again.
+ *
+ * AMH-064 — this used to trim the index at 400 entries. There is no `list` on
+ * the storage interface, so an entry that falls out of the index is an object
+ * nothing can ever name again: rotation could not delete it, and it sat in the
+ * bucket for the life of the account. Trimming the ledger is not the same as
+ * clearing the shelf.
+ *
+ * Nothing is dropped here now. `rotateBackups` owns eviction, because it is the
+ * only place that deletes the object first and removes the entry second.
+ */
+export async function recordBackup(date: Date, key: string): Promise<void> {
   try {
     const index = await readIndex();
-    await writeIndex([{ date: date.toISOString(), key }, ...index].slice(0, keepMax));
+    await writeIndex([{ date: date.toISOString(), key }, ...index]);
   } catch {
     /* An unrecorded backup is still a backup; do not fail the run over it. */
   }

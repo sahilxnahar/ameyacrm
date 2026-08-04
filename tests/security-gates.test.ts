@@ -130,7 +130,10 @@ describe('a cookie-bearing write must come from our own pages (AMH-049)', () => 
   });
 
   it('the guard is wired, and only for requests carrying a session cookie', () => {
-    const mw = read('middleware.ts');
+    // src/, not the repo root — see tests/middleware-is-live.test.ts (AMH-054).
+    // This test only ever proved the guard was WRITTEN; placement is what
+    // decides whether it RUNS.
+    const mw = read('src/middleware.ts');
     expect(mw).toMatch(/isMutating\(req\.method\) && req\.cookies\.has\(SESSION_COOKIE\)/);
     // Webhooks (Razorpay, WhatsApp), the SAML assertion and bearer-token API
     // callers carry no cookie of ours, so they are never checked. That is what
@@ -297,7 +300,10 @@ describe('PII that is worth stealing is encrypted at rest (AMH-022)', () => {
     // the same row was not — and the bank details are the ones you can actually
     // send money with. A passport number is worth more than the PAN beside it.
     expect(crypto).toMatch(/ChannelPartner: new Set\(\['panNumber', 'bankDetails'\]\)/);
-    expect(crypto).toMatch(/NriComplianceProfile: new Set\(\['passportNo'\]\)/);
+    // AMH-062 added overseasAddress beside the passport, and upiId beside the
+    // vendor account number — same reasoning, one row later.
+    expect(crypto).toMatch(/NriComplianceProfile: new Set\(\['passportNo', 'overseasAddress'\]\)/);
+    expect(crypto).toMatch(/Vendor: new Set\(\['bankAccountNumber', 'pan', 'upiId'\]\)/);
   });
 
   it('the backfill writes the format the app reads', () => {
@@ -363,5 +369,35 @@ describe('findings that did not survive checking', () => {
       expect(read(route), `${route} is unauthenticated`).toContain('requireHeaderSecret');
     }
     expect(read('src/app/api/connectors/leads/[slug]/route.ts')).toMatch(/safeEqual\(secret, provided\)/);
+  });
+});
+
+/**
+ * AMH-062 — the backfill script and the runtime encryptor have to agree.
+ *
+ * The extension encrypts a field the next time the row is written; the script
+ * is what closes the gap for rows nobody touches. A field added to one and not
+ * the other is a field that stays in plaintext in production indefinitely,
+ * while the code reads as though it is protected.
+ */
+describe('the PII backfill covers exactly what the runtime protects (AMH-062)', () => {
+  it('every protected model.field appears in the script TARGETS', () => {
+    const pii = read('src/lib/security/pii-crypto.ts');
+    const script = read('scripts/encrypt-existing-pii.mjs');
+
+    const body = pii.slice(pii.indexOf('const PROTECTED'), pii.indexOf('// Flat set'));
+    const pairs: string[] = [];
+    for (const m of body.matchAll(/(\w+): new Set\(\[([^\]]*)\]\)/g)) {
+      const model = m[1]!;
+      for (const f of m[2]!.matchAll(/'([^']+)'/g)) pairs.push(`${model}.${f[1]}`);
+    }
+    expect(pairs.length).toBeGreaterThan(4); // the regex actually found something
+
+    const targets = new Set<string>();
+    const t = script.slice(script.indexOf('const TARGETS'), script.indexOf('const prisma'));
+    for (const m of t.matchAll(/\['(\w+)', '(\w+)'\]/g)) targets.add(`${m[1]}.${m[2]}`);
+
+    expect(pairs.filter((p) => !targets.has(p))).toEqual([]);
+    expect([...targets].filter((p) => !pairs.includes(p))).toEqual([]);
   });
 });

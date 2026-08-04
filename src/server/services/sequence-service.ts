@@ -6,6 +6,7 @@ import { env } from '@/config/env';
 import { sendEmail } from '@/lib/email/email';
 import { getCompanyDetails } from '@/server/services/company-service';
 import { threadKeyFor } from '@/lib/mail/thread';
+import { escapeHtml } from '@/lib/email/escape';
 
 export interface SequenceRunResult { due: number; sent: number; stopped: number; finished: number; failed: number }
 
@@ -15,6 +16,37 @@ const appUrl = () => env.APP_URL.replace(/\/$/, '');
 function merge(text: string, vars: Record<string, string>): string {
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k: string) => vars[k] ?? '');
 }
+
+/**
+ * AMH-061 — the same merge, for the HTML copy.
+ *
+ * The template body is written by staff. The VALUES are not: `name` and
+ * `firstName` come from the lead record, and a lead can be created by anyone
+ * holding an ingest key or a connector slug — `/api/ingest/lead`,
+ * `/api/connectors/leads/[slug]`, `/api/v1/leads` — as well as by a junior rep.
+ *
+ * Interpolating that raw into `<p>…</p>` let the person who supplies the name
+ * write the message. Set the name to
+ *
+ *   Priya</p><p>Your booking is on hold. Pay here: <a href="https://evil.tld">…
+ *
+ * and the next drip step sends the victim attacker-authored copy, from the
+ * company's own mail server, correctly DKIM-signed for the company domain. The
+ * recipient has no way to tell it apart from a real message, because in every
+ * respect that a mail client checks, it is one.
+ *
+ * Values are escaped; the staff-authored template around them is not, so an
+ * intentional link in a template still works.
+ */
+function mergeHtml(text: string, vars: Record<string, string>): string {
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k: string) => escapeHtml(vars[k] ?? ''));
+}
+
+/**
+ * A subject line is a header. A newline in one is a header separator, so the
+ * lead-supplied name is stripped of control characters before it goes there.
+ */
+const oneLine = (v: string) => v.replace(/[\r\n\t]+/g, ' ').trim();
 
 /**
  * Send whatever is due, and exit anyone who no longer belongs in a sequence.
@@ -84,11 +116,12 @@ export async function runSequences(now = new Date()): Promise<SequenceRunResult>
       };
 
       const token = randomBytes(16).toString('hex');
-      const subject = merge(step.subject, vars);
+      const subject = merge(step.subject, Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, oneLine(v)])));
       const body = merge(step.body, vars);
+      const htmlBody = mergeHtml(step.body, vars);
       const html =
         `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.65;color:#14120E">` +
-        body.split('\n').map((l) => `<p style="margin:0 0 12px">${l || '&nbsp;'}</p>`).join('') +
+        htmlBody.split('\n').map((l) => `<p style="margin:0 0 12px">${l || '&nbsp;'}</p>`).join('') +
         `</div><img src="${appUrl()}/api/track/${token}" width="1" height="1" alt="" style="display:none">`;
 
       const sent = await sendEmail({ to: [lead!.email!], subject, text: body, html });

@@ -12,7 +12,7 @@ export type SetupResult = { ok: true; username: string } | { error: string };
 
 const schema = z.object({
   token: z.string().min(10),
-  password: z.string().min(8, 'Use at least 8 characters.'),
+  password: z.string().min(12, 'Use at least 12 characters.'),
   confirm: z.string(),
 });
 

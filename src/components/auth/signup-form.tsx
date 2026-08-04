@@ -32,7 +32,7 @@ export function SignupForm() {
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Choose a password</Label>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} placeholder="At least 8 characters" />
+        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={12} placeholder="At least 12 characters" />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="note">Who are you? <span className="font-normal opacity-70">(optional — helps if you are outside the company)</span></Label>

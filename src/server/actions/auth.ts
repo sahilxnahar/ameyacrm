@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db/prisma';
 import { authenticate, markLoginSuccess } from '@/server/services/auth-service';
 import { createSession, destroySession, markTrustedDevice } from '@/lib/auth/session';
 import { issueMfaTicket, readMfaTicket, clearMfaTicket } from '@/lib/auth/mfa-ticket';
-import { openSecret, verifyTotp, verifyBackupCode } from '@/lib/auth/totp';
+import { openSecret, verifyTotpOnce, verifyBackupCode } from '@/lib/auth/totp';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { getSecurityPolicy, countryAllowed } from '@/lib/auth/policy';
 import { requestCountry, requestCity, countryName } from '@/lib/auth/geo';
@@ -23,6 +23,74 @@ const loginSchema = z.object({
 });
 
 export type ActionState = { error?: string; ok?: boolean; success?: string };
+
+/**
+ * AMH-055 — the gates that stand between a correct credential and a session.
+ *
+ * These used to live inside `loginAction`'s `case 'ok'` branch, which meant
+ * they applied to exactly one of the three ways into this application. A user
+ * with two-factor on took `case 'needs_2fa'`, which redirected to /two-factor
+ * before any of this ran, and `verifyTwoFactorAction` then called
+ * `createSession` directly. So turning 2FA ON silently switched OFF:
+ *
+ *   - the allowed-countries perimeter (an India-only account could be opened
+ *     from anywhere),
+ *   - device approval (no six-digit code to the victim's own mailbox), and
+ *   - the new-device alert — the only out-of-band signal the victim would ever
+ *     have got that somebody else had signed in as them.
+ *
+ * Which is backwards: the extra factor removed two independent controls and
+ * the warning. The SAML callback already ran them in this order; the password
+ * path had drifted.
+ *
+ * One function, called from every path that mints a session, so the next path
+ * added inherits them instead of forgetting them. Returns an ActionState on
+ * refusal; otherwise it redirects and never returns.
+ */
+type LoginUser = { id: string; name: string; email: string; role: string; allowForeignAccess?: boolean };
+
+async function finishLogin(user: LoginUser, reason: string): Promise<ActionState> {
+  const policy = await getSecurityPolicy();
+  const country = await requestCountry();
+
+  // Where from. An unknown country is never treated as a refusal.
+  if (!countryAllowed(country, user, policy)) {
+    await writeAudit({
+      actorId: user.id, action: 'LOGIN_FAILED',
+      summary: `Refused — sign-in from ${countryName(country)}, outside the allowed countries`,
+    });
+    return { error: `Sign-in from ${countryName(country)} is not permitted. Ask an administrator to allow access from outside India for your account.` };
+  }
+
+  // A device nobody has approved does not get a session, password or not.
+  const known = await isKnownDevice(user.id);
+  if (policy.deviceApproval && !known) {
+    const approval = await beginDeviceApproval(user);
+    await writeAudit({
+      actorId: user.id, action: 'LOGIN_FAILED',
+      summary: approval.emailed
+        ? `Device approval required — code emailed (${countryName(country)})`
+        : `Device approval required but the email FAILED to send: ${approval.error}`,
+    });
+    redirect(`/device-check?t=${approval.token}${approval.emailed ? '' : '&sendfailed=1'}`);
+  }
+
+  await createSession(user.id);
+  await prisma.user.update({ where: { id: user.id }, data: { lastCountry: country ?? undefined } }).catch(() => undefined);
+  await writeAudit({ actorId: user.id, action: 'LOGIN', summary: `${reason} from ${countryName(country)}` });
+
+  if (policy.alertNewDevice && !known) {
+    const info = await getClientInfo();
+    await alertNewSignIn(user, { country, city: await requestCity(), ip: info.ip, ua: info.userAgent });
+  }
+
+  // Guests belong on the sealed preview, never the workspace home.
+  if (user.role === 'GUEST') redirect('/demo');
+  // Always land people on their home screen. If two-factor still needs setting
+  // up, that is surfaced as a prominent reminder on the home page — not a
+  // forced detour that hides the whole CRM behind the security screen.
+  redirect('/home');
+}
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
@@ -53,48 +121,8 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     case 'needs_2fa':
       await issueMfaTicket(result.user.id);
       redirect('/two-factor');
-    case 'ok': {
-      const policy = await getSecurityPolicy();
-      const country = await requestCountry();
-
-      // Where from. An unknown country is never treated as a refusal.
-      if (!countryAllowed(country, result.user, policy)) {
-        await writeAudit({
-          actorId: result.user.id, action: 'LOGIN_FAILED',
-          summary: `Refused — sign-in from ${countryName(country)}, outside the allowed countries`,
-        });
-        return { error: `Sign-in from ${countryName(country)} is not permitted. Ask an administrator to allow access from outside India for your account.` };
-      }
-
-      // A device nobody has approved does not get a session, password or not.
-      const known = await isKnownDevice(result.user.id);
-      if (policy.deviceApproval && !known) {
-        const approval = await beginDeviceApproval(result.user);
-        await writeAudit({
-          actorId: result.user.id, action: 'LOGIN_FAILED',
-          summary: approval.emailed
-            ? `Device approval required — code emailed (${countryName(country)})`
-            : `Device approval required but the email FAILED to send: ${approval.error}`,
-        });
-        redirect(`/device-check?t=${approval.token}${approval.emailed ? '' : '&sendfailed=1'}`);
-      }
-
-      await createSession(result.user.id);
-      await prisma.user.update({ where: { id: result.user.id }, data: { lastCountry: country ?? undefined } }).catch(() => undefined);
-      await writeAudit({ actorId: result.user.id, action: 'LOGIN', summary: `Password login from ${countryName(country)}` });
-
-      if (policy.alertNewDevice && !known) {
-        const info = await getClientInfo();
-        await alertNewSignIn(result.user, { country, city: await requestCity(), ip: info.ip, ua: info.userAgent });
-      }
-
-      // Guests belong on the sealed preview, never the workspace home.
-      if (result.user.role === 'GUEST') redirect('/demo');
-      // Always land people on their home screen. If two-factor still needs
-      // setting up, that is surfaced as a prominent reminder on the home page —
-      // not a forced detour that hides the whole CRM behind the security screen.
-      redirect('/home');
-    }
+    case 'ok':
+      return finishLogin(result.user, 'Password login');
   }
   return { error: 'Unexpected error. Please try again.' };
 }
@@ -124,7 +152,10 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   if (!user || !user.twoFactorSecret) return { error: 'Two-factor is not configured.' };
 
   const code = parsed.data.code.trim();
-  let verified = verifyTotp(code, openSecret(user.twoFactorSecret));
+  // AMH-053 — verifyTotpOnce burns the time-step, so a code that leaks (screen
+  // share, shoulder, phishing proxy) cannot be replayed for the rest of its
+  // ~90-second window by whoever also has the password.
+  let verified = await verifyTotpOnce(userId, code, openSecret(user.twoFactorSecret));
 
   // Fallback: a code we emailed, for when the phone is not to hand.
   if (!verified) verified = await verifyEmailSignInCode(userId, code);
@@ -149,13 +180,18 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   }
 
   await clearMfaTicket();
-  await createSession(user.id);
-  if (parsed.data.trustDevice === 'on') await markTrustedDevice(user.id);
   await markLoginSuccess(user.id, user.username, '2fa');
-  await writeAudit({ actorId: user.id, action: 'LOGIN', summary: 'Password + 2FA login' });
-  if (user.role === 'GUEST') redirect('/demo');
-  redirect('/home');
-  // (user has 2FA here, so no enrollment gate needed)
+  if (parsed.data.trustDevice === 'on') await markTrustedDevice(user.id);
+
+  // AMH-055 — the same gates the password-only path runs. This used to call
+  // createSession directly, so a second factor bought the attacker a way PAST
+  // the country perimeter, device approval and the new-sign-in alert.
+  //
+  // markTrustedDevice runs first, deliberately: a person who ticked "trust this
+  // device" while holding both factors has done more to prove the device than
+  // an emailed six-digit code would, and asking for one anyway is a loop they
+  // cannot leave on a machine with no mailbox.
+  return finishLogin(user, 'Password + 2FA login');
 }
 
 /**

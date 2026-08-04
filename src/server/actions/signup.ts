@@ -6,7 +6,9 @@ import { addHours } from 'date-fns';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
-import { hashPassword } from '@/lib/auth/password';
+import { hashPassword, validatePasswordStrength } from '@/lib/auth/password';
+import { breachVerdict } from '@/lib/auth/breach';
+import { getSecurityPolicy } from '@/lib/auth/policy';
 import { sendEmail } from '@/lib/email/email';
 import { notifyMany } from '@/lib/notifications/notify';
 import { writeAudit } from '@/lib/audit/log';
@@ -60,7 +62,7 @@ export async function saveSignupConfig(input: { domains: string; defaultRole: Ro
 const schema = z.object({
   name: z.string().min(2, 'Please enter your full name'),
   email: z.string().email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(12, 'Password must be at least 12 characters'),
   note: z.string().max(500).optional(),
 });
 
@@ -78,6 +80,22 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
     const { name, password, note } = parsed.data;
     const email = parsed.data.email.trim().toLowerCase();
+
+    /*
+     * AMH-057 — self-signup was the one password path with no floor and no
+     * breach check. Every sibling ran both: createUser, changePassword,
+     * completePasswordReset, setPasswordFromInvite. This one took eight
+     * characters and asked nothing else, so the weakest password in the system
+     * was the one belonging to an account created by a stranger — which is
+     * exactly the account a credential-stuffing run reaches first.
+     */
+    const weak = validatePasswordStrength(password);
+    if (weak.length) return { error: `Weak password: ${weak.join(', ')}` };
+    const policy = await getSecurityPolicy().catch(() => null);
+    if (policy?.breachCheck) {
+      const breach = await breachVerdict(password);
+      if (!breach.ok) return { error: breach.message ?? 'Please choose a different password.' };
+    }
 
     const cfg = await getSignupConfig();
     if (!cfg.enabled) return { error: 'Self sign-up is currently switched off. Ask an administrator to invite you.' };

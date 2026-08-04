@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatCompactCurrency, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { ReasonDialog } from '@/components/ui/reason-dialog';
+import { csvRow } from '@/lib/export/csv';
 
 const TEMPLATE = 'Payee,Amount,Date,Mode,Reference,UTR,Note\nArun,50000,01/07/2026,Bank,NEFT001,UTR12345,Slab work\nOctos Infra,25000,05/07/2026,UPI,,,Steel supply\n';
 
@@ -201,9 +202,10 @@ export function LedgerView({ ledgers, activeId, detail, canManage, canApprove = 
     if (!detail) return;
     const rows = [['Voucher', 'Date', 'Amount', 'Mode', 'UTR/Ref', 'Category', 'Note', 'Status']];
     for (const p of detail.payments) {
-      rows.push([p.number, new Date(p.paidOn ?? p.date).toLocaleDateString('en-IN'), String(p.amount), p.mode, p.utr ?? p.reference ?? '', EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '', (p.narration ?? '').replace(/"/g, '""'), p.status]);
+      rows.push([p.number, new Date(p.paidOn ?? p.date).toLocaleDateString('en-IN'), String(p.amount), p.mode, p.utr ?? p.reference ?? '', EXPENSE_CATEGORIES.find((c) => c.code === p.category)?.label ?? '', p.narration ?? '', p.status]);
     }
-    const csv = [`Statement for ${detail.vendor.name}`, `Total paid,${detail.totalPaid}`, '', ...rows.map((r) => r.map((c) => `"${c}"`).join(','))].join('\n');
+    // AMH-060: narration, UTR and the vendor name are all user-typed.
+    const csv = [csvRow([`Statement for ${detail.vendor.name}`]), `Total paid,${detail.totalPaid}`, '', ...rows.map(csvRow)].join('\n');
     const a = document.createElement('a');
     a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
     a.download = `passbook-${detail.vendor.name.replace(/[^a-z0-9]+/gi, '-')}.csv`;
