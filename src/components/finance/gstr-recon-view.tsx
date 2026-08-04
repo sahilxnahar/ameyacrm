@@ -11,7 +11,9 @@ import { RecordList } from '@/components/shared/record-row';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { formatCurrency } from '@/lib/utils/format';
-import { importGstr2b, runGstrReconcile } from '@/server/actions/gstr';
+import { importGstr2b, runGstrReconcile, addGstr2bLine } from '@/server/actions/gstr';
+import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 interface Row { id: string; supplierGstin: string; invoiceNo: string; period: string; taxableValue: number; tax: number; status: string; invoiceDate: string | null }
 const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> = {
@@ -63,9 +65,15 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
         </div>
       </div>
 
-      <ImportDropzone onFile={onFile} disabled={busy} title="Drop the GSTR-2B export (CSV / Excel)" hint="or click to browse — we match each invoice against your vendor bills automatically" />
+      {/*
+        Upload is right for a monthly 2B with four hundred rows; it is wrong for
+        the case that actually comes up between filings, which is two invoices
+        somebody wants to check today. Making a person build a CSV to reconcile
+        two lines is how a reconciliation screen stops being used at all.
+      */}
+      <ManualOrUpload period={period} busy={busy} onFile={onFile} />
 
-      <RecordList empty="No GSTR-2B lines yet. Upload the export for a period to reconcile.">
+      <RecordList empty="Nothing to reconcile for this period yet. Upload the GSTR-2B export, or add a line by hand to check a single invoice against your books.">
         {rows.map((l) => (
           <div key={l.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <div className="min-w-0 flex-1">
@@ -77,5 +85,99 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
         ))}
       </RecordList>
     </div>
+  );
+}
+
+/** Two ways to get a line in: the portal's export, or typed. */
+function ManualOrUpload({ period, busy, onFile }: { period: string; busy: boolean; onFile: (f: File) => void }) {
+  const [mode, setMode] = React.useState<'upload' | 'manual'>('upload');
+  return (
+    <div>
+      <div className="mb-3 inline-flex rounded-lg border p-0.5">
+        {([['upload', 'Upload the 2B export'], ['manual', 'Add a line by hand']] as const).map(([m, label]) => (
+          <button
+            key={m} type="button" onClick={() => setMode(m)} aria-pressed={mode === m}
+            className={cn('focus-ring rounded-md px-3 py-1.5 text-sm font-medium transition',
+              mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary')}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'upload'
+        ? <ImportDropzone onFile={onFile} disabled={busy} title="Drop the GSTR-2B export (CSV / Excel)" hint="or click to browse — we match each invoice against your vendor bills automatically" />
+        : <ManualGstrLine period={period} />}
+    </div>
+  );
+}
+
+/**
+ * One line, typed.
+ *
+ * Written through the same upsert and the same unique key as the import, so
+ * when the real 2B is uploaded later it overwrites anything typed here. The
+ * portal's figures always win over a hand-keyed line, which is the only correct
+ * precedence for a government return.
+ */
+function ManualGstrLine({ period }: { period: string }) {
+  const [gstin, setGstin] = React.useState('');
+  const [invoiceNo, setInvoiceNo] = React.useState('');
+  const [invoiceDate, setInvoiceDate] = React.useState('');
+  const [taxable, setTaxable] = React.useState('');
+  const [igst, setIgst] = React.useState('');
+  const [cgst, setCgst] = React.useState('');
+  const [sgst, setSgst] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setBusy(true);
+        addGstr2bLine({
+          period, supplierGstin: gstin, invoiceNo, invoiceDate: invoiceDate || null,
+          taxableValue: Number(taxable), igst: Number(igst || 0), cgst: Number(cgst || 0), sgst: Number(sgst || 0),
+        }).then((r) => {
+          setBusy(false);
+          if ('error' in r) { toast.error(r.error); return; }
+          toast.success(`${r.invoiceNo} added and reconciled`);
+          location.reload();
+        });
+      }}
+    >
+      <div className="space-y-1">
+        <Label htmlFor="gg">Supplier GSTIN</Label>
+        <Input id="gg" required value={gstin} onChange={(e) => setGstin(e.target.value.toUpperCase())} placeholder="29ABCDE1234F1Z5" className="w-[11.5rem] font-mono" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="gi">Invoice no.</Label>
+        <Input id="gi" required value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-2291" className="w-32 font-mono" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="gd">Invoice date</Label>
+        <Input id="gd" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="w-[9.5rem]" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="gt">Taxable (₹)</Label>
+        <Input id="gt" required type="number" step="0.01" inputMode="decimal" value={taxable} onChange={(e) => setTaxable(e.target.value)} className="w-28 text-right tabular-nums" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="g1">IGST</Label>
+        <Input id="g1" type="number" step="0.01" inputMode="decimal" value={igst} onChange={(e) => setIgst(e.target.value)} className="w-24 text-right tabular-nums" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="g2">CGST</Label>
+        <Input id="g2" type="number" step="0.01" inputMode="decimal" value={cgst} onChange={(e) => setCgst(e.target.value)} className="w-24 text-right tabular-nums" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="g3">SGST</Label>
+        <Input id="g3" type="number" step="0.01" inputMode="decimal" value={sgst} onChange={(e) => setSgst(e.target.value)} className="w-24 text-right tabular-nums" />
+      </div>
+      <Button type="submit" disabled={busy} className="gap-1"><Plus className="h-4 w-4" /> {busy ? 'Adding…' : 'Add & reconcile'}</Button>
+      <p className="w-full text-xs text-muted-foreground">
+        Goes into period <strong>{period}</strong>. Uploading the real GSTR-2B later overwrites this line — the portal&rsquo;s figures always win.
+      </p>
+    </form>
   );
 }

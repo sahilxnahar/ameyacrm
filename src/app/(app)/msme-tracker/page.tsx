@@ -19,6 +19,26 @@ export default async function MsmeTrackerPage() {
     prisma.msmePaymentClock.findMany({ select: { vendorBillId: true } }).catch(() => []),
   ]);
 
+  /*
+   * Suppliers, for entering a bill that is not in the system yet.
+   *
+   * The Udyam number is remembered from whatever was last typed for that
+   * supplier rather than stored on the supplier record — it lives on the clock,
+   * not on the Vendor, and inventing a column for it would mean a migration for
+   * a convenience. Last-used is the right default anyway: it is the number that
+   * was on their last bill.
+   */
+  const vendors = canManage
+    ? await prisma.vendor.findMany({
+        where: { isActive: true }, orderBy: { name: 'asc' }, take: 500,
+        select: { id: true, name: true },
+      }).catch(() => [])
+    : [];
+  const lastUdyam = new Map<string, string>();
+  for (const c of [...rows].reverse()) {
+    if (c.udyamNo) lastUdyam.set(c.vendorId, c.udyamNo);
+  }
+
   // Bills that could be on a clock and are not. `createMsmeClock` existed and
   // nothing called it, so unless a bill happened to be flagged MSME at the moment
   // it was entered, its 45-day clock could never be started — and this screen sat
@@ -40,7 +60,8 @@ export default async function MsmeTrackerPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="MSME 45-day payment tracker" description="Section 43B(h) of the Income Tax Act disallows a deduction if an MSME supplier isn't paid within 45 days (15 without a written agreement). Every MSME bill runs a live countdown here, flipping to Overdue automatically before it becomes a tax problem." />
-      <MsmeTrackerView canManage={canManage} candidates={candidates} counts={{ overdue, dueSoon, outstanding: Number(agg._sum.amount ?? 0) }}
+      <MsmeTrackerView canManage={canManage} candidates={candidates}
+        vendors={vendors.map((v) => ({ id: v.id, name: v.name, udyamNo: lastUdyam.get(v.id) ?? null }))} counts={{ overdue, dueSoon, outstanding: Number(agg._sum.amount ?? 0) }}
         rows={rows.map((c) => ({ id: c.id, vendor: c.vendor?.name ?? '—', udyamNo: c.udyamNo, amount: Number(c.amount), billDate: c.billDate.toISOString(), dueDate: c.dueDate.toISOString(), status: c.status }))} />
     </div>
   );

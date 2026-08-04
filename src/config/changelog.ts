@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.17',
+    date: '4 Aug 2026',
+    highlights: [
+      'You can now type an MSME supplier bill straight into the 45-day tracker. It used to accept only a bill already recorded on Billing, so a bill that had just arrived meant four steps across two screens \u2014 while the 45 days were already running.',
+      'GSTR-2B lines can be added by hand as well as uploaded. Building a CSV to check two invoices is how a reconciliation screen stops being used. Uploading the real 2B later still overwrites anything typed \u2014 the portal\u2019s figures always win.',
+      'Admin \u2192 Automations now shows whether the nightly jobs actually ran: when, how long, and what each one did. There was no record of this anywhere before, so a silent failure was undetectable.',
+      'The nightly jobs run in a new order \u2014 statutory clocks first, backup and AI briefing last \u2014 and stop cleanly before the server\u2019s time limit instead of being killed mid-way. Previously the backup ran before the MSME clocks, so on a slow night the clocks silently never ran at all.',
+      'A "Run now" button, so you never have to wait until 1am to know whether the automations work.',
+      'If CRON_SECRET is missing from the server the panel now says so plainly. Without it nothing runs on a schedule at all, and the only symptom was things quietly not happening.',
+    ],
+  },
+  {
     version: 'v16.16',
     date: '4 Aug 2026',
     highlights: [

@@ -31,6 +31,69 @@ export async function importGstr2b(csv: string, period: string): Promise<{ ok: t
   } catch (err) { return toActionError(err); }
 }
 
+/**
+ * Add one GSTR-2B line by hand.
+ *
+ * The screen was upload-only. That is right for a monthly 2B with four hundred
+ * rows, and wrong for the case that actually comes up between filings: two
+ * invoices you want to check now. Making somebody build a CSV to reconcile two
+ * lines is how a reconciliation screen stops being used at all.
+ *
+ * It writes through the same upsert as the import, on the same unique key, so a
+ * line typed today is overwritten by the real 2B when it is uploaded — the
+ * portal's figures always win over anything typed by hand, which is the correct
+ * precedence for a government return.
+ */
+export async function addGstr2bLine(input: {
+  period: string;
+  supplierGstin: string;
+  invoiceNo: string;
+  invoiceDate?: string | null;
+  taxableValue: number;
+  igst?: number;
+  cgst?: number;
+  sgst?: number;
+}): Promise<{ ok: true; invoiceNo: string } | { error: string }> {
+  try {
+    await ensure('billing.approve');
+    if (!/^\d{4}-\d{2}$/.test(input.period)) return { error: 'Period must be YYYY-MM.' };
+    const invoiceNo = (input.invoiceNo ?? '').trim();
+    if (!invoiceNo) return { error: 'The invoice number is required.' };
+
+    const gstin = (input.supplierGstin ?? '').trim().toUpperCase() || 'UNKNOWN';
+    // Checked, not enforced: a supplier really can appear on the 2B with a GSTIN
+    // that fails the checksum, and refusing to record it would hide the problem
+    // rather than surface it.
+    const gstinLooksRight = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{3}$/.test(gstin);
+
+    const n = (v?: number) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+    if (n(input.taxableValue) <= 0) return { error: 'Enter the taxable value.' };
+
+    await prisma.gstr2bLine.upsert({
+      where: { supplierGstin_invoiceNo_period: { supplierGstin: gstin, invoiceNo, period: input.period } },
+      update: {
+        taxableValue: n(input.taxableValue), igst: n(input.igst), cgst: n(input.cgst), sgst: n(input.sgst),
+        invoiceDate: input.invoiceDate ? new Date(input.invoiceDate) : null, status: 'UNMATCHED',
+      },
+      create: {
+        period: input.period, supplierGstin: gstin, invoiceNo,
+        invoiceDate: input.invoiceDate ? new Date(input.invoiceDate) : null,
+        taxableValue: n(input.taxableValue), igst: n(input.igst), cgst: n(input.cgst), sgst: n(input.sgst),
+      },
+    });
+    await writeAudit({
+      action: 'CREATE', entityType: 'Gstr2bLine', entityId: `${input.period}:${invoiceNo}`,
+      summary: `GSTR-2B line entered by hand — ${gstin} ${invoiceNo} (${input.period})`,
+    });
+    await reconcileGstr2b();
+    revalidatePath('/gstr-recon');
+    return {
+      ok: true,
+      invoiceNo: gstinLooksRight ? invoiceNo : `${invoiceNo} (that GSTIN does not look valid — recorded anyway)`,
+    };
+  } catch (err) { return toActionError(err); }
+}
+
 export async function runGstrReconcile(): Promise<{ ok: true; result: GstrSweep } | { error: string }> {
   try {
     await ensure('billing.approve');

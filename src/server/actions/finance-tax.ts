@@ -28,6 +28,78 @@ export async function createMsmeClock(input: MsmeClockInput): Promise<{ ok: true
   } catch (err) { return toActionError(err); }
 }
 
+/**
+ * Record a supplier's bill AND start its 45-day clock, in one step.
+ *
+ * The clock could previously only be attached to a bill that was already in the
+ * system, so an MSME bill that had just arrived meant: go to Billing, record it,
+ * come back here, find it in the dropdown, start the clock. Four steps across two
+ * screens, at exactly the moment the 45 days start running whether anybody does
+ * that or not — s.43B(h) does not wait for the data entry.
+ *
+ * It deliberately goes through `createVendorBill` rather than writing the row
+ * directly. A bill recorded here is a real bill: it must get its ledger entry,
+ * its liability and its GST treatment identically to one typed on the Billing
+ * screen. A second, quieter path into the books is how two screens end up
+ * disagreeing about what is owed.
+ */
+export interface MsmeManualBillInput {
+  vendorId: string;
+  number: string;
+  amount: number;
+  gstAmount?: number;
+  billDate: string;
+  udyamNo?: string | null;
+  hasAgreement?: boolean;
+  notes?: string | null;
+}
+
+export async function createMsmeBillManually(
+  input: MsmeManualBillInput,
+): Promise<{ ok: true; id: string; number: string; dueDate: string } | { error: string }> {
+  try {
+    // Both permissions, because this genuinely does both things.
+    await ensure('finance.ledger.manage');
+    await ensure('billing.bill.manage');
+
+    const billDate = asDate(input.billDate);
+    if (!billDate) return { error: 'Bill date is required.' };
+    if (!input.vendorId) return { error: 'Pick the supplier.' };
+    if (!input.number?.trim()) return { error: 'The supplier\u2019s bill number is required.' };
+    if (num(input.amount) <= 0) return { error: 'Enter the bill amount.' };
+
+    const { createVendorBill } = await import('./billing');
+    const created = await createVendorBill({
+      number: input.number.trim(),
+      vendorId: input.vendorId,
+      amount: num(input.amount),
+      gstAmount: num(input.gstAmount),
+      billDate: input.billDate,
+      notes: input.notes?.trim() || null,
+    });
+    if ('error' in created) return { error: created.error };
+    if (!created.id) return { error: 'The bill was not saved. Nothing was recorded.' };
+
+    const dueDate = msmeDueDate(billDate, input.hasAgreement ?? true);
+    const clock = await prisma.msmePaymentClock.upsert({
+      where: { vendorBillId: created.id },
+      update: { amount: num(input.amount) + num(input.gstAmount), udyamNo: input.udyamNo?.trim() || null, billDate, dueDate },
+      create: {
+        vendorId: input.vendorId, vendorBillId: created.id,
+        amount: num(input.amount) + num(input.gstAmount),
+        udyamNo: input.udyamNo?.trim() || null, billDate, dueDate,
+      },
+    });
+    await writeAudit({
+      action: 'CREATE', entityType: 'MsmePaymentClock', entityId: clock.id,
+      summary: `MSME bill ${input.number.trim()} entered by hand \u2014 due ${dueDate.toISOString().slice(0, 10)}`,
+    });
+    revalidatePath('/msme-tracker');
+    revalidatePath('/billing');
+    return { ok: true, id: clock.id, number: input.number.trim(), dueDate: dueDate.toISOString().slice(0, 10) };
+  } catch (err) { return toActionError(err); }
+}
+
 // ── 54. Khata record ─────────────────────────────────────────────────────────
 const KHATA = ['A_KHATA', 'B_KHATA', 'E_KHATA', 'NONE'] as const;
 type Khata = (typeof KHATA)[number];

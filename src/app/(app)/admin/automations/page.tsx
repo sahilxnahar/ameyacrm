@@ -6,6 +6,7 @@ import { AutomationView } from '@/components/admin/automation-view';
 import { StarterAutomationsPanel } from '@/components/admin/starter-automations-panel';
 import { AutomationExplainer } from '@/components/admin/automation-explainer';
 import { AutomationAiBuilder } from '@/components/admin/automation-ai-builder';
+import { ScheduledJobsPanel } from '@/components/admin/scheduled-jobs-panel';
 
 export const metadata: Metadata = { title: 'Automations' };
 
@@ -20,6 +21,10 @@ export default async function AutomationsPage() {
   return (
     <div>
       <PageHeader title="Automations" description="Trigger → conditions → actions. Start from a template below, edit it, then switch it on." />
+      {/* The scheduled pass comes first: a person here because "the automations
+          are not working" is far more often looking at a dead cron than at a
+          mis-built rule. */}
+      <ScheduledJobsPanel />
       <AutomationExplainer />
       <AutomationAiBuilder />
       <StarterAutomationsPanel existingNames={rules.map((r) => r.name)} />
