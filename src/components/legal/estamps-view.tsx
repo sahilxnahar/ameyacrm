@@ -24,7 +24,14 @@ export function EstampsView({ counts, rows, projects }: { counts: { generated: n
   function submit() {
     if (!form.purpose.trim()) { toast.error('Purpose is required.'); return; }
     setSaving(true);
-    saveEstamp(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('e-Stamp recorded'); setOpen(false); location.reload(); });
+    saveEstamp(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('e-Stamp recorded'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

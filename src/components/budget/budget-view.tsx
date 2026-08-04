@@ -236,7 +236,8 @@ function BudgetEditor({
         </p>
       </div>
 
-      <div className="max-h-[26rem] overflow-y-auto rounded-md border border-border">
+      {/* overflow-y-auto alone: vertical scrolled, horizontal did not. */}
+      <div className="max-h-[26rem] overflow-auto rounded-md border border-border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-muted/80 backdrop-blur">
             <tr>

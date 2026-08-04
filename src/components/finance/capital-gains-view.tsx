@@ -28,7 +28,14 @@ export function CapitalGainsView({ recent }: { recent: Recent[] }) {
       setSaving(false);
       if ('error' in res) { toast.error(res.error); return; }
       toast.success('Scenario saved'); location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

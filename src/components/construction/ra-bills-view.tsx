@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useFocusTrap } from '@/lib/a11y/use-focus-trap';
 import { useUnsavedChanges } from '@/lib/forms/use-unsaved-changes';
 import { toast } from 'sonner';
 import { Plus, HardHat, ShieldCheck, PiggyBank, Landmark, Send, Wallet, X } from 'lucide-react';
@@ -178,9 +179,11 @@ function SubmitModal({ bill, approvers, onClose }: { bill: Bill; approvers: Opt[
       toast.success(`${bill.number} sent for certification`); onClose(); location.reload();
     });
   }
+  const panel = useFocusTrap<HTMLDivElement>(true, onClose);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={panel} role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between"><div className="flex items-center gap-2 font-semibold"><HardHat className="h-4 w-4 text-primary" /> Submit {bill.number} for certification</div><button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button></div>
         <p className="mb-3 text-sm text-muted-foreground">Choose the certifiers in order (Site Engineer → Independent Engineer → Finance). Each approves in turn.</p>
         <div className="max-h-64 space-y-1 overflow-y-auto">

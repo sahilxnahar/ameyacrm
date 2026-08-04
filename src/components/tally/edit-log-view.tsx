@@ -122,7 +122,7 @@ function Snapshot({ title, snap }: { title: string; snap: VoucherSnapshot | null
       <p className="text-[12px]">{snap.type} #{snap.number} · {snap.date}</p>
       {snap.narration && <p className="text-[11px] text-[#5B4412]">{snap.narration}</p>}
       {snap.costCentre && <p className="text-[11px] text-[#5B4412]">Cost centre: {snap.costCentre}</p>}
-      <table className="mt-1.5 w-full text-[11px]">
+      <div className="table-scroll"><table className="mt-1.5 w-full text-[11px]">
         <thead><tr className="text-left text-[#5B4412]"><th>Ledger</th><th className="text-right">Debit</th><th className="text-right">Credit</th></tr></thead>
         <tbody>
           {snap.lines.map((l, i) => (
@@ -134,7 +134,7 @@ function Snapshot({ title, snap }: { title: string; snap: VoucherSnapshot | null
           ))}
         </tbody>
         <tfoot><tr className="border-t border-[#0f2038]/30 font-semibold"><td>Total</td><td className="text-right">{inr(dr)}</td><td className="text-right">{inr(dr)}</td></tr></tfoot>
-      </table>
+      </table></div>
       {snap.inventory && snap.inventory.length > 0 && (
         <p className="mt-1 text-[11px] text-[#5B4412]">
           Stock: {snap.inventory.map((i) => `${i.item} ${i.direction} ${i.qty}`).join(' · ')}

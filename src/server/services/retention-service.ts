@@ -1,4 +1,6 @@
 import 'server-only';
+import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 
@@ -71,9 +73,94 @@ export async function runRetentionSweep(now: Date): Promise<{ enabled: boolean; 
  * needed, because the key is deterministic from the date.
  */
 export async function rotateBackups(now: Date, keepDays = 180): Promise<void> {
+  /*
+   * ── Why this keeps an index ────────────────────────────────────────────────
+   *
+   * This used to rebuild the key from the date —
+   * `backups/ameya-crm-backup-2026-02-05.json` — and delete that. It worked
+   * only because the key was fully predictable, which was the same property
+   * that made the backup itself guessable from the outside (see
+   * backup-service.ts). Now that every object carries a random suffix, a
+   * derived name matches nothing, and the delete would fail silently forever
+   * while storage filled up.
+   *
+   * There is no `list` on the storage interface, so the index is kept here: an
+   * append-only record of {date, key}, trimmed as it rotates. Provider-agnostic
+   * and exact — it deletes the object that was actually written, not the one
+   * whose name we can reconstruct.
+   */
   const { deleteObject } = await import('@/lib/storage/storage');
-  const old = new Date(now.getTime());
-  old.setDate(old.getDate() - (keepDays + 1));
-  const stamp = old.toISOString().slice(0, 10);
-  await deleteObject(`backups/ameya-crm-backup-${stamp}.json`).catch(() => undefined);
+  const cutoff = new Date(now.getTime());
+  cutoff.setDate(cutoff.getDate() - keepDays);
+
+  try {
+    const index = await readIndex();
+    if (!index.length) return;
+
+    const keep: BackupEntry[] = [];
+    const drop: BackupEntry[] = [];
+    for (const entry of index) {
+      (new Date(entry.date) < cutoff ? drop : keep).push(entry);
+    }
+    if (!drop.length) return;
+
+    for (const entry of drop) {
+      // A delete that fails leaves the entry in the index, so it is retried
+      // tomorrow rather than forgotten.
+      try {
+        await deleteObject(entry.key);
+      } catch {
+        keep.push(entry);
+      }
+    }
+    await writeIndex(keep);
+  } catch {
+    /* Retention must never be the reason the nightly pass fails. */
+  }
+}
+
+/** Where the rolling record of stored backups lives. */
+export const BACKUP_INDEX_KEY = 'backup.index';
+
+/** One stored backup, as recorded in the index. */
+const backupEntry = z.object({ date: z.string(), key: z.string() });
+export type BackupEntry = z.infer<typeof backupEntry>;
+
+/**
+ * Read the index.
+ *
+ * Parsed rather than cast: `Setting.value` is a JSON column, so its contents
+ * are whatever was last written there — including by an older version of this
+ * code, or by hand. A bad entry drops out instead of throwing halfway through
+ * a rotation and leaving the index inconsistent with storage.
+ */
+async function readIndex(): Promise<BackupEntry[]> {
+  const row = await prisma.setting.findUnique({ where: { key: BACKUP_INDEX_KEY } });
+  const parsed = z.array(backupEntry).safeParse(row?.value);
+  if (parsed.success) return parsed.data;
+  return Array.isArray(row?.value)
+    ? (row.value as unknown[]).flatMap((v) => {
+        const one = backupEntry.safeParse(v);
+        return one.success ? [one.data] : [];
+      })
+    : [];
+}
+
+async function writeIndex(entries: BackupEntry[]): Promise<void> {
+  const value: Prisma.InputJsonValue = entries;
+  await prisma.setting.upsert({
+    where: { key: BACKUP_INDEX_KEY },
+    update: { value },
+    create: { key: BACKUP_INDEX_KEY, value },
+  });
+}
+
+/** Record a stored backup so rotation can find it again. */
+export async function recordBackup(date: Date, key: string, keepMax = 400): Promise<void> {
+  try {
+    const index = await readIndex();
+    await writeIndex([{ date: date.toISOString(), key }, ...index].slice(0, keepMax));
+  } catch {
+    /* An unrecorded backup is still a backup; do not fail the run over it. */
+  }
 }

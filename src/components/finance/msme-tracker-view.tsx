@@ -153,7 +153,14 @@ function ManualMsmeBill({ vendors }: { vendors: VendorOption[] }) {
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${r.number} recorded — payable by ${new Date(r.dueDate).toLocaleDateString('en-IN')}`);
           location.reload();
-        });
+        })
+          .catch(() => {
+            // A rejected server action never reaches .then, so the flag the
+            // success path clears was never cleared: the button stayed disabled
+            // with a spinner until someone reloaded the page.
+            setBusy(false);
+            toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+          });
       }}
     >
       <div className="min-w-0 flex-1 space-y-1 sm:flex-none">
@@ -220,7 +227,14 @@ function StartClock({ candidates }: { candidates: Candidate[] }) {
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${bill.number} is on the clock`);
           location.reload();
-        });
+        })
+          .catch(() => {
+            // A rejected server action never reaches .then, so the flag the
+            // success path clears was never cleared: the button stayed disabled
+            // with a spinner until someone reloaded the page.
+            setBusy(false);
+            toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+          });
       }}
     >
       <div className="min-w-0 flex-1 space-y-1 sm:flex-none">

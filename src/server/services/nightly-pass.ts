@@ -165,21 +165,17 @@ async function fireDueReminders(now: Date) {
   return { sent, due: due.length };
 }
 
-/** A JSON snapshot of the operational tables, plus retention roll-off. */
+/**
+ * The nightly snapshot, plus retention roll-off.
+ *
+ * This used to build its own bundle and write it as PLAIN TEXT JSON under a
+ * date-derived key, while a second, encrypted implementation sat unscheduled in
+ * /api/cron/backup. Both now call the same code — see backup-service.ts for
+ * what was wrong with the old one and why.
+ */
 async function takeBackup(now: Date) {
-  const [users, projects, units, leads, bookings, payments, customers, partners, invoices] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, name: true, username: true, email: true, role: true, status: true, createdAt: true } }),
-    prisma.project.findMany(), prisma.unit.findMany(), prisma.lead.findMany({ where: { deletedAt: null } }),
-    prisma.booking.findMany(), prisma.paymentMilestone.findMany(),
-    prisma.customer.findMany({ select: { id: true, name: true, email: true, phone: true, bookingId: true, isActive: true } }),
-    prisma.channelPartner.findMany(), prisma.invoice.findMany({ include: { items: true } }),
-  ]);
-  const body = Buffer.from(JSON.stringify({
-    exportedAt: now.toISOString(), users, projects, units, leads, bookings, payments, customers, partners, invoices,
-  }), 'utf8');
-  const stamp = now.toISOString().slice(0, 10);
-  const stored = await putObject(`backups/ameya-crm-backup-${stamp}.json`, body, 'application/json');
-  await writeAudit({ action: 'EXPORT', entityType: 'Backup', summary: `Automated daily backup ${stamp}` });
+  const { takeEncryptedBackup } = await import('@/server/services/backup-service');
+  const result = await takeEncryptedBackup(now);
   await rotateBackups(now).catch(() => undefined);
-  return { key: stored.key, sizeKb: Math.round(body.length / 1024) };
+  return result;
 }

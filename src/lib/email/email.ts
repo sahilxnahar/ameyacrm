@@ -42,6 +42,14 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
         const transport = nodemailer.createTransport({
           host: config.host, port: config.port, secure: config.secure,
           auth: { user: config.user, pass: config.pass },
+          // AMH-047 — a wedged mail host used to hang the request until the
+          // platform killed it. nodemailer defaults to NO timeout, so a host
+          // that accepts the TCP connection and then says nothing holds the
+          // socket open indefinitely; on a serverless function that is the
+          // whole invocation, and the user watches a spinner until it dies.
+          connectionTimeout: 10_000,  // TCP connect
+          greetingTimeout: 10_000,    // waiting for the 220 banner
+          socketTimeout: 20_000,      // inactivity once connected
         });
         await transport.sendMail({ from: config.from, to: payload.to, cc: payload.cc, subject: payload.subject, text: payload.text, html: payload.html });
         return { ok: true };
@@ -70,6 +78,10 @@ export async function sendEmail(payload: EmailPayload, opts?: SendOptions): Prom
         const transport = nodemailer.createTransport({
           host: env.SMTP_HOST, port: env.SMTP_PORT, secure: env.SMTP_SECURE,
           auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+          // Same reasoning as the per-user transport above (AMH-047).
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 20_000,
         });
         await transport.sendMail({ from: env.EMAIL_FROM, to: payload.to, cc: payload.cc, subject: payload.subject, text: payload.text, html: payload.html });
         return { ok: true };

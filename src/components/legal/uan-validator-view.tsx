@@ -33,7 +33,14 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Validated ${r.imported} — ${r.invalid} invalid`);
       setOpen(false); location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   async function onFile(file: File) {
     setBusy(true);
@@ -68,7 +75,14 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
             if ('error' in r) { toast.error(r.error); return; }
             toast.success(`${name} checked`);
             location.reload();
-          });
+          })
+            .catch(() => {
+              // A rejected server action never reaches .then, so the flag the
+              // success path clears was never cleared: the button stayed disabled
+              // with a spinner until someone reloaded the page.
+              setBusy(false);
+              toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+            });
         }}
       >
         <div className="min-w-0 flex-1 space-y-1 sm:flex-none">

@@ -1,4 +1,5 @@
 import 'server-only';
+import { escapeHtml } from '@/lib/email/escape';
 import { prisma } from '@/lib/db/prisma';
 import { sendEmail } from '@/lib/email/email';
 import { getBillWiseReport } from '@/server/services/tally-bills-service';
@@ -203,6 +204,3 @@ export function buildReminder(
   return { subject, text, html };
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
-}

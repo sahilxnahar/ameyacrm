@@ -36,7 +36,14 @@ export function ScheduledJobsPanel() {
       setLoading(false);
       if ('error' in r) { setErr(r.error); return; }
       setErr(null); setState(r);
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setLoading(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }, []);
   React.useEffect(load, [load]);
 

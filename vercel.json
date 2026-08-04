@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/daily",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/auto-release",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/escalate",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/worker",
+      "schedule": "*/15 * * * *"
     }
   ],
   "env": {

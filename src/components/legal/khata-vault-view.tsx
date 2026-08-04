@@ -22,7 +22,14 @@ export function KhataVaultView({ counts, rows, projects }: { counts: { total: nu
   function set<K extends keyof KhataInput>(k: K, v: KhataInput[K]) { setForm((f) => ({ ...f, [k]: v })); }
   function submit() {
     setSaving(true);
-    saveKhata(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Khata saved'); setOpen(false); location.reload(); });
+    saveKhata(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Khata saved'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

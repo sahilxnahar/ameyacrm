@@ -62,12 +62,51 @@ export async function approveVendorPayment(voucherId: string): Promise<LedgerAct
     await prisma.voucher.update({ where: { id: voucherId }, data: { status: 'POSTED', approvedById: ctx.user.id, approvedAt: new Date() } });
     // Only now does the money exist as far as the books are concerned.
     await postVoucherById(voucherId, ctx.user.id);
-    // Anything that was held pending this payment is settled now.
-    await prisma.raBill.updateMany({ where: { voucherId, status: 'CERTIFIED' }, data: { status: 'PAID' } }).catch(() => undefined);
+    /*
+     * Anything that was held pending this payment is settled now.
+     *
+     * ── AMH-007 ────────────────────────────────────────────────────────────
+     *
+     * These two writes used to end in `.catch(() => undefined)`. By the time
+     * they run the voucher is POSTED and the money is in the books — so if the
+     * status flip failed, the payment had been made and the bill still read
+     * CERTIFIED, i.e. unpaid. The next person to look at the bill list sees an
+     * outstanding bill and pays it again. That is AMH-001's double payment
+     * reached by a different road, and it left no trace at all.
+     *
+     * Rolling back is not available here: the ledger entry is already written,
+     * and reversing a posted voucher because a status column did not update
+     * would be a worse cure. So the failure is reported instead — loudly, with
+     * the voucher number, so the two records can be reconciled by hand.
+     */
+    const settlementFailures: string[] = [];
+    try {
+      await prisma.raBill.updateMany({ where: { voucherId, status: 'CERTIFIED' }, data: { status: 'PAID' } });
+    } catch (err) {
+      settlementFailures.push(`RA bill(s) against ${v.number}: ${err instanceof Error ? err.message : 'update failed'}`);
+    }
     if (v.vendorBillId) {
-      await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'PAID' } }).catch(() => undefined);
+      try {
+        await prisma.vendorBill.update({ where: { id: v.vendorBillId }, data: { status: 'PAID' } });
+      } catch (err) {
+        settlementFailures.push(`supplier bill ${v.vendorBillId}: ${err instanceof Error ? err.message : 'update failed'}`);
+      }
       const { closeMsmeClockForBill } = await import('@/server/services/msme-service');
       await closeMsmeClockForBill(v.vendorBillId, voucherId);
+    }
+    if (settlementFailures.length) {
+      // The audit trail is the reconciliation record — it must say the money
+      // moved AND that the bill was not marked, because those are the two
+      // halves somebody will have to put back together.
+      await writeAudit({
+        actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId,
+        summary: `Payment ${v.number} was POSTED but the bill could not be marked paid — ${settlementFailures.join('; ')}. The bill still reads unpaid; do not pay it twice.`,
+      }).catch(() => undefined);
+      revalidatePath('/ledgers'); revalidatePath('/payments');
+      return {
+        error: `Payment ${v.number} went through and is in the books, but the bill could not be marked paid. `
+          + 'It will still look unpaid — do NOT pay it again. Mark it paid by hand, or reload and check before retrying.',
+      };
     }
     await writeAudit({ actorId: ctx.user.id, action: 'APPROVE', entityType: 'Voucher', entityId: voucherId, summary: `Approved payment ${v.number} to ${v.partyName} — Rs ${Number(v.amount).toLocaleString('en-IN')}` });
     if (v.createdById) {

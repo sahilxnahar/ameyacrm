@@ -4,14 +4,18 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { RaBillsView } from '@/components/construction/ra-bills-view';
+import { ListNotice } from '@/components/ui/list-notice';
+import { listWindow, listMeta } from '@/lib/list/page-window';
 
 export const metadata: Metadata = { title: 'RA Bills' };
 export const dynamic = 'force-dynamic';
 
-export default async function RaBillsPage() {
+export default async function RaBillsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const ctx = await requirePermission('procurement.view');
-  const [bills, vendors, projects, approvers] = await Promise.all([
-    prisma.raBill.findMany({ orderBy: { createdAt: 'desc' }, take: 200, include: { _count: { select: { lines: true } } } }),
+  const win = listWindow(await searchParams, 200);
+  const [bills, billTotal, vendors, projects, approvers] = await Promise.all([
+    prisma.raBill.findMany({ orderBy: { createdAt: 'desc' }, take: win.take, include: { _count: { select: { lines: true } } } }),
+    prisma.raBill.count(),
     prisma.vendor.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     prisma.project.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
     prisma.user.findMany({ where: { status: 'ACTIVE', role: { in: ['SUPER_ADMIN', 'ADMIN', 'DEPARTMENT_HEAD', 'MANAGER'] } }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
@@ -43,6 +47,10 @@ export default async function RaBillsPage() {
           tdsSection: b.tdsSection, net: num(b.netPayable), lines: b._count.lines, createdAt: b.createdAt.toISOString(),
         }))}
       />
+      {/* The RA-bill summary tiles above are computed from `bills` — the rows on
+          this page, not the whole table. That is fine while the list is
+          complete and misleading the moment it is not, so say which it is. */}
+      <ListNotice meta={listMeta(bills.length, billTotal, win)} noun="RA bills" />
     </div>
   );
 }

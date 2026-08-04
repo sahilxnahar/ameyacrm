@@ -2,18 +2,22 @@ import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ListNotice } from '@/components/ui/list-notice';
+import { listWindow, listMeta } from '@/lib/list/page-window';
 import { StructuralContractsView } from '@/components/legal/structural-contracts-view';
 
 export const metadata: Metadata = { title: 'Structural Contracts' };
 export const dynamic = 'force-dynamic';
 
-export default async function StructuralContractsPage() {
+export default async function StructuralContractsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   await requirePermission('procurement.view');
-  const [rows, projects, vendors, active, expiring] = await Promise.all([
+  const win = listWindow(await searchParams, 200);
+  const [rows, structuralContractTotal, projects, vendors, active, expiring] = await Promise.all([
     prisma.structuralContract.findMany({
-      orderBy: [{ status: 'asc' }, { endOn: 'asc' }], take: 200,
+      orderBy: [{ status: 'asc' }, { endOn: 'asc' }], take: win.take,
       include: { project: { select: { name: true } }, vendor: { select: { name: true } }, certs: { orderBy: { period: 'desc' }, take: 6 } },
     }).catch(() => []),
+    prisma.structuralContract.count().catch(() => 0),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
     prisma.vendor.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
     prisma.structuralContract.count({ where: { status: 'ACTIVE' } }).catch(() => 0),
@@ -24,7 +28,7 @@ export default async function StructuralContractsPage() {
       <PageHeader title="Structural contracts & CLM" description="Structural contractors, their defect-liability periods, and the independent-engineer certification that gates payment. An uncertified period blocks the RA-bill settlement automatically — the gate is enforced server-side." />
       <StructuralContractsView
         projects={projects} vendors={vendors}
-        counts={{ active, expiring, total: rows.length }}
+        counts={{ active, expiring, total: structuralContractTotal }}
         rows={rows.map((c) => ({
           id: c.id, title: c.title, contractNo: c.contractNo, status: c.status,
           project: c.project?.name ?? '—', vendor: c.vendor?.name ?? '—',
@@ -33,6 +37,7 @@ export default async function StructuralContractsPage() {
           certs: c.certs.map((x) => ({ period: x.period, isCleared: x.isCleared })),
         }))}
       />
+      <ListNotice meta={listMeta(rows.length, structuralContractTotal, win)} noun="contracts" />
     </div>
   );
 }

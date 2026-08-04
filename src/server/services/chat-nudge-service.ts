@@ -1,4 +1,5 @@
 import 'server-only';
+import { escapeHtml } from '@/lib/email/escape';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { sendEmail } from '@/lib/email/email';
@@ -59,7 +60,6 @@ function buildEmail(toName: string, fromName: string, conversationId: string, pr
   return { subject: `${fromName} messaged you on the Ameya Heights secure chat`, text, html };
 }
 
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
 /**
  * Manual nudge — email every other member of a conversation right now. Returns

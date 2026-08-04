@@ -154,7 +154,14 @@ function FileDialog({ projects, authority, state, presetProjectId, autoUpload, o
   function submit() {
     if (!form.projectId) { toast.error('Pick a project.'); return; }
     setSaving(true);
-    saveDueDiligenceRecord(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Filed to vault'); onSaved(); onClose(); });
+    saveDueDiligenceRecord(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Filed to vault'); onSaved(); onClose(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

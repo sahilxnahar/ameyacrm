@@ -2,6 +2,7 @@ import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { addHours } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
+import { getSecurityPolicy } from '@/lib/auth/policy';
 import { env } from '@/config/env';
 import { randomToken, sha256 } from '@/lib/utils/crypto';
 import type { ClientInfo } from '@/types/auth';
@@ -30,7 +31,28 @@ export async function getClientInfo(): Promise<ClientInfo> {
 export async function createSession(userId: string, deviceLabel?: string): Promise<void> {
   const token = randomToken(32);
   const info = await getClientInfo();
-  const expiresAt = addHours(new Date(), env.SESSION_TTL_HOURS);
+
+  /*
+   * ── AMH-004 ────────────────────────────────────────────────────────────────
+   *
+   * Admin → Security policy has a "sessions last N hours" setting. It had ZERO
+   * consumers: every session was cut to `env.SESSION_TTL_HOURS` regardless, so
+   * an administrator could set eight hours, see it saved, and get twelve.
+   *
+   * A security control that reports a value it does not apply is worse than an
+   * absent one, because it ends the conversation — nobody checks a setting they
+   * have already configured.
+   *
+   * The env value is now the CEILING rather than the answer: the policy may
+   * shorten a session but never lengthen it past what the deployment allows.
+   * `getSecurityPolicy` never throws, so a settings failure cannot stop sign-in.
+   */
+  const policy = await getSecurityPolicy().catch(() => null);
+  const hours = Math.min(
+    policy?.sessionHours && policy.sessionHours > 0 ? policy.sessionHours : env.SESSION_TTL_HOURS,
+    env.SESSION_TTL_HOURS,
+  );
+  const expiresAt = addHours(new Date(), hours);
 
   await prisma.session.create({
     data: {

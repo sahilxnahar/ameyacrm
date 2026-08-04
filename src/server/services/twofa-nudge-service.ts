@@ -1,4 +1,5 @@
 import 'server-only';
+import { escapeHtml } from '@/lib/email/escape';
 import type { RoleName } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -47,9 +48,9 @@ export async function run2faNudges(now: Date, everyDays = 2): Promise<{ sent: nu
       const res = await sendEmail({
         to: [u.email],
         subject: 'Action needed: set up two-factor on your Ameya Heights CRM',
-        text: `Hello ${u.name ?? ''},\n\nYour account still needs two-factor authentication, which is required on this CRM. It takes about a minute:\n${link}\n\n— Ameya Heights CRM`,
+        text: `Hello ${escapeHtml(u.name)},\n\nYour account still needs two-factor authentication, which is required on this CRM. It takes about a minute:\n${link}\n\n— Ameya Heights CRM`,
         html:
-          `<p>Hello ${u.name ?? ''},</p>` +
+          `<p>Hello ${escapeHtml(u.name)},</p>` +
           `<p>Your account still needs <strong>two-factor authentication</strong>, which is required on this CRM. It takes about a minute.</p>` +
           `<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#A07D34;color:#fff;border-radius:6px;text-decoration:none">Set up 2FA</a></p>` +
           `<p>— Ameya Heights CRM</p>`,

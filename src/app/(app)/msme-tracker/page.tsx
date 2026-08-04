@@ -4,15 +4,24 @@ import { can } from '@/lib/rbac/can';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
 import { MsmeTrackerView } from '@/components/finance/msme-tracker-view';
+import { ListNotice } from '@/components/ui/list-notice';
+import { listWindow, listMeta } from '@/lib/list/page-window';
 
 export const metadata: Metadata = { title: 'MSME 45-Day Tracker' };
 export const dynamic = 'force-dynamic';
 
-export default async function MsmeTrackerPage() {
+export default async function MsmeTrackerPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const ctx = await requirePermission('finance.ledger.view');
   const canManage = can(ctx.permissions, 'finance.ledger.manage');
-  const [rows, overdue, dueSoon, agg, tracked] = await Promise.all([
-    prisma.msmePaymentClock.findMany({ orderBy: [{ status: 'asc' }, { dueDate: 'asc' }], take: 200, include: { vendor: { select: { name: true } } } }).catch(() => []),
+  /*
+   * This list used to stop at 200 with nothing on screen saying so. A supplier
+   * whose 45 days had run out sat at row 201 and was invisible — and s.43B(h)
+   * disallows the deduction whether or not anybody saw the clock.
+   */
+  const win = listWindow(await searchParams, 200);
+  const [rows, clockTotal, overdue, dueSoon, agg, tracked] = await Promise.all([
+    prisma.msmePaymentClock.findMany({ orderBy: [{ status: 'asc' }, { dueDate: 'asc' }], take: win.take, include: { vendor: { select: { name: true } } } }).catch(() => []),
+    prisma.msmePaymentClock.count().catch(() => 0),
     prisma.msmePaymentClock.count({ where: { status: { in: ['OVERDUE', 'DISALLOWED'] } } }).catch(() => 0),
     prisma.msmePaymentClock.count({ where: { status: 'DUE_SOON' } }).catch(() => 0),
     prisma.msmePaymentClock.aggregate({ where: { status: { in: ['ON_TIME', 'DUE_SOON', 'OVERDUE'] } }, _sum: { amount: true } }).catch(() => ({ _sum: { amount: null } })),
@@ -63,6 +72,7 @@ export default async function MsmeTrackerPage() {
       <MsmeTrackerView canManage={canManage} candidates={candidates}
         vendors={vendors.map((v) => ({ id: v.id, name: v.name, udyamNo: lastUdyam.get(v.id) ?? null }))} counts={{ overdue, dueSoon, outstanding: Number(agg._sum.amount ?? 0) }}
         rows={rows.map((c) => ({ id: c.id, vendor: c.vendor?.name ?? '—', udyamNo: c.udyamNo, amount: Number(c.amount), billDate: c.billDate.toISOString(), dueDate: c.dueDate.toISOString(), status: c.status }))} />
+      <ListNotice meta={listMeta(rows.length, clockTotal, win)} noun="payment clocks" />
     </div>
   );
 }

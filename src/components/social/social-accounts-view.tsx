@@ -82,6 +82,7 @@ export function SocialAccountsView({ people, meId, isAdmin }: { people: Person[]
           {p.accounts.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">No accounts linked yet.</p>
           ) : (
+            <div className="table-scroll">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr><th className="p-3">Platform</th><th className="p-3">Handle</th><th className="p-3">Shown as</th><th className="p-3">Notes</th><th className="p-3">Status</th><th className="p-3"></th></tr>
@@ -118,6 +119,7 @@ export function SocialAccountsView({ people, meId, isAdmin }: { people: Person[]
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       ))}

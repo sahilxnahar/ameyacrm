@@ -27,7 +27,23 @@ import { encrypt, decryptSafe, looksEncrypted } from '@/lib/utils/crypto';
 // (lower-camel), matching what the extension receives.
 const PROTECTED: Record<string, Set<string>> = {
   Vendor: new Set(['bankAccountNumber', 'pan']),
-  ChannelPartner: new Set(['panNumber']),
+  /*
+   * AMH-022 — `bankDetails` was not here.
+   *
+   * ChannelPartner.panNumber was protected and the free-text bank field next to
+   * it was not, so a broker's account number and IFSC sat in plaintext in the
+   * same row as an encrypted PAN. Whatever the PAN was being protected FROM —
+   * a leaked dump, a mis-scoped read replica, a support engineer with query
+   * access — reached the bank details untouched, and those are the ones you can
+   * actually send money with.
+   */
+  ChannelPartner: new Set(['panNumber', 'bankDetails']),
+  /*
+   * A passport number is the identity document Ameya holds for NRI buyers, and
+   * it is worth more to whoever takes a copy of this table than the PAN beside
+   * it. It was stored in the clear.
+   */
+  NriComplianceProfile: new Set(['passportNo']),
 };
 
 // Flat set of every protected field name, for fast result-tree walking where the

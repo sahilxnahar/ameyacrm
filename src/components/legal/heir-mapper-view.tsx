@@ -29,7 +29,14 @@ export function HeirMapperView({ counts, owners, projects, pickable }: {
   function submit() {
     if (!form.name.trim()) { toast.error('Name is required.'); return; }
     setSaving(true);
-    saveLandowner(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Owner added'); setOpen(false); location.reload(); });
+    saveLandowner(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Owner added'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

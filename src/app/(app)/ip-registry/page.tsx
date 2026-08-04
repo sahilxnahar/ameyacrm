@@ -2,15 +2,19 @@ import type { Metadata } from 'next';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
+import { ListNotice } from '@/components/ui/list-notice';
+import { listWindow, listMeta } from '@/lib/list/page-window';
 import { IpRegistryView } from '@/components/legal/ip-registry-view';
 
 export const metadata: Metadata = { title: 'IP & Trademark Registry' };
 export const dynamic = 'force-dynamic';
 
-export default async function IpRegistryPage() {
+export default async function IpRegistryPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   await requirePermission('document.view');
-  const [rows, projects, registered, dueSoon, objected] = await Promise.all([
-    prisma.trademark.findMany({ orderBy: [{ status: 'asc' }, { renewalDueOn: 'asc' }], take: 300, include: { project: { select: { name: true } } } }).catch(() => []),
+  const win = listWindow(await searchParams, 300);
+  const [rows, trademarkTotal, projects, registered, dueSoon, objected] = await Promise.all([
+    prisma.trademark.findMany({ orderBy: [{ status: 'asc' }, { renewalDueOn: 'asc' }], take: win.take, include: { project: { select: { name: true } } } }).catch(() => []),
+    prisma.trademark.count().catch(() => 0),
     prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
     prisma.trademark.count({ where: { status: 'REGISTERED' } }).catch(() => 0),
     prisma.trademark.count({ where: { status: 'RENEWAL_DUE' } }).catch(() => 0),
@@ -20,7 +24,7 @@ export default async function IpRegistryPage() {
     <div className="space-y-6">
       <PageHeader title="IP & trademark registry" description="Every brand mark, its class and status, and the 10-year renewal computed automatically from the registration date. A mark flips to “Renewal due” on its own as the deadline nears (checked daily)." />
       <IpRegistryView
-        counts={{ registered, dueSoon, objected, total: rows.length }}
+        counts={{ registered, dueSoon, objected, total: trademarkTotal }}
         projects={projects}
         rows={rows.map((t) => ({
           id: t.id, mark: t.mark, proprietor: t.proprietor, niceClass: t.niceClass, status: t.status,
@@ -30,6 +34,7 @@ export default async function IpRegistryPage() {
           objectionText: t.objectionText, agentName: t.agentName,
         }))}
       />
+      <ListNotice meta={listMeta(rows.length, trademarkTotal, win)} noun="marks" />
     </div>
   );
 }

@@ -17,6 +17,46 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.22',
+    date: '4 Aug 2026',
+    highlights: [
+      'Your nightly backup was writing the customer database to storage UNENCRYPTED, under a filename anyone could guess from the date \u2014 and because files on Vercel Blob are readable by anyone with the link, guessing the name was the whole attack. It also included channel-partner PAN and bank details in the clear, decrypted on the way out of the database. There were two backup routines; the encrypted one was the one that was never scheduled. They are now one routine, encrypted, with an unguessable name.',
+      'Four scheduled jobs were never actually scheduled. The webhook queue only drains when its job runs, so every event had been sitting unprocessed \u2014 which is why that counter on the Launchpad could only ever go up. Hourly housekeeping and expired unit-hold release were not running either.',
+      'A wedged mail server can no longer hang the page. Sending had no timeout at all, so a mail host that accepted the connection and then went quiet held the request until the platform killed it.',
+      'Somebody\u2019s name can no longer inject content into an outbound email. A display name went into the HTML body unescaped, so a carefully chosen name could turn a genuine, correctly-signed message from Ameya into a phishing page.',
+      'Pop-up panels that were built by hand now keep the keyboard inside them, close on Escape, and put focus back where it was. Tab used to walk straight out of the panel and into the page behind the dimmed backdrop.',
+      'Old backups are cleaned up properly. Rotation deleted a filename it reconstructed from the date, which no longer matches \u2014 it now tracks what it actually wrote.',
+    ],
+  },
+  {
+    version: 'v16.21',
+    date: '4 Aug 2026',
+    highlights: [
+      'Single sign-on was skipping every login control. The password path refuses a sign-in from a disallowed country, refuses an unapproved device, asks for the second factor and emails a new-device alert \u2014 SSO did none of it and issued a session straight from the assertion. It now runs exactly the same checks, in the same order.',
+      'The session length set in Admin \u2192 Security policy is now the session length you get. Nothing read that setting: you could set eight hours, see it saved, and get twelve.',
+      'The \u201Cask for the password again before risky actions\u201D switch has been removed. Nothing read it either \u2014 and a switch that reports protection it does not provide is worse than no switch, because you turn it on and stop worrying. Real step-up authentication is on the list.',
+      'A connector webhook can no longer be pointed at the internal network. The address was checked when you pressed Test and not when messages were actually sent, so a saved connector could be re-edited afterwards to reach an internal address on every CRM event.',
+      'A lead or project name can no longer run as code on the map. Names went into the map popups as raw HTML, so a booby-trapped name would execute in the browser of whoever opened the map \u2014 in practice, an administrator.',
+      'Self sign-up is now off unless you switch it on. It was on by default: anyone who could receive mail at an approved domain could create their own account without an administrator.',
+      'NRI passport numbers and channel-partner bank details are now encrypted at rest, like PAN and vendor bank accounts already were. A script is included to encrypt the ones already stored \u2014 see scripts/encrypt-existing-pii.mjs.',
+      'A write request that did not come from Ameya OS is refused, including one from another site on the same domain.',
+    ],
+  },
+  {
+    version: 'v16.20',
+    date: '4 Aug 2026',
+    highlights: [
+      'The nightly backup has been failing and reporting success. It built the snapshot, could not store it, swallowed the error, wrote \u201Cbackup completed\u201D to the audit trail and returned OK to the scheduler \u2014 three separate records of a backup that did not exist. It now fails loudly, and Admin \u2192 Integrations shows the real state. Please fix the S3 credentials: there is currently no usable backup.',
+      'Twelve screens were showing a wrong number. The \u201CTotal\u201D tile on Title Vault, Khata Vault, Arbitration, IP Registry, UAN Validator, Vendor Insolvency, Heir Mapper, NRI Gateway, Land Conversion, Piece Rate, Structural Contracts and Plan Sanction counted only the rows on screen, so a register of 3,000 read \u201CTotal 300\u201D and agreed with what you could see.',
+      'Lists now tell you when you are not seeing all of them. Every list in the product stopped at a fixed number of rows with nothing saying so \u2014 on the MSME tracker a supplier past 45 days could sit at row 201, invisible, while the tax disallowance ran. Seventeen of the screens where a missing row costs money or compliance now say \u201CShowing 200 of 1,340\u201D and offer to show the rest.',
+      'A save that fails no longer leaves the button spinning forever. In 42 places a dropped connection meant the spinner never stopped and the only way out was reloading \u2014 with no idea whether the save had gone through. It now says so, and says plainly that nothing was saved.',
+      'A payment that posts but cannot mark the bill paid now warns you not to pay it again. That failure was silently discarded, leaving the money spent and the bill still reading unpaid.',
+      'An approval that cannot be applied to the bill is rolled back instead of half-applied. Previously the approval was recorded and the requester was told it was approved, while the bill itself stayed pending.',
+      'The Explorer\u2019s columns sort, in the database rather than in the page \u2014 so \u201Clargest first\u201D means largest overall, not largest of the first 500 fetched.',
+      'Four wide tables can be scrolled on a phone. One of them was wider than the screen with nothing to scroll it, so it pushed the whole page sideways.',
+    ],
+  },
+  {
     version: 'v16.19',
     date: '4 Aug 2026',
     highlights: [

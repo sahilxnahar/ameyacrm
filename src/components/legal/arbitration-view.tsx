@@ -25,7 +25,14 @@ export function ArbitrationView({ counts, rows, projects, vendors }: { counts: {
   function submit() {
     if (!form.title.trim() || !form.refNo.trim() || !form.claimant.trim() || !form.respondent.trim()) { toast.error('Title, ref, claimant and respondent are required.'); return; }
     setSaving(true);
-    saveAdrCase(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Case saved'); setOpen(false); location.reload(); });
+    saveAdrCase(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Case saved'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

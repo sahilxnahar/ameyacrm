@@ -961,14 +961,14 @@ function CostCentres({ data, onBack, onCreate, onReport, pending }: { data: Tall
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New cost centre name" className={`${cls} flex-1`} />
         <button type="submit" disabled={pending || !name.trim()} className="rounded bg-[#1B2A4A] px-4 py-1 text-[12px] font-semibold text-white disabled:opacity-50">Create</button>
       </form>
-      <table className="w-full max-w-md border-collapse text-[12px]">
+      <div className="table-scroll"><table className="w-full max-w-md border-collapse text-[12px]">
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">#</th><th className="p-1">Cost Centre</th></tr></thead>
         <tbody>
           {data.costCentres.length === 0 ? <tr><td colSpan={2} className="p-4 text-center text-[#5B4412]">No cost centres yet. Create one above.</td></tr> : data.costCentres.map((c, i) => (
             <tr key={c} className="border-b border-[#0f2038]/20"><td className="p-1 tabular-nums text-[#5B4412]">{i + 1}</td><td className="p-1">{c}</td></tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </Panel>
   );
 }

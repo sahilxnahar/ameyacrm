@@ -26,7 +26,14 @@ export function PlanSanctionView({ counts, rows, projects }: { counts: { atRisk:
   function submit() {
     if (!form.projectId || !(form.sanctionedFar > 0)) { toast.error('Project and a sanctioned FAR are required.'); return; }
     setSaving(true);
-    savePlanSanction(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Sanction saved'); setOpen(false); location.reload(); });
+    savePlanSanction(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Sanction saved'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function bump(id: string, current: number) {
     const v = prompt('Update as-built FAR:', String(current)); if (v == null) return;

@@ -1,4 +1,5 @@
 import 'server-only';
+import { escapeHtml } from '@/lib/email/escape';
 import type { TaskStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -73,7 +74,6 @@ export async function runTaskDigests(now = new Date()): Promise<{ users: number;
   return { users: byUser.size, emails };
 }
 
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 const fmtDue = (d: Date | null, now: Date) => {
   if (!d) return 'No due date';
   const days = Math.floor((d.getTime() - now.getTime()) / 864e5);

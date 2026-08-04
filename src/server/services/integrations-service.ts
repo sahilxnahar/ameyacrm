@@ -41,6 +41,26 @@ export async function getIntegrations(): Promise<Integration[]> {
     prisma.mailThreadMessage.count(),
   ]);
 
+  /*
+   * Did last night's backup actually store anything? (AMH-034)
+   *
+   * The cron route used to swallow a storage failure, write an audit line
+   * saying the backup had happened, and return HTTP 200. It has been failing
+   * on bad S3 credentials and reporting success in all three places. The route
+   * is fixed; this reads the audit trail so the answer is on a screen somebody
+   * looks at, rather than in a cron log nobody does.
+   */
+  const lastBackup = await prisma.auditLog.findFirst({
+    where: { entityType: 'Backup', action: 'EXPORT' },
+    orderBy: { createdAt: 'desc' },
+    select: { summary: true, createdAt: true },
+  }).catch(() => null);
+  const backupFailed = Boolean(lastBackup?.summary?.includes('FAILED'));
+  const backupAgeH = lastBackup ? (Date.now() - lastBackup.createdAt.getTime()) / 3600e3 : null;
+  // The job runs nightly, so anything past ~36 hours means it did not run at
+  // all — a different failure from "it ran and could not store".
+  const backupStale = backupAgeH != null && backupAgeH > 36;
+
   const gas = Boolean(env.GAS_WEBAPP_URL && env.GAS_SECRET);
   const smtp = env.EMAIL_PROVIDER === 'smtp' || env.EMAIL_PROVIDER === 'ses';
   const base = (env.APP_URL || 'https://crm.ameyaheights.com').replace(/\/$/, '');
@@ -200,6 +220,21 @@ export async function getIntegrations(): Promise<Integration[]> {
       health: errCount > 0 ? 'live' : 'configured',
       detail: errCount > 0 ? `${errCount} unresolved` : 'Nothing has gone wrong',
       needs: 'Free — built in, no Sentry account',
+      setupHref: '/admin/errors',
+    },
+    {
+      key: 'backup', name: 'Nightly backup', category: 'Operations',
+      what: 'An encrypted snapshot of every record, written to object storage each night.',
+      health: lastBackup == null ? 'off' : backupFailed || backupStale ? 'broken' : 'live',
+      detail:
+        lastBackup == null
+          ? 'No backup has ever run. Nothing is being kept.'
+          : backupFailed
+            ? 'The last run built the snapshot and COULD NOT STORE IT. There is no usable backup — fix STORAGE_PROVIDER / the S3 credentials.'
+            : backupStale
+              ? `Last successful backup was ${Math.round(backupAgeH!)} hours ago. The job runs nightly, so it has not been running.`
+              : `Last stored ${Math.round(backupAgeH ?? 0)}h ago`,
+      needs: 'Needs S3-compatible object storage',
       setupHref: '/admin/errors',
     },
     {

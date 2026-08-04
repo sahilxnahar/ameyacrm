@@ -1,4 +1,5 @@
 import { type NextRequest } from 'next/server';
+import { escapeHtml } from '@/lib/email/escape';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { notifyMany } from '@/lib/notifications/notify';
@@ -61,4 +62,3 @@ function page(heading: string, message: string, ok: boolean): Response {
   return new Response(html, { status: ok ? 200 : 400, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));

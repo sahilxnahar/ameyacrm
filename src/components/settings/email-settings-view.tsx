@@ -32,11 +32,25 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Connected — your inbox is now syncing'); setPass(''); location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function test() {
     setBusy('test');
-    testMyImap().then((r) => { setBusy(null); if ('error' in r) { toast.error(r.error); return; } toast.success(`Connection OK (${r.source === 'user' ? 'your mailbox' : 'org mailbox'})`); });
+    testMyImap().then((r) => { setBusy(null); if ('error' in r) { toast.error(r.error); return; } toast.success(`Connection OK (${r.source === 'user' ? 'your mailbox' : 'org mailbox'})`); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function disconnect() {
     clearMyImap().then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Disconnected'); location.reload(); });
@@ -49,11 +63,25 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
       setOutBusy(null);
       if ('error' in r) { toast.error(r.error); setSendAsSelf(!next); return; }
       toast.success(next ? 'Your sent mail now goes out as you' : 'Reverted to the shared org sender'); location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setOutBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function testSend() {
     setOutBusy('test');
-    sendMyTestEmail().then((r) => { setOutBusy(null); if ('error' in r) { toast.error(r.error); return; } toast.success(`Test sent — check your inbox. From: ${r.from}`); });
+    sendMyTestEmail().then((r) => { setOutBusy(null); if ('error' in r) { toast.error(r.error); return; } toast.success(`Test sent — check your inbox. From: ${r.from}`); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setOutBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   const inboxConnected = status.source === 'user';

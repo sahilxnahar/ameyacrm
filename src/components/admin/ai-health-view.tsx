@@ -112,7 +112,9 @@ export function AiHealthView({ indexed, summarised, docs, coverage, supply }: { 
                 : 'border-destructive/40 bg-destructive/5')}>
               {keys.summary}
             </p>
-            <div className="overflow-hidden rounded-md border">
+            {/* overflow-hidden CLIPS the overflow rather than letting it
+                scroll — on a phone the last columns were simply cut off. */}
+            <div className="table-scroll rounded-md border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>

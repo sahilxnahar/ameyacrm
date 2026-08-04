@@ -23,7 +23,24 @@ export async function getSignupConfig(): Promise<{ domains: string[]; defaultRol
   const get = (k: string) => rows.find((r) => r.key === k)?.value as unknown;
   const domains = Array.isArray(get('auth.signupDomains')) ? (get('auth.signupDomains') as string[]) : DEFAULTS.domains;
   const defaultRole = (get('auth.signupDefaultRole') as RoleName) || DEFAULTS.role;
-  const enabled = get('auth.signupEnabled') === undefined ? true : Boolean(get('auth.signupEnabled'));
+  /*
+   * ── AMH-005 ────────────────────────────────────────────────────────────────
+   *
+   * This treated an ABSENT setting as enabled — self-signup was on until
+   * somebody turned it off. An account-creation path should never be the default: a
+   * fresh deployment, or one where the setting row is missing for any reason,
+   * silently accepts new accounts.
+   *
+   * The exposure was narrower than the audit implied — signup is restricted to
+   * the configured mail domains and the address has to be verified, so it was
+   * never "anyone can sign up". But `ameyaheights.com` is the default domain
+   * list, so anyone who could receive mail at that domain could self-provision
+   * an EMPLOYEE account without an administrator involved.
+   *
+   * Now opt-in: absent means off. An administrator turns it on in
+   * Admin → Access requests, which is an audited action.
+   */
+  const enabled = Boolean(get('auth.signupEnabled'));
   return { domains: domains.map((d) => d.toLowerCase().replace(/^@/, '')), defaultRole, enabled };
 }
 

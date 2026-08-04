@@ -1,37 +1,47 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireBearerSecret } from '@/lib/security/require-secret';
-import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
-import { putObject } from '@/lib/storage/storage';
 import { writeAudit } from '@/lib/audit/log';
-import { encrypt, randomToken } from '@/lib/utils/crypto';
+import { takeEncryptedBackup } from '@/server/services/backup-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /** Nightly automated backup — writes a JSON snapshot to object storage. */
+/**
+ * Nightly automated backup — an encrypted JSON snapshot in object storage.
+ *
+ * The work lives in backup-service.ts, shared with the nightly pass, because
+ * two backup implementations is how the safe one ends up being the one that is
+ * not scheduled. This route stays for manual and external-scheduler use.
+ */
 export async function GET(req: NextRequest) {
-    const denied = requireBearerSecret(req, env.CRON_SECRET);
+  const denied = requireBearerSecret(req, env.CRON_SECRET);
   if (denied) return denied;
 
-  const [users, projects, units, leads, bookings, payments, customers, partners, invoices] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, name: true, username: true, email: true, role: true, status: true, createdAt: true } }),
-    prisma.project.findMany(), prisma.unit.findMany(), prisma.lead.findMany({ where: { deletedAt: null } }),
-    prisma.booking.findMany(), prisma.paymentMilestone.findMany(),
-    prisma.customer.findMany({ select: { id: true, name: true, email: true, phone: true, bookingId: true, isActive: true } }),
-    prisma.channelPartner.findMany(), prisma.invoice.findMany({ include: { items: true } }),
-  ]);
-  const bundle = { exportedAt: new Date().toISOString(), users, projects, units, leads, bookings, payments, customers, partners, invoices };
-  // F-16: encrypt the PII bundle at rest with the app ENCRYPTION_KEY and give the
-  // object a random, non-enumerable key — so a leaked/mis-scoped bucket does not
-  // hand an attacker a plaintext, predictably-named full-database export.
-  const body = Buffer.from(encrypt(JSON.stringify(bundle)), 'utf8');
   const stamp = new Date().toISOString().slice(0, 10);
-  let stored: string | null = null;
   try {
-    const res = await putObject(`backups/ameya-crm-backup-${stamp}-${randomToken(8)}.json.enc`, body, 'application/octet-stream');
-    stored = res.key;
-  } catch { /* storage may be unconfigured */ }
-  await writeAudit({ action: 'EXPORT', entityType: 'Backup', summary: `Automated backup ${stamp} (${(body.length / 1024).toFixed(0)} KB)` });
-  return NextResponse.json({ ok: true, storedAs: stored, sizeKb: Math.round(body.length / 1024), counts: { leads: leads.length, units: units.length, bookings: bookings.length } });
+    const result = await takeEncryptedBackup(new Date());
+    return NextResponse.json({ ok: true, storedAs: result.key, sizeKb: result.sizeKb });
+  } catch (err) {
+    /*
+     * ── AMH-034 ────────────────────────────────────────────────────────────
+     *
+     * This used to swallow the storage error, write an audit line saying the
+     * backup had happened, and return HTTP 200. It had been failing on bad S3
+     * credentials and reporting success in all three places — worse than no
+     * backup, because it removed every reason to check.
+     */
+    const detail = err instanceof Error ? err.message : String(err);
+    await writeAudit({
+      action: 'EXPORT', entityType: 'Backup',
+      summary: `Automated backup ${stamp} FAILED — nothing was stored. ${detail}`,
+    }).catch(() => undefined);
+    // 500, not 200: a scheduler decides whether to alert from the status code.
+    return NextResponse.json({
+      ok: false,
+      error: 'The backup was built but could not be stored.',
+      detail,
+    }, { status: 500 });
+  }
 }

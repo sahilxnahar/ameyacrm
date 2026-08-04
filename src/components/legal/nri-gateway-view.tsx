@@ -25,7 +25,14 @@ export function NriGatewayView({ counts, rows }: { counts: { total: number; veri
   function submit() {
     if (!form.taxResidency.trim()) { toast.error('Tax residency is required.'); return; }
     setSaving(true);
-    saveNriProfile(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Profile saved'); setOpen(false); location.reload(); });
+    saveNriProfile(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Profile saved'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function addRemit(profileId: string) {
     const amt = prompt('Foreign amount (e.g. 50000):'); if (!amt) return;

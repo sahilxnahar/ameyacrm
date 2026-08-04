@@ -84,7 +84,10 @@ export function BillWiseView({
           voucher — bills are created from those automatically.
         </p>
       ) : (
-        <div className="border border-[#0f2038]/30 bg-white">
+        // min-w-[34rem] is 544px: wider than a phone. Without a scroll
+        // container the table pushed the WHOLE PAGE sideways rather than
+        // scrolling inside its own box.
+        <div className="table-scroll border border-[#0f2038]/30 bg-white">
           <table className="w-full min-w-[34rem] border-collapse text-[12px]">
             <thead className="bg-[#c9d4e0] text-left">
               <tr><th className="p-1.5">Party</th><th className="p-1.5 text-right">Outstanding</th><th className="p-1.5 text-right">Oldest</th><th className="p-1.5"></th></tr>

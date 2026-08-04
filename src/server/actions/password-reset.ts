@@ -1,5 +1,6 @@
 'use server';
 import { createHash, randomBytes } from 'node:crypto';
+import { escapeHtml } from '@/lib/email/escape';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
 import { sendEmail } from '@/lib/email/email';
@@ -60,9 +61,9 @@ export async function requestPasswordReset(identifier: string): Promise<ResetReq
     await sendEmail({
       to: [user.email],
       subject: 'Reset your Ameya Heights CRM password',
-      text: `Hello ${user.name ?? ''},\n\nReset your password using this link (valid for ${TTL_MIN} minutes, one use):\n${link}\n\nIf you did not request this, you can ignore this email — your password stays the same.\n\n— Ameya Heights CRM`,
+      text: `Hello ${escapeHtml(user.name)},\n\nReset your password using this link (valid for ${TTL_MIN} minutes, one use):\n${link}\n\nIf you did not request this, you can ignore this email — your password stays the same.\n\n— Ameya Heights CRM`,
       html:
-        `<p>Hello ${user.name ?? ''},</p>` +
+        `<p>Hello ${escapeHtml(user.name)},</p>` +
         `<p>Reset your password with the button below. The link is valid for ${TTL_MIN} minutes and can be used once.</p>` +
         `<p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#A07D34;color:#fff;border-radius:6px;text-decoration:none">Reset my password</a></p>` +
         `<p>Or paste this into your browser:<br><span style="word-break:break-all">${link}</span></p>` +

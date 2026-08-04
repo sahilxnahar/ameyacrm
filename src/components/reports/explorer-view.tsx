@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Search, Save, Trash2, FileSpreadsheet, Loader2, Bookmark, Sheet } from 'lucide-react';
 import { saveView, deleteView, pushToSheet } from '@/server/actions/views';
@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SortableHeader } from '@/components/ui/sortable-header';
+import { sortHref } from '@/lib/list/sort-href';
 
 interface View { id: string; name: string; entity: string; filters: Record<string, string>; isShared: boolean; mine: boolean }
 interface Opt { id: string; name: string }
@@ -27,11 +29,17 @@ const SOURCES = ['WEBSITE', 'REFERRAL', 'WALK_IN', 'CAMPAIGN', 'PORTAL', 'NRI_DE
 const sel = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 const pretty = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 
-export function ExplorerView({ entity, filters, columns, rows, total, owners, projects, views, canExport }: {
+export function ExplorerView({ entity, filters, columns, rows, total, owners, projects, views, canExport, sortKey, sortDirection, sortableColumns }: {
   entity: string; filters: Record<string, string | undefined>; columns: string[]; rows: Record<string, string | number>[];
+  sortKey: string; sortDirection: 'asc' | 'desc'; sortableColumns: string[];
   total: number; owners: Opt[]; projects: Opt[]; views: View[]; canExport: boolean;
 }) {
   const router = useRouter();
+  const search = useSearchParams();
+  // The heading links carry the whole current URL forward, so sorting does not
+  // drop the filters or a `?rows=all` the reader had opened.
+  const sortHrefFor = (column: string) =>
+    sortHref({ key: sortKey, direction: sortDirection }, column, search);
   const [pending, start] = React.useTransition();
   const [f, setF] = React.useState<Record<string, string>>({
     status: filters.status ?? '', source: filters.source ?? '', ownerId: filters.ownerId ?? '',
@@ -128,7 +136,19 @@ export function ExplorerView({ entity, filters, columns, rows, total, owners, pr
 
       <Card className="table-scroll">
         <Table>
-          <TableHeader><TableRow>{columns.map((c) => <TableHead key={c}>{pretty(c.replace(/([A-Z])/g, ' $1'))}</TableHead>)}</TableRow></TableHeader>
+          <TableHeader><TableRow>{columns.map((c) => (
+            sortableColumns.includes(c)
+              ? (
+                <SortableHeader
+                  key={c}
+                  label={pretty(c.replace(/([A-Z])/g, ' $1'))}
+                  href={sortHrefFor(c)}
+                  active={sortKey === c}
+                  direction={sortDirection}
+                />
+              )
+              : <TableHead key={c}>{pretty(c.replace(/([A-Z])/g, ' $1'))}</TableHead>
+          ))}</TableRow></TableHeader>
           <TableBody>
             {rows.length === 0 && <TableRow><TableCell colSpan={columns.length} className="py-10 text-center text-sm text-muted-foreground">No records match these filters.</TableCell></TableRow>}
             {rows.map((r, i) => (

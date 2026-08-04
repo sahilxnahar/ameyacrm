@@ -115,9 +115,21 @@ export function SecurityPolicyView({
               <Row label="Refuse passwords found in known breaches" hint="Checked against public breach data. The password never leaves this server — only the first five characters of its hash.">
                 <Switch checked={p.breachCheck} onCheckedChange={(v) => setP({ ...p, breachCheck: v })} />
               </Row>
-              <Row label="Ask for the password again before risky actions" hint="Changing bank details, approving a large payment, exporting data, changing a role.">
-                <Switch checked={p.stepUp} onCheckedChange={(v) => setP({ ...p, stepUp: v })} />
-              </Row>
+              {/*
+                AMH-004 — the "ask for the password again before risky actions"
+                switch was removed here, deliberately.
+
+                It had no consumers anywhere in the codebase: an administrator
+                could turn it on, see it saved, and get no step-up prompt on any
+                action. A security control that reports protection it does not
+                provide is worse than an absent one, because it ends the
+                conversation — nobody re-checks a setting they have configured.
+
+                Removing the switch is the honest interim. Genuine step-up auth
+                (re-authenticate before changing bank details, approving a large
+                payment, exporting data, changing a role) is a real piece of work
+                and belongs in its own batch, not half-built behind a toggle.
+              */}
             </div>
           </Card>
 

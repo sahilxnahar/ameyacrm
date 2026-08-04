@@ -22,7 +22,14 @@ export function VendorRegistryView({ counts, rows, vendors }: { counts: { blackl
   function submit() {
     if (!form.vendorId) { toast.error('Vendor is required.'); return; }
     setSaving(true);
-    reportVendorDefault(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success(form.severity === 'BLACKLIST' ? 'Logged — vendor blacklisted & deactivated' : 'Default logged'); setOpen(false); location.reload(); });
+    reportVendorDefault(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success(form.severity === 'BLACKLIST' ? 'Logged — vendor blacklisted & deactivated' : 'Default logged'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

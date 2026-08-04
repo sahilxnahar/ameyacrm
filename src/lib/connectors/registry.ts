@@ -1,5 +1,6 @@
 import 'server-only';
 import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
+import { assertPublicUrl } from '@/lib/security/ssrf';
 import { formatConnectorMessage } from '@/lib/connectors/format';
 
 export interface DriverResult { ok: boolean; message: string }
@@ -12,7 +13,32 @@ export interface ConnectorDriver {
   send(event: string, data: Record<string, unknown>, config: Record<string, unknown>): Promise<DriverResult>;
 }
 
+/**
+ * POST to a connector's webhook.
+ *
+ * ── AMH-020 ─────────────────────────────────────────────────────────────────
+ *
+ * The SSRF guard goes HERE, at the one place every driver funnels through,
+ * rather than in each driver.
+ *
+ * The gap it closes was not "the URL is never validated" — `test()` does check
+ * it, against a hostname pattern. It is that `send()` did not. So an admin
+ * could paste a real `hooks.slack.com` URL, pass the test, then edit the stored
+ * config to `http://169.254.169.254/latest/meta-data/` — and every subsequent
+ * CRM event would fetch the cloud metadata endpoint and hand the response back
+ * as a delivery result. Validate-on-write, trust-on-read is the shape of most
+ * SSRF; the fix is to validate at the moment of the request.
+ *
+ * `assertPublicUrl` resolves the host and refuses private, loopback and
+ * link-local addresses, so a public hostname pointing at 127.0.0.1 is caught
+ * too.
+ */
 async function postJson(url: string, body: unknown): Promise<DriverResult> {
+  try {
+    await assertPublicUrl(url);
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'That address is not reachable' };
+  }
   try {
     const res = await fetchWithTimeout(url, {
       method: 'POST',

@@ -19,7 +19,14 @@ export function CertifierPortalView({ items, pendingRaBills }: { items: Certifie
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Certified ${it.contract} for ${it.period} — payment released`);
       location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (

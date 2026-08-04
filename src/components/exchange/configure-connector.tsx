@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useFocusTrap } from '@/lib/a11y/use-focus-trap';
 import { toast } from 'sonner';
 import { X, Zap, Save, Loader2, Copy, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,8 +23,19 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
         setEvents(new Set(r.events));
       }
       setLoading(false);
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setLoading(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }, [slug]);
+
+  // Hooks must run in the same order on every render, so this sits above the
+  // early returns below — not next to the element it attaches to.
+  const panelA = useFocusTrap<HTMLDivElement>(true, onClose);
 
   if (!meta) return null;
   const eventLabel = (k: string) => WEBHOOK_EVENTS.find((e) => e.key === k)?.label ?? k;
@@ -38,7 +50,14 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
     testConnector(slug, payload()).then((r) => {
       setBusy(null);
       if ('error' in r) toast.error(r.error); else toast.success(r.message || 'Test message sent');
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function save() {
     setBusy('save');
@@ -46,12 +65,19 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`${name} configured`); onClose();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(null);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
-      <div className="my-auto w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelA} role="dialog" aria-modal="true" className="my-auto w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Configure {name}</div>
           <button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
@@ -156,13 +182,21 @@ function InboundConfig({ slug, name, blurb, onClose }: { slug: string; name: str
       setBusy(false);
       if ('error' in r) { toast.error(r.error); return; }
       setSecret(r.secret); setPath(r.path); toast.success('Secret generated — copy it now');
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   const copy = (t: string) => { navigator.clipboard.writeText(t); toast.success('Copied'); };
+  const panelB = useFocusTrap<HTMLDivElement>(true, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
-      <div className="my-auto w-full max-w-lg rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div ref={panelB} role="dialog" aria-modal="true" className="my-auto w-full max-w-lg rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Receive {name} leads</div>
           <button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>

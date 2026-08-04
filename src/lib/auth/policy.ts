@@ -10,7 +10,14 @@ export interface SecurityPolicy {
   geoRestrict: boolean;             // refuse sign-in from outside allowedCountries
   allowedCountries: string[];
   breachCheck: boolean;             // refuse passwords found in known breaches
-  stepUp: boolean;                  // re-enter password before dangerous actions
+  /**
+   * NOT IMPLEMENTED (AMH-004). No code reads this.
+   *
+   * The admin toggle was removed in v16.21 rather than left showing a
+   * protection that did not exist. Kept in the type so previously-saved
+   * settings still parse; delete it when real step-up auth lands.
+   */
+  stepUp: boolean;
   alertNewDevice: boolean;          // email the person when a new device signs in
   sessionHours: number;
 }

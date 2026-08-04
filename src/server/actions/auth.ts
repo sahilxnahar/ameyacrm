@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { escapeHtml } from '@/lib/email/escape';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/prisma';
 import { authenticate, markLoginSuccess } from '@/server/services/auth-service';
@@ -209,7 +210,7 @@ export async function sendEmailSignInCodeAction(): Promise<ActionState> {
     subject: `${code} is your Ameya Heights sign-in code`,
     text: `Your Ameya Heights sign-in code is ${code}. It expires in ten minutes and can be used once.`,
     html:
-      `<p>Hello ${user.name ?? ''},</p>` +
+      `<p>Hello ${escapeHtml(user.name)},</p>` +
       `<p>Your sign-in code is <strong style="font-size:22px;letter-spacing:3px">${code}</strong></p>` +
       `<p>It expires in ten minutes and can be used once. If you did not try to sign in, change your password.</p>` +
       `<p>— Ameya Heights CRM</p>`,

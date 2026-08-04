@@ -28,12 +28,26 @@ export function BimSyncView({ models, projects, milestones }: { models: Model[];
   function submitModel() {
     if (!mForm.projectId || !mForm.name.trim()) { toast.error('Project and name required.'); return; }
     setSaving(true);
-    saveBimModel(mForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Model added'); setOpenModel(false); location.reload(); });
+    saveBimModel(mForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Model added'); setOpenModel(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function submitPhase() {
     if (!pForm.label.trim()) { toast.error('Phase label required.'); return; }
     setSaving(true);
-    saveBimPhase(pForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Phase added'); setPhaseFor(null); location.reload(); });
+    saveBimPhase(pForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Phase added'); setPhaseFor(null); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
   function complete(id: string) {
     completeBimPhase(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(r.triggered ? 'Phase complete → demand triggered' : 'Phase complete'); location.reload(); });

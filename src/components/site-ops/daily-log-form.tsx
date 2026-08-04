@@ -97,7 +97,14 @@ export function DailyLogForm({
       // Reset for the next entry (engineers often log several projects in a row).
       setLabor(0); setNotes(''); setPhotos([]); setActivityId(''); setPercent(''); setShareWithBuyers(false);
       onSaved?.();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   /*

@@ -43,7 +43,14 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Matched ${r.result.matched}, ${r.result.mismatched} mismatch, ${r.result.missing} missing`);
       location.reload();
-    });
+    })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setBusy(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (
@@ -143,7 +150,14 @@ function ManualGstrLine({ period }: { period: string }) {
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${r.invoiceNo} added and reconciled`);
           location.reload();
-        });
+        })
+          .catch(() => {
+            // A rejected server action never reaches .then, so the flag the
+            // success path clears was never cleared: the button stayed disabled
+            // with a spinner until someone reloaded the page.
+            setBusy(false);
+            toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+          });
       }}
     >
       <div className="space-y-1">

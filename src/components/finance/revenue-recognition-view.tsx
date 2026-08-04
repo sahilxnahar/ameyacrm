@@ -27,7 +27,14 @@ export function RevenueRecognitionView({ rows, projects }: { rows: Row[]; projec
   function submit() {
     if (!form.projectId || !/^\d{4}-\d{2}$/.test(form.period)) { toast.error('Project and a YYYY-MM period are required.'); return; }
     setSaving(true);
-    snapshotPocmRevenue(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Revenue snapshot saved'); setOpen(false); location.reload(); });
+    snapshotPocmRevenue(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Revenue snapshot saved'); setOpen(false); location.reload(); })
+      .catch(() => {
+        // A rejected server action never reaches .then, so the flag the
+        // success path clears was never cleared: the button stayed disabled
+        // with a spinner until someone reloaded the page.
+        setSaving(false);
+        toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
+      });
   }
 
   return (
