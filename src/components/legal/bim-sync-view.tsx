@@ -80,7 +80,7 @@ export function BimSyncView({ models, projects, milestones }: { models: Model[];
             </div>
             <Button variant="outline" size="sm" className="gap-1" onClick={() => { setPForm({ bimModelId: m.id, label: '', triggersDemand: false }); setPhaseFor(m.id); }}><ListPlus className="h-4 w-4" /> Add phase</Button>
           </div>
-          <RecordList empty="No phases yet.">
+          <RecordList empty="Link a construction phase to its BIM element set here, so the 4D model shows what should be built by when.">
             {m.phases.map((p) => (
               <div key={p.id} className="flex items-center gap-3 border-b px-3 py-2 last:border-b-0">
                 <div className="min-w-0 flex-1">

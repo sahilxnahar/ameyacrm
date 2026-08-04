@@ -17,16 +17,16 @@ export const LANGS: Array<{ code: Lang; label: string }> = [
 
 const HI: Record<string, string> = {
   // Menu sections
-  'My Day': 'मेरा दिन',
-  'Sales & Leads': 'बिक्री और लीड',
-  'Inventory & Bookings': 'इन्वेंटरी और बुकिंग',
+  'My day': 'मेरा दिन',
+  'Sales & leads': 'बिक्री और लीड',
+  'Inventory & bookings': 'इन्वेंटरी और बुकिंग',
   'Marketing': 'मार्केटिंग',
   'Money': 'पैसा',
-  'Build & Site': 'निर्माण और साइट',
-  'Land, Lease & Legal': 'भूमि, लीज़ और कानूनी',
+  'Build & site': 'निर्माण और साइट',
+  'Land, lease & legal': 'भूमि, लीज़ और कानूनी',
   'Documents': 'दस्तावेज़',
-  'Insights & Reports': 'इनसाइट्स और रिपोर्ट',
-  'Team & Admin': 'टीम और एडमिन',
+  'Insights & reports': 'इनसाइट्स और रिपोर्ट',
+  'Team & admin': 'टीम और एडमिन',
   // Common actions & labels
   'Save': 'सहेजें',
   'Cancel': 'रद्द करें',

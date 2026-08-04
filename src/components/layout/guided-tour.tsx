@@ -49,7 +49,7 @@ const STEPS: Step[] = [
     target: '[data-tour="search"]',
   },
   {
-    title: 'Sales & Leads',
+    title: 'Sales & leads',
     body: 'Capture enquiries, log site visits, schedule follow-ups and move a lead through to a booking. Leads going cold are flagged so nothing slips.',
     target: '[data-tour="nav-/sales"]',
     href: '/sales', hrefLabel: 'Open Sales',

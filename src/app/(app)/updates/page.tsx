@@ -12,7 +12,7 @@ export default async function UpdatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="What's New"
+        title="What's new"
         description="Every feature and improvement we've added to Ameya Heights CRM, newest first. Search to find anything we've ever shipped."
       />
       <UpdatesView releases={CHANGELOG} />

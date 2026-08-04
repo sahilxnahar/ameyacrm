@@ -89,7 +89,7 @@ export function StructuralContractsView({ counts, rows, projects, vendors }: {
         </Dialog>
       </div>
 
-      <RecordList empty="No structural contracts yet.">
+      <RecordList empty="The contracts that carry structural liability — with their defect-liability periods and the certificates that close them.">
         {rows.map((c) => {
           const m = thisMonth();
           const cleared = c.certs.find((x) => x.period === m)?.isCleared ?? false;

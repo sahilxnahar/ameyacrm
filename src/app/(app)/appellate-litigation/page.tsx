@@ -17,7 +17,7 @@ export default async function AppellateLitigationPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="REAT & High Court Litigation" description="The appellate docket — RERA Appellate Tribunal, High Court and above. Track interim orders, counsel assignment and the next hearing for each escalation, chained back to the matter it came from." />
+      <PageHeader title="REAT & high court litigation" description="The appellate docket — RERA Appellate Tribunal, High Court and above. Track interim orders, counsel assignment and the next hearing for each escalation, chained back to the matter it came from." />
       <AppellateLitigationView projects={projects} counts={{ live, hearingSoon }}
         rows={rows.map((c) => ({ id: c.id, title: c.title, forum: c.forum, status: c.status, caseNo: c.caseNo, counselName: c.counselName, interimOrder: c.interimOrder, disputedInr: c.disputedInr != null ? Number(c.disputedInr) : null, nextHearingOn: c.nextHearingOn?.toISOString() ?? null, project: c.project?.name ?? null }))} />
     </div>

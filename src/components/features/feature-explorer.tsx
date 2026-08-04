@@ -5,7 +5,7 @@ import { Search, X, Sliders, RotateCcw, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NAVIGATION } from '@/config/navigation';
 import {
-  TONES, GROUP_TONE, WEIGHT_SPAN, WEIGHT_HEIGHT, WEIGHT_LABEL, WEIGHT_ORDER,
+  TONES, groupTone, WEIGHT_SPAN, WEIGHT_HEIGHT, WEIGHT_LABEL, WEIGHT_ORDER,
   toneFor, weightFor, toneStyle, type ModuleTone, type Weight,
 } from '@/config/module-style';
 import { saveModuleStyle, resetModuleStyle } from '@/server/actions/nav-prefs';
@@ -170,13 +170,17 @@ export function FeatureExplorer({
       )}
 
       {groups.map((g) => {
-        const gs = toneStyle(GROUP_TONE[g.label] ?? 'day');
+        const gs = toneStyle(groupTone(g.label));
         return (
           <section key={g.label} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className={cn('h-4 w-1 rounded-full', gs.dot)} />
-              <h2 className="font-display text-lg font-semibold">{g.label}</h2>
-              <span className="text-xs text-muted-foreground">{g.items.length}</span>
+            {/* The group heading is deliberately quiet. On a launchpad the tiles
+                are the content; a heavy serif heading above every one of ten
+                groups competes with the thing it is labelling. Small, wide-
+                tracked and muted reads as a divider, which is its job. */}
+            <div className="flex items-center gap-2 border-b pb-1.5">
+              <span className={cn('h-3 w-1 rounded-full', gs.dot)} />
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{g.label}</h2>
+              <span className="text-[11px] tabular-nums text-muted-foreground/70">{g.items.length}</span>
             </div>
             {/*
               A bento grid. Fixed-height rows plus a per-tile row span is what
@@ -220,11 +224,29 @@ export function FeatureExplorer({
                   </>
                 );
 
+                /*
+                 * Flat at rest, lifted on hover — and only one thing changes.
+                 *
+                 * This used to move, gain a heavy shadow AND gain a 2px ring at
+                 * once, which on a grid of 122 tiles makes the whole page feel
+                 * like it is twitching. A 1px border, a 1px translate and an
+                 * ultra-diffuse shadow read as premium; three simultaneous
+                 * effects read as a template.
+                 */
+                /*
+                 * A tall tile whose content all sits at the top is not a big
+                 * tile, it is a small tile with a hole under it — which is
+                 * exactly how the hero tiles read: title, one line of blurb,
+                 * then five rems of nothing. Centring the block puts equal air
+                 * above and below, so the extra height reads as deliberate
+                 * emphasis instead of a layout that failed to fill.
+                 */
                 const shell = cn(
-                  'group relative flex flex-col overflow-hidden rounded-xl border bg-card p-3 text-left transition-all',
-                  'min-w-0',
+                  'group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card p-3 text-left',
+                  w === 'hero' && !editing && 'justify-center',
+                  'transition-[transform,box-shadow,border-color] duration-200 motion-reduce:transition-none',
                   WEIGHT_SPAN[w], WEIGHT_HEIGHT[w], st.border,
-                  'hover:-translate-y-0.5 hover:shadow-md hover:ring-2', st.ring,
+                  'hover:-translate-y-px hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] motion-reduce:hover:translate-y-0',
                 );
 
                 if (!editing) {

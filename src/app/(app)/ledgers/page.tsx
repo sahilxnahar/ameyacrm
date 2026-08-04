@@ -21,7 +21,7 @@ export default async function LedgersPage({ searchParams }: { searchParams: Prom
     const approvalLimit = Number(limitRow?.value ?? 0) || 0;
     return (
       <div className="space-y-6">
-        <PageHeader title="Vendor Ledgers" description="Every payee and what you've paid them — one ledger per person, built from your payments. Import an Excel/Google Sheet, save their bank details, and merge two names that are really the same person." />
+        <PageHeader title="Vendor ledgers" description="Every payee and what you've paid them — one ledger per person, built from your payments. Import an Excel/Google Sheet, save their bank details, and merge two names that are really the same person." />
         <LedgerView
           ledgers={ledgers}
           activeId={detail ? activeId : null}
@@ -34,6 +34,6 @@ export default async function LedgersPage({ searchParams }: { searchParams: Prom
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Vendor Ledgers" description="Payee ledgers." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Vendor ledgers" description="Payee ledgers." /><PageLoadError error={e} /></div>;
   }
 }

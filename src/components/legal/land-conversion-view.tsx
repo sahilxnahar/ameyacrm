@@ -72,7 +72,7 @@ export function LandConversionView({ counts, rows, projects }: { counts: { done:
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No conversion applications yet.">
+      <RecordList empty="Agricultural land needs a DC conversion order before it can be built on. Track the application, the fee and the order number here.">
         {rows.map((c) => (
           <div key={c.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <Badge variant="outline" className="shrink-0">Sy {c.surveyNo}</Badge>

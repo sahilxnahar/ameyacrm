@@ -21,7 +21,7 @@ export default async function NriPage() {
 
   return (
     <div>
-      <PageHeader title="NRI Desk" description="International buyers — time zones, follow-ups and communication in one place." />
+      <PageHeader title="NRI desk" description="International buyers — time zones, follow-ups and communication in one place." />
       <div className="mb-6 stat-grid">
         <StatCard label="NRI leads" value={total} icon={Users2} />
         <StatCard label="Countries" value={countries.length} icon={Globe2} tone="warning" />

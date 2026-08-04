@@ -16,7 +16,7 @@ export default async function HeirMapperPage() {
   const relinquished = rows.filter((r) => r.relinquished).length;
   return (
     <div className="space-y-6">
-      <PageHeader title="JDA Succession & Legal-Heir Mapper" description="Map the landowner genealogy behind a joint-development agreement — who inherits what undivided share, who is deceased, and who has signed a relinquishment deed — so the JDA is executed by every rightful heir and no title claim surfaces later." />
+      <PageHeader title="JDA succession & legal-heir mapper" description="Map the landowner genealogy behind a joint-development agreement — who inherits what undivided share, who is deceased, and who has signed a relinquishment deed — so the JDA is executed by every rightful heir and no title claim surfaces later." />
       <HeirMapperView projects={projects} counts={{ total: rows.length, relinquished }}
         owners={rows.map((o) => ({ id: o.id, name: o.name, relationToRoot: o.relationToRoot, parentName: o.parent?.name ?? null, isDeceased: o.isDeceased, shareNum: o.shareNum, shareDen: o.shareDen, relinquished: o.relinquished, relinquishDeedNo: o.relinquishDeedNo, project: o.project?.name ?? null }))}
         pickable={rows.map((o) => ({ id: o.id, name: o.name }))} />

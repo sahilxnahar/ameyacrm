@@ -11,7 +11,7 @@ export default async function TemplatesPage() {
   const templates = await prisma.emailTemplate.findMany({ orderBy: { name: 'asc' } });
   return (
     <div>
-      <PageHeader title="Email Templates" description="Edit the structured emails the system sends. Use {{placeholders}} for dynamic values." />
+      <PageHeader title="Email templates" description="Edit the structured emails the system sends. Use {{placeholders}} for dynamic values." />
       <TemplateEditor templates={templates.map((t) => ({ id: t.id, key: t.key, name: t.name, subject: t.subject, body: t.body, isActive: t.isActive }))} />
     </div>
   );

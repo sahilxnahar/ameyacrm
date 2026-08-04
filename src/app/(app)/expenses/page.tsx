@@ -12,6 +12,6 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const ctx = await requirePermission('people.view'); const canManage = can(ctx.permissions, 'people.manage');
   const sp = await searchParams; const projectId = sp.project ?? null;
   try { const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), expenses(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Expense Claims" description="Staff expenses — submitted, approved, paid. (Full payroll is the one item the plan recommends buying rather than building.)" /><ExpensesRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Expense Claims" description="Expense claims." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Expense claims" description="Staff expenses — submitted, approved, paid. (Full payroll is the one item the plan recommends buying rather than building.)" /><ExpensesRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Expense claims" description="Expense claims." /><PageLoadError error={e} /></div>; }
 }

@@ -38,15 +38,29 @@ export function readPrefs(raw: unknown): NavPrefs {
 }
 
 /**
+ * A saved menu preference survives the section being renamed.
+ *
+ * `groups` and `collapsed` store section LABELS, which means a preference saved
+ * before a label was reworded stops matching it. That is not hypothetical: the
+ * sections were renamed from Title Case to sentence case in v16.15, and every
+ * person who had dragged their menu into a preferred order would silently have
+ * had it reset to the default, with nothing to indicate why. Comparing on a
+ * normalised form makes the stored value tolerant of casing and punctuation, so
+ * "Sales & Leads" saved last month still matches "Sales & leads" today.
+ */
+export const normaliseLabel = (s: string) =>
+  s.toLowerCase().replace(/&|\band\b/g, '&').replace(/[^a-z&]+/g, '');
+
+/**
  * Apply a person's section ordering. Groups they have dragged come first in
  * their chosen order; any section they never touched keeps its standard place.
  */
 export function applyGroupOrder<T extends { label: string }>(groups: T[], prefs: NavPrefs): T[] {
   if (!prefs.groups.length) return groups;
-  const rank = new Map(prefs.groups.map((l, i) => [l, i]));
+  const rank = new Map(prefs.groups.map((l, i) => [normaliseLabel(l), i]));
   return [...groups].sort((a, b) => {
-    const ra = rank.get(a.label);
-    const rb = rank.get(b.label);
+    const ra = rank.get(normaliseLabel(a.label));
+    const rb = rank.get(normaliseLabel(b.label));
     if (ra === undefined && rb === undefined) return 0;
     if (ra === undefined) return 1;
     if (rb === undefined) return -1;

@@ -3,7 +3,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { GripVertical, IndianRupee, Phone, Star } from 'lucide-react';
+import { GripVertical, Phone, Star } from 'lucide-react';
 import { moveLeadStage } from '@/server/actions/sales';
 import { cn } from '@/lib/utils/cn';
 
@@ -105,9 +105,17 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
     });
   };
 
+
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-      <div className="flex min-w-max gap-3">
+      {/*
+       * `items-stretch` is not cosmetic here. Without it a column with no cards
+       * collapses to the height of its own header, so the empty stages — the
+       * ones you most often need to drag INTO — end up with a drop target a
+       * centimetre tall while the busy ones are the full height of the screen.
+       * Equal-height columns make every stage equally easy to hit.
+       */}
+      <div className="flex min-w-max items-stretch gap-3">
         {STAGES.map((s) => {
           const items = byStage.get(s.key) ?? [];
           const value = items.reduce((n, l) => n + (l.budget ?? 0), 0);
@@ -118,33 +126,40 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
               onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
               onDrop={(e) => { e.preventDefault(); if (canMove) drop(e, s.key); }}
               className={cn(
-                'flex w-[16.5rem] shrink-0 flex-col rounded-xl border bg-card/60 transition-colors',
+                'flex w-[16.5rem] shrink-0 flex-col overflow-hidden rounded-xl border bg-card/50 transition-colors duration-150',
                 over === s.key && 'border-primary bg-primary/5 ring-2 ring-primary/30',
               )}
             >
-              <header className="p-3 pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-display text-sm font-semibold">{s.label}</h3>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs tabular-nums">{items.length}</span>
+              {/* The stage colour is the top edge of the column itself rather
+                  than a bar floating under the title. One line of colour per
+                  column reads as a pipeline; eight loose bars read as noise. */}
+              <div className={cn('h-[3px] w-full', s.bar)} />
+              <header className="px-3 pb-2 pt-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-[13px] font-semibold tracking-tight">{s.label}</h3>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">{items.length}</span>
                 </div>
-                <div className={cn('mt-1.5 h-1 rounded-full', s.bar)} />
-                {value > 0 && (
-                  <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-                    <IndianRupee className="h-3 w-3" />{money(value)} in this column
-                  </p>
-                )}
+                {/* Only the money, at the size money deserves. "in this column"
+                    was six words explaining a number that sits under its own
+                    heading. */}
+                <p className={cn('mt-0.5 text-xs tabular-nums', value > 0 ? 'text-muted-foreground' : 'text-transparent')}>
+                  {value > 0 ? money(value) : '\u00A0'}
+                </p>
               </header>
 
-              <div className={cn('flex-1 space-y-2 p-2 pt-0', s.tint)}>
-                {items.map((l) => (
+              <div className={cn('flex-1 space-y-1.5 p-2 pt-0', s.tint)}>
+                {items.map((l, i) => (
                   <article
                     key={l.id}
                     draggable={canMove}
                     onDragStart={(e) => beginDrag(e, l.id)}
                     onDragEnd={() => { draggingRef.current = null; setDragging(null); setOver(null); }}
+                    style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
                     className={cn(
-                      'group rounded-lg border bg-card p-2.5 shadow-sm transition',
-                      canMove && 'cursor-grab active:cursor-grabbing hover:shadow-md',
+                      // Flat by default; the lift is the hover, so a still board
+                      // is calm and a board under the cursor is obviously live.
+                      'animate-in group rounded-lg border bg-card p-2.5 transition-shadow duration-200',
+                      canMove && 'cursor-grab shadow-[0_0_0_rgba(0,0,0,0)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:cursor-grabbing',
                       dragging === l.id && 'opacity-40',
                     )}
                   >
@@ -175,8 +190,8 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
                   </article>
                 ))}
                 {!items.length && (
-                  <p className="rounded-md border border-dashed p-3 text-center text-[11px] text-muted-foreground">
-                    {canMove ? 'Drag a lead here' : 'Nothing here'}
+                  <p className="flex min-h-[4.5rem] items-center justify-center rounded-md border border-dashed px-3 text-center text-[11px] text-muted-foreground">
+                    {canMove ? `Drag a lead here to mark it ${s.label.toLowerCase()}` : 'Nothing here'}
                   </p>
                 )}
               </div>

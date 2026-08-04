@@ -24,7 +24,7 @@ export default async function MaterialRequestsPage() {
 
   return (
     <div>
-      <PageHeader title="Material Requests" description="Structured material & purchase requests with approvals and auto-generated emails." />
+      <PageHeader title="Material requests" description="Structured material & purchase requests with approvals and auto-generated emails." />
       <MaterialView
         canApprove={ctx.permissions.isSuperAdmin || ctx.permissions.keys.has('material.approve')}
         requests={requests.map((r) => ({

@@ -26,16 +26,16 @@ const PERSONALISE: { title: string; body: string }[] = [
 
 /** One friendly line per department, so people know what each area is for. */
 const GROUP_INTROS: Record<string, string> = {
-  'My Day': 'Your daily cockpit — open these every morning: what’s due, your dashboard, messages and approvals.',
-  'Sales & Leads': 'Every enquiry from first contact to booking — capture, follow up, and never lose a lead.',
-  'Inventory & Bookings': 'What you have to sell and what you’ve sold — units, prices, floor plans and buyers.',
+  'My day': 'Your daily cockpit — open these every morning: what’s due, your dashboard, messages and approvals.',
+  'Sales & leads': 'Every enquiry from first contact to booking — capture, follow up, and never lose a lead.',
+  'Inventory & bookings': 'What you have to sell and what you’ve sold — units, prices, floor plans and buyers.',
   'Marketing': 'Campaigns, the website and the social handles that bring enquiries in.',
   'Money': 'Everything financial — bills, collections, payments, ledgers and the books.',
-  'Build & Site': 'Construction and site work — materials, drawings, safety, live readings and progress.',
-  'Land, Lease & Legal': 'Ownership, tenancies and the statutory duties you must not miss.',
+  'Build & site': 'Construction and site work — materials, drawings, safety, live readings and progress.',
+  'Land, lease & legal': 'Ownership, tenancies and the statutory duties you must not miss.',
   'Documents': 'Every file in one place — upload, organise, and even ask questions of your documents.',
-  'Insights & Reports': 'Turn the data into answers — ready-made reports, your own reports, and forecasts.',
-  'Team & Admin': 'Your people and the settings that run the system — roles, health, help and this guide.',
+  'Insights & reports': 'Turn the data into answers — ready-made reports, your own reports, and forecasts.',
+  'Team & admin': 'Your people and the settings that run the system — roles, health, help and this guide.',
 };
 
 export function GuideView({ allowed, isSuperAdmin }: { allowed: string[]; isSuperAdmin: boolean }) {

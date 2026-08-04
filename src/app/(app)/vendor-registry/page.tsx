@@ -16,7 +16,7 @@ export default async function VendorRegistryPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Sub-Contractor Default Registry" description="A cross-project record of vendor defaults — site abandonment, QA failures, delays, safety lapses. Flagging a vendor as blacklisted deactivates them everywhere at once, so a bad actor on one site can't quietly be engaged on another." />
+      <PageHeader title="Sub-contractor default registry" description="A cross-project record of vendor defaults — site abandonment, QA failures, delays, safety lapses. Flagging a vendor as blacklisted deactivates them everywhere at once, so a bad actor on one site can't quietly be engaged on another." />
       <VendorRegistryView vendors={vendors} counts={{ blacklisted, total: rows.length }}
         rows={rows.map((d) => ({ id: d.id, vendor: d.vendor?.name ?? '—', vendorActive: d.vendor?.isActive ?? true, kind: d.kind, severity: d.severity, note: d.note, reportedOn: d.reportedOn.toISOString() }))} />
     </div>

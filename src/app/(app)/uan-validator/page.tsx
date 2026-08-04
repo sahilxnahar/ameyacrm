@@ -17,7 +17,7 @@ export default async function UanValidatorPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="EPF / ESI UAN Bulk Validator" description="Pre-gate validation of contractor labour UANs at the security checkpoint. Paste a roster and every 12-digit Universal Account Number is format-checked instantly — an invalid UAN is flagged before the worker is let in, so EPF/ESI coverage is confirmed at the gate." />
+      <PageHeader title="EPF / ESI UAN bulk validator" description="Pre-gate validation of contractor labour UANs at the security checkpoint. Paste a roster and every 12-digit Universal Account Number is format-checked instantly — an invalid UAN is flagged before the worker is let in, so EPF/ESI coverage is confirmed at the gate." />
       <UanValidatorView vendors={vendors} counts={{ valid, invalid, total: rows.length }}
         rows={rows.map((u) => ({ id: u.id, workerName: u.workerName, uan: u.uan, status: u.status, vendor: u.vendor?.name ?? null }))} />
     </div>

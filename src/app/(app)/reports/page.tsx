@@ -14,7 +14,7 @@ export default async function ReportsPage() {
   const data = await getReportData();
   return (
     <div>
-      <PageHeader title="Reports & Analytics" description="Workload, performance and pipeline at a glance.">
+      <PageHeader title="Reports & analytics" description="Workload, performance and pipeline at a glance.">
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm"><Link href="/reports/explorer"><Compass className="h-4 w-4" /> Explorer</Link></Button>
           <Button asChild variant="outline" size="sm"><a href="/api/reports/tasks.csv"><FileSpreadsheet className="h-4 w-4" /> Tasks</a></Button>

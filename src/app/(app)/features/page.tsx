@@ -16,7 +16,7 @@ export default async function FeaturesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Explore Features"
+        title="Explore features"
         description="Everything Ameya Heights CRM can do, in one place. Each area has its own colour, and the things you use daily are bigger — so you can aim rather than read. Press Customise to set your own."
       />
       <FeatureExplorer

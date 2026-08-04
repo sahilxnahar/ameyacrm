@@ -16,7 +16,7 @@ export default async function DataQualityPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Data Quality"
+          title="Data quality"
           description="How complete and consistent the core records are, the ones most likely to be duplicates, and what every field means. Nothing here changes your data — it produces a worklist, worst records first, so the twenty that matter get fixed."
         />
         <DataQualityView entities={entities} dictionary={DATA_DICTIONARY} />
@@ -25,7 +25,7 @@ export default async function DataQualityPage() {
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Data Quality" description="Completeness, duplicates and the data dictionary." />
+        <PageHeader title="Data quality" description="Completeness, duplicates and the data dictionary." />
         <PageLoadError error={e} />
       </div>
     );

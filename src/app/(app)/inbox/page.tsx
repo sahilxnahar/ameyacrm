@@ -12,7 +12,7 @@ export default async function InboxPage() {
   const threads = await listThreads();
   return (
     <div className="space-y-6">
-      <PageHeader title="Shared Inbox" description="Every email and WhatsApp conversation in one place — read what came in and reply, together as a team, without switching to Gmail or your phone." />
+      <PageHeader title="Shared inbox" description="Every email and WhatsApp conversation in one place — read what came in and reply, together as a team, without switching to Gmail or your phone." />
       <InboxView threads={threads} />
     </div>
   );

@@ -24,7 +24,7 @@ export default async function PlanSanctionPage() {
   const ocDone = mapped.filter((m) => m.ocReceived).length;
   return (
     <div className="space-y-6">
-      <PageHeader title="BBMP / BDA Plan Sanction & FAR Tracker" description="As-built vs sanctioned FAR/FSI, tower by tower. The moment built FAR pushes past the sanctioned limit's tolerance, the Occupancy Certificate is flagged at risk — so a deviation is caught during construction, not at OC application." />
+      <PageHeader title="BBMP / BDA plan sanction & FAR tracker" description="As-built vs sanctioned FAR/FSI, tower by tower. The moment built FAR pushes past the sanctioned limit's tolerance, the Occupancy Certificate is flagged at risk — so a deviation is caught during construction, not at OC application." />
       <PlanSanctionView projects={projects} counts={{ atRisk, ocDone, total: mapped.length }} rows={mapped} />
     </div>
   );

@@ -72,10 +72,13 @@ export default async function ComponentGalleryPage() {
       </Section>
 
       <Section title="Chips (filter row)">
+        {/* Real hrefs, not "#". A link to nowhere in the gallery is the pattern
+            that gets copied into a real screen, where it silently does nothing
+            and looks like a bug in the filter rather than a missing href. */}
         <ChipRow>
-          <ChipLink href="#" active>All</ChipLink>
-          <ChipLink href="#" active={false}>Four94</ChipLink>
-          <ChipLink href="#" active={false}>Salavakkam</ChipLink>
+          <ChipLink href="?project=all" active>All</ChipLink>
+          <ChipLink href="?project=four94" active={false}>Four94</ChipLink>
+          <ChipLink href="?project=salavakkam" active={false}>Salavakkam</ChipLink>
         </ChipRow>
       </Section>
 

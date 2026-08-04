@@ -145,7 +145,20 @@ export const TONES: Record<ModuleTone, ToneStyle> = {
   },
 };
 
-/** Menu group → tone. The group name is the key used in `navigation.ts`. */
+/**
+ * Menu group → tone, looked up on the group name from `navigation.ts`.
+ *
+ * The lookup is deliberately insensitive to case and to the exact separator,
+ * because a display label is the wrong thing to use as a key and this file
+ * proved it: renaming the groups from Title Case to sentence case for
+ * readability silently unkeyed every entry here, and the whole colour system
+ * fell back to brass with nothing failing and nothing to see in a diff.
+ *
+ * Normalising means the label can be rewritten for whatever reads best — "Build
+ * & Site", "Build & site", "build and site" — and the colour follows it. Use
+ * `groupTone()`; the raw record is exported only for the tests that check every
+ * group has a tone.
+ */
 export const GROUP_TONE: Record<string, ModuleTone> = {
   'My Day': 'day',
   'Sales & Leads': 'sales',
@@ -158,6 +171,19 @@ export const GROUP_TONE: Record<string, ModuleTone> = {
   'Insights & Reports': 'insight',
   'Team & Admin': 'admin',
 };
+
+/** Case- and punctuation-insensitive form of a group label. */
+const normaliseGroup = (s: string) =>
+  s.toLowerCase().replace(/&|\band\b/g, '&').replace(/[^a-z&]+/g, '');
+
+const GROUP_TONE_NORMALISED: Record<string, ModuleTone> = Object.fromEntries(
+  Object.entries(GROUP_TONE).map(([k, v]) => [normaliseGroup(k), v]),
+);
+
+/** The tone for a menu group, however its label happens to be written today. */
+export function groupTone(label: string): ModuleTone {
+  return GROUP_TONE_NORMALISED[normaliseGroup(label)] ?? 'day';
+}
 
 /**
  * Per-screen weight, where the default for the group is not right.
@@ -249,7 +275,7 @@ export const WEIGHT_ORDER: Weight[] = ['hero', 'large', 'medium', 'small'];
 
 /** Resolve a screen's tone, honouring a personal override. */
 export function toneFor(group: string, href: string, overrides?: Record<string, ModuleTone>): ModuleTone {
-  return overrides?.[href] ?? GROUP_TONE[group] ?? 'day';
+  return overrides?.[href] ?? groupTone(group);
 }
 
 /** Resolve a screen's weight, honouring a personal override. */
@@ -275,7 +301,7 @@ export function toneForPath(pathname: string, nav: Array<{ label: string; items:
   if (!_pathTone) {
     const rows: Array<[string, ModuleTone]> = [];
     for (const g of nav) {
-      const tone = GROUP_TONE[g.label] ?? 'day';
+      const tone = groupTone(g.label);
       for (const i of g.items) rows.push([i.href, tone]);
     }
     rows.sort((a, b) => b[0].length - a[0].length);

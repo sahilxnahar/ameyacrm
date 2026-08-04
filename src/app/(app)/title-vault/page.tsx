@@ -16,7 +16,7 @@ export default async function TitleVaultPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Title Chain & Link Document Vault" description="The 30-year chain of title — mother deed, sale/gift/partition deeds, mutation extracts, EC and RTC/pahani — digitised in one register, each entry verifiable, so due diligence is one screen instead of a folder of scans." />
+      <PageHeader title="Title chain & link document vault" description="The 30-year chain of title — mother deed, sale/gift/partition deeds, mutation extracts, EC and RTC/pahani — digitised in one register, each entry verifiable, so due diligence is one screen instead of a folder of scans." />
       <TitleVaultView projects={projects} counts={{ verified, total: rows.length }}
         rows={rows.map((t) => ({
           id: t.id, kind: t.kind, fromParty: t.fromParty, toParty: t.toParty, documentNo: t.documentNo,

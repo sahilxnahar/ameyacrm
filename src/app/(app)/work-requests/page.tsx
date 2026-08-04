@@ -22,7 +22,7 @@ export default async function WorkRequestsPage() {
     const otherDepts = departments.filter((d) => !myDepts.includes(d.id));
     return (
       <div className="space-y-6">
-        <PageHeader title="Work Requests" description="Ask another department to get something done — and track it from raised to confirmed, with a clear owner and a record of every step." />
+        <PageHeader title="Work requests" description="Ask another department to get something done — and track it from raised to confirmed, with a clear owner and a record of every step." />
         <WorkRequestsView
           incoming={inbox.incoming}
           outgoing={inbox.outgoing}
@@ -33,6 +33,6 @@ export default async function WorkRequestsPage() {
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Work Requests" description="Inter-department requests." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Work requests" description="Inter-department requests." /><PageLoadError error={e} /></div>;
   }
 }

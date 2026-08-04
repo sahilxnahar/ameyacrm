@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default function SetupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <div className="flex min-h-screen min-h-dvh items-center justify-center bg-background p-6">
       <SetupClient appName={brand.company.displayName} />
     </div>
   );

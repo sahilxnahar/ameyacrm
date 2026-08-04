@@ -23,7 +23,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Pricing & Commissions"
+          title="Pricing & commissions"
           description="A unit's price computed from base rate, floor rise, PLC and view premium less discount — so everyone quotes the same flat the same way — and broker commission worked out on a slab with TDS, so the person who brings you buyers is paid the right amount every time. A discount beyond your limit is flagged for approval, not quietly given."
         />
         <PricingView canManage={canManage} projects={projects} projectId={projectId} units={units} commissions={commissions} />
@@ -32,7 +32,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Pricing & Commissions" description="Unit pricing and broker commissions." />
+        <PageHeader title="Pricing & commissions" description="Unit pricing and broker commissions." />
         <PageLoadError error={e} />
       </div>
     );

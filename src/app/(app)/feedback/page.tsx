@@ -11,7 +11,7 @@ export default async function FeedbackPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
-        title="Send Feedback"
+        title="Send feedback"
         description="Your notes go straight to the team building this. Tell us what to fix, add or change."
       />
       <FeedbackForm />

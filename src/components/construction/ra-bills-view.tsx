@@ -117,7 +117,7 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
         </div>
       )}
 
-      <RecordList empty="No RA bills yet.">
+      <RecordList empty="A running-account bill is raised against measured work as it progresses. Raise the first one when a contractor has work to certify.">
         {bills.map((b) => (
           <div key={b.id} className={cn('flex flex-wrap items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(b.status))}>
             <Monogram name={b.vendorName} />

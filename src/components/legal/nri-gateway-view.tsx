@@ -64,7 +64,7 @@ export function NriGatewayView({ counts, rows }: { counts: { total: number; veri
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No NRI profiles yet.">
+      <RecordList empty="A buyer marked as an NRI gets a profile here: repatriation route, FEMA declaration and the KYC set their bank will ask for.">
         {rows.map((p) => {
           const due = p.remittances.find((r) => !r.reportedOn && r.reportDueOn && new Date(r.reportDueOn) < new Date(Date.now() + 30 * 864e5));
           return (

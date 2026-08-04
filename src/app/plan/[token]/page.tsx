@@ -26,7 +26,7 @@ export default async function PublicPlanPage({ params }: { params: Promise<{ tok
   });
 
   const shell = (children: React.ReactNode) => (
-    <div className="min-h-screen w-full" style={{ background: 'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)' }}>
+    <div className="min-h-screen min-h-dvh w-full" style={{ background: 'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)' }}>
       <div className="mx-auto max-w-4xl p-4">
         <div className="rounded-2xl bg-[#FBF9F4] p-4 shadow-2xl sm:p-6">{children}</div>
       </div>

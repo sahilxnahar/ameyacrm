@@ -38,7 +38,7 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Land & Approvals"
+          title="Land & approvals"
           description={view === 'poa'
             ? 'Every general and special power of attorney in the title chain, with what it actually covers and when it stops being valid.'
             : view === 'jda'
@@ -75,7 +75,7 @@ export default async function LandPage({ searchParams }: { searchParams: Promise
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Land & Approvals" helpTermId="title-chain" description="Parcels, title, sanctions and litigation." />
+        <PageHeader title="Land & approvals" helpTermId="title-chain" description="Parcels, title, sanctions and litigation." />
         <PageLoadError error={e} />
       </div>
     );

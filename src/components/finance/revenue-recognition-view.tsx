@@ -58,7 +58,7 @@ export function RevenueRecognitionView({ rows, projects }: { rows: Row[]; projec
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No revenue snapshots yet.">
+      <RecordList empty="Revenue recognised under IND-AS 115 appears here once a project has costs booked against it. Run a snapshot at period close to lock the percentage complete.">
         {rows.map((r) => (
           <div key={r.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <div className="min-w-0 flex-1">

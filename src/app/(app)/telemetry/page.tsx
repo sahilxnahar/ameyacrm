@@ -19,11 +19,11 @@ export default async function TelemetryPage() {
     ]);
     return (
       <div className="space-y-6">
-        <PageHeader title="Site Telemetry" description="Live readings from sensors, GPS trackers, fuel/power meters and drones on site. Devices POST their readings to a secure endpoint — this is the software side, ready for the hardware." />
+        <PageHeader title="Site telemetry" description="Live readings from sensors, GPS trackers, fuel/power meters and drones on site. Devices POST their readings to a secure endpoint — this is the software side, ready for the hardware." />
         <TelemetryView data={data} projects={projects} canManage={can(ctx.permissions, 'telemetry.manage')} />
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Site Telemetry" description="Live site readings." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Site telemetry" description="Live site readings." /><PageLoadError error={e} /></div>;
   }
 }

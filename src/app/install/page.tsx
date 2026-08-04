@@ -12,8 +12,8 @@ export default async function InstallPage() {
   const apkUrl = (row?.value as string) || null;
 
   return (
-    <div className="min-h-screen w-full" style={{ background: 'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)' }}>
-      <div className="mx-auto flex min-h-screen max-w-2xl items-center justify-center p-4">
+    <div className="min-h-screen min-h-dvh w-full" style={{ background: 'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)' }}>
+      <div className="mx-auto flex min-h-screen min-h-dvh max-w-2xl items-center justify-center p-4">
         <div className="w-full rounded-2xl bg-[#FBF9F4] p-6 shadow-2xl sm:p-8">
           <h1 className="font-display text-2xl font-semibold text-[#14120E]">Put Ameya Heights CRM on your phone</h1>
           <p className="mt-1 text-sm text-[#5E584C]">

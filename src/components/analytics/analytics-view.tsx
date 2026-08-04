@@ -1,12 +1,21 @@
 'use client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { STATUS, seriesColor, BAR_RADIUS_VERTICAL } from '@/config/chart-theme';
+import { useChartMode } from '@/lib/hooks/use-chart-mode';
 import { Users2, TrendingUp, Home, Percent } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils/format';
 
 interface Slice { name: string; value: number }
-const UNIT_COLORS: Record<string, string> = { AVAILABLE: '#10b981', HELD: '#f59e0b', BOOKED: '#3b82f6', SOLD: '#f43f5e', BLOCKED: '#94a3b8' };
-const BRASS = '#a07d34';
+/*
+ * Unit state is a STATUS, not a series: available / held / booked / sold /
+ * blocked are states of one thing. Status colours are reserved in the chart
+ * system precisely so they are never reused as "series 4" — a reader who has
+ * learned that red means sold must not meet a red category meaning something
+ * else two screens later. These were Tailwind defaults picked per screen and
+ * shared nothing with the other three charts in the app.
+ */
+const UNIT_TONE = { AVAILABLE: 'good', HELD: 'warning', BOOKED: 'neutral', SOLD: 'serious', BLOCKED: 'critical' } as const;
 const pretty = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 
 function Kpi({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: string | number; tone?: string }) {
@@ -32,6 +41,7 @@ export function AnalyticsView({ kpis, sources, statuses, inventory, money }: {
   sources: Slice[]; statuses: Slice[]; inventory: Slice[];
   money: { milestonesPaid: number; milestonesTotal: number; invoicePaid: number; invoiceTotal: number };
 }) {
+  const mode = useChartMode();
   return (
     <div className="space-y-6">
       <div className="stat-grid">
@@ -58,7 +68,7 @@ export function AnalyticsView({ kpis, sources, statuses, inventory, money }: {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={50} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill={BRASS} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill={seriesColor(0, mode)} radius={BAR_RADIUS_VERTICAL} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -70,7 +80,7 @@ export function AnalyticsView({ kpis, sources, statuses, inventory, money }: {
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={inventory.map((s) => ({ name: pretty(s.name), value: s.value, key: s.name }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e) => `${e.name}: ${e.value}`}>
-                  {inventory.map((s) => <Cell key={s.name} fill={UNIT_COLORS[s.name] ?? BRASS} />)}
+                  {inventory.map((s) => <Cell key={s.name} fill={STATUS[mode][UNIT_TONE[s.name as keyof typeof UNIT_TONE] ?? 'neutral']} />)}
                 </Pie>
                 <Tooltip />
               </PieChart>

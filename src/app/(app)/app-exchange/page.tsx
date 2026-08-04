@@ -14,7 +14,7 @@ export default async function AppExchangePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="App Exchange"
+        title="App exchange"
         description={`A directory of ${CONNECTOR_COUNT} apps across ${CONNECTOR_CATEGORIES.length} categories. About 16 work end-to-end today — messaging (Slack, Discord, Telegram), Razorpay, WhatsApp, the property portals, and Gmail/Sheets/Drive via your Apps Script connector. The rest are marked "Not built yet": tell us which you need and we build it for real, one at a time.`}
       />
       <AppExchange connectors={CONNECTORS} categories={CONNECTOR_CATEGORIES} installs={installs} />

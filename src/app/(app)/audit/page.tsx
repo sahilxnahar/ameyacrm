@@ -21,7 +21,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
 
   return (
     <div>
-      <PageHeader title="Audit Trail" description="Every sensitive action, immutably logged.">
+      <PageHeader title="Audit trail" description="Every sensitive action, immutably logged.">
         <Button asChild variant="outline" size="sm"><a href="/api/reports/audit.csv">Export CSV</a></Button>
       </PageHeader>
       <div className="mb-4 flex flex-wrap gap-2">

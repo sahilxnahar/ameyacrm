@@ -65,7 +65,7 @@ export function AppellateLitigationView({ counts, rows, projects }: { counts: { 
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No appellate matters yet.">
+      <RecordList empty="Appeals to REAT or the High Court are tracked here, with the order appealed against and the next date.">
         {rows.map((c) => (
           <div key={c.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <Badge variant="outline" className="shrink-0">{c.forum.replace(/_/g, ' ')}</Badge>

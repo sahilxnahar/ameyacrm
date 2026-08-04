@@ -11,7 +11,7 @@ import { StatCard } from '@/components/layout/stat-card';
 import { SalesViews } from '@/components/sales/sales-views';
 import { can } from '@/lib/rbac/can';
 
-export const metadata: Metadata = { title: 'Sales & Leads' };
+export const metadata: Metadata = { title: 'Sales & leads' };
 
 /**
  * How many leads the board loads at once.
@@ -52,7 +52,7 @@ export default async function SalesPage() {
 
   return (
     <div>
-      <PageHeader title="Sales & Leads" description="Track every inquiry from first touch to booking.">
+      <PageHeader title="Sales & leads" description="Track every inquiry from first touch to booking.">
         <Button asChild variant="outline" size="sm"><Link href="/sales/import"><Upload className="h-4 w-4" /> Import CSV</Link></Button>
         <Button asChild variant="outline" size="sm"><Link href="/sales/duplicates"><Merge className="h-4 w-4" /> Duplicates</Link></Button>
       </PageHeader>

@@ -226,6 +226,21 @@
    * screen added later is right automatically, because the mapping is derived
    * from the navigation rather than kept in a second list.
    */
+  /*
+   * The section accent, in a shade that is actually visible on the theme it is
+   * drawn on.
+   *
+   * These were one fixed hex each, picked against the light theme. Measured
+   * against the dark card they collapse: admin 2.27:1, documents 2.29:1, legal
+   * 2.76:1 — a decorative rule nobody can see is not decoration, it is dead
+   * code that still ships. The lighter value in each pair is the same hue at
+   * the 400/300 step, which reads on charcoal the way the 600 step reads on
+   * sand.
+   *
+   * The Tailwind text classes in module-style.ts were already theme-aware and
+   * measured clean (4.93:1 worst case, light; 8.70:1 worst case, dark). Only
+   * this raw variable was single-theme.
+   */
   [data-tone] { --tone: hsl(var(--brass)); }
   [data-tone='money']     { --tone: #E11D48; }
   [data-tone='sales']     { --tone: #059669; }
@@ -237,6 +252,16 @@
   [data-tone='marketing'] { --tone: #C026D3; }
   [data-tone='admin']     { --tone: #57534E; }
   [data-tone='day']       { --tone: hsl(var(--brass)); }
+
+  .dark [data-tone='money']     { --tone: #FB7185; }
+  .dark [data-tone='sales']     { --tone: #34D399; }
+  .dark [data-tone='build']     { --tone: #FBBF24; }
+  .dark [data-tone='legal']     { --tone: #818CF8; }
+  .dark [data-tone='people']    { --tone: #A78BFA; }
+  .dark [data-tone='documents'] { --tone: #94A3B8; }
+  .dark [data-tone='insight']   { --tone: #22D3EE; }
+  .dark [data-tone='marketing'] { --tone: #E879F9; }
+  .dark [data-tone='admin']     { --tone: #A8A29E; }
 
   .chip-row::-webkit-scrollbar { display: none; }
   .chip-row > * { flex-shrink: 0; }
@@ -568,6 +593,47 @@ html[data-accent='teal']    { --primary: 190 60% 32%; --ring: 190 60% 32%; --acc
   table td, table th { overflow-wrap: break-word; }
   /* Genuinely long links/emails/code inside cells may break anywhere. */
   td a, td code, dd { overflow-wrap: anywhere; }
+
+  /*
+   * Fixed-width figures wherever numbers are meant to line up.
+   *
+   * Inter's default figures are proportional — a 1 is visibly narrower than a 0
+   * — so a column of rupee amounts never aligns on the decimal, and a total that
+   * updates in place shifts sideways as its digits change. On a ledger that is
+   * the difference between a column you can scan down and one you have to read
+   * row by row.
+   *
+   * Applied here by context rather than by hand on every figure. Roughly a
+   * hundred screens show money, and a rule that depends on someone remembering
+   * a class is a rule that is already broken somewhere. Prose keeps proportional
+   * figures, which is correct — this is only for tables and record rows, where
+   * vertical alignment is the whole point.
+   */
+  table, .record-list, .stat-grid, .stat-grid-sm { font-variant-numeric: tabular-nums; }
+
+  /*
+   * One rendered stroke weight, at every icon size.
+   *
+   * Lucide draws into a 24-unit viewBox with a 2-unit stroke, and that stroke
+   * scales with the icon. Measured across a real page, the rendered stroke ran
+   * from 1.06px on the smallest icons to 2.13px on the largest — a 2× spread,
+   * which is why the small ones look wispy beside body text and the big ones
+   * look like a different, chunkier icon set. Nothing about that is visible in
+   * a diff; it is only visible when you measure it or when the page looks
+   * subtly incoherent and nobody can say why.
+   *
+   * Normalising to ~1.5px keeps every icon the same visual weight as the text
+   * it sits next to. This is a stroke-weight fix, deliberately NOT a swap away
+   * from Lucide — replacing the icon set would touch 252 files and change
+   * nothing a person would notice.
+   */
+  svg[class*="h-2.5"] { stroke-width: 2.8; }
+  svg[class*="h-3 "], svg[class*="h-3.5"] { stroke-width: 2.4; }
+  svg[class*="h-5"] { stroke-width: 1.9; }
+  svg[class*="h-6"] { stroke-width: 1.4; }
+  svg[class*="h-7"], svg[class*="h-8"] { stroke-width: 1.5; }
+  svg[class*="h-9"], svg[class*="h-10"], svg[class*="h-11"] { stroke-width: 1.25; }
+  svg[class*="h-14"], svg[class*="h-16"], svg[class*="h-20"] { stroke-width: 1; }
 }
 
 /* On phones, let any bare <table> that isn't already in a scroll wrapper carry

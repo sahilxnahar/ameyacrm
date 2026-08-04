@@ -17,7 +17,7 @@ export default async function DueDiligencePage() {
   const now = Date.now();
   return (
     <div className="space-y-6">
-      <PageHeader title="Pan-India Due Diligence & RERA Vault" description="A directory of every state and local authority portal — RERA, land records, registration, town planning, municipal and hill-area bodies — with a one-click jump to the official site and a drag-in vault to file the fetched record against a project." />
+      <PageHeader title="Pan-India due diligence & RERA vault" description="A directory of every state and local authority portal — RERA, land records, registration, town planning, municipal and hill-area bodies — with a one-click jump to the official site and a drag-in vault to file the fetched record against a project." />
       <React.Suspense fallback={null}>
       <DueDiligenceDirectory projects={projects}
         records={records.map((r) => ({

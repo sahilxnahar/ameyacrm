@@ -21,14 +21,35 @@ export function Field({
   return (
     <div className={cn('space-y-1', className)}>
       {label && (
-        <label htmlFor={htmlFor} className="block text-xs text-muted-foreground">
+        <label htmlFor={htmlFor} className="block text-xs font-medium text-muted-foreground">
           {label}
-          {required && <span className="ml-0.5 text-destructive">*</span>}
+          {/*
+            A red asterisk is a convention, not a label. Screen readers announce
+            it as "star" or skip it, and a colour-blind reader gets nothing at
+            all — so the requirement was carried by colour alone, which is the
+            one thing an indicator may never do. The visible mark stays for
+            people who read it as a convention; the word is what is announced.
+          */}
+          {required && (
+            <>
+              <span aria-hidden className="ml-0.5 text-destructive">*</span>
+              <span className="sr-only"> (required)</span>
+            </>
+          )}
         </label>
       )}
       {children}
-      {hint && !error && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {hint && !error && <p id={htmlFor ? `${htmlFor}-hint` : undefined} className="text-[11px] text-muted-foreground">{hint}</p>}
+      {/*
+        `role="alert"` so the message is announced when it appears rather than
+        only being found by someone who happens to tab back over the field. An
+        error that is only visible is an error that gets submitted twice.
+      */}
+      {error && (
+        <p id={htmlFor ? `${htmlFor}-error` : undefined} role="alert" className="text-[11px] font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

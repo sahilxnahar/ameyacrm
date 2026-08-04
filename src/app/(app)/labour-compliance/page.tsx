@@ -28,7 +28,7 @@ export default async function LabourCompliancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Labour Compliance" description={`EPF & ESI challans by vendor and month. A flagged labour vendor cannot be paid until the month's challans are verified. Showing ${month}.`} />
+      <PageHeader title="Labour compliance" description={`EPF & ESI challans by vendor and month. A flagged labour vendor cannot be paid until the month's challans are verified. Showing ${month}.`} />
       <LabourComplianceView month={month} allVendors={vendors} labourVendors={labourVendors} />
     </div>
   );

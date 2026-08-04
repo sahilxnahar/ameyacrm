@@ -14,7 +14,7 @@ export default async function AppPackagesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="App Packages"
+        title="App packages"
         description="Install ready-made bundles of fields, automations, views and connectors in one click — or author your own, export it as JSON, and share it. This is how you reshape the CRM for your team without code."
       />
       <AppPackagesView packages={APP_PACKAGES} installed={installed} />

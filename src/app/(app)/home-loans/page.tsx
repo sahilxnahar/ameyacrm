@@ -17,11 +17,11 @@ export default async function HomeLoansPage() {
     const { loans, summary } = await listHomeLoans(active.id ?? null);
     return (
       <div className="space-y-6">
-        <PageHeader title="Home Loans" description="Track each buyer's home-loan journey — bank, sanction, disbursement, the NOC you issue to the bank, and the tripartite agreement." />
+        <PageHeader title="Home loans" description="Track each buyer's home-loan journey — bank, sanction, disbursement, the NOC you issue to the bank, and the tripartite agreement." />
         <HomeLoansView loans={loans} summary={summary} canManage={can(ctx.permissions, 'booking.manage')} />
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Home Loans" description="Buyer home-loan tracking." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Home loans" description="Buyer home-loan tracking." /><PageLoadError error={e} /></div>;
   }
 }

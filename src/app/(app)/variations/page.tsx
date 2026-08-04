@@ -12,6 +12,6 @@ export default async function VariationsPage({ searchParams }: { searchParams: P
   const ctx = await requirePermission('variations.view'); const canManage = can(ctx.permissions, 'variations.manage');
   const sp = await searchParams; const projectId = sp.project ?? null;
   try { const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), variations(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Buyer Variations" description="Buyer change requests — raised, costed, approved and accepted, with the price agreed before the work, so the argument never arrives at handover." /><VariationsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Buyer Variations" description="Variation orders." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Buyer variations" description="Buyer change requests — raised, costed, approved and accepted, with the price agreed before the work, so the argument never arrives at handover." /><VariationsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Buyer variations" description="Variation orders." /><PageLoadError error={e} /></div>; }
 }

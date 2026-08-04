@@ -31,7 +31,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Cash Flow & Treasury"
+          title="Cash flow & treasury"
           description="Every bank account on one screen, statement lines matched to the payments already recorded against their UTR, and a twelve-week forecast whose lowest point is the number that decides whether a payment run is safe. No payment gateway — a statement is a file."
         />
         <ScreenHelp id="treasury" />
@@ -52,7 +52,7 @@ export default async function TreasuryPage({ searchParams }: { searchParams: Pro
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Cash Flow & Treasury" description="Bank position, reconciliation, forecast and loans." />
+        <PageHeader title="Cash flow & treasury" description="Bank position, reconciliation, forecast and loans." />
         <PageLoadError error={e} />
       </div>
     );

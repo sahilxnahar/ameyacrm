@@ -39,7 +39,7 @@ export default async function MsmeTrackerPage() {
     : [];
   return (
     <div className="space-y-6">
-      <PageHeader title="MSME 45-Day Payment Tracker" description="Section 43B(h) of the Income Tax Act disallows a deduction if an MSME supplier isn't paid within 45 days (15 without a written agreement). Every MSME bill runs a live countdown here, flipping to Overdue automatically before it becomes a tax problem." />
+      <PageHeader title="MSME 45-day payment tracker" description="Section 43B(h) of the Income Tax Act disallows a deduction if an MSME supplier isn't paid within 45 days (15 without a written agreement). Every MSME bill runs a live countdown here, flipping to Overdue automatically before it becomes a tax problem." />
       <MsmeTrackerView canManage={canManage} candidates={candidates} counts={{ overdue, dueSoon, outstanding: Number(agg._sum.amount ?? 0) }}
         rows={rows.map((c) => ({ id: c.id, vendor: c.vendor?.name ?? '—', udyamNo: c.udyamNo, amount: Number(c.amount), billDate: c.billDate.toISOString(), dueDate: c.dueDate.toISOString(), status: c.status }))} />
     </div>

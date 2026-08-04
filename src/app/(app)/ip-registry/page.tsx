@@ -18,7 +18,7 @@ export default async function IpRegistryPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="IP & Trademark Registry" description="Every brand mark, its class and status, and the 10-year renewal computed automatically from the registration date. A mark flips to “Renewal due” on its own as the deadline nears (checked daily)." />
+      <PageHeader title="IP & trademark registry" description="Every brand mark, its class and status, and the 10-year renewal computed automatically from the registration date. A mark flips to “Renewal due” on its own as the deadline nears (checked daily)." />
       <IpRegistryView
         counts={{ registered, dueSoon, objected, total: rows.length }}
         projects={projects}

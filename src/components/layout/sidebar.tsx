@@ -14,11 +14,11 @@ import { NavCustomiser } from './nav-customiser';
 import { EMPTY_TOP_NAV_PREFS, type TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import { APP_VERSION } from '@/config/version';
 import { saveNavPrefs, resetNavPrefs, saveNavCollapsed } from '@/server/actions/nav-prefs';
-import { applyOrder, applyGroupOrder, EMPTY_PREFS, type NavPrefs } from '@/lib/nav/prefs';
+import { applyOrder, applyGroupOrder, normaliseLabel, EMPTY_PREFS, type NavPrefs } from '@/lib/nav/prefs';
 import { RecentNav } from './recent-nav';
 import { BrandLogo } from './brand-logo';
 import { useT } from '@/components/i18n/language-provider';
-import { GROUP_TONE, toneStyle } from '@/config/module-style';
+import { groupTone, toneStyle } from '@/config/module-style';
 import { cn } from '@/lib/utils/cn';
 
 export function Sidebar({
@@ -416,7 +416,8 @@ export function Sidebar({
               const items = applyOrder(group.items.filter((i) => canSee(i.permission)), prefs, { keepHidden: false });
               if (items.length === 0) return null;
               const groupHrefs = items.map((i) => i.href);
-              const isCollapsedGroup = !rail && collapsedGroups.includes(group.label);
+              // Normalised, so a section folded shut before it was renamed stays folded.
+              const isCollapsedGroup = !rail && collapsedGroups.some((c) => normaliseLabel(c) === normaliseLabel(group.label));
               const showItems = rail || !isCollapsedGroup;
               return (
                 <div key={group.label} className={cn(rail && 'lg:border-t lg:border-border/50 lg:pt-3 lg:first:border-t-0 lg:first:pt-0')}>
@@ -429,12 +430,12 @@ export function Sidebar({
                   >
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
                     {/* The section's colour, so the eye finds "Money" without reading it. */}
-                    <span className={cn('h-2.5 w-1 shrink-0 rounded-full', toneStyle(GROUP_TONE[group.label] ?? 'day').dot)} />
+                    <span className={cn('h-2.5 w-1 shrink-0 rounded-full', toneStyle(groupTone(group.label)).dot)} />
                     {t(group.label)}
                   </button>
                   {showItems && (
                     <ul className={cn('space-y-0.5', !rail && 'border-l-2 pl-1',
-                      !rail && toneStyle(GROUP_TONE[group.label] ?? 'day').border)}>
+                      !rail && toneStyle(groupTone(group.label)).border)}>
                       {items.map((item) => renderItem(item, groupHrefs))}
                     </ul>
                   )}

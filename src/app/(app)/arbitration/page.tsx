@@ -17,7 +17,7 @@ export default async function ArbitrationPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Arbitration & ADR Docket" description="Conciliation notices, arbitrator appointments, hearings and settlements — every alternative-dispute matter with its next hearing date front and centre, so nothing is missed and settlements land on a voucher." />
+      <PageHeader title="Arbitration & ADR docket" description="Conciliation notices, arbitrator appointments, hearings and settlements — every alternative-dispute matter with its next hearing date front and centre, so nothing is missed and settlements land on a voucher." />
       <ArbitrationView projects={projects} vendors={vendors} counts={{ total: rows.length, hearingSoon }}
         rows={rows.map((c) => ({ id: c.id, title: c.title, refNo: c.refNo, stage: c.stage, claimant: c.claimant, respondent: c.respondent, arbitrator: c.arbitrator, claimAmount: c.claimAmount != null ? Number(c.claimAmount) : null, nextHearingOn: c.nextHearingOn?.toISOString() ?? null, project: c.project?.name ?? null, vendor: c.vendor?.name ?? null }))} />
     </div>

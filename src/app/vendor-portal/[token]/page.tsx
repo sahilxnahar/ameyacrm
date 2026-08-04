@@ -13,7 +13,7 @@ export default async function VendorPortalPage({ params }: { params: Promise<{ t
 
   if (!data) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
+      <main className="mx-auto flex min-h-screen min-h-dvh max-w-md flex-col items-center justify-center p-6 text-center">
         <h1 className="font-display text-2xl font-semibold text-brass">Ameya Heights</h1>
         <p className="mt-3 text-sm text-muted-foreground">This portal link is invalid or has been withdrawn. Please contact our accounts office for a new link.</p>
       </main>

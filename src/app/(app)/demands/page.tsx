@@ -30,7 +30,7 @@ export default async function DemandsPage() {
   const outstanding = Number(agg._sum.amount ?? 0);
   return (
     <div className="space-y-6">
-      <PageHeader title="Payment Demands" description="Due and overdue buyer instalments, turned into WhatsApp + email reminders automatically. Demands generate and dispatch every day; collection converges back on the payment schedule and vouchers." />
+      <PageHeader title="Payment demands" description="Due and overdue buyer instalments, turned into WhatsApp + email reminders automatically. Demands generate and dispatch every day; collection converges back on the payment schedule and vouchers." />
       <DemandsView
         canManage={canManage}
         bookings={bookings.map((b) => ({

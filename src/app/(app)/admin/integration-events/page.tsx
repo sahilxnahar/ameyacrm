@@ -18,7 +18,7 @@ export default async function IntegrationEventsPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Integration Events" description="The async event bus (#50). Every third-party webhook — Razorpay, WhatsApp, IoT — lands here, is acked instantly, and is processed out-of-band so the CRM never blocks." />
+      <PageHeader title="Integration events" description="The async event bus (#50). Every third-party webhook — Razorpay, WhatsApp, IoT — lands here, is acked instantly, and is processed out-of-band so the CRM never blocks." />
       <IntegrationBusView
         counts={{ pending, done, failed, iot: iotCount }}
         events={events.map((e) => ({ id: e.id, provider: e.provider, type: e.type, status: e.status, externalId: e.externalId, retryCount: e.retryCount, error: e.errorMessage, at: e.createdAt.toISOString() }))}

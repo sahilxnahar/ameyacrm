@@ -19,7 +19,7 @@ export default async function SpendPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Spend Report"
+        title="Spend report"
         description="Where the money has gone — by category, project, payee and month. Built from every payment you've recorded."
       />
       <SpendReportView report={report} projectName={active.name} />

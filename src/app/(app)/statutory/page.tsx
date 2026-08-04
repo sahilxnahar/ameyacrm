@@ -14,6 +14,6 @@ export default async function StatutoryPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams; const projectId = sp.project ?? null;
   try {
     const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), obligations(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Statutory Calendar" description="Every recurring obligation — GST, TDS, RERA, PF/ESI, ROC — with an owner and a chase-before date, so a deadline is met, not discovered." /><StatutoryRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Statutory Calendar" description="Statutory obligations." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Statutory calendar" description="Every recurring obligation — GST, TDS, RERA, PF/ESI, ROC — with an owner and a chase-before date, so a deadline is met, not discovered." /><StatutoryRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Statutory calendar" description="Statutory obligations." /><PageLoadError error={e} /></div>; }
 }

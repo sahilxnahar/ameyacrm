@@ -12,7 +12,7 @@ export default async function CertifierPortalPage() {
   const { items, pendingRaBills } = await getCertifierQueue();
   return (
     <div className="space-y-6">
-      <PageHeader title="Independent Certifier Portal" description="Everything awaiting an independent structural engineer's sign-off, in one place. Clearing a month's certification here releases that contractor's RA-bill payment — the gate is enforced server-side, so a payment can never run ahead of certification." />
+      <PageHeader title="Independent certifier portal" description="Everything awaiting an independent structural engineer's sign-off, in one place. Clearing a month's certification here releases that contractor's RA-bill payment — the gate is enforced server-side, so a payment can never run ahead of certification." />
       <CertifierPortalView items={items} pendingRaBills={pendingRaBills} />
     </div>
   );

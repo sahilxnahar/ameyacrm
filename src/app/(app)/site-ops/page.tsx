@@ -48,7 +48,7 @@ export default async function SiteOpsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Site Ops"
+        title="Site ops"
         description={`Daily field logs and the 4D BIM progress timeline${active.id ? ` for ${active.name}` : ' across all projects'}. Log weather, labour and progress photos from your phone at site.`}
       />
       <SiteOpsBoard

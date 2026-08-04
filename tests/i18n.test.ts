@@ -8,7 +8,7 @@ describe('i18n (31-plan #31)', () => {
   });
   it('translates known strings to Hindi', () => {
     expect(t('Money', 'hi')).toBe('पैसा');
-    expect(t('My Day', 'hi')).toBe('मेरा दिन');
+    expect(t('My day', 'hi')).toBe('मेरा दिन');
   });
   it('falls back to English for untranslated strings (never blank/broken)', () => {
     expect(t('Some brand-new label', 'hi')).toBe('Some brand-new label');

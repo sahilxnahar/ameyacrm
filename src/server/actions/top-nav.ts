@@ -55,7 +55,7 @@ export async function searchNavTargets(query: string): Promise<{ ok: true; targe
 
     const SCREENS: Array<{ href: string; label: string; perm?: string; hint?: string }> = [
       { href: '/today', label: 'Today', hint: 'Your daily priorities' },
-      { href: '/sales', label: 'Sales & Leads', perm: 'lead.view' },
+      { href: '/sales', label: 'Sales & leads', perm: 'lead.view' },
       { href: '/inventory', label: 'Inventory', perm: 'unit.view' },
       { href: '/finance', label: 'Finance', perm: 'invoice.view' },
       { href: '/billing', label: 'Billing', perm: 'invoice.view' },

@@ -27,7 +27,7 @@ export default async function LeasePage() {
 
   return (
     <div>
-      <PageHeader title="Lease Management" description="Tenants, leases, rent schedules and maintenance." />
+      <PageHeader title="Lease management" description="Tenants, leases, rent schedules and maintenance." />
       <div className="mb-6 stat-grid">
         <StatCard label="Active leases" value={activeCount} icon={KeyRound} />
         <StatCard label="Expiring ≤ 60 days" value={expiring} icon={CalendarClock} tone="warning" />

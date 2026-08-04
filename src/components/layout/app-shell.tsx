@@ -166,7 +166,7 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex min-h-screen min-h-[100dvh] bg-background">
+    <div className="flex min-h-screen min-h-dvh min-h-[100dvh] bg-background">
       {/* Ameya emblem watermark — a faint, fixed brand mark behind all content.
           Centralised in <BrandWatermark/>; mirrors the sidebar rail offset so it
           stays optically centred whether the rail is open or collapsed. */}

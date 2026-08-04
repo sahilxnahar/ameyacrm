@@ -5,7 +5,7 @@ import { SignDocument } from '@/components/signatures/sign-document';
 export const metadata: Metadata = { title: 'Sign document' };
 export const dynamic = 'force-dynamic';
 
-const SHELL = 'min-h-screen w-full';
+const SHELL = 'min-h-screen min-h-dvh w-full';
 const BG = 'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)';
 
 export default async function SignPage({ params }: { params: Promise<{ token: string }> }) {
@@ -14,7 +14,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
 
   const frame = (children: React.ReactNode) => (
     <div className={SHELL} style={{ background: BG }}>
-      <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-4">
+      <div className="mx-auto flex min-h-screen min-h-dvh max-w-3xl items-center justify-center p-4">
         <div className="w-full rounded-xl bg-[#FBF9F4] p-6 shadow-2xl">{children}</div>
       </div>
     </div>

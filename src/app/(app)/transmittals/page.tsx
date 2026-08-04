@@ -12,6 +12,6 @@ export default async function TransmittalsPage({ searchParams }: { searchParams:
   const ctx = await requirePermission('architecture.view'); const canManage = can(ctx.permissions, 'architecture.manage');
   const sp = await searchParams; const projectId = sp.project ?? null;
   try { const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), transmittals(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Drawing Transmittals" description="The formal issue of drawings to contractors and consultants, with an acknowledgement — the record of who was told what, when, that a dispute turns on." /><TransmittalsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Drawing Transmittals" description="Transmittals." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Drawing transmittals" description="The formal issue of drawings to contractors and consultants, with an acknowledgement — the record of who was told what, when, that a dispute turns on." /><TransmittalsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Drawing transmittals" description="Transmittals." /><PageLoadError error={e} /></div>; }
 }

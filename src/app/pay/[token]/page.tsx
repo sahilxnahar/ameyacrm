@@ -14,7 +14,7 @@ export default async function PayPage({ params }: { params: Promise<{ token: str
 
   if (!pr || pr.status === 'CANCELLED' || (pr.tokenExpiresAt && pr.tokenExpiresAt < new Date())) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
+      <main className="mx-auto flex min-h-screen min-h-dvh max-w-md flex-col items-center justify-center p-6 text-center">
         <h1 className="font-display text-2xl font-semibold text-brass">Ameya Heights</h1>
         <p className="mt-3 text-sm text-muted-foreground">This payment link is invalid or has been cancelled. Please contact our accounts desk.</p>
       </main>
@@ -29,10 +29,10 @@ export default async function PayPage({ params }: { params: Promise<{ token: str
 
   return (
     <main
-      className="min-h-screen w-full"
+      className="min-h-screen min-h-dvh w-full"
       style={{ background: 'linear-gradient(125deg, #04123A 0%, #0A2A6B 20%, #12409E 40%, #1E5FD6 58%, #B9CFEF 82%, #F7F3EA 100%)' }}
     >
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-12">
+      <div className="mx-auto flex min-h-screen min-h-dvh max-w-lg flex-col justify-center px-5 py-12">
         <div className="mb-5 text-center">
           <h1 className="font-display text-3xl font-semibold" style={{ color: '#F0D9A0' }}>Ameya Heights</h1>
           <p className="text-xs text-white/70">Payment request</p>

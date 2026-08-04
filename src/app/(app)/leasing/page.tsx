@@ -12,6 +12,6 @@ export default async function LeasingPage({ searchParams }: { searchParams: Prom
   const ctx = await requirePermission('lease.view'); const canManage = can(ctx.permissions, 'lease.manage');
   const sp = await searchParams; const projectId = sp.project ?? null;
   try { const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), tenancies(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Commercial Leasing" description="The rent roll — every tenancy, area, rate, term and escalation on one screen — for the parts of the portfolio held for income rather than sold." /><LeasingRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Commercial Leasing" description="Rent roll." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Commercial leasing" description="The rent roll — every tenancy, area, rate, term and escalation on one screen — for the parts of the portfolio held for income rather than sold." /><LeasingRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Commercial leasing" description="Rent roll." /><PageLoadError error={e} /></div>; }
 }

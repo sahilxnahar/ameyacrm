@@ -16,7 +16,7 @@ export default async function EmailSettingsPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Email Integration" description="Connect your own email inbox over IMAP so your mail threads onto leads, buyers and vendors natively in the CRM — each person syncs their own mailbox, not a shared one. Mail you send goes out from your own address, not a shared one." />
+      <PageHeader title="Email integration" description="Connect your own email inbox over IMAP so your mail threads onto leads, buyers and vendors natively in the CRM — each person syncs their own mailbox, not a shared one. Mail you send goes out from your own address, not a shared one." />
       <EmailSettingsView status={status} outbound={outbound} defaultEmail={user.email} />
     </div>
   );

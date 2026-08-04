@@ -17,7 +17,7 @@ export default async function KhataVaultPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Property Tax (Khata) & EC Vault" description="A-Khata / B-Khata bifurcation, BBMP PID mapping and the encumbrance-certificate register in one place — so a title's marketability and property-tax standing are clear at a glance." />
+      <PageHeader title="Property tax (Khata) & EC vault" description="A-Khata / B-Khata bifurcation, BBMP PID mapping and the encumbrance-certificate register in one place — so a title's marketability and property-tax standing are clear at a glance." />
       <KhataVaultView projects={projects} counts={{ total: rows.length, aKhata, ecClear }}
         rows={rows.map((k) => ({ id: k.id, khataType: k.khataType, pid: k.pid, khataNo: k.khataNo, assessmentNo: k.assessmentNo, ownerName: k.ownerName, lastEcOn: k.lastEcOn?.toISOString() ?? null, ecClear: k.ecClear, project: k.project?.name ?? null }))} />
     </div>

@@ -30,7 +30,7 @@ export default async function SecopsPage({ searchParams }: { searchParams: Promi
     ]);
     return (
       <div className="space-y-6">
-        <PageHeader title="Security Operations" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.incidents!} />
+        <PageHeader title="Security operations" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.incidents!} />
         <RegisterTabs
           basePath="/security-ops"
           current={view}
@@ -44,6 +44,6 @@ export default async function SecopsPage({ searchParams }: { searchParams: Promi
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Security Operations" description="Incidents and access reviews." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Security operations" description="Incidents and access reviews." /><PageLoadError error={e} /></div>;
   }
 }

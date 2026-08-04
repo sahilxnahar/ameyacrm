@@ -22,7 +22,7 @@ export default async function MarketingLibraryPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Marketing Library" description="Your Ameya marketing collaterals — renders, brochures, comparisons and brand assets. Upload files or a whole folder (the AI sorts them), or link a Google Drive doc." />
+      <PageHeader title="Marketing library" description="Your Ameya marketing collaterals — renders, brochures, comparisons and brand assets. Upload files or a whole folder (the AI sorts them), or link a Google Drive doc." />
       <MarketingLibrary featured={MARKETING_COLLATERALS} items={items} canManage={canManage} />
     </div>
   );

@@ -23,7 +23,7 @@ export default async function PartnersPage() {
   const kycPending = partners.filter((p) => p.kycStatus === 'PENDING').length;
   return (
     <div>
-      <PageHeader title="Channel Partners" description="Broker onboarding, RERA/KYC, lead protection and brokerage payouts." />
+      <PageHeader title="Channel partners" description="Broker onboarding, RERA/KYC, lead protection and brokerage payouts." />
       <div className="mb-6 stat-grid">
         <StatCard label="Partners" value={partners.length} icon={Handshake} />
         <StatCard label="Approved" value={approved} icon={BadgeCheck} tone="success" />

@@ -21,7 +21,7 @@ export default async function StructuralContractsPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Structural Contracts & CLM" description="Structural contractors, their defect-liability periods, and the independent-engineer certification that gates payment. An uncertified period blocks the RA-bill settlement automatically — the gate is enforced server-side." />
+      <PageHeader title="Structural contracts & CLM" description="Structural contractors, their defect-liability periods, and the independent-engineer certification that gates payment. An uncertified period blocks the RA-bill settlement automatically — the gate is enforced server-side." />
       <StructuralContractsView
         projects={projects} vendors={vendors}
         counts={{ active, expiring, total: rows.length }}

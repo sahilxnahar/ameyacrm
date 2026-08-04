@@ -16,7 +16,7 @@ export default async function BimSyncPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="4D BIM & Construction Timeline Sync" description="Link the 3D model to real site progress. Completing a phase — a slab cast, a tower topped out — can trip its linked buyer payment milestone, so physical progress raises the demand automatically. 4D means the model, plus time, plus cash flow." />
+      <PageHeader title="4D BIM & construction timeline sync" description="Link the 3D model to real site progress. Completing a phase — a slab cast, a tower topped out — can trip its linked buyer payment milestone, so physical progress raises the demand automatically. 4D means the model, plus time, plus cash flow." />
       <BimSyncView
         projects={projects}
         milestones={milestones.map((m) => ({ id: m.id, label: m.label, amount: Number(m.amount) }))}

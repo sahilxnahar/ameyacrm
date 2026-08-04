@@ -5,12 +5,8 @@ import {
   PieChart, Pie, Legend,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-// Brand-led palette: navy + gold, then a small accessible accent set.
-const NAVY = '#1B2A4A';
-const GOLD = '#A07D34';
-const PIPELINE = ['#9AA6C0', '#6E82AE', '#4A6091', '#33507F', '#25406B', '#A07D34', '#2E7D32'];
-const CATEGORICAL = ['#1B2A4A', '#A07D34', '#4A6091', '#C2A05B', '#2E7D32', '#9B7BB8', '#3E8E9C', '#B5883F'];
+import { categorical, sequential, seriesColor, BAR_RADIUS_VERTICAL } from '@/config/chart-theme';
+import { useChartMode } from '@/lib/hooks/use-chart-mode';
 
 const inrCompact = (n: number) => {
   if (n >= 1e7) return `₹${(n / 1e7).toFixed(1)}Cr`;
@@ -26,6 +22,16 @@ export interface ChartsData {
 }
 
 export function DashboardCharts({ data }: { data: ChartsData }) {
+  const mode = useChartMode();
+  /*
+   * The pipeline is a sequence, not a set of unrelated things: NEW → … → WON is
+   * ordered, so it takes the sequential ramp and reads light-to-dark as a lead
+   * gets closer to a sale. The old list was five near-identical navies (worst
+   * adjacent pair ΔE 5.9 for normal vision) which conveyed neither order nor
+   * difference. Lead SOURCES are unordered, so those take the categorical list.
+   */
+  const RAMP = sequential(mode);
+  const PALETTE = categorical(mode);
   const hasPipeline = data.pipeline.some((p) => p.count > 0);
   const hasSources = data.sources.some((s) => s.value > 0);
   const hasCash = data.cashflow.some((c) => c.In > 0 || c.Out > 0);
@@ -44,7 +50,7 @@ export function DashboardCharts({ data }: { data: ChartsData }) {
                 <YAxis type="category" dataKey="stage" width={92} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: 'rgba(0,0,0,0.04)' }} formatter={(v: number) => [v, 'leads']} />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                  {data.pipeline.map((_, i) => <Cell key={i} fill={PIPELINE[i % PIPELINE.length]} />)}
+                  {data.pipeline.map((_, i) => <Cell key={i} fill={RAMP[Math.min(i, RAMP.length - 1)]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -59,7 +65,7 @@ export function DashboardCharts({ data }: { data: ChartsData }) {
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie data={data.sources} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={2}>
-                  {data.sources.map((_, i) => <Cell key={i} fill={CATEGORICAL[i % CATEGORICAL.length]} />)}
+                  {data.sources.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v: number, n: string) => [v, n]} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -79,8 +85,8 @@ export function DashboardCharts({ data }: { data: ChartsData }) {
                 <YAxis tickFormatter={inrCompact} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={52} />
                 <Tooltip formatter={(v: number) => inrCompact(v)} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="In" fill={NAVY} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Out" fill={GOLD} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="In" fill={seriesColor(0, mode)} radius={BAR_RADIUS_VERTICAL} />
+                <Bar dataKey="Out" fill={seriesColor(1, mode)} radius={BAR_RADIUS_VERTICAL} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

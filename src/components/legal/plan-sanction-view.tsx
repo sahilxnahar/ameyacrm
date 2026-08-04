@@ -70,7 +70,7 @@ export function PlanSanctionView({ counts, rows, projects }: { counts: { atRisk:
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No sanctions tracked yet.">
+      <RecordList empty="Track a BBMP or BDA plan sanction from application to release, with the FAR consumed against what was approved.">
         {rows.map((s) => (
           <div key={s.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <Badge variant="outline" className="shrink-0">{s.authority}</Badge>

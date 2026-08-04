@@ -12,6 +12,6 @@ export default async function WalkInsPage({ searchParams }: { searchParams: Prom
   const ctx = await requirePermission('lead.view'); const canManage = can(ctx.permissions, 'lead.create');
   const sp = await searchParams; const projectId = sp.project ?? null;
   try { const [projects, rows] = await Promise.all([prisma.project.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: 'asc' } }), walkIns(projectId)]);
-    return <div className="space-y-6"><PageHeader title="Walk-ins & Site Visits" description="The funnel step where property is actually sold — walk-ins and site visits, captured with their source and outcome." /><WalkInsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
-  } catch (e) { return <div className="space-y-6"><PageHeader title="Walk-ins & Site Visits" description="Walk-ins." /><PageLoadError error={e} /></div>; }
+    return <div className="space-y-6"><PageHeader title="Walk-ins & site visits" description="The funnel step where property is actually sold — walk-ins and site visits, captured with their source and outcome." /><WalkInsRegister canManage={canManage} projects={projects} projectId={projectId} rows={rows} /></div>;
+  } catch (e) { return <div className="space-y-6"><PageHeader title="Walk-ins & site visits" description="Walk-ins." /><PageLoadError error={e} /></div>; }
 }

@@ -16,7 +16,7 @@ export default async function LandConversionPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Land Conversion & ALN Tracker" description="The agricultural-to-residential conversion workflow — RTC verification, DC scrutiny, the conversion fine, and the DC alienation order — tracked stage by stage so no parcel is built on before it is legally converted." />
+      <PageHeader title="Land conversion & ALN tracker" description="The agricultural-to-residential conversion workflow — RTC verification, DC scrutiny, the conversion fine, and the DC alienation order — tracked stage by stage so no parcel is built on before it is legally converted." />
       <LandConversionView projects={projects} counts={{ done, total: rows.length }}
         rows={rows.map((c) => ({ id: c.id, surveyNo: c.surveyNo, village: c.village, taluk: c.taluk, stage: c.stage, extentAcres: c.extentAcres != null ? Number(c.extentAcres) : null, dcOrderNo: c.dcOrderNo, conversionFee: c.conversionFee != null ? Number(c.conversionFee) : null, appliedOn: c.appliedOn?.toISOString() ?? null, orderOn: c.orderOn?.toISOString() ?? null, project: c.project?.name ?? null }))} />
     </div>

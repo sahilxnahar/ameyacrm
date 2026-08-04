@@ -29,7 +29,7 @@ export default async function PermissionsPage() {
 
   return (
     <div>
-      <PageHeader title="Roles & Permissions" description="Toggle exactly what each role can do. Super Admin always has full access." />
+      <PageHeader title="Roles & permissions" description="Toggle exactly what each role can do. Super Admin always has full access." />
       <PermissionEditor
         permissions={permissions.map((p) => ({ key: p.key, module: p.module, description: p.description ?? p.key }))}
         roles={roles.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}

@@ -17,6 +17,28 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.16',
+    date: '4 Aug 2026',
+    highlights: [
+      'If you had dragged your menu sections into a preferred order, or folded some shut, that survives the sections being renamed in v16.15. It would otherwise have quietly reset to the default with nothing to say why.',
+      'CHECK-MY-DATABASE.sql tells you exactly what your database is missing, if anything. Read-only \u2014 it changes nothing and is safe to run on a live system.',
+    ],
+  },
+  {
+    version: 'v16.15',
+    date: '3 Aug 2026',
+    highlights: [
+      'Empty screens now tell you what belongs there and how to put it there, instead of one line of grey text. That moment is usually somebody\u2019s first minute on a screen.',
+      'Every screen has a loading placeholder shaped like the page \u2014 137 of them were showing nothing at all until the data arrived.',
+      'Charts across the whole system now share one colour palette. The old ones were four separate sets, and the reports palette had two \u201Ccategories\u201D that were the same colour to everybody \u2014 measured, not guessed.',
+      'Money lines up. Figures in tables, ledgers and summary tiles are fixed-width, so a column reads down and a total no longer shifts sideways as it updates.',
+      'Titles and menu labels are in sentence case throughout, and menu pins are reachable again on a 13-inch laptop.',
+      'Icons are one visual weight at every size. The rendered stroke ranged over 2\u00D7 across the app, which is why small icons looked faint and large ones looked heavy.',
+      'The sales board reads properly: equal-height columns, so an empty stage is as easy to drop into as a busy one.',
+      'Required fields and form errors are now announced to screen readers, not signalled by a red asterisk alone.',
+    ],
+  },
+  {
     version: 'v16.14',
     date: '3 Aug 2026',
     highlights: [

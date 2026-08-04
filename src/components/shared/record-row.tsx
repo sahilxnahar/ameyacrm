@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Inbox, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -36,9 +37,50 @@ export function statusAccent(status: string | null | undefined): string {
   return 'border-l-transparent';
 }
 
-/** Wrapper for a list of rows — bordered, rounded, full width. */
-export function RecordList({ children, empty }: { children: React.ReactNode; empty?: string }) {
+/**
+ * Wrapper for a list of rows — bordered, rounded, full width.
+ *
+ * The empty state is a composed panel rather than a line of grey text.
+ *
+ * An empty screen is the one moment you have someone's whole attention and
+ * nothing competing for it, and it is almost always their FIRST moment on that
+ * screen — there is nothing there because they have not done anything yet. A
+ * centred sentence in muted grey reads as a system that has failed to load.
+ * The same space, given a frame, an icon and a sentence about what belongs
+ * here, reads as a system waiting for you.
+ *
+ * `empty` still accepts a plain string, so all 31 existing call sites keep
+ * working and simply look better. Pass `emptyTitle`, `emptyIcon` or
+ * `emptyAction` where a screen deserves more.
+ */
+export function RecordList({
+  children, empty, emptyTitle, emptyIcon: Icon, emptyAction,
+}: {
+  children: React.ReactNode;
+  empty?: string;
+  emptyTitle?: string;
+  emptyIcon?: LucideIcon;
+  emptyAction?: React.ReactNode;
+}) {
   const isEmpty = React.Children.count(children) === 0;
-  if (isEmpty) return <p className="py-10 text-center text-sm text-muted-foreground">{empty ?? 'Nothing to show.'}</p>;
-  return <div className="overflow-hidden rounded-lg border">{children}</div>;
+  if (isEmpty) {
+    return (
+      <div className="flex flex-col items-center rounded-lg border border-dashed bg-muted/20 px-6 py-12 text-center">
+        <span
+          aria-hidden
+          className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-sm ring-1 ring-border"
+        >
+          {Icon ? <Icon className="h-5 w-5" /> : <Inbox className="h-5 w-5" />}
+        </span>
+        <p className="font-display text-base font-semibold">{emptyTitle ?? 'Nothing here yet'}</p>
+        {/* ~65 characters is the readable measure; an explanation wider than the
+            list it is explaining is harder to read than the list. */}
+        <p className="mt-1 max-w-[42ch] text-pretty text-sm text-muted-foreground">
+          {empty ?? 'Nothing to show.'}
+        </p>
+        {emptyAction && <div className="mt-4">{emptyAction}</div>}
+      </div>
+    );
+  }
+  return <div className="record-list overflow-hidden rounded-lg border">{children}</div>;
 }

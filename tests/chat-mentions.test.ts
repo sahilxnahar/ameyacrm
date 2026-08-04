@@ -6,7 +6,7 @@ describe('chat @mentions', () => {
     expect(parseMentions('hey @ravi and @Priya_1, check this').sort()).toEqual(['priya_1', 'ravi']);
   });
   it('does not treat an email as a mention', () => {
-    expect(parseMentions('mail me at ravi@bizdateup.com')).toEqual([]);
+    expect(parseMentions('mail me at ravi@ameyaheights.com')).toEqual([]);
   });
   it('dedupes repeated handles', () => {
     expect(parseMentions('@ravi @ravi @ravi')).toEqual(['ravi']);

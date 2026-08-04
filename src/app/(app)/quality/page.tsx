@@ -24,7 +24,7 @@ export default async function QualityPage({ searchParams }: { searchParams: Prom
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Quality & Safety"
+          title="Quality & safety"
           description="Inspections with hold points — work that cannot be certified complete until the inspection passes — non-conformances tracked to closure, a safety register where the near-miss is the free warning, and time-bound permits to work. This is what makes the programme's progress numbers honest."
         />
         <ScreenHelp id="quality" />
@@ -34,7 +34,7 @@ export default async function QualityPage({ searchParams }: { searchParams: Prom
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Quality & Safety" description="Inspections, non-conformances, safety and permits." />
+        <PageHeader title="Quality & safety" description="Inspections, non-conformances, safety and permits." />
         <PageLoadError error={e} />
       </div>
     );

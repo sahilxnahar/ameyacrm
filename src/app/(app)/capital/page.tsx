@@ -24,7 +24,7 @@ export default async function CapitalPage({ searchParams }: { searchParams: Prom
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Capital & Escrow"
+          title="Capital & escrow"
           description="The capital stack, the investor register, and the RERA escrow control — 70% of buyer receipts ring-fenced, withdrawn only against certified progress, enforced on every movement. Plus the loan covenants you have promised to hold, with a warning before a breach rather than a letter after one."
         />
         <ScreenHelp id="capital" />
@@ -34,7 +34,7 @@ export default async function CapitalPage({ searchParams }: { searchParams: Prom
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Capital & Escrow" helpTermId="escrow" description="Capital stack, investors, RERA escrow and covenants." />
+        <PageHeader title="Capital & escrow" helpTermId="escrow" description="Capital stack, investors, RERA escrow and covenants." />
         <PageLoadError error={e} />
       </div>
     );

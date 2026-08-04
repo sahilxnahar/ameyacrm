@@ -38,7 +38,7 @@ export default async function GovernancePage({ searchParams }: { searchParams: P
 
     return (
       <div className="space-y-6">
-        <PageHeader title="Governance & Risk" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.risks!} />
+        <PageHeader title="Governance & risk" description={DESCRIPTIONS[view] ?? DESCRIPTIONS.risks!} />
         <RegisterTabs
           basePath="/governance"
           current={view}
@@ -57,6 +57,6 @@ export default async function GovernancePage({ searchParams }: { searchParams: P
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Governance & Risk" description="Risks, contracts, insurance and renewals." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Governance & risk" description="Risks, contracts, insurance and renewals." /><PageLoadError error={e} /></div>;
   }
 }

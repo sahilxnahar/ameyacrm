@@ -27,7 +27,7 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Programme & Progress"
+          title="Programme & progress"
           description="A real schedule with a critical path, measured progress, and earned value — the honest answer to “are we on track”, not the optimistic one. The critical path is the chain where a day lost is a day lost off the whole project."
         />
         <ScreenHelp id="programme" />
@@ -43,7 +43,7 @@ export default async function ProgrammePage({ searchParams }: { searchParams: Pr
   } catch (e) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Programme & Progress" description="Schedule, progress, earned value and delays." />
+        <PageHeader title="Programme & progress" description="Schedule, progress, earned value and delays." />
         <PageLoadError error={e} />
       </div>
     );

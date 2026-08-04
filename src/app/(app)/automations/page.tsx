@@ -14,7 +14,7 @@ export default async function MyAutomationsPage() {
   const prefs = readMyAutomationPrefs(row?.automationPrefs);
   return (
     <div className="space-y-6">
-      <PageHeader title="My Automations" description="Over a hundred ready-made automations, grouped by department. Switch on the ones you want working for you and tweak the timing — it’s personal to your account and doesn’t change anyone else’s." />
+      <PageHeader title="My automations" description="Over a hundred ready-made automations, grouped by department. Switch on the ones you want working for you and tweak the timing — it’s personal to your account and doesn’t change anyone else’s." />
       <MyAutomations prefs={prefs} />
     </div>
   );

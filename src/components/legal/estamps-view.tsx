@@ -55,7 +55,7 @@ export function EstampsView({ counts, rows, projects }: { counts: { generated: n
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No e-stamps yet.">
+      <RecordList empty="Stamp duty paid through SHCIL is recorded here against the document it franks, so the certificate and the agreement stay together.">
         {rows.map((e) => (
           <div key={e.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <Stamp className="h-4 w-4 shrink-0 text-muted-foreground" />

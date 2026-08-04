@@ -23,12 +23,12 @@ export default async function FeasibilityPage({ searchParams }: { searchParams: 
     ]);
     return (
       <div className="space-y-6">
-        <PageHeader title="Feasibility & Appraisal" description="Model a potential project — land, construction, finance and sales — to see profit on cost, margin and the residual land value that decides what to bid, with a scenario knob for sale rate down and cost up." />
+        <PageHeader title="Feasibility & appraisal" description="Model a potential project — land, construction, finance and sales — to see profit on cost, margin and the residual land value that decides what to bid, with a scenario knob for sale rate down and cost up." />
         <ScreenHelp id="feasibility" />
         <FeasibilityView canManage={canManage} projects={projects} projectId={projectId} rows={rows} />
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="Feasibility & Appraisal" description="Development appraisal." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="Feasibility & appraisal" description="Development appraisal." /><PageLoadError error={e} /></div>;
   }
 }

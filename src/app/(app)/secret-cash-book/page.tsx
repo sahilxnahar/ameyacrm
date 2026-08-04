@@ -16,7 +16,7 @@ export default async function SecretCashBookPage() {
   if (!allowed) {
     return (
       <div>
-        <PageHeader title="Secret Cash Book" description="A private, locked cash book." />
+        <PageHeader title="Secret cash book" description="A private, locked cash book." />
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           This is a private cash book. You don’t have access. Ask the owner to add you as a nominee.
         </div>
@@ -28,7 +28,7 @@ export default async function SecretCashBookPage() {
   if (!unlocked) {
     return (
       <div>
-        <PageHeader title="Secret Cash Book" description="Locked. Open it with a one-time code sent to your email and WhatsApp." />
+        <PageHeader title="Secret cash book" description="Locked. Open it with a one-time code sent to your email and WhatsApp." />
         <SecretCashLock />
       </div>
     );
@@ -61,7 +61,7 @@ export default async function SecretCashBookPage() {
 
   return (
     <div>
-      <PageHeader title="Secret Cash Book" description="Private. Only you and your nominees can open this, and it re-locks itself." />
+      <PageHeader title="Secret cash book" description="Private. Only you and your nominees can open this, and it re-locks itself." />
       <SecretCashBookView
         rows={rows}
         totalIn={totalIn}

@@ -16,7 +16,7 @@ export default async function VendorInsolvencyPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Vendor Insolvency Monitor (NCLT / IBC)" description="Flag a vendor pulled into IBC proceedings. A vendor in CIRP or under a s.14 moratorium is frozen — the RA-bill settlement refuses their advances automatically until the flag clears." />
+      <PageHeader title="Vendor insolvency monitor (NCLT / IBC)" description="Flag a vendor pulled into IBC proceedings. A vendor in CIRP or under a s.14 moratorium is frozen — the RA-bill settlement refuses their advances automatically until the flag clears." />
       <VendorInsolvencyView
         vendors={vendors}
         counts={{ frozen, total: rows.length }}

@@ -16,7 +16,7 @@ export default async function NriGatewayPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Cross-Border Legal & NRI KYC Gateway" description="FATCA declarations and FEMA documentation for foreign buyers. Each inward remittance is logged with its 90-day FEMA reporting deadline, so an NRE/NRO collection is never reported late." />
+      <PageHeader title="Cross-border legal & NRI KYC gateway" description="FATCA declarations and FEMA documentation for foreign buyers. Each inward remittance is logged with its 90-day FEMA reporting deadline, so an NRE/NRO collection is never reported late." />
       <NriGatewayView counts={{ total: rows.length, verified, femaDue }}
         rows={rows.map((p) => ({
           id: p.id, taxResidency: p.taxResidency, status: p.status, femaCategory: p.femaCategory,

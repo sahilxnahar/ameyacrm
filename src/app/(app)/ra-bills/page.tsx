@@ -29,7 +29,7 @@ export default async function RaBillsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="RA Bills" description="Contractor running-account bills — certified by the Independent Engineer, with 1% BOCW cess, retention and TDS worked out automatically and settled with one click." />
+      <PageHeader title="RA bills" description="Contractor running-account bills — certified by the Independent Engineer, with 1% BOCW cess, retention and TDS worked out automatically and settled with one click." />
       <RaBillsView
         canManage={can(ctx.permissions, 'procurement.manage')}
         canPay={can(ctx.permissions, 'finance.ledger.manage')}

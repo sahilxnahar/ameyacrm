@@ -15,7 +15,7 @@ export default async function RecurringPage() {
   return (
     <div>
       <PageHeader
-        title="Recurring Payments"
+        title="Recurring payments"
         description="Salaries, rent, EMIs, subscriptions — set them once and record each one on time. The CRM reminds you; it never pays anything itself."
       />
       <RecurringView

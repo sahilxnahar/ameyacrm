@@ -66,7 +66,7 @@ export function CapitalGainsView({ recent }: { recent: Recent[] }) {
 
       <div>
         <div className="mb-2 text-sm font-medium">Saved scenarios</div>
-        <RecordList empty="No saved scenarios yet.">
+        <RecordList empty="Model a sale under Section 54/54F here — sale value, indexed cost and the exemption you would claim — and save it to compare against another.">
           {recent.map((s) => (
             <div key={s.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
               <div className="min-w-0 flex-1">

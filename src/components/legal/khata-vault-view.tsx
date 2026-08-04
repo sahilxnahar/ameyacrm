@@ -60,7 +60,7 @@ export function KhataVaultView({ counts, rows, projects }: { counts: { total: nu
           </DialogContent>
         </Dialog>
       </div>
-      <RecordList empty="No khata records yet.">
+      <RecordList empty="A khata and an up-to-date encumbrance certificate are what a buyer's bank asks for first. Keep both here per unit.">
         {rows.map((k) => (
           <div key={k.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
             <Badge variant={TONE[k.khataType] ?? 'secondary'} className="shrink-0">{k.khataType.replace(/_/g, '-')}</Badge>

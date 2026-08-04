@@ -68,7 +68,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
       <ResponsiveTable
         rows={requests}
         rowKey={(r) => r.id}
-        empty="No payment requests yet."
+        empty="Approved supplier bills become payment requests here, then vouchers once paid. Nothing pays without passing through this list."
         columns={[
           { key: 'request', header: 'Request', primary: true, cell: (r) => (
             <span>

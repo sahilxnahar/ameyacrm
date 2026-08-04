@@ -49,7 +49,7 @@ export default async function SystemHealthPage() {
     const r = await getHealthReport();
     return (
       <div className="space-y-6">
-        <PageHeader title="System Health" description="A live, at-a-glance board of every part of the ecosystem and whether it's working. Measured right now — reload to check again." />
+        <PageHeader title="System health" description="A live, at-a-glance board of every part of the ecosystem and whether it's working. Measured right now — reload to check again." />
 
         {/* Overall banner */}
         <div className={`card-elevated flex items-center gap-3 border p-4 ${RING[r.overall]}`}>
@@ -116,6 +116,6 @@ export default async function SystemHealthPage() {
       </div>
     );
   } catch (e) {
-    return <div className="space-y-6"><PageHeader title="System Health" description="A live board of every part of the ecosystem." /><PageLoadError error={e} /></div>;
+    return <div className="space-y-6"><PageHeader title="System health" description="A live board of every part of the ecosystem." /><PageLoadError error={e} /></div>;
   }
 }

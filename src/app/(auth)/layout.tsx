@@ -9,13 +9,13 @@ import { brand } from '@/config/brand';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative min-h-screen w-full"
+      className="relative min-h-screen min-h-dvh w-full"
       style={{
         background:
           'linear-gradient(125deg, #04123A 0%, #0A2A6B 18%, #12409E 36%, #1E5FD6 52%, #6D9BEA 68%, #B9CFEF 82%, #F7F3EA 100%)',
       }}
     >
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center gap-10 px-6 py-14 lg:flex-row lg:justify-between lg:gap-16 lg:px-10">
+      <div className="mx-auto flex min-h-screen min-h-dvh max-w-6xl flex-col items-center justify-center gap-10 px-6 py-14 lg:flex-row lg:justify-between lg:gap-16 lg:px-10">
         {/* Brand */}
         <div className="flex w-full max-w-lg flex-col items-center text-center lg:items-start lg:text-left">
           <Image

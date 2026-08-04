@@ -13,7 +13,7 @@ export default async function GstFilingPage() {
   const invoices = 'ok' in res ? res.rows : [];
   return (
     <div className="space-y-6">
-      <PageHeader title="GST Filing" description="Generate filing-ready JSON from your own invoices — GSTR-1 for the month, and e-invoice / e-way-bill per invoice. Download and upload it to the GST, IRP or e-way-bill portal, or import into Tally. Nothing is transmitted from here; always have your CA review before filing." />
+      <PageHeader title="GST filing" description="Generate filing-ready JSON from your own invoices — GSTR-1 for the month, and e-invoice / e-way-bill per invoice. Download and upload it to the GST, IRP or e-way-bill portal, or import into Tally. Nothing is transmitted from here; always have your CA review before filing." />
       <GstFilingView invoices={invoices} />
     </div>
   );

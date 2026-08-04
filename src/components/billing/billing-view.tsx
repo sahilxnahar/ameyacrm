@@ -171,7 +171,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       </div>
 
       <TabsContent value="invoices">
-        <RecordList empty="No invoices yet.">
+        <RecordList empty="Invoices you raise on buyers appear here, GST-ready and numbered in one series. Raise one from a booking or on its own.">
           {invoices.map((i) => (
             <div
               key={i.id}
@@ -213,7 +213,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       </TabsContent>
 
       <TabsContent value="pos">
-        <RecordList empty="No purchase orders yet.">
+        <RecordList empty="A purchase order commits you to a supplier before the bill arrives. Raise one and route it for approval.">
           {pos.map((p) => (
             <div key={p.id} className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(p.status), p.needsMyApproval && 'bg-amber-500/5')}>
               <Monogram name={p.vendor} />
@@ -237,7 +237,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
       </TabsContent>
 
       <TabsContent value="bills">
-        <RecordList empty="No vendor bills yet.">
+        <RecordList empty="A supplier's bill goes here — with their own PDF attached — and becomes a payment request once approved.">
           {bills.map((b) => (
             <div key={b.id} className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 last:border-b-0', statusAccent(b.status))}>
               <Monogram name={b.vendor} />

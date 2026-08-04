@@ -17,7 +17,7 @@ export default async function WelfareLogPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="BOCW Labour Camp & Creche Welfare Log" description="Statutory-audit evidence under the BOCW Act — drinking water, medical camps, creche and sanitation, logged with headcount and photos. Any required facility not logged this month shows as a compliance gap, so a labour inspection never finds a surprise." />
+      <PageHeader title="BOCW labour camp & creche welfare log" description="Statutory-audit evidence under the BOCW Act — drinking water, medical camps, creche and sanitation, logged with headcount and photos. Any required facility not logged this month shows as a compliance gap, so a labour inspection never finds a surprise." />
       <WelfareLogView projects={projects} gaps={compliance.gaps} gapCount={compliance.gapCount}
         rows={rows.map((w) => ({ id: w.id, project: w.project?.name ?? '—', category: w.category, headcount: w.headcount, note: w.note, loggedOn: w.loggedOn.toISOString() }))} />
     </div>

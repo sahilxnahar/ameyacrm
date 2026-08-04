@@ -17,10 +17,10 @@ export interface GlossaryTerm {
 }
 
 export const GLOSSARY: GlossaryTerm[] = [
-  { id: 'lead', term: 'Lead', plain: 'A person who has shown interest in buying — an enquiry. It becomes a booking if they buy.', where: 'Sales & Leads' },
+  { id: 'lead', term: 'Lead', plain: 'A person who has shown interest in buying — an enquiry. It becomes a booking if they buy.', where: 'Sales & leads' },
   { id: 'lead-score', term: 'Lead score', plain: 'A number from 0–100 the CRM gives each enquiry to show how likely they are to buy. Higher means chase first.', where: 'Sales & Leads, Insights' },
-  { id: 'temperature', term: 'Lead temperature', plain: 'A simple hot / warm / cold label for how keen a buyer is right now.', where: 'Sales & Leads' },
-  { id: 'booking', term: 'Booking', plain: 'A unit a buyer has agreed to take, with the money and paperwork tracked against it.', where: 'Inventory & Bookings' },
+  { id: 'temperature', term: 'Lead temperature', plain: 'A simple hot / warm / cold label for how keen a buyer is right now.', where: 'Sales & leads' },
+  { id: 'booking', term: 'Booking', plain: 'A unit a buyer has agreed to take, with the money and paperwork tracked against it.', where: 'Inventory & bookings' },
   { id: 'unit', term: 'Unit', plain: 'One flat, shop or plot you can sell — the thing a buyer books.', where: 'Inventory' },
   { id: 'inventory', term: 'Inventory', plain: 'Everything you have to sell and its status: available, held, or sold.', where: 'Inventory' },
   { id: 'channel-partner', term: 'Channel partner', plain: 'An outside broker who brings you buyers and earns a commission for it.', where: 'Channel Partners', aka: ['broker', 'cp'] },

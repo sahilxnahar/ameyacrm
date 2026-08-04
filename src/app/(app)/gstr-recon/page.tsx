@@ -16,7 +16,7 @@ export default async function GstrReconPage() {
   ]);
   return (
     <div className="space-y-6">
-      <PageHeader title="GSTR-2B Auto-Reconciliation" description="Upload the GSTR-2B export and every supplier invoice is matched against your vendor bills — matched, amount-mismatch, or missing. Match before you claim Input Tax Credit or clear a payment, so a supplier who hasn't filed can't cost you the ITC." />
+      <PageHeader title="GSTR-2B auto-reconciliation" description="Upload the GSTR-2B export and every supplier invoice is matched against your vendor bills — matched, amount-mismatch, or missing. Match before you claim Input Tax Credit or clear a payment, so a supplier who hasn't filed can't cost you the ITC." />
       <GstrReconView summary={summary}
         rows={rows.map((l) => ({ id: l.id, supplierGstin: l.supplierGstin, invoiceNo: l.invoiceNo, period: l.period, taxableValue: Number(l.taxableValue), tax: Number(l.igst) + Number(l.cgst) + Number(l.sgst), status: l.status, invoiceDate: l.invoiceDate?.toISOString() ?? null }))} />
     </div>
