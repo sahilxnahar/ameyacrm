@@ -1,4 +1,5 @@
 import 'server-only';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 
 /**
@@ -72,8 +73,11 @@ export async function recordRun(run: AutomationRun): Promise<void> {
     const runs = [run, ...(await readRuns())].slice(0, KEEP);
     await prisma.setting.upsert({
       where: { key: KEY },
-      create: { key: KEY, value: runs as never },
-      update: { value: runs as never },
+      // A typed interface is not structurally an InputJsonObject (no index
+      // signature), so the JSON round-trip is made explicit rather than cast
+      // through `never`. It is what the column stores anyway.
+      create: { key: KEY, value: runs as unknown as Prisma.InputJsonValue },
+      update: { value: runs as unknown as Prisma.InputJsonValue },
     });
   } catch {
     /* Diagnostics must never be the reason the automation fails. */

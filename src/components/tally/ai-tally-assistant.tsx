@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { Sparkles, Loader2, ArrowRight, CheckCircle2, AlertTriangle, Plus } from 'lucide-react';
 import { GROUP_NAMES } from '@/config/tally-groups';
@@ -9,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 
 const EXAMPLES = [
   'Paid ₹50,000 to ABC Cement by bank for cement',
@@ -115,7 +115,7 @@ export function AiTallyAssistant({ onPosted }: { onPosted?: () => void }) {
                   <span className="text-muted-foreground">{draft.date}</span>
                   {draft.balanced
                     ? <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> Balances</span>
-                    : <span className="ml-auto flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" /> Dr ₹{inr.format(draft.totalDr)} ≠ Cr ₹{inr.format(draft.totalCr)}</span>}
+                    : <span className="ml-auto flex items-center gap-1 text-xs text-destructive"><AlertTriangle className="h-3.5 w-3.5" /> Dr {formatCurrency(draft.totalDr)} ≠ Cr {formatCurrency(draft.totalCr)}</span>}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -128,8 +128,8 @@ export function AiTallyAssistant({ onPosted }: { onPosted?: () => void }) {
                             {l.ledgerName}
                             {!l.ledgerId && <span className="ml-1 rounded bg-amber-500/15 px-1 text-[11px] text-amber-700">new</span>}
                           </td>
-                          <td className="py-1.5 text-right tabular-nums">{l.debit ? `₹${inr.format(l.debit)}` : ''}</td>
-                          <td className="py-1.5 text-right tabular-nums">{l.credit ? `₹${inr.format(l.credit)}` : ''}</td>
+                          <td className="py-1.5 text-right tabular-nums">{l.debit ? `${formatCurrency(l.debit)}` : ''}</td>
+                          <td className="py-1.5 text-right tabular-nums">{l.credit ? `${formatCurrency(l.credit)}` : ''}</td>
                         </tr>
                       ))}
                     </tbody>

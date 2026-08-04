@@ -1,4 +1,6 @@
 import 'server-only';
+import { asEnumOrUndefined } from '@/lib/utils/enum';
+import { RoleName, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { notify } from '@/lib/notifications/notify';
 import { sendEmail, renderTemplate } from '@/lib/email/email';
@@ -99,7 +101,7 @@ export async function runAutomations(trigger: AutoTrigger, ctx: RunContext): Pro
 }
 
 async function logRun(ruleId: string, ctx: RunContext, status: string, detail: Record<string, unknown>) {
-  await prisma.automationRun.create({ data: { ruleId, entityType: ctx.entityType, entityId: ctx.entityId, status, detail: detail as never } }).catch(() => undefined);
+  await prisma.automationRun.create({ data: { ruleId, entityType: ctx.entityType, entityId: ctx.entityId, status, detail: detail as Prisma.InputJsonValue } }).catch(() => undefined);
 }
 
 async function systemCreatorId(rule: { createdById: string | null }, ctx: RunContext): Promise<string | null> {
@@ -122,7 +124,7 @@ async function executeAction(a: Action, rule: { id: string; name: string; runCou
       let ids = (p.userIds as string[] | undefined)?.filter(Boolean) ?? [];
       if (!ids.length && typeof p.role === 'string') {
         const people = await prisma.user.findMany({
-          where: { role: p.role as never, status: 'ACTIVE', deletedAt: null },
+          where: { role: asEnumOrUndefined(RoleName, p.role), status: 'ACTIVE', deletedAt: null },
           select: { id: true }, orderBy: { createdAt: 'asc' },
         }).catch(() => []);
         ids = people.map((u) => u.id);

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Snowflake, Gavel, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -28,6 +29,12 @@ export function VendorInsolvencyView({ counts, rows, vendors }: {
   rows: Row[];
   vendors: { id: string; name: string }[];
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<InsolvencyInput>({ vendorId: '', stage: 'FLAGGED', freezeAdvances: true });
@@ -39,7 +46,7 @@ export function VendorInsolvencyView({ counts, rows, vendors }: {
     saveInsolvencyCase(form).then((r) => {
       setSaving(false);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Insolvency case saved — advances frozen if applicable'); setOpen(false); location.reload();
+      toast.success('Insolvency case saved — advances frozen if applicable'); setOpen(false); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the

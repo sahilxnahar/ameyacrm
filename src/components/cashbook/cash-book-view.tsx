@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Loader2, Plus, ArrowDownLeft, ArrowUpRight, Package, Ban, Wallet, Printer } from 'lucide-react';
@@ -24,7 +25,6 @@ interface Row {
   cancelReason: string | null;
 }
 
-const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const IN_KINDS = new Set(['CASH_RECEIVED', 'BANK_RECEIVED']);
 const OUT_KINDS = new Set(['CASH_PAID', 'BANK_PAID']);
 
@@ -54,15 +54,15 @@ export function CashBookView({
   return (
     <div className="space-y-4">
       <div className="stagger stat-grid">
-        <Stat label="Opened with" value={money(opening)} icon={Wallet} />
-        <Stat label="Received" value={money(cashIn)} icon={ArrowDownLeft} tone="in" />
-        <Stat label="Paid out" value={money(cashOut)} icon={ArrowUpRight} tone="out" />
-        <Stat label="In hand now" value={money(closing)} icon={Wallet} tone={closing < 0 ? 'out' : undefined} />
+        <Stat label="Opened with" value={formatCurrency(opening)} icon={Wallet} />
+        <Stat label="Received" value={formatCurrency(cashIn)} icon={ArrowDownLeft} tone="in" />
+        <Stat label="Paid out" value={formatCurrency(cashOut)} icon={ArrowUpRight} tone="out" />
+        <Stat label="In hand now" value={formatCurrency(closing)} icon={Wallet} tone={closing < 0 ? 'out' : undefined} />
       </div>
 
       {materialIn > 0 && (
         <p className="text-xs text-muted-foreground">
-          Material received this month is worth {money(materialIn)}. Material does not move the cash balance.
+          Material received this month is worth {formatCurrency(materialIn)}. Material does not move the cash balance.
         </p>
       )}
 
@@ -139,9 +139,9 @@ export function CashBookView({
                       {!v.materialName && <span className="block">{PAY_MODE_LABEL[v.mode] ?? v.mode}</span>}
                       {cancelled && v.cancelReason && <span className="block text-destructive">{v.cancelReason}</span>}
                     </td>
-                    <td className="p-3 text-right tabular text-success">{isIn && !cancelled && !awaiting ? money(v.amount) : ''}</td>
+                    <td className="p-3 text-right tabular text-success">{isIn && !cancelled && !awaiting ? formatCurrency(v.amount) : ''}</td>
                     <td className="p-3 text-right tabular text-destructive">
-                      {isOut && !cancelled && !awaiting ? money(v.amount) : ''}
+                      {isOut && !cancelled && !awaiting ? formatCurrency(v.amount) : ''}
                       {awaiting && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">awaiting approval</span>}
                     </td>
                     <td className="p-3 text-right">

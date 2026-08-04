@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { Search, Download, Phone, AlertTriangle } from 'lucide-react';
 import type { DueRow } from '@/server/services/receivables-service';
 
-const inr = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`;
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : 'no date set');
 
 const BUCKET_TONE: Record<string, string> = {
@@ -59,9 +59,9 @@ export function ReceivablesView({
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Outstanding in total" value={inr(totalOutstanding)} />
-        <Stat label="Already overdue" value={inr(totalOverdue)} tone={totalOverdue > 0 ? 'bad' : undefined} hint={`${rows.filter((r) => r.daysLate > 0).length} instalments past their date`} />
-        <Stat label="Falls due this month" value={inr(dueThisMonth)} hint="Not late yet — collect before it becomes a problem" />
+        <Stat label="Outstanding in total" value={formatCurrency(totalOutstanding)} />
+        <Stat label="Already overdue" value={formatCurrency(totalOverdue)} tone={totalOverdue > 0 ? 'bad' : undefined} hint={`${rows.filter((r) => r.daysLate > 0).length} instalments past their date`} />
+        <Stat label="Falls due this month" value={formatCurrency(dueThisMonth)} hint="Not late yet — collect before it becomes a problem" />
       </div>
 
       <div className="card-elevated p-4">
@@ -74,7 +74,7 @@ export function ReceivablesView({
               className={`focus-ring rounded-lg border p-3 text-left transition-colors ${bucket === b.key ? 'border-primary bg-secondary/60' : 'hover:bg-muted/50'}`}
             >
               <p className="text-xs text-muted-foreground">{b.label}</p>
-              <p className={`mt-1 text-base font-semibold tabular-nums ${BUCKET_TONE[b.key]}`}>{inr(b.amount)}</p>
+              <p className={`mt-1 text-base font-semibold tabular-nums ${BUCKET_TONE[b.key]}`}>{formatCurrency(b.amount)}</p>
               <p className="text-xs text-muted-foreground">{b.count} instalment{b.count === 1 ? '' : 's'}</p>
             </button>
           ))}
@@ -99,7 +99,7 @@ export function ReceivablesView({
                     <Phone className="h-3 w-3" />Call
                   </a>
                 )}
-                <span className="w-28 text-right text-sm font-semibold tabular-nums">{inr(d.amount)}</span>
+                <span className="w-28 text-right text-sm font-semibold tabular-nums">{formatCurrency(d.amount)}</span>
               </li>
             ))}
           </ul>
@@ -131,7 +131,7 @@ export function ReceivablesView({
               <p className="truncate text-sm text-muted-foreground">{r.label} · {r.bookingRef}</p>
             </div>
             <div className="text-right">
-              <p className="font-semibold tabular-nums">{inr(r.amount)}</p>
+              <p className="font-semibold tabular-nums">{formatCurrency(r.amount)}</p>
               <p className={`text-xs ${BUCKET_TONE[r.bucket]}`}>
                 {r.daysLate > 0 ? `${r.daysLate} days late` : `due ${day(r.dueDate)}`}
               </p>

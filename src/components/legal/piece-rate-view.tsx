@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Ruler, IndianRupee, Plus, CheckCircle2 } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -15,6 +16,12 @@ import { savePieceRateEntry, settlePieceRate, type PieceRateInput } from '@/serv
 interface Row { id: string; workItem: string; unit: string; quantity: number; ratePerUnit: number; amount: number; project: string; vendor: string; settled: boolean; measuredOn: string }
 
 export function PieceRateView({ counts, rows, projects, vendors }: { counts: { unsettled: number; total: number }; rows: Row[]; projects: { id: string; name: string }[]; vendors: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<PieceRateInput>({ projectId: '', workItem: '', unit: 'SQFT', quantity: 0, ratePerUnit: 0 });
@@ -23,7 +30,7 @@ export function PieceRateView({ counts, rows, projects, vendors }: { counts: { u
   function submit() {
     if (!form.projectId || !form.workItem.trim()) { toast.error('Project and work item required.'); return; }
     setSaving(true);
-    savePieceRateEntry(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Entry recorded'); setOpen(false); location.reload(); })
+    savePieceRateEntry(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Entry recorded'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -33,7 +40,7 @@ export function PieceRateView({ counts, rows, projects, vendors }: { counts: { u
       });
   }
   function settle(id: string) {
-    settlePieceRate(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(`Settled → ${r.voucher}`); location.reload(); });
+    settlePieceRate(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(`Settled → ${r.voucher}`); router.refresh(); });
   }
 
   return (

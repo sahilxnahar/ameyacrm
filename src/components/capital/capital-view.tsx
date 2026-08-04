@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X, Landmark, ShieldCheck, TrendingUp, AlertTriangle } from 'lucide-react';
 import { saveInvestor, addInvestorTransaction, saveCapitalEntry, recordEscrowMovement, saveCovenant, generateReraComplianceReport } from '@/server/actions/capital';
@@ -8,7 +9,6 @@ import type { EscrowPosition, CovenantStatus } from '@/lib/capital/escrow';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number | null) => n == null ? '—' : n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
 interface Overview {
   projectId: string | null;
@@ -52,9 +52,9 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile icon={<Landmark className="h-4 w-4" />} label="Capital stack" value={inr(overview.stackTotal)} sub={`${overview.stack.length} sources`} />
-        <Tile icon={<TrendingUp className="h-4 w-4" />} label="Investor commitment" value={inr(overview.totalCommitment)} sub={`${inr(overview.totalDrawn)} drawn`} />
-        <Tile icon={<ShieldCheck className="h-4 w-4" />} label="Escrow balance" value={inr(e.balance)} sub={e.depositShortfall > 0 ? `${inr(e.depositShortfall)} short` : 'fully funded'} bad={e.depositShortfall > 0 || e.overWithdrawn} />
+        <Tile icon={<Landmark className="h-4 w-4" />} label="Capital stack" value={formatCurrency(overview.stackTotal)} sub={`${overview.stack.length} sources`} />
+        <Tile icon={<TrendingUp className="h-4 w-4" />} label="Investor commitment" value={formatCurrency(overview.totalCommitment)} sub={`${formatCurrency(overview.totalDrawn)} drawn`} />
+        <Tile icon={<ShieldCheck className="h-4 w-4" />} label="Escrow balance" value={formatCurrency(e.balance)} sub={e.depositShortfall > 0 ? `${formatCurrency(e.depositShortfall)} short` : 'fully funded'} bad={e.depositShortfall > 0 || e.overWithdrawn} />
         <Tile icon={<AlertTriangle className="h-4 w-4" />} label="Covenants breached" value={String(overview.breachedCovenants)} sub={`${overview.covenants.length} monitored`} bad={overview.breachedCovenants > 0} />
       </div>
 
@@ -70,7 +70,7 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
         <div className="space-y-3">
           {canManage && projectId && <AddBtn open={openForm === 'cap'} onClick={() => setOpenForm(openForm === 'cap' ? null : 'cap')} label="Add capital source" />}
           {openForm === 'cap' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => saveCapitalEntry({ projectId, kind: (f.get('kind') as string) as never, source: f.get('source') as string, amount: Number(f.get('amount') || 0), costPct: f.get('costPct') ? Number(f.get('costPct')) : null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => saveCapitalEntry({ projectId, kind: (f.get('kind') as string), source: f.get('source') as string, amount: Number(f.get('amount') || 0), costPct: f.get('costPct') ? Number(f.get('costPct')) : null })); }}>
               <Field label="Kind"><select name="kind" defaultValue="EQUITY" className={inputCls}>{['EQUITY', 'DEBT', 'BUYER_ADVANCE', 'MEZZANINE', 'OTHER'].map((v) => <option key={v} value={v}>{v.replace(/_/g, ' ').toLowerCase()}</option>)}</select></Field>
               <Field label="Source *"><input name="source" required className={inputCls} /></Field>
               <Field label="Amount (₹)"><input name="amount" type="number" step="1" className={inputCls} /></Field>
@@ -83,8 +83,8 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Kind</th><th className="p-2">Source</th><th className="p-2">Amount</th><th className="p-2">Share</th><th className="p-2">Cost</th></tr></thead>
                 <tbody>
-                  {overview.stack.map((s) => <tr key={s.id} className="border-t border-border"><td className="p-2 capitalize">{s.kind.replace(/_/g, ' ').toLowerCase()}</td><td className="p-2">{s.source}</td><td className="p-2 font-medium">{inr(s.amount)}</td><td className="p-2">{overview.stackTotal > 0 ? Math.round((s.amount / overview.stackTotal) * 100) : 0}%</td><td className="p-2">{s.costPct != null ? `${s.costPct}%` : '—'}</td></tr>)}
-                  <tr className="border-t border-border font-medium"><td className="p-2" colSpan={2}>Total</td><td className="p-2">{inr(overview.stackTotal)}</td><td className="p-2">100%</td><td className="p-2" /></tr>
+                  {overview.stack.map((s) => <tr key={s.id} className="border-t border-border"><td className="p-2 capitalize">{s.kind.replace(/_/g, ' ').toLowerCase()}</td><td className="p-2">{s.source}</td><td className="p-2 font-medium">{formatCurrency(s.amount)}</td><td className="p-2">{overview.stackTotal > 0 ? Math.round((s.amount / overview.stackTotal) * 100) : 0}%</td><td className="p-2">{s.costPct != null ? `${s.costPct}%` : '—'}</td></tr>)}
+                  <tr className="border-t border-border font-medium"><td className="p-2" colSpan={2}>Total</td><td className="p-2">{formatCurrency(overview.stackTotal)}</td><td className="p-2">100%</td><td className="p-2" /></tr>
                 </tbody>
               </table>
             </div>
@@ -107,12 +107,12 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
             <div key={inv.id} className="rounded-lg border border-border p-3 text-sm">
               <div className="toolbar items-center gap-2">
                 <div><span className="font-medium">{inv.name}</span>{inv.contact ? <span className="ml-2 text-xs text-muted-foreground">{inv.contact}</span> : null}
-                  <p className="mt-0.5 text-xs text-muted-foreground">Commitment {inr(inv.commitment)} · drawn {inr(inv.drawn)} · outstanding {inr(inv.outstanding)}{inv.unitsAllotted ? ` · ${inv.unitsAllotted} units` : ''}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Commitment {formatCurrency(inv.commitment)} · drawn {formatCurrency(inv.drawn)} · outstanding {formatCurrency(inv.outstanding)}{inv.unitsAllotted ? ` · ${inv.unitsAllotted} units` : ''}</p>
                 </div>
                 {canManage && <button type="button" onClick={() => setOpenForm(openForm === `tx-${inv.id}` ? null : `tx-${inv.id}`)} className="text-xs text-primary hover:underline">Record transaction</button>}
               </div>
               {openForm === `tx-${inv.id}` && canManage && (
-                <form className="mt-2 flex flex-wrap gap-2" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => addInvestorTransaction({ investorId: inv.id, kind: (f.get('kind') as string) as never, amount: Number(f.get('amount')), unitsAllotted: f.get('units') ? Number(f.get('units')) : null })); }}>
+                <form className="mt-2 flex flex-wrap gap-2" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => addInvestorTransaction({ investorId: inv.id, kind: (f.get('kind') as string), amount: Number(f.get('amount')), unitsAllotted: f.get('units') ? Number(f.get('units')) : null })); }}>
                   <select name="kind" defaultValue="DRAWDOWN" className={cn(inputCls, 'w-36 mt-0')}>{['COMMITMENT', 'DRAWDOWN', 'DISTRIBUTION', 'REPAYMENT'].map((v) => <option key={v} value={v}>{v.toLowerCase()}</option>)}</select>
                   <input name="amount" type="number" step="1" required placeholder="Amount" className={cn(inputCls, 'w-32 mt-0')} />
                   <input name="units" type="number" placeholder="Units" className={cn(inputCls, 'w-24 mt-0')} />
@@ -127,10 +127,10 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
       {tab === 'escrow' && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Tile label="Buyer receipts" value={inr(e.totalReceipts)} sub={`${e.escrowPct}% must be ring-fenced`} />
-            <Tile label="Required in escrow" value={inr(e.requiredDeposit)} sub={e.depositShortfall > 0 ? `${inr(e.depositShortfall)} short` : 'met'} bad={e.depositShortfall > 0} />
-            <Tile label="Balance" value={inr(e.balance)} sub={`${inr(e.deposited)} in · ${inr(e.withdrawn)} out`} />
-            <Tile label="Withdrawable now" value={inr(e.withdrawable)} sub={`at ${overview.latestCertifiedPct}% certified`} />
+            <Tile label="Buyer receipts" value={formatCurrency(e.totalReceipts)} sub={`${e.escrowPct}% must be ring-fenced`} />
+            <Tile label="Required in escrow" value={formatCurrency(e.requiredDeposit)} sub={e.depositShortfall > 0 ? `${formatCurrency(e.depositShortfall)} short` : 'met'} bad={e.depositShortfall > 0} />
+            <Tile label="Balance" value={formatCurrency(e.balance)} sub={`${formatCurrency(e.deposited)} in · ${formatCurrency(e.withdrawn)} out`} />
+            <Tile label="Withdrawable now" value={formatCurrency(e.withdrawable)} sub={`at ${overview.latestCertifiedPct}% certified`} />
           </div>
           {e.overWithdrawn && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">Withdrawals have exceeded the certified entitlement — this is a RERA breach to correct.</div>}
           <div className="flex flex-wrap items-center gap-2">
@@ -140,7 +140,7 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
           </div>
           {canManage && projectId && <AddBtn open={openForm === 'esc'} onClick={() => setOpenForm(openForm === 'esc' ? null : 'esc')} label="Record escrow movement" />}
           {openForm === 'esc' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => recordEscrowMovement({ projectId, kind: (f.get('kind') as string) as never, amount: Number(f.get('amount') || 0), certifiedPct: f.get('certifiedPct') ? Number(f.get('certifiedPct')) : null, reference: (f.get('reference') as string) || null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => recordEscrowMovement({ projectId, kind: (f.get('kind') as string), amount: Number(f.get('amount') || 0), certifiedPct: f.get('certifiedPct') ? Number(f.get('certifiedPct')) : null, reference: (f.get('reference') as string) || null })); }}>
               <Field label="Kind"><select name="kind" defaultValue="DEPOSIT" className={inputCls}>{['DEPOSIT', 'WITHDRAWAL'].map((v) => <option key={v} value={v}>{v.toLowerCase()}</option>)}</select></Field>
               <Field label="Amount (₹)"><input name="amount" type="number" step="1" required className={inputCls} /></Field>
               <Field label="Certified % (for withdrawals)"><input name="certifiedPct" type="number" min="0" max="100" step="0.01" className={inputCls} /></Field>
@@ -156,7 +156,7 @@ export function CapitalView({ canManage, projects, projectId, overview }: { canM
         <div className="space-y-3">
           {canManage && <AddBtn open={openForm === 'cov'} onClick={() => setOpenForm(openForm === 'cov' ? null : 'cov')} label="Add covenant" />}
           {openForm === 'cov' && canManage && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => saveCovenant({ projectId, name: f.get('name') as string, loanRef: (f.get('loanRef') as string) || null, direction: (f.get('direction') as string) as never, threshold: Number(f.get('threshold')), current: Number(f.get('current')), unit: (f.get('unit') as string) || null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(ev) => { ev.preventDefault(); const f = new FormData(ev.currentTarget); run(() => saveCovenant({ projectId, name: f.get('name') as string, loanRef: (f.get('loanRef') as string) || null, direction: (f.get('direction') as string), threshold: Number(f.get('threshold')), current: Number(f.get('current')), unit: (f.get('unit') as string) || null })); }}>
               <Field label="Covenant *"><input name="name" required placeholder="DSCR, LTV, Interest cover…" className={inputCls} /></Field>
               <Field label="Lender / loan ref"><input name="loanRef" className={inputCls} /></Field>
               <Field label="Direction"><select name="direction" defaultValue="MIN" className={inputCls}><option value="MIN">must stay ≥ (min)</option><option value="MAX">must stay ≤ (max)</option></select></Field>

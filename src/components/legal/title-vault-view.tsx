@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ScrollText, BadgeCheck, Plus, CircleCheck, Circle } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -20,13 +21,19 @@ const KINDS = ['MOTHER_DEED', 'SALE_DEED', 'GIFT_DEED', 'PARTITION_DEED', 'MUTAT
 function fmt(d: string | null) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
 
 export function TitleVaultView({ counts, rows, projects }: { counts: { verified: number; total: number }; rows: Row[]; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<TitleEntryInput>({ kind: 'SALE_DEED' });
   function set<K extends keyof TitleEntryInput>(k: K, v: TitleEntryInput[K]) { setForm((f) => ({ ...f, [k]: v })); }
   function submit() {
     setSaving(true);
-    saveTitleEntry(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Entry added'); setOpen(false); location.reload(); })
+    saveTitleEntry(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Entry added'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -35,7 +42,7 @@ export function TitleVaultView({ counts, rows, projects }: { counts: { verified:
         toast.error('Could not reach the server. Nothing was saved — check your connection and try again.');
       });
   }
-  function verify(id: string, next: boolean) { verifyTitleEntry(id, next).then((r) => { if ('error' in r) { toast.error(r.error); return; } location.reload(); }); }
+  function verify(id: string, next: boolean) { verifyTitleEntry(id, next).then((r) => { if ('error' in r) { toast.error(r.error); return; } router.refresh(); }); }
 
   return (
     <div className="space-y-6">

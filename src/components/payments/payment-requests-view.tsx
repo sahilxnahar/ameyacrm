@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, Link2, MessageCircle, Send, Check, Ban, Settings2 } from 'lucide-react';
@@ -16,8 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 interface Req { id: string; reference: string; token: string; payeeName: string; payeeEmail: string | null; payeePhone: string | null; amount: number; description: string; status: string; dueDate: string | null; payerReference: string | null; emailSentAt: string | null; createdAt: string }
 interface Opt { id: string; name: string }
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-const money = (n: number) => `₹${inr.format(n)}`;
 const tone = (s: string) => (s === 'PAID' ? 'success' : s === 'CANCELLED' ? 'secondary' : s === 'CONFIRMED' ? 'warning' : 'secondary') as 'success' | 'secondary' | 'warning';
 
 const AB = 'h-7 gap-1.5 px-2 text-xs font-normal';
@@ -83,7 +82,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
               <span className="block break-all text-xs text-muted-foreground">{r.payeeEmail ?? r.payeePhone ?? '—'}</span>
             </span>
           ) },
-          { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <span className="font-medium">{money(r.amount)}</span> },
+          { key: 'amount', header: 'Amount', align: 'right', cell: (r) => <span className="font-medium">{formatCurrency(r.amount)}</span> },
           { key: 'status', header: 'Status', cell: (r) => <Badge variant={tone(r.status)}>{r.status}</Badge> },
         ]}
         actions={(r) => (
@@ -91,7 +90,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
             <Button size="sm" variant="outline" className={AB} title="Copy the secure payment link so you can paste it anywhere" onClick={() => { navigator.clipboard?.writeText(link(r.token)); toast.success('Link copied'); }}><Link2 className="h-3.5 w-3.5" /> Copy link</Button>
             {r.payeePhone && (
               <Button asChild size="sm" variant="outline" className={AB} title="Send the request to this person on WhatsApp">
-                <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${money(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp</a>
+                <a target="_blank" rel="noreferrer" href={`https://wa.me/${r.payeePhone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(`Payment request ${r.reference} for ${formatCurrency(r.amount)} — ${r.description}. Pay here: ${link(r.token)}`)}`}><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /> WhatsApp</a>
               </Button>
             )}
             {r.payeeEmail && <Button size="sm" variant="outline" className={AB} title="Email the request to the payee again" disabled={pending} onClick={() => act(() => resendPaymentRequest(r.id), 'Email sent')}><Send className="h-3.5 w-3.5" /> Resend email</Button>}

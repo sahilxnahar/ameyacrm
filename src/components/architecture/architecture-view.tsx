@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeVariant } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,7 +25,7 @@ interface Consultant { id: string; name: string; firm: string | null; discipline
 interface Drawing { id: string; number: string; title: string; discipline: string; status: string; revision: number; project: string | null; fileId: string | null }
 interface Rfi { id: string; number: string; subject: string; question: string; response: string | null; status: string; assignedTo: string | null; consultant: string | null; dueDate: string | null }
 interface Issue { id: string; title: string; severity: string; status: string; assignedTo: string | null; project: string | null }
-function sevVariant(s: string) { return s === 'CRITICAL' ? 'destructive' : s === 'HIGH' ? 'warning' : s === 'LOW' ? 'secondary' : 'default'; }
+function sevVariant(s: string): BadgeVariant { return s === 'CRITICAL' ? 'destructive' : s === 'HIGH' ? 'warning' : s === 'LOW' ? 'secondary' : 'default'; }
 
 export function ArchitectureView({ drawings, rfis, issues, consultants, projects, users }: {
   drawings: Drawing[]; rfis: Rfi[]; issues: Issue[]; consultants: Consultant[]; projects: Opt[]; users: Opt[];
@@ -109,7 +109,7 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
             {issues.map((i) => (
               <TableRow key={i.id}>
                 <TableCell><p className="font-medium">{i.title}</p>{i.project && <p className="text-xs text-muted-foreground">{i.project}</p>}</TableCell>
-                <TableCell><Badge variant={sevVariant(i.severity) as never}>{titleCase(i.severity)}</Badge></TableCell>
+                <TableCell><Badge variant={sevVariant(i.severity)}>{titleCase(i.severity)}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{i.assignedTo ?? '—'}</TableCell>
                 <TableCell><Badge variant={i.status === 'RESOLVED' || i.status === 'CLOSED' ? 'success' : i.status === 'OPEN' ? 'secondary' : 'default'}>{titleCase(i.status)}</Badge></TableCell>
                 <TableCell>

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { saveHearing, deleteHearing, setTitleExpiry } from '@/server/actions/legal-docket';
@@ -12,7 +13,6 @@ const STATUS_TONE: Record<string, string> = {
   DISPOSED: 'bg-emerald-100 text-emerald-800', APPEAL: 'bg-orange-100 text-orange-800', CLOSED: 'bg-slate-200 text-slate-700',
 };
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
-const inr = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
 export function LegalDocket({ docket, renewals }: { docket: LitigationDocket; renewals: DocRenewals }) {
   const [tab, setTab] = React.useState<'docket' | 'renewals'>('docket');
@@ -113,7 +113,7 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
         <div className="shrink-0 text-right text-xs">
           <div className="text-muted-foreground">Next hearing</div>
           <div className="font-semibold">{fmtDate(m.nextHearing)}</div>
-          {m.exposure != null && <div className="text-[11px] text-rose-700">₹ {inr(m.exposure)} at risk</div>}
+          {m.exposure != null && <div className="text-[11px] text-rose-700">₹ {formatCurrency(m.exposure)} at risk</div>}
         </div>
       </button>
       {open && (

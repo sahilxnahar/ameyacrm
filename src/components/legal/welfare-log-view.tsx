@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { HeartPulse, ShieldAlert, Plus, Droplets, Baby, Cross, Sparkles } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -22,6 +23,12 @@ const CATS = [
 function catLabel(k: string) { return CATS.find((c) => c.key === k)?.label ?? k.replace(/_/g, ' '); }
 
 export function WelfareLogView({ rows, gaps, gapCount, projects }: { rows: Row[]; gaps: Gap[]; gapCount: number; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<WelfareInput>({ projectId: '', category: 'DRINKING_WATER' });
@@ -29,7 +36,7 @@ export function WelfareLogView({ rows, gaps, gapCount, projects }: { rows: Row[]
   function submit() {
     if (!form.projectId) { toast.error('Project is required.'); return; }
     setSaving(true);
-    logWelfare(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Welfare logged'); setOpen(false); location.reload(); })
+    logWelfare(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Welfare logged'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

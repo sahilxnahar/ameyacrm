@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Plus, RefreshCw, Trash2, Target, TrendingUp, Wallet, Trophy } from 'lucide-react';
@@ -12,8 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils/cn';
 
-const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-const lakh = (n: number) => (n >= 10000000 ? `₹${(n / 10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n / 100000).toFixed(1)} L` : money(n));
+const lakh = (n: number) => (n >= 10000000 ? `₹${(n / 10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n / 100000).toFixed(1)} L` : formatCurrency(n));
 
 interface Row { userId: string; name: string; target: number; booked: number; weightedPipeline: number; bookingCount: number; leadCount: number; attainment: number; incentive: number }
 interface Slab { id: string; name: string; fromValue: number; toValue: number | null; ratePercent: number; flatAmount: number | null }
@@ -145,7 +145,7 @@ export function ForecastView({
                     <span>
                       <span className="font-medium">{s.name}</span>
                       <span className="block text-xs text-muted-foreground">
-                        {lakh(s.fromValue)} – {s.toValue === null ? 'no limit' : lakh(s.toValue)} → {s.ratePercent ? `${s.ratePercent}%` : ''}{s.ratePercent && s.flatAmount ? ' + ' : ''}{s.flatAmount ? money(s.flatAmount) : ''}
+                        {lakh(s.fromValue)} – {s.toValue === null ? 'no limit' : lakh(s.toValue)} → {s.ratePercent ? `${s.ratePercent}%` : ''}{s.ratePercent && s.flatAmount ? ' + ' : ''}{s.flatAmount ? formatCurrency(s.flatAmount) : ''}
                       </span>
                     </span>
                     {canManage && (
@@ -173,7 +173,7 @@ export function ForecastView({
                     <td className="p-3 text-xs text-muted-foreground">{e.note ?? '—'}</td>
                     <td className="p-3 text-right">{lakh(e.baseValue)}</td>
                     <td className="p-3 text-xs">{e.slabName ?? '—'}</td>
-                    <td className="p-3 text-right font-medium">{money(e.amount)}</td>
+                    <td className="p-3 text-right font-medium">{formatCurrency(e.amount)}</td>
                     <td className="p-3"><Badge variant={e.status === 'PAID' ? 'success' : e.status === 'APPROVED' ? 'secondary' : 'warning'}>{e.status}</Badge></td>
                     <td className="p-3 text-right">
                       {canManage && e.status !== 'PAID' && (

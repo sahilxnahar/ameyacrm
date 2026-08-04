@@ -186,6 +186,8 @@ export function MapView({
                 {failure.kind === 'webgl' ? 'The map cannot be drawn on this device. ' : 'The map could not start. '}
                 {failure.message}
               </p>
+              {/* A real reload: the map library failed to initialise, so there is no
+                  server data to re-fetch — the page's JavaScript has to start again. */}
               <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Reload</Button>
             </div>
           )}

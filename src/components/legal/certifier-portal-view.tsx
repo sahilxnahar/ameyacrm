@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Stamp, FileCheck2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -10,6 +11,12 @@ import { certifyEngineerPeriod } from '@/server/actions/legal-contracts';
 import type { CertifierItem } from '@/server/services/certifier-service';
 
 export function CertifierPortalView({ items, pendingRaBills }: { items: CertifierItem[]; pendingRaBills: number }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
 
   function certify(it: CertifierItem) {
@@ -18,7 +25,7 @@ export function CertifierPortalView({ items, pendingRaBills }: { items: Certifie
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Certified ${it.contract} for ${it.period} — payment released`);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the

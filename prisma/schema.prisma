@@ -6381,3 +6381,33 @@ model TallyPartyReminderSend {
 
   @@index([reminderId, sentAt])
 }
+
+/// A row that was deleted, kept long enough to put back (AMH-033).
+///
+/// Undo existed on 3 of roughly 120 destructive surfaces. Adding `deletedAt` to
+/// every model would have meant a migration across dozens of tables and a
+/// `deletedAt: null` filter on every query that touches them — a large change
+/// with a large blast radius, and one missed filter silently resurrects deleted
+/// rows into a list.
+///
+/// This keeps the deleted row's own JSON instead. The delete stays a real
+/// delete, every existing query is untouched, and undo is an insert.
+model DeletedRecord {
+  id        String   @id @default(cuid())
+  /// Prisma model name, e.g. "Reminder". Used to pick the delegate on restore.
+  model     String
+  /// The primary key the row had. Restored with the SAME id, so anything that
+  /// referenced it by id still resolves.
+  recordId  String
+  /// A one-line description for the audit trail and the recycle bin screen.
+  label     String
+  /// The row as it was, JSON-serialised.
+  payload   Json
+  deletedById String?
+  deletedAt DateTime @default(now())
+  /// Set when it has been put back; a record is restorable exactly once.
+  restoredAt DateTime?
+
+  @@index([deletedById, deletedAt])
+  @@index([model, recordId])
+}

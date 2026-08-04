@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Globe2, BadgeCheck, AlertTriangle, Plus, IndianRupee } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -18,6 +19,12 @@ const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> 
 function fmt(d: string | null) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
 
 export function NriGatewayView({ counts, rows }: { counts: { total: number; verified: number; femaDue: number }; rows: Row[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<NriProfileInput>({ taxResidency: '', status: 'PENDING', fatcaDeclared: false });
@@ -25,7 +32,7 @@ export function NriGatewayView({ counts, rows }: { counts: { total: number; veri
   function submit() {
     if (!form.taxResidency.trim()) { toast.error('Tax residency is required.'); return; }
     setSaving(true);
-    saveNriProfile(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Profile saved'); setOpen(false); location.reload(); })
+    saveNriProfile(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Profile saved'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -38,7 +45,7 @@ export function NriGatewayView({ counts, rows }: { counts: { total: number; veri
     const amt = prompt('Foreign amount (e.g. 50000):'); if (!amt) return;
     const cur = prompt('Currency (USD/GBP/AED):', 'USD') ?? 'USD';
     const inr = prompt('INR credited:'); if (!inr) return;
-    addForeignRemittance(profileId, Number(amt), cur, Number(inr)).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Remittance logged — 90-day FEMA clock started'); location.reload(); });
+    addForeignRemittance(profileId, Number(amt), cur, Number(inr)).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Remittance logged — 90-day FEMA clock started'); router.refresh(); });
   }
 
   return (

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Calculator, PiggyBank, Save } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -14,6 +15,12 @@ import { saveCapitalGainScenario } from '@/server/actions/finance-tax';
 interface Recent { id: string; saleValue: number; section: string; exemptGain: number; taxSaved: number; createdAt: string }
 
 export function CapitalGainsView({ recent }: { recent: Recent[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [saleValue, setSaleValue] = React.useState(10000000);
   const [indexedCost, setIndexedCost] = React.useState(4000000);
   const [section, setSection] = React.useState<'54' | '54F'>('54');
@@ -27,7 +34,7 @@ export function CapitalGainsView({ recent }: { recent: Recent[] }) {
     saveCapitalGainScenario({ saleValue, indexedCost, section, reinvestAmount: reinvest }).then((res) => {
       setSaving(false);
       if ('error' in res) { toast.error(res.error); return; }
-      toast.success('Scenario saved'); location.reload();
+      toast.success('Scenario saved'); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the

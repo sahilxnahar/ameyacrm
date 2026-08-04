@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { revalidatePath } from 'next/cache';
 import type { HomeLoanStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
@@ -7,7 +8,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { getActiveProject } from '@/server/services/active-project-service';
 import { ensure, toActionError } from './_helpers';
 
-export type LoanResult = { ok: true; id?: string } | { error: string };
+export type LoanResult = { ok: true; id?: string; undo?: Undoable | null } | { error: string };
 
 const STATUSES = ['ENQUIRY', 'APPLIED', 'SANCTIONED', 'DISBURSED_PARTIAL', 'DISBURSED_FULL', 'REJECTED'] as const;
 
@@ -77,9 +78,15 @@ export async function updateHomeLoan(input: unknown): Promise<LoanResult> {
 export async function deleteHomeLoan(id: string): Promise<LoanResult> {
   try {
     const ctx = await ensure('booking.manage');
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.homeLoan.findUnique({ where: { id } });
     await prisma.homeLoan.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('HomeLoan', row, { label: String(row.bankName ?? "home loan"), userId: ctx?.user.id })
+      : null;
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'HomeLoan', entityId: id, summary: 'Deleted home loan' });
     revalidatePath('/home-loans');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (e) { return toActionError(e); }
 }

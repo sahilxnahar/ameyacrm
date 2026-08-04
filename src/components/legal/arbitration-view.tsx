@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Scale, CalendarClock, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -18,6 +19,12 @@ const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> 
 function fmt(d: string | null) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
 
 export function ArbitrationView({ counts, rows, projects, vendors }: { counts: { total: number; hearingSoon: number }; rows: Row[]; projects: { id: string; name: string }[]; vendors: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<AdrInput>({ title: '', refNo: '', claimant: '', respondent: '', stage: 'NOTICE_ISSUED' });
@@ -25,7 +32,7 @@ export function ArbitrationView({ counts, rows, projects, vendors }: { counts: {
   function submit() {
     if (!form.title.trim() || !form.refNo.trim() || !form.claimant.trim() || !form.respondent.trim()) { toast.error('Title, ref, claimant and respondent are required.'); return; }
     setSaving(true);
-    saveAdrCase(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Case saved'); setOpen(false); location.reload(); })
+    saveAdrCase(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Case saved'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

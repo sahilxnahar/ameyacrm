@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { asEnum } from '@/lib/utils/enum';
+import { ContractStatus, EnvCondStatus, JdaShareType, ObligationFrequency, ObligationKind, ObligationStatus, RiskLevel, RiskStatus, SecIncidentStatus, SecOpsSeverity, SopStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -21,9 +23,9 @@ export async function createObligation(v: Record<string, string>): Promise<Compl
     const title = str.parse(v.title ?? '');
     if (title.length < 2) return { error: 'Give the obligation a title.' };
     const o = await prisma.statutoryObligation.create({ data: {
-      projectId: optStr(v.projectId ?? ''), title, kind: (v.kind || 'OTHER') as never,
-      authority: optStr(v.authority ?? ''), frequency: (v.frequency || 'MONTHLY') as never,
-      owner: optStr(v.owner ?? ''), nextDue: optDate(v.nextDue ?? ''), status: (v.status || 'UPCOMING') as never,
+      projectId: optStr(v.projectId ?? ''), title, kind: asEnum(ObligationKind, v.kind, 'OTHER'),
+      authority: optStr(v.authority ?? ''), frequency: asEnum(ObligationFrequency, v.frequency, 'MONTHLY'),
+      owner: optStr(v.owner ?? ''), nextDue: optDate(v.nextDue ?? ''), status: asEnum(ObligationStatus, v.status, 'UPCOMING'),
       createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'StatutoryObligation', entityId: o.id, summary: `Obligation "${title}"` });
@@ -119,8 +121,8 @@ export async function createRisk(v: Record<string, string>): Promise<ComplianceR
     const title = str.parse(v.title ?? ''); if (title.length < 2) return { error: 'Name the risk.' };
     const r = await prisma.riskEntry.create({ data: {
       projectId: optStr(v.projectId ?? ''), title, category: optStr(v.category ?? ''),
-      likelihood: (v.likelihood || 'MEDIUM') as never, impact: (v.impact || 'MEDIUM') as never,
-      owner: optStr(v.owner ?? ''), mitigation: optStr(v.mitigation ?? ''), status: (v.status || 'OPEN') as never,
+      likelihood: asEnum(RiskLevel, v.likelihood, 'MEDIUM'), impact: asEnum(RiskLevel, v.impact, 'MEDIUM'),
+      owner: optStr(v.owner ?? ''), mitigation: optStr(v.mitigation ?? ''), status: asEnum(RiskStatus, v.status, 'OPEN'),
       createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'RiskEntry', entityId: r.id, summary: `Risk "${title}"` });
@@ -135,8 +137,8 @@ export async function createIncident(v: Record<string, string>): Promise<Complia
     const ctx = await guard('secops.manage');
     const title = str.parse(v.title ?? ''); if (title.length < 2) return { error: 'Name the incident.' };
     const i = await prisma.securityIncident.create({ data: {
-      title, severity: (v.severity || 'MEDIUM') as never, kind: optStr(v.kind ?? ''),
-      status: (v.status || 'OPEN') as never, rootCause: optStr(v.rootCause ?? ''), createdById: ctx.user.id,
+      title, severity: asEnum(SecOpsSeverity, v.severity, 'MEDIUM'), kind: optStr(v.kind ?? ''),
+      status: asEnum(SecIncidentStatus, v.status, 'OPEN'), rootCause: optStr(v.rootCause ?? ''), createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'SecurityIncident', entityId: i.id, summary: `Incident "${title}"` });
     revalidatePath('/security-ops');
@@ -167,7 +169,7 @@ export async function createEnvCondition(v: Record<string, string>): Promise<Com
     const condition = str.parse(v.condition ?? ''); if (condition.length < 2) return { error: 'Describe the condition.' };
     const e2 = await prisma.envClearanceCondition.create({ data: {
       projectId: optStr(v.projectId ?? ''), condition, authority: optStr(v.authority ?? ''),
-      evidence: optStr(v.evidence ?? ''), dueOn: optDate(v.dueOn ?? ''), status: (v.status || 'PENDING') as never,
+      evidence: optStr(v.evidence ?? ''), dueOn: optDate(v.dueOn ?? ''), status: asEnum(EnvCondStatus, v.status, 'PENDING'),
       createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'EnvClearanceCondition', entityId: e2.id, summary: 'EC condition' });
@@ -190,7 +192,7 @@ export async function createContract(v: Record<string, string>): Promise<Complia
       projectId: optStr(v.projectId ?? ''), title, counterparty, kind: optStr(v.kind ?? ''),
       value: optNum(v.value ?? ''), startsOn: optDate(v.startsOn ?? ''), endsOn: optDate(v.endsOn ?? ''),
       renewalOn: optDate(v.renewalOn ?? ''), obligations: optStr(v.obligations ?? ''),
-      status: (v.status || 'ACTIVE') as never, createdById: ctx.user.id,
+      status: asEnum(ContractStatus, v.status, 'ACTIVE'), createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'ContractRecord', entityId: r.id, summary: `Contract "${title}" with ${counterparty}` });
     revalidatePath('/governance');
@@ -237,7 +239,7 @@ export async function createSop(v: Record<string, string>): Promise<ComplianceRe
     if (title.length < 2) return { error: 'Give the SOP a title.' };
     const s = await prisma.sop.create({ data: {
       title, department: optStr(v.department ?? ''), content: optStr(v.content ?? ''),
-      effectiveOn: optDate(v.effectiveOn ?? ''), status: (v.status || 'DRAFT') as never,
+      effectiveOn: optDate(v.effectiveOn ?? ''), status: asEnum(SopStatus, v.status, 'DRAFT'),
       createdById: ctx.user.id,
     }, select: { id: true } });
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'Sop', entityId: s.id, summary: `SOP "${title}"` });
@@ -329,7 +331,7 @@ export async function createJda(v: Record<string, string>): Promise<ComplianceRe
     }
 
     const j = await prisma.jointDevelopmentAgreement.create({ data: {
-      parcelId: parcel.id, landownerName, shareType: (v.shareType || 'AREA_SHARE') as never,
+      parcelId: parcel.id, landownerName, shareType: asEnum(JdaShareType, v.shareType, 'AREA_SHARE'),
       developerShare: dev, landownerShare: own, refundableDeposit: optNum(v.refundableDeposit ?? ''),
       signedOn: optDate(v.signedOn ?? ''), obligations: optStr(v.obligations ?? ''),
     }, select: { id: true } });

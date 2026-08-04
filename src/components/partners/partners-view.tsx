@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, ShieldCheck, UserPlus, Wallet, Globe, Copy, ChevronDown } from 'lucide-react';
@@ -16,11 +17,9 @@ import { commissionLabel as describeCommission, type CommissionBasis } from '@/l
 interface CP { id: string; code: string; firmName: string; contactName: string; phone: string; email: string | null; reraNumber: string | null; panNumber: string | null; gstin: string | null; commissionBasis: string; commissionPct: number; commissionMonths: number | null; commissionFlat: number | null; kycStatus: string; status: string }
 interface Payout { id: string; channelPartnerId: string; grossValue: number; ratePercent: number; amount: number; stage: string | null; status: string; dueDate: string | null }
 interface Opt { id: string; name: string }
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-const money = (n: number) => `₹${inr.format(n)}`;
 /** Human-readable commission, whichever basis the partner is on. */
 const commissionLabel = (p: Pick<CP, 'commissionBasis' | 'commissionPct' | 'commissionMonths' | 'commissionFlat'>): string =>
-  describeCommission({ basis: p.commissionBasis as CommissionBasis, pct: p.commissionPct, months: p.commissionMonths, flat: p.commissionFlat }, money);
+  describeCommission({ basis: p.commissionBasis as CommissionBasis, pct: p.commissionPct, months: p.commissionMonths, flat: p.commissionFlat }, formatCurrency);
 const kycTone = (s: string) => (s === 'VERIFIED' ? 'success' : s === 'REJECTED' ? 'destructive' : 'secondary') as 'success' | 'destructive' | 'secondary';
 const stTone = (s: string) => (s === 'APPROVED' ? 'success' : s === 'SUSPENDED' ? 'destructive' : 'warning') as 'success' | 'destructive' | 'warning';
 
@@ -186,7 +185,7 @@ export function PartnersView({ partners, payouts, projects, canManage }: { partn
                   {selPayouts.length === 0 && <p className="text-xs text-muted-foreground">No payouts recorded.</p>}
                   {selPayouts.map((p) => (
                     <div key={p.id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
-                      <span>{money(p.amount)} <span className="text-xs text-muted-foreground">({p.ratePercent}% of {money(p.grossValue)}{p.stage ? ` · ${p.stage}` : ''})</span></span>
+                      <span>{formatCurrency(p.amount)} <span className="text-xs text-muted-foreground">({p.ratePercent}% of {formatCurrency(p.grossValue)}{p.stage ? ` · ${p.stage}` : ''})</span></span>
                       <span className="flex items-center gap-2"><Badge variant={p.status === 'PAID' ? 'success' : p.status === 'INVOICED' ? 'secondary' : 'warning'}>{p.status}</Badge>
                         {canManage && p.status !== 'PAID' && <Button size="sm" variant="ghost" className="h-6 text-xs" disabled={pending} onClick={() => act(() => setPayoutStatus(p.id, p.status === 'PENDING' ? 'INVOICED' : 'PAID'), 'Updated')}>{p.status === 'PENDING' ? 'Mark invoiced' : 'Mark paid'}</Button>}
                       </span>

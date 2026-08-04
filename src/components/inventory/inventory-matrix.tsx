@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, FileText, Lock, Unlock, Plus, Building2, Pencil } from 'lucide-react';
@@ -25,8 +26,6 @@ const STYLE: Record<string, string> = {
   BLOCKED: 'bg-slate-400/20 border-slate-400/50 text-slate-700 dark:text-slate-200 hover:bg-slate-400/30',
 };
 const STATUSES = ['AVAILABLE', 'HELD', 'BOOKED', 'SOLD', 'BLOCKED'];
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-const money = (n: number | null) => (n == null ? '—' : `₹${inr.format(n)}`);
 
 export function InventoryMatrix({ projects, projectId, units, leads, canManage }: {
   projects: Opt[]; projectId: string | null; units: UnitCell[]; leads: Opt[]; canManage: boolean;
@@ -157,7 +156,7 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                 <button key={u.id} onClick={() => open(u)} className={`rounded-md border p-2 text-left text-xs transition-colors ${STYLE[u.status] ?? ''}`}>
                   <p className="font-semibold">{u.code}</p>
                   <p className="opacity-80">{u.typology ?? '—'}{u.floor != null ? ` · Fl ${u.floor}` : ''}</p>
-                  <p className="truncate tabular-nums opacity-70">{money(u.price)}</p>
+                  <p className="truncate tabular-nums opacity-70">{formatCurrency(u.price)}</p>
                 </button>
               ))}
             </div>
@@ -178,10 +177,10 @@ export function InventoryMatrix({ projects, projectId, units, leads, canManage }
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <Spec k="Typology" v={sel.typology} /><Spec k="Tower / Floor" v={`${sel.tower ?? '—'} / ${sel.floor ?? '—'}`} />
-                    <Spec k="Facing" v={sel.facing} /><Spec k="Carpet area" v={sel.carpetAreaSqft ? `${inr.format(sel.carpetAreaSqft)} sq.ft` : null} />
-                    <Spec k="Price" v={money(sel.price)} />
+                    <Spec k="Facing" v={sel.facing} /><Spec k="Carpet area" v={sel.carpetAreaSqft ? `${formatCurrency(sel.carpetAreaSqft)} sq.ft` : null} />
+                    <Spec k="Price" v={formatCurrency(sel.price)} />
                     {sel.holdUntil && <Spec k="Held until" v={new Date(sel.holdUntil).toLocaleString('en-IN')} />}
-                    {sel.tokenAmount ? <Spec k="Token" v={money(sel.tokenAmount)} /> : null}
+                    {sel.tokenAmount ? <Spec k="Token" v={formatCurrency(sel.tokenAmount)} /> : null}
                   </div>
                   {sel.holdNote && <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-200">{sel.holdNote}</p>}
                   <div className="flex flex-wrap gap-2">

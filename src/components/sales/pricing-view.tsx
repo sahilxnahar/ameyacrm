@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, X, Building2, HandCoins } from 'lucide-react';
 import { saveUnitPricing, recordCommission, advanceCommission } from '@/server/actions/pricing';
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { ChipRow, ChipLink } from '@/components/ui/chip';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number | null) => (n == null ? '—' : n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }));
 
 interface PriceResult {
   grossPrice: number; discountAmount: number; netPrice: number; discountPct: number; effectiveRatePerSqft: number;
@@ -62,8 +62,8 @@ export function PricingView({ canManage, projects, projectId, units, commissions
 
       <StatTileRow cols={4}>
         <StatTile icon={<Building2 className="h-4 w-4" />} label="Units priced" value={`${priced}/${units.length}`} sub="with a computed price" />
-        <StatTile icon={<HandCoins className="h-4 w-4" />} label="Commission (gross)" value={inr(commissions.totalGross)} sub={`${commissions.rows.length} payouts`} />
-        <StatTile label="Net payable" value={inr(commissions.totalNet)} sub="after TDS" />
+        <StatTile icon={<HandCoins className="h-4 w-4" />} label="Commission (gross)" value={formatCurrency(commissions.totalGross)} sub={`${commissions.rows.length} payouts`} />
+        <StatTile label="Net payable" value={formatCurrency(commissions.totalNet)} sub="after TDS" />
         <StatTile label="Pending" value={String(commissions.pendingCount)} sub="awaiting approval" tone={commissions.pendingCount > 0 ? 'bad' : 'default'} />
       </StatTileRow>
 
@@ -134,11 +134,11 @@ export function PricingView({ canManage, projects, projectId, units, commissions
                   {commissions.rows.map((c) => (
                     <tr key={c.id} className="border-t border-border">
                       <td className="p-2">{c.partnerName}</td>
-                      <td className="p-2">{inr(c.bookingValue)}</td>
+                      <td className="p-2">{formatCurrency(c.bookingValue)}</td>
                       <td className="p-2">{c.ratePct}%</td>
-                      <td className="p-2">{inr(c.grossCommission)}</td>
-                      <td className="p-2 text-muted-foreground">{inr(c.tdsAmount)}</td>
-                      <td className="p-2 font-medium">{inr(c.netPayable)}</td>
+                      <td className="p-2">{formatCurrency(c.grossCommission)}</td>
+                      <td className="p-2 text-muted-foreground">{formatCurrency(c.tdsAmount)}</td>
+                      <td className="p-2 font-medium">{formatCurrency(c.netPayable)}</td>
                       <td className="p-2"><span className={cn('rounded-full px-2 py-0.5 text-xs', c.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' : c.status === 'CANCELLED' ? 'bg-muted text-muted-foreground' : c.status === 'APPROVED' ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600')}>{c.status.toLowerCase()}</span></td>
                       {canManage && (
                         <td className="p-2">
@@ -166,11 +166,11 @@ function PricingRow({ u, canManage, projectId, pending, open, onToggle, run }: {
       <tr className="border-t border-border">
         <td className="p-2">{u.code}<span className="block text-xs text-muted-foreground">{[u.tower, u.typology, u.facing].filter(Boolean).join(' · ')}</span></td>
         <td className="p-2">{u.areaSqft != null ? `${u.areaSqft} sqft` : '—'}</td>
-        <td className="p-2">{u.baseRatePerSqft > 0 ? inr(u.baseRatePerSqft) : '—'}</td>
-        <td className="p-2">{u.price ? inr(u.price.grossPrice) : '—'}</td>
+        <td className="p-2">{u.baseRatePerSqft > 0 ? formatCurrency(u.baseRatePerSqft) : '—'}</td>
+        <td className="p-2">{u.price ? formatCurrency(u.price.grossPrice) : '—'}</td>
         <td className="p-2">{u.price && u.price.discountAmount > 0 ? `${u.price.discountPct}%` : '—'}</td>
-        <td className="p-2 font-medium">{u.price ? inr(u.price.netPrice) : <span className="text-muted-foreground">not priced</span>}</td>
-        <td className="p-2">{u.price ? inr(u.price.effectiveRatePerSqft) : '—'}</td>
+        <td className="p-2 font-medium">{u.price ? formatCurrency(u.price.netPrice) : <span className="text-muted-foreground">not priced</span>}</td>
+        <td className="p-2">{u.price ? formatCurrency(u.price.effectiveRatePerSqft) : '—'}</td>
         {canManage && <td className="p-2"><button type="button" onClick={onToggle} className="text-xs text-primary hover:underline">{open ? 'close' : u.hasPricing ? 'edit' : 'price'}</button></td>}
       </tr>
       {open && canManage && (

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatAmountPlain } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { switchTallyCompany, tallyEditLog, getTallyMirrorSettings, setTallyMirrorCompany, runTallyMirrorBackfill } from '@/server/actions/tally';
 import { toast } from 'sonner';
@@ -17,7 +18,6 @@ import { todayISTISO, istMonth, indianQuarter, indianFY, dateInputToUTC } from '
 type StmtKind = 'trial' | 'pl' | 'bs' | 'stock';
 
 type Screen = 'gateway' | 'voucher' | 'invoice' | 'daybook' | 'trial' | 'pl' | 'balsheet' | 'ledgers' | 'createLedger' | 'stock' | 'createStock' | 'stockSummary' | 'ledgerStmt' | 'outstanding' | 'costCentres' | 'jobCosting' | 'bankRecon' | 'editHeader' | 'gst' | 'flows' | 'ratios' | 'shortcuts' | 'settings' | 'schedule3' | 'editLog' | 'billWise';
-const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const todayISO = () => todayISTISO();
 
 interface Line { ledgerId: string; debit: string; credit: string }
@@ -163,7 +163,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
   const balanced = diff === 0 && totalDr > 0;
 
   const saveVoucher = () => {
-    if (!balanced) { toast.error(diff !== 0 ? `Out of balance by ₹${inr(Math.abs(diff))}` : 'Enter amounts on both sides'); return; }
+    if (!balanced) { toast.error(diff !== 0 ? `Out of balance by ₹${formatAmountPlain(Math.abs(diff))}` : 'Enter amounts on both sides'); return; }
     const payloadLines = lines.filter((l) => l.ledgerId && (Number(l.debit) || Number(l.credit))).map((l) => ({ ledgerId: l.ledgerId, debit: Number(l.debit) || 0, credit: Number(l.credit) || 0 }));
     start(async () => {
       const r = editId
@@ -383,7 +383,7 @@ export function TallyApp({ data: initialData, prefs = DEFAULT_TALLY_PREFS, compa
           {screen === 'stock' && <StockItems data={data} onBack={back} onCreate={() => setScreen('createStock')} onDelete={removeStock} pending={pending} />}
           {screen === 'createStock' && <CreateStock onDone={() => { router.refresh(); setScreen('stock'); }} onBack={() => setScreen('stock')} />}
           {screen === 'stockSummary' && <StockSummary data={data} onBack={back} onPdf={() => exportPdf('stock')} onExcel={() => exportExcel('stock')} />}
-          {screen === 'ledgerStmt' && <LedgerStatement stmt={stmt} onBack={back} onExcel={() => { if (stmt && 'ok' in stmt) exportXlsx(`Ledger-${stmt.name.replace(/[^a-z0-9]+/gi, '-')}`, 'Ledger', stmt.rows.map((r) => ({ Date: new Date(r.date).toLocaleDateString('en-IN'), Type: r.type, No: r.number, Particulars: r.particulars, Debit: r.debit || '', Credit: r.credit || '', Balance: `${inr(r.balance)} ${r.balanceSide}` }))); }} />}
+          {screen === 'ledgerStmt' && <LedgerStatement stmt={stmt} onBack={back} onExcel={() => { if (stmt && 'ok' in stmt) exportXlsx(`Ledger-${stmt.name.replace(/[^a-z0-9]+/gi, '-')}`, 'Ledger', stmt.rows.map((r) => ({ Date: new Date(r.date).toLocaleDateString('en-IN'), Type: r.type, No: r.number, Particulars: r.particulars, Debit: r.debit || '', Credit: r.credit || '', Balance: `${formatAmountPlain(r.balance)} ${r.balanceSide}` }))); }} />}
           {screen === 'outstanding' && <OutstandingView o={outstanding} onBack={back} onExcel={() => { if (outstanding && 'ok' in outstanding) { const rows = [...outstanding.receivables.map((r) => ({ Type: 'Receivable', Party: r.name, ...ageCols(r) })), ...outstanding.payables.map((r) => ({ Type: 'Payable', Party: r.name, ...ageCols(r) }))]; exportXlsx('Tally-Outstanding', 'Outstanding', rows); } }} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
           {screen === 'daybook' && <DayBook data={data} onBack={back} onDelete={removeVoucher} onEdit={openEditVoucher} onInvoice={printInvoice} pending={pending} />}
           {screen === 'trial' && <TrialBalance data={data} onBack={back} onPdf={() => exportPdf('trial')} onExcel={() => exportExcel('trial')} onOpen={(name) => { const id = idByName.get(name); if (id) openLedger(id); }} />}
@@ -513,9 +513,9 @@ function Gateway({ onGo, onOutstanding, onJobCosting, onGst, onFlows, onRatios, 
           <p className="mb-2 font-semibold">At a glance</p>
           <Row k="Ledgers" v={String(data.totals.ledgers)} />
           <Row k="Vouchers" v={String(data.totals.vouchers)} />
-          <Row k="Income (to date)" v={`₹ ${inr(income)}`} />
-          <Row k="Expenses (to date)" v={`₹ ${inr(expense)}`} />
-          <Row k="Net profit" v={`₹ ${inr(income - expense)}`} strong />
+          <Row k="Income (to date)" v={`₹ ${formatAmountPlain(income)}`} />
+          <Row k="Expenses (to date)" v={`₹ ${formatAmountPlain(expense)}`} />
+          <Row k="Net profit" v={`₹ ${formatAmountPlain(income - expense)}`} strong />
           <p className={`mt-2 text-[11px] ${data.trial.balanced ? 'text-emerald-700' : 'text-rose-700'}`}>
             Trial balance {data.trial.balanced ? 'is balanced ✓' : 'is OUT of balance!'}
           </p>
@@ -591,7 +591,7 @@ function VoucherEntry(props: {
           ))}
         </tbody>
         <tfoot>
-          <tr className="font-bold"><td className="p-1 text-right">Totals</td><td className="p-1 text-right tabular-nums">{inr(totalDr)}</td><td className="p-1 text-right tabular-nums">{inr(totalCr)}</td><td /></tr>
+          <tr className="font-bold"><td className="p-1 text-right">Totals</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(totalDr)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(totalCr)}</td><td /></tr>
         </tfoot>
       </table>
       </div>
@@ -599,7 +599,7 @@ function VoucherEntry(props: {
       <div className="mt-2 flex items-center gap-3">
         <button onClick={addLine} className="rounded border border-[#0f2038]/40 bg-white/70 px-2 py-1 text-[12px] hover:bg-white">+ Add line</button>
         <span className={`text-[12px] font-semibold ${balanced ? 'text-emerald-700' : 'text-rose-700'}`}>
-          {balanced ? 'Balanced ✓' : diff === 0 ? 'Enter amounts' : `Difference: ₹ ${inr(Math.abs(diff))} on ${diff > 0 ? 'Credit' : 'Debit'} side`}
+          {balanced ? 'Balanced ✓' : diff === 0 ? 'Enter amounts' : `Difference: ₹ ${formatAmountPlain(Math.abs(diff))} on ${diff > 0 ? 'Credit' : 'Debit'} side`}
         </span>
         <div className="ml-auto flex gap-2">
           <button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">Esc — Cancel</button>
@@ -625,7 +625,7 @@ function DayBook({ data, onBack, onDelete, onEdit, onInvoice, pending }: { data:
                 <td className="p-1">{v.type}</td>
                 <td className="p-1">{v.number}</td>
                 <td className="p-1">{v.lines.map((ln, i) => <div key={i}>{ln.debit > 0 ? 'Dr ' : 'Cr '}{ln.ledger}</div>)}{v.narration && <div className="text-[#5B4412]">({v.narration})</div>}</td>
-                <td className="p-1 text-right tabular-nums">{inr(v.amount)}</td>
+                <td className="p-1 text-right tabular-nums">{formatAmountPlain(v.amount)}</td>
                 <td className="whitespace-nowrap p-1">{(v.type === 'Sales' || v.type === 'Purchase') && <><button onClick={() => onInvoice(v.id)} disabled={pending} className="text-[#8C6E2C] hover:underline">invoice</button> </>}<button onClick={() => onEdit(v.id)} disabled={pending} className="text-[#1B2A4A] hover:underline">edit</button> <button onClick={() => onDelete(v.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td>
               </tr>
             ))}
@@ -646,10 +646,10 @@ function TrialBalance({ data, onBack, onPdf, onExcel, onOpen }: { data: TallyDat
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Ledger</th><th className="p-1">Group</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
         <tbody>
           {data.trial.rows.map((r) => (
-            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-[#5B4412]">{r.group}</td><td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td></tr>
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-[#5B4412]">{r.group}</td><td className="p-1 text-right tabular-nums">{r.debit ? formatAmountPlain(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? formatAmountPlain(r.credit) : ''}</td></tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={2}>Total</td><td className="p-1 text-right tabular-nums">{inr(data.trial.totalDebit)}</td><td className="p-1 text-right tabular-nums">{inr(data.trial.totalCredit)}</td></tr></tfoot>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={2}>Total</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(data.trial.totalDebit)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(data.trial.totalCredit)}</td></tr></tfoot>
       </table>
       </div>
       <p className={`mt-2 text-[12px] font-semibold ${data.trial.balanced ? 'text-emerald-700' : 'text-rose-700'}`}>{data.trial.balanced ? 'Balanced ✓' : 'OUT OF BALANCE'}</p>
@@ -668,7 +668,7 @@ function ProfitLoss({ data, onBack, onPdf, onExcel }: { data: TallyData; onBack:
         <StatementCol title="Expenses (Dr)" rows={exp} total={te} extraLabel={profit >= 0 ? 'Net Profit' : undefined} extra={profit >= 0 ? profit : undefined} />
         <StatementCol title="Income (Cr)" rows={inc} total={ti} extraLabel={profit < 0 ? 'Net Loss' : undefined} extra={profit < 0 ? -profit : undefined} />
       </div>
-      <p className={`mt-3 text-center text-[13px] font-bold ${profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{profit >= 0 ? 'Net Profit' : 'Net Loss'}: ₹ {inr(Math.abs(profit))}</p>
+      <p className={`mt-3 text-center text-[13px] font-bold ${profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{profit >= 0 ? 'Net Profit' : 'Net Loss'}: ₹ {formatAmountPlain(Math.abs(profit))}</p>
     </Panel>
   );
 }
@@ -687,7 +687,7 @@ function BalanceSheet({ data, onBack, onPdf, onExcel }: { data: TallyData; onBac
         <StatementCol title="Assets" rows={assets} total={ta} />
       </div>
       <p className={`mt-3 text-center text-[12px] ${Math.round(ta * 100) === Math.round(tl * 100) ? 'text-emerald-700' : 'text-rose-700'}`}>
-        {Math.round(ta * 100) === Math.round(tl * 100) ? 'Balanced ✓' : `Difference ₹ ${inr(Math.abs(ta - tl))}`}
+        {Math.round(ta * 100) === Math.round(tl * 100) ? 'Balanced ✓' : `Difference ₹ ${formatAmountPlain(Math.abs(ta - tl))}`}
       </p>
     </Panel>
   );
@@ -697,9 +697,9 @@ function StatementCol({ title, rows, total, extraLabel, extra }: { title: string
   return (
     <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2">
       <p className="mb-1 border-b border-[#0f2038]/30 pb-1 font-bold">{title}</p>
-      {rows.map((r, i) => <div key={i} className="flex justify-between py-0.5"><span>{r.name}</span><span className="tabular-nums">{inr(r.value)}</span></div>)}
-      {extraLabel && extra != null && <div className="flex justify-between py-0.5 italic"><span>{extraLabel}</span><span className="tabular-nums">{inr(extra)}</span></div>}
-      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{inr(total)}</span></div>
+      {rows.map((r, i) => <div key={i} className="flex justify-between py-0.5"><span>{r.name}</span><span className="tabular-nums">{formatAmountPlain(r.value)}</span></div>)}
+      {extraLabel && extra != null && <div className="flex justify-between py-0.5 italic"><span>{extraLabel}</span><span className="tabular-nums">{formatAmountPlain(extra)}</span></div>}
+      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{formatAmountPlain(total)}</span></div>
     </div>
   );
 }
@@ -713,7 +713,7 @@ function Ledgers({ data, onBack, onCreate, onOpen, onDelete, pending }: { data: 
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Name</th><th className="p-1">Group</th><th className="p-1 text-right">Balance</th><th /></tr></thead>
         <tbody>
           {data.ledgers.map((l) => (
-            <tr key={l.id} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(l.id)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{l.name}</button>{l.isSystem && <span className="ml-1 text-[11px] text-[#8C6E2C]">(system)</span>}</td><td className="p-1 text-[#5B4412]">{l.group}</td><td className="p-1 text-right tabular-nums">{inr(l.balance)} {l.side}</td><td className="p-1">{!l.isSystem && <button onClick={() => onDelete(l.id)} disabled={pending} className="text-rose-700 hover:underline">del</button>}</td></tr>
+            <tr key={l.id} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(l.id)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{l.name}</button>{l.isSystem && <span className="ml-1 text-[11px] text-[#8C6E2C]">(system)</span>}</td><td className="p-1 text-[#5B4412]">{l.group}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(l.balance)} {l.side}</td><td className="p-1">{!l.isSystem && <button onClick={() => onDelete(l.id)} disabled={pending} className="text-rose-700 hover:underline">del</button>}</td></tr>
           ))}
         </tbody>
       </table>
@@ -805,7 +805,7 @@ function ItemInvoice(props: {
                 <td className="p-1 text-right"><input inputMode="decimal" value={l.qty} onChange={(e) => setItem(i, { qty: e.target.value })} className={`${cls} w-20 text-right`} /></td>
                 <td className="p-1 text-right"><input inputMode="decimal" value={l.rate} onChange={(e) => setItem(i, { rate: e.target.value })} className={`${cls} w-20 text-right`} /></td>
                 <td className="p-1 text-right tabular-nums">{it ? it.gstRate : 0}</td>
-                <td className="p-1 text-right tabular-nums">{inr(amount)}</td>
+                <td className="p-1 text-right tabular-nums">{formatAmountPlain(amount)}</td>
                 <td className="p-1 text-center"><button onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)} className="text-rose-700" aria-label="Remove this line">✕</button></td>
               </tr>
             );
@@ -818,9 +818,9 @@ function ItemInvoice(props: {
       <div className="mt-3 flex flex-wrap items-end gap-4">
         <label className="flex flex-1 items-center gap-1">Narration <input value={narr} onChange={(e) => setNarr(e.target.value)} className={`${cls} min-w-[10rem] flex-1`} /></label>
         <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2 text-[12px]">
-          <Row k="Taxable" v={`₹ ${inr(taxable)}`} />
-          <Row k="GST" v={`₹ ${inr(gst)}`} />
-          <Row k="Invoice total" v={`₹ ${inr(total)}`} strong />
+          <Row k="Taxable" v={`₹ ${formatAmountPlain(taxable)}`} />
+          <Row k="GST" v={`₹ ${formatAmountPlain(gst)}`} />
+          <Row k="Invoice total" v={`₹ ${formatAmountPlain(total)}`} strong />
         </div>
         <div className="flex gap-2">
           <button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">Esc — Cancel</button>
@@ -840,7 +840,7 @@ function StockItems({ data, onBack, onCreate, onDelete, pending }: { data: Tally
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Name</th><th className="p-1">Unit</th><th className="p-1 text-right">GST%</th><th className="p-1 text-right">Closing qty</th><th className="p-1 text-right">Value</th><th /></tr></thead>
         <tbody>
           {data.stock.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-[#5B4412]">No stock items yet.</td></tr> : data.stock.map((s) => (
-            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.gstRate}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{inr(s.value)}</td><td className="p-1"><button onClick={() => onDelete(s.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td></tr>
+            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.gstRate}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(s.value)}</td><td className="p-1"><button onClick={() => onDelete(s.id)} disabled={pending} className="text-rose-700 hover:underline">del</button></td></tr>
           ))}
         </tbody>
       </table>
@@ -886,10 +886,10 @@ function StockSummary({ data, onBack, onPdf, onExcel }: { data: TallyData; onBac
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Item</th><th className="p-1">Unit</th><th className="p-1 text-right">Inward</th><th className="p-1 text-right">Outward</th><th className="p-1 text-right">Closing</th><th className="p-1 text-right">Rate</th><th className="p-1 text-right">Value</th></tr></thead>
         <tbody>
           {data.stock.length === 0 ? <tr><td colSpan={7} className="p-4 text-center text-[#5B4412]">No stock items yet.</td></tr> : data.stock.map((s) => (
-            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.inQty}</td><td className="p-1 text-right tabular-nums">{s.outQty}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{inr(s.rate)}</td><td className="p-1 text-right tabular-nums">{inr(s.value)}</td></tr>
+            <tr key={s.id} className="border-b border-[#0f2038]/20"><td className="p-1">{s.name}</td><td className="p-1">{s.unit}</td><td className="p-1 text-right tabular-nums">{s.inQty}</td><td className="p-1 text-right tabular-nums">{s.outQty}</td><td className="p-1 text-right tabular-nums">{s.closingQty}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(s.rate)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(s.value)}</td></tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={6}>Total stock value</td><td className="p-1 text-right tabular-nums">{inr(totalValue)}</td></tr></tfoot>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={6}>Total stock value</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(totalValue)}</td></tr></tfoot>
       </table>
       </div>
     </Panel>
@@ -911,10 +911,10 @@ function LedgerStatement({ stmt, onBack, onExcel }: { stmt: LedgerStmt | null; o
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Date</th><th className="p-1">Voucher</th><th className="p-1">Particulars</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th><th className="p-1 text-right">Balance</th></tr></thead>
         <tbody>
           {stmt.rows.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-[#5B4412]">No entries.</td></tr> : stmt.rows.map((r, i) => (
-            <tr key={i} className="border-b border-[#0f2038]/20"><td className="whitespace-nowrap p-1">{new Date(r.date).toLocaleDateString('en-IN')}</td><td className="p-1">{r.type} #{r.number}</td><td className="p-1">{r.particulars}</td><td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td><td className="p-1 text-right tabular-nums">{inr(r.balance)} {r.balanceSide}</td></tr>
+            <tr key={i} className="border-b border-[#0f2038]/20"><td className="whitespace-nowrap p-1">{new Date(r.date).toLocaleDateString('en-IN')}</td><td className="p-1">{r.type} #{r.number}</td><td className="p-1">{r.particulars}</td><td className="p-1 text-right tabular-nums">{r.debit ? formatAmountPlain(r.debit) : ''}</td><td className="p-1 text-right tabular-nums">{r.credit ? formatAmountPlain(r.credit) : ''}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.balance)} {r.balanceSide}</td></tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={5}>Closing balance</td><td className="p-1 text-right tabular-nums">{inr(stmt.closing)} {stmt.closingSide}</td></tr></tfoot>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1" colSpan={5}>Closing balance</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(stmt.closing)} {stmt.closingSide}</td></tr></tfoot>
       </table>
       </div>
     </Panel>
@@ -926,13 +926,13 @@ function OutstandingView({ o, onBack, onExcel, onOpen }: { o: Outstanding | null
   if ('error' in o) return <Panel title="Outstanding"><BackBtn onBack={onBack} /><p className="text-rose-700">{o.error}</p></Panel>;
   const Table = ({ title, rows, total }: { title: string; rows: AgedParty[]; total: number }) => (
     <div className="mb-4">
-      <p className="mb-1 font-bold text-[#1B2A4A]">{title} — ₹ {inr(total)}</p>
+      <p className="mb-1 font-bold text-[#1B2A4A]">{title} — ₹ {formatAmountPlain(total)}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[34rem] border-collapse text-[12px]">
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Party</th><th className="p-1 text-right">0–30</th><th className="p-1 text-right">31–60</th><th className="p-1 text-right">61–90</th><th className="p-1 text-right">90+</th><th className="p-1 text-right">Total</th></tr></thead>
         <tbody>
           {rows.length === 0 ? <tr><td colSpan={6} className="p-3 text-center text-[#5B4412]">Nothing outstanding.</td></tr> : rows.map((r) => (
-            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-right tabular-nums">{r.b0 ? inr(r.b0) : ''}</td><td className="p-1 text-right tabular-nums">{r.b30 ? inr(r.b30) : ''}</td><td className="p-1 text-right tabular-nums">{r.b60 ? inr(r.b60) : ''}</td><td className={`p-1 text-right tabular-nums ${r.b90 ? 'font-semibold text-rose-700' : ''}`}>{r.b90 ? inr(r.b90) : ''}</td><td className="p-1 text-right font-semibold tabular-nums">{inr(r.total)}</td></tr>
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1"><button onClick={() => onOpen(r.name)} className="text-[#1B2A4A] underline hover:text-[#8C6E2C]">{r.name}</button></td><td className="p-1 text-right tabular-nums">{r.b0 ? formatAmountPlain(r.b0) : ''}</td><td className="p-1 text-right tabular-nums">{r.b30 ? formatAmountPlain(r.b30) : ''}</td><td className="p-1 text-right tabular-nums">{r.b60 ? formatAmountPlain(r.b60) : ''}</td><td className={`p-1 text-right tabular-nums ${r.b90 ? 'font-semibold text-rose-700' : ''}`}>{r.b90 ? formatAmountPlain(r.b90) : ''}</td><td className="p-1 text-right font-semibold tabular-nums">{formatAmountPlain(r.total)}</td></tr>
           ))}
         </tbody>
       </table>
@@ -987,10 +987,10 @@ function JobCosting({ report, label, onBack, onExcel }: { report: CostReport | n
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">Cost Centre</th><th className="p-1 text-right">Income</th><th className="p-1 text-right">Expense</th><th className="p-1 text-right">Profit / (Loss)</th></tr></thead>
         <tbody>
           {report.rows.length === 0 ? <tr><td colSpan={4} className="p-4 text-center text-[#5B4412]">No entries tagged to a cost centre in this period.</td></tr> : report.rows.map((r) => (
-            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1">{r.name}</td><td className="p-1 text-right tabular-nums">{inr(r.income)}</td><td className="p-1 text-right tabular-nums">{inr(r.expense)}</td><td className={`p-1 text-right font-semibold tabular-nums ${r.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{inr(r.profit)}</td></tr>
+            <tr key={r.name} className="border-b border-[#0f2038]/20"><td className="p-1">{r.name}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.income)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.expense)}</td><td className={`p-1 text-right font-semibold tabular-nums ${r.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatAmountPlain(r.profit)}</td></tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1">Total</td><td className="p-1 text-right tabular-nums">{inr(ti)}</td><td className="p-1 text-right tabular-nums">{inr(te)}</td><td className={`p-1 text-right tabular-nums ${tp >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{inr(tp)}</td></tr></tfoot>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1">Total</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(ti)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(te)}</td><td className={`p-1 text-right tabular-nums ${tp >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{formatAmountPlain(tp)}</td></tr></tfoot>
       </table>
       </div>
       <p className="mt-2 text-[11px] text-[#5B4412]">Income and expense are the movement on income/expense ledgers in vouchers tagged to each centre. Untagged entries show as “Unallocated”.</p>
@@ -1006,11 +1006,11 @@ function ScheduleThree({ sch, onBack, onExcel }: { sch: ScheduleIII | null; onBa
       <p className="mb-1 border-b-2 border-[#0f2038] pb-1 font-bold text-[#1B2A4A]">{title}</p>
       {sections.map((s) => (
         <div key={s.title} className="mb-2">
-          <div className="flex justify-between font-semibold"><span>{s.title}</span><span className="tabular-nums">{inr(s.total)}</span></div>
-          {s.heads.map((h) => <div key={h.label} className="flex justify-between pl-3 text-[12px] text-[#5B4412]"><span>{h.label}</span><span className="tabular-nums">{inr(h.amount)}</span></div>)}
+          <div className="flex justify-between font-semibold"><span>{s.title}</span><span className="tabular-nums">{formatAmountPlain(s.total)}</span></div>
+          {s.heads.map((h) => <div key={h.label} className="flex justify-between pl-3 text-[12px] text-[#5B4412]"><span>{h.label}</span><span className="tabular-nums">{formatAmountPlain(h.amount)}</span></div>)}
         </div>
       ))}
-      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{inr(total)}</span></div>
+      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{formatAmountPlain(total)}</span></div>
     </div>
   );
   return (
@@ -1020,7 +1020,7 @@ function ScheduleThree({ sch, onBack, onExcel }: { sch: ScheduleIII | null; onBa
         <Col title="I. Equity and Liabilities" sections={sch.equityLiabilities} total={sch.totalEL} />
         <Col title="II. Assets" sections={sch.assets} total={sch.totalAssets} />
       </div>
-      <p className={`mt-3 text-center text-[12px] ${sch.balanced ? 'text-emerald-700' : 'text-rose-700'}`}>{sch.balanced ? 'Balanced ✓' : `Difference ₹ ${inr(Math.abs(sch.totalEL - sch.totalAssets))}`}</p>
+      <p className={`mt-3 text-center text-[12px] ${sch.balanced ? 'text-emerald-700' : 'text-rose-700'}`}>{sch.balanced ? 'Balanced ✓' : `Difference ₹ ${formatAmountPlain(Math.abs(sch.totalEL - sch.totalAssets))}`}</p>
       <p className="mt-1 text-[11px] text-[#5B4412]">Ledger balances recast into the Companies Act, 2013 Schedule III (Division I) heads, with the period’s profit taken to Reserves & surplus. A presentation aid — your CA finalises the statutory format.</p>
     </Panel>
   );
@@ -1051,8 +1051,8 @@ function FlowsView({ flows, label, onBack, onExcel }: { flows: FlowStatements | 
   const FlowCol = ({ title, rows, total }: { title: string; rows: FlowRow[]; total: number }) => (
     <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2">
       <p className="mb-1 border-b border-[#0f2038]/30 pb-1 font-bold">{title}</p>
-      {rows.length === 0 ? <p className="py-1 text-[#5B4412]">None.</p> : rows.map((r, i) => <div key={i} className="flex justify-between py-0.5"><span>{r.name} <span className="text-[11px] text-[#5B4412]">· {r.group}</span></span><span className="tabular-nums">{inr(r.amount)}</span></div>)}
-      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{inr(total)}</span></div>
+      {rows.length === 0 ? <p className="py-1 text-[#5B4412]">None.</p> : rows.map((r, i) => <div key={i} className="flex justify-between py-0.5"><span>{r.name} <span className="text-[11px] text-[#5B4412]">· {r.group}</span></span><span className="tabular-nums">{formatAmountPlain(r.amount)}</span></div>)}
+      <div className="mt-1 flex justify-between border-t-2 border-[#0f2038] pt-1 font-bold"><span>Total</span><span className="tabular-nums">{formatAmountPlain(total)}</span></div>
     </div>
   );
   return (
@@ -1060,9 +1060,9 @@ function FlowsView({ flows, label, onBack, onExcel }: { flows: FlowStatements | 
       <div className="mb-2 flex flex-wrap items-center gap-2"><button onClick={onBack} className="rounded border border-[#0f2038]/40 px-3 py-1 text-[12px] hover:bg-white/60">← Esc — Gateway</button><button onClick={onExcel} className="ml-auto rounded border border-[#0f2038]/40 bg-white/70 px-3 py-1 text-[12px] hover:bg-white">Excel</button></div>
       <p className="mb-1 font-bold text-[#1B2A4A]">Cash Flow (cash &amp; bank)</p>
       <div className="mb-2 grid gap-2 sm:grid-cols-3 text-[12px]">
-        <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Opening cash &amp; bank</p><p className="text-[14px] font-bold tabular-nums">₹ {inr(c.opening)}</p></div>
-        <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Net cash flow</p><p className={`text-[14px] font-bold tabular-nums ${c.net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>₹ {inr(c.net)}</p></div>
-        <div className="rounded border-2 border-[#1B2A4A] bg-white/70 p-2"><p className="text-[#5B4412]">Closing cash &amp; bank</p><p className="text-[14px] font-bold tabular-nums">₹ {inr(c.closing)}</p></div>
+        <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Opening cash &amp; bank</p><p className="text-[14px] font-bold tabular-nums">₹ {formatAmountPlain(c.opening)}</p></div>
+        <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Net cash flow</p><p className={`text-[14px] font-bold tabular-nums ${c.net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>₹ {formatAmountPlain(c.net)}</p></div>
+        <div className="rounded border-2 border-[#1B2A4A] bg-white/70 p-2"><p className="text-[#5B4412]">Closing cash &amp; bank</p><p className="text-[14px] font-bold tabular-nums">₹ {formatAmountPlain(c.closing)}</p></div>
       </div>
       <div className="mb-4 grid gap-2 text-[12px] sm:grid-cols-2">
         <FlowCol title="Inflows (money received)" rows={c.inflows} total={c.totalIn} />
@@ -1089,10 +1089,10 @@ function GstReturnsView({ gst, label, onBack, onExcel }: { gst: GstReturns | nul
         <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1 text-right">Rate %</th><th className="p-1 text-right">Taxable value</th><th className="p-1 text-right">CGST</th><th className="p-1 text-right">SGST</th><th className="p-1 text-right">Total tax</th></tr></thead>
         <tbody>
           {rows.length === 0 ? <tr><td colSpan={5} className="p-3 text-center text-[#5B4412]">Nothing in this period.</td></tr> : rows.map((r) => (
-            <tr key={r.rate} className="border-b border-[#0f2038]/20"><td className="p-1 text-right tabular-nums">{r.rate}</td><td className="p-1 text-right tabular-nums">{inr(r.taxable)}</td><td className="p-1 text-right tabular-nums">{inr(r.cgst)}</td><td className="p-1 text-right tabular-nums">{inr(r.sgst)}</td><td className="p-1 text-right font-semibold tabular-nums">{inr(r.totalTax)}</td></tr>
+            <tr key={r.rate} className="border-b border-[#0f2038]/20"><td className="p-1 text-right tabular-nums">{r.rate}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.taxable)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.cgst)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.sgst)}</td><td className="p-1 text-right font-semibold tabular-nums">{formatAmountPlain(r.totalTax)}</td></tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1 text-right">Total</td><td className="p-1 text-right tabular-nums">{inr(tot.taxable)}</td><td className="p-1 text-right tabular-nums">{inr(tot.cgst)}</td><td className="p-1 text-right tabular-nums">{inr(tot.sgst)}</td><td className="p-1 text-right tabular-nums">{inr(tot.totalTax)}</td></tr></tfoot>
+        <tfoot><tr className="border-t-2 border-[#0f2038] font-bold"><td className="p-1 text-right">Total</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(tot.taxable)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(tot.cgst)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(tot.sgst)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(tot.totalTax)}</td></tr></tfoot>
       </table>
       </div>
     </div>
@@ -1110,7 +1110,7 @@ function GstReturnsView({ gst, label, onBack, onExcel }: { gst: GstReturns | nul
             <thead><tr className="bg-[#1B2A4A] text-left text-white"><th className="p-1">HSN/SAC</th><th className="p-1 text-right">Rate %</th><th className="p-1 text-right">Qty</th><th className="p-1 text-right">Taxable value</th><th className="p-1 text-right">Tax</th></tr></thead>
             <tbody>
               {gst.hsn.map((r, i) => (
-                <tr key={i} className="border-b border-[#0f2038]/20"><td className="p-1">{r.hsn}</td><td className="p-1 text-right tabular-nums">{r.rate}</td><td className="p-1 text-right tabular-nums">{r.qty}</td><td className="p-1 text-right tabular-nums">{inr(r.taxable)}</td><td className="p-1 text-right tabular-nums">{inr(r.tax)}</td></tr>
+                <tr key={i} className="border-b border-[#0f2038]/20"><td className="p-1">{r.hsn}</td><td className="p-1 text-right tabular-nums">{r.rate}</td><td className="p-1 text-right tabular-nums">{r.qty}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.taxable)}</td><td className="p-1 text-right tabular-nums">{formatAmountPlain(r.tax)}</td></tr>
               ))}
             </tbody>
           </table>
@@ -1119,11 +1119,11 @@ function GstReturnsView({ gst, label, onBack, onExcel }: { gst: GstReturns | nul
       )}
       <div className="mb-2 rounded border-2 border-[#1B2A4A] bg-white/60 p-3 text-[12px]">
         <p className="mb-1 font-bold text-[#1B2A4A]">GSTR-3B — Net tax payable</p>
-        <Row k="Output tax (on sales)" v={`₹ ${inr(b.outputTax)}`} />
-        <Row k="Less: Input tax credit (on purchases)" v={`₹ ${inr(b.inputTax)}`} />
-        <Row k="Net CGST payable" v={`₹ ${inr(b.netCgst)}`} />
-        <Row k="Net SGST payable" v={`₹ ${inr(b.netSgst)}`} />
-        <Row k="Net GST payable" v={`₹ ${inr(b.netPayable)}`} strong />
+        <Row k="Output tax (on sales)" v={`₹ ${formatAmountPlain(b.outputTax)}`} />
+        <Row k="Less: Input tax credit (on purchases)" v={`₹ ${formatAmountPlain(b.inputTax)}`} />
+        <Row k="Net CGST payable" v={`₹ ${formatAmountPlain(b.netCgst)}`} />
+        <Row k="Net SGST payable" v={`₹ ${formatAmountPlain(b.netSgst)}`} />
+        <Row k="Net GST payable" v={`₹ ${formatAmountPlain(b.netPayable)}`} strong />
       </div>
       <p className="text-[11px] text-[#5B4412]">Computed from item invoices, split CGST/SGST assuming intra-state supply. For inter-state (IGST), reverse-charge, or filing-ready GSTR JSON, use the connected GST tier once configured. Always have your CA review before filing.</p>
     </Panel>
@@ -1341,9 +1341,9 @@ function BankReconciliation({ data, recon, ledgerId, onPick, onSetCleared, onBac
       {recon && 'ok' in recon && (
         <>
           <div className="mb-3 grid gap-2 sm:grid-cols-3 text-[12px]">
-            <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Balance as per books</p><p className="text-[15px] font-bold tabular-nums">₹ {inr(recon.bookBalance)} {recon.bookSide}</p></div>
-            <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Not yet cleared</p><p className="tabular-nums">Dr ₹ {inr(recon.unclearedDebit)}</p><p className="tabular-nums">Cr ₹ {inr(recon.unclearedCredit)}</p></div>
-            <div className="rounded border-2 border-[#1B2A4A] bg-white/70 p-2"><p className="text-[#5B4412]">Balance as per bank</p><p className="text-[15px] font-bold tabular-nums">₹ {inr(recon.bankBalance)} {recon.bankSide}</p></div>
+            <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Balance as per books</p><p className="text-[15px] font-bold tabular-nums">₹ {formatAmountPlain(recon.bookBalance)} {recon.bookSide}</p></div>
+            <div className="rounded border border-[#0f2038]/30 bg-white/50 p-2"><p className="text-[#5B4412]">Not yet cleared</p><p className="tabular-nums">Dr ₹ {formatAmountPlain(recon.unclearedDebit)}</p><p className="tabular-nums">Cr ₹ {formatAmountPlain(recon.unclearedCredit)}</p></div>
+            <div className="rounded border-2 border-[#1B2A4A] bg-white/70 p-2"><p className="text-[#5B4412]">Balance as per bank</p><p className="text-[15px] font-bold tabular-nums">₹ {formatAmountPlain(recon.bankBalance)} {recon.bankSide}</p></div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[34rem] border-collapse text-[12px]">
@@ -1354,8 +1354,8 @@ function BankReconciliation({ data, recon, ledgerId, onPick, onSetCleared, onBac
                   <td className="whitespace-nowrap p-1">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                   <td className="p-1">{r.type} #{r.number}</td>
                   <td className="p-1">{r.particulars}</td>
-                  <td className="p-1 text-right tabular-nums">{r.credit ? inr(r.credit) : ''}</td>
-                  <td className="p-1 text-right tabular-nums">{r.debit ? inr(r.debit) : ''}</td>
+                  <td className="p-1 text-right tabular-nums">{r.credit ? formatAmountPlain(r.credit) : ''}</td>
+                  <td className="p-1 text-right tabular-nums">{r.debit ? formatAmountPlain(r.debit) : ''}</td>
                   <td className="p-1">
                     <div className="flex items-center gap-1">
                       <input type="date" value={r.clearedDate ? r.clearedDate.slice(0, 10) : ''} onChange={(e) => onSetCleared(r.lineId, e.target.value ? new Date(e.target.value).toISOString() : null)} disabled={pending} className={cls} />

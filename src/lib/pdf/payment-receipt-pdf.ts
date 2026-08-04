@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { rupeesInWords } from '@/lib/money-words';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
@@ -14,7 +15,6 @@ const MUTE = rgb(0.45, 0.42, 0.38);
 const LINE = rgb(0.85, 0.83, 0.79);
 const RUBY = rgb(0.608, 0.067, 0.118);
 
-const inr = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // StandardFonts are Latin-1 only, so translate the punctuation people actually
 // paste in rather than blanking it out.
 const ascii = (s: string) =>
@@ -95,7 +95,7 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   page.drawRectangle({ x: M, y: y - 46, width: W - 2 * M, height: 62, color: SAND });
   page.drawRectangle({ x: M, y: y - 46, width: 4, height: 62, color: NAVY });
   text('AMOUNT', M + 16, y + 2, 8, bold, MUTE);
-  text(`Rs. ${inr.format(d.amount)}`, M + 16, y - 24, 24, bold, NAVY);
+  text(`Rs. ${formatCurrency(d.amount)}`, M + 16, y - 24, 24, bold, NAVY);
   // Amount in words has to stay on one line inside the box, so shrink to fit
   // rather than wrapping on top of itself.
   const words = rupeesInWords(d.amount);

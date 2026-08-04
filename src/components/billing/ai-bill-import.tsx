@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -12,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DocumentPreview } from '@/components/shared/document-preview';
 
 interface Item { description: string; quantity: string; rate: string; gstRate: string }
-const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
 /** A spreadsheet of many rows isn't a single bill — it belongs in Vendor Ledgers. */
 const looksLikeSpreadsheet = (name: string) => /\.(csv|xlsx|xls|xlsm|xlsb|ods|tsv)$/i.test(name);
@@ -182,7 +182,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
               </div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={head.intraState} onChange={(e) => setHead({ ...head, intraState: e.target.checked })} /> Intra-state (CGST + SGST)</label>
               <div className="space-y-1"><Label>Notes</Label><Input value={head.notes} onChange={(e) => setHead({ ...head, notes: e.target.value })} /></div>
-              <div className="flex items-center justify-between border-t pt-3"><span className="text-sm text-muted-foreground">Est. total incl GST</span><span className="font-semibold">₹{nf.format(total)}</span></div>
+              <div className="flex items-center justify-between border-t pt-3"><span className="text-sm text-muted-foreground">Est. total incl GST</span><span className="font-semibold">{formatCurrency(total)}</span></div>
               <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setStage('upload')}>Back</Button><Button onClick={save} disabled={pending || !head.clientName}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Record this bill</Button></div>
             </div>
           )}

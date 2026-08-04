@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
-import { Loader2, CornerDownLeft, ExternalLink, UploadCloud } from 'lucide-react';
+import { Loader2, CornerDownLeft, ExternalLink, UploadCloud, Search as SearchIcon } from 'lucide-react';
 import { NAVIGATION } from '@/config/navigation';
 import { SEARCH_ALIASES } from '@/config/search-aliases';
 import { DD_AUTHORITIES_FLAT, authorityMatches } from '@/config/dd-authorities';
@@ -215,6 +215,33 @@ export function CommandPalette({
                   </Command.Item>
                 ))}
               </Command.Group>
+            )}
+
+            {/*
+              AMH-046 — the way into the full-page search.
+
+              /app/(app)/search exists, works, and searches more than this
+              palette does. Nothing anywhere linked to it, so it had never been
+              opened by anyone who did not type the URL.
+
+              A nav item would have been the wrong fix: the palette IS the
+              search most of the time. What it is not is complete — the record
+              results are capped at a handful. This offers the full list at the
+              moment somebody has typed a query and not found what they wanted,
+              which is the only moment they want it.
+            */}
+            {term && (
+              <Command.Item
+                value={`__all__:${term}`}
+                onSelect={() => go(`/search?q=${encodeURIComponent(term)}`)}
+                className="mt-1 flex cursor-pointer items-center gap-3 rounded-md border-t px-2 py-2 pt-3 text-sm text-muted-foreground aria-selected:bg-secondary"
+              >
+                <SearchIcon className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">
+                  See all results for <span className="font-medium text-foreground">{term}</span>
+                </span>
+                <CornerDownLeft className="h-3.5 w-3.5 shrink-0 opacity-0 group-aria-selected:opacity-100" />
+              </Command.Item>
             )}
           </Command.List>
         </Command>

@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { formatCurrency } from '@/lib/utils/format';
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
@@ -19,8 +20,7 @@ function splitEmails(v?: string | null): string[] {
 
 export type PayResult = { ok: true; id?: string; link?: string; emailed?: boolean; emailError?: string } | { error: string };
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
-const money = (n: number) => `Rs. ${inr.format(n)}`;
+const money = (n: number) => `Rs. ${formatCurrency(n)}`;
 const baseUrl = () => (env.APP_URL || '').replace(/\/$/, '');
 
 const createSchema = z.object({

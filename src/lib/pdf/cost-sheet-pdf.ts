@@ -1,12 +1,12 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 const BRASS = rgb(0.627, 0.49, 0.204);
 const CHARCOAL = rgb(0.063, 0.059, 0.051);
 const MUTE = rgb(0.45, 0.42, 0.38);
 const LINE = rgb(0.85, 0.83, 0.79);
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
-const money = (n: number) => `Rs. ${inr.format(Math.round(n * 100) / 100)}`;
+const money = (n: number) => `Rs. ${formatCurrency(Math.round(n * 100) / 100)}`;
 const ascii = (s: string) => (s || '').replace(/[^\x20-\x7E]/g, ' ');
 
 export interface CostLine { label: string; amount: number }
@@ -43,7 +43,7 @@ export async function buildCostSheetPdf(d: CostSheetData): Promise<Uint8Array> {
     ['Unit', d.unitCode + (d.typology ? `  (${d.typology})` : '')],
     ['Tower / Floor', `${d.tower ?? '-'} / ${d.floor ?? '-'}`],
     ['Facing', d.facing ?? '-'],
-    ['Carpet area', d.carpetAreaSqft ? `${inr.format(d.carpetAreaSqft)} sq.ft` : '-'],
+    ['Carpet area', d.carpetAreaSqft ? `${formatCurrency(d.carpetAreaSqft)} sq.ft` : '-'],
     ['Rate', d.ratePerSqft ? `${money(d.ratePerSqft)} / sq.ft` : '-'],
   ];
   if (d.clientName) rows.unshift(['Prepared for', d.clientName]);

@@ -1,5 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 
@@ -109,7 +110,7 @@ export async function resetModuleStyle(): Promise<NavResult> {
     const existing = (row?.navPrefs && typeof row.navPrefs === 'object' && !Array.isArray(row.navPrefs))
       ? (row.navPrefs as Record<string, unknown>) : {};
     delete existing.tones; delete existing.weights;
-    await prisma.user.update({ where: { id: ctx.user.id }, data: { navPrefs: existing as never } });
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { navPrefs: existing as Prisma.InputJsonValue } });
     revalidatePath('/', 'layout');
     return { ok: true };
   } catch (e) { return toActionError(e); }

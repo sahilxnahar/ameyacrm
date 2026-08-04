@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
 import { EMBLEM_PNG_BASE64 } from '@/lib/pdf/brand-marks';
@@ -10,8 +11,7 @@ const SAND = rgb(0.945, 0.929, 0.898);
 const MUTE = rgb(0.45, 0.42, 0.38);
 const LINE = rgb(0.85, 0.83, 0.79);
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
-const money = (n: number) => `Rs. ${inr.format(n)}`; // ASCII only (StandardFonts lacks the rupee glyph)
+const money = (n: number) => `Rs. ${formatCurrency(n)}`; // ASCII only (StandardFonts lacks the rupee glyph)
 const ascii = (s: string) => (s || '').replace(/[^\x20-\x7E]/g, ' ');
 
 export interface InvoiceItemPdf { description: string; hsnSac: string | null; quantity: number; rate: number; gstRate: number; amount: number }
@@ -87,7 +87,7 @@ export async function buildInvoicePdf(d: InvoicePdfData): Promise<Uint8Array> {
   for (const it of d.items) {
     text(it.description, cols.desc + 4, y, 10);
     if (it.hsnSac) text(`HSN/SAC: ${it.hsnSac}`, cols.desc + 4, y - 11, 7, font, MUTE);
-    right(inr.format(it.quantity), cols.qty + 30, y, 10);
+    right(formatCurrency(it.quantity), cols.qty + 30, y, 10);
     right(money(it.rate), cols.rate + 40, y, 10);
     right(`${it.gstRate}%`, cols.gst + 20, y, 10);
     right(money(it.amount), cols.amt, y, 10);

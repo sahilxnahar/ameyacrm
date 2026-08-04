@@ -1,5 +1,8 @@
 'use client';
 import * as React from 'react';
+import { LeadStatus } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
+import { formatCurrency } from '@/lib/utils/format';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -45,7 +48,6 @@ const STAGES: Array<{ key: string; label: string; bar: string; tint: string }> =
   { key: 'LOST',        label: 'Lost',         bar: 'bg-rose-500',    tint: 'bg-rose-500/5' },
 ];
 
-const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boolean }) {
   const router = useRouter();
@@ -91,7 +93,7 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
     const before = lead.status;
     // Move it now; put it back if the server disagrees.
     setRows((p) => p.map((l) => (l.id === id ? { ...l, status: stage } : l)));
-    void moveLeadStage(id, stage as never).then((r) => {
+    void moveLeadStage(id, asEnum(LeadStatus, stage, 'NEW')).then((r) => {
       if ('error' in r) {
         setRows((p) => p.map((l) => (l.id === id ? { ...l, status: before } : l)));
         toast.error(r.error);
@@ -143,7 +145,7 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
                     was six words explaining a number that sits under its own
                     heading. */}
                 <p className={cn('mt-0.5 text-xs tabular-nums', value > 0 ? 'text-muted-foreground' : 'text-transparent')}>
-                  {value > 0 ? money(value) : '\u00A0'}
+                  {value > 0 ? formatCurrency(value) : '\u00A0'}
                 </p>
               </header>
 
@@ -178,7 +180,7 @@ export function LeadBoard({ leads, canMove }: { leads: BoardLead[]; canMove: boo
                       )}
                     </div>
                     <div className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
-                      {l.budget != null && l.budget > 0 && <p className="font-medium text-foreground">{money(l.budget)}</p>}
+                      {l.budget != null && l.budget > 0 && <p className="font-medium text-foreground">{formatCurrency(l.budget)}</p>}
                       {l.phone && <p className="flex items-center gap-1 truncate"><Phone className="h-2.5 w-2.5" />{l.phone}</p>}
                       {l.ownerName && <p className="truncate">Owner: {l.ownerName}</p>}
                       <p className="truncate">

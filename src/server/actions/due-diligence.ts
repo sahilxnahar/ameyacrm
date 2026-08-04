@@ -1,5 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
@@ -17,7 +18,7 @@ export interface DueDiligenceInput {
 
 export async function saveDueDiligenceRecord(input: DueDiligenceInput, id?: string): Promise<{ ok: true; id: string } | { error: string }> {
   try {
-    await ensure('land.manage');
+    const ctx = await ensure('land.manage');
     if (!input.projectId) return { error: 'Project is required.' };
     if (!input.state?.trim() || !input.authorityName?.trim()) return { error: 'State and authority are required.' };
     const data = {
@@ -35,18 +36,24 @@ export async function saveDueDiligenceRecord(input: DueDiligenceInput, id?: stri
 
 export async function verifyDueDiligenceRecord(id: string, status: 'VERIFIED' | 'REJECTED' | 'PENDING'): Promise<{ ok: true } | { error: string }> {
   try {
-    await ensure('land.manage');
+    const ctx = await ensure('land.manage');
     await prisma.dueDiligenceRecord.update({ where: { id }, data: { verificationStatus: status } });
     revalidatePath('/due-diligence');
     return { ok: true };
   } catch (err) { return toActionError(err); }
 }
 
-export async function deleteDueDiligenceRecord(id: string): Promise<{ ok: true } | { error: string }> {
+export async function deleteDueDiligenceRecord(id: string): Promise<{ ok: true; undo?: Undoable | null } | { error: string }> {
   try {
-    await ensure('land.manage');
+    const ctx = await ensure('land.manage');
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.dueDiligenceRecord.findUnique({ where: { id } });
     await prisma.dueDiligenceRecord.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('DueDiligenceRecord', row, { label: String(row.reference ?? row.recordType), userId: ctx.user.id })
+      : null;
     revalidatePath('/due-diligence');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (err) { return toActionError(err); }
 }

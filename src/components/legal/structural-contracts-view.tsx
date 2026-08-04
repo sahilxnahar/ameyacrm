@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { HardHat, AlertTriangle, ShieldCheck, Plus, BadgeCheck, Ban } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -29,6 +30,12 @@ export function StructuralContractsView({ counts, rows, projects, vendors }: {
   projects: { id: string; name: string }[];
   vendors: { id: string; name: string }[];
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<StructuralContractInput>({ projectId: '', vendorId: '', title: '', contractNo: '', status: 'ACTIVE' });
@@ -40,7 +47,7 @@ export function StructuralContractsView({ counts, rows, projects, vendors }: {
     saveStructuralContract(form).then((r) => {
       setSaving(false);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Contract saved'); setOpen(false); location.reload();
+      toast.success('Contract saved'); setOpen(false); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -53,7 +60,7 @@ export function StructuralContractsView({ counts, rows, projects, vendors }: {
   function toggleCert(contractId: string, period: string, next: boolean) {
     certifyEngineerPeriod(contractId, period, next).then((r) => {
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success(next ? `Certified ${period}` : `Held ${period}`); location.reload();
+      toast.success(next ? `Certified ${period}` : `Held ${period}`); router.refresh();
     });
   }
 

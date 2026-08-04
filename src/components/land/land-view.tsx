@@ -175,7 +175,7 @@ function ParcelsTab({ parcels, canManage, projects, projectId, pending, openForm
                   extentAcre: f.get('extentAcre') ? Number(f.get('extentAcre')) : null,
                   ownerName: (f.get('ownerName') as string) || null,
                   askingRate: f.get('askingRate') ? Number(f.get('askingRate')) : null,
-                  stage: (f.get('stage') as string) as never,
+                  stage: (f.get('stage') as string),
                 }));
               }}>
               <Field label="Parcel name *"><input name="name" required className={inputCls} /></Field>
@@ -267,7 +267,7 @@ function ParcelsTab({ parcels, canManage, projects, projectId, pending, openForm
                     const f = new FormData(e.currentTarget);
                     run(() => saveTitleDocument({
                       parcelId: p.id,
-                      kind: (f.get('kind') as string) as never,
+                      kind: (f.get('kind') as string),
                       title: f.get('title') as string,
                       chainOrder: Number(f.get('chainOrder') || 0),
                       fromParty: (f.get('fromParty') as string) || null,
@@ -324,7 +324,7 @@ function ApprovalsTab({ approvals, parcels, canManage, projects, projectId, pend
                   parcelId: (f.get('parcelId') as string) || null,
                   authority: f.get('authority') as string,
                   name: f.get('name') as string,
-                  status: (f.get('status') as string) as never,
+                  status: (f.get('status') as string),
                   appliedOn: (f.get('appliedOn') as string) || null,
                   expectedOn: (f.get('expectedOn') as string) || null,
                   expiresOn: (f.get('expiresOn') as string) || null,
@@ -438,7 +438,7 @@ function LitigationTab({ litigation, canManage, projects, projectId, pending, op
                   court: (f.get('court') as string) || null,
                   caseNumber: (f.get('caseNumber') as string) || null,
                   counsel: (f.get('counsel') as string) || null,
-                  status: (f.get('status') as string) as never,
+                  status: (f.get('status') as string),
                   nextHearing: (f.get('nextHearing') as string) || null,
                   exposure: f.get('exposure') ? Number(f.get('exposure')) : null,
                 }));

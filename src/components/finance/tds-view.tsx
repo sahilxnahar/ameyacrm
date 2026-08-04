@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Landmark, Wallet, AlertTriangle, Search, Calculator, Check, Plus, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -89,6 +90,12 @@ function TdsRow({ e, selected, onToggle, selectable, onChanged }: { e: TdsEntry;
 }
 
 export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canManage: boolean }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   // ── Lookup ──
   const [q, setQ] = React.useState('');
   const [results, setResults] = React.useState<{ entries: TdsEntry[]; totals: { accrued: number; deposited: number; pending: number } } | null>(null);
@@ -121,7 +128,7 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Marked ${r.updated} deducted payment(s) as deposited`);
       setSel(new Set()); setChallan('');
-      if (results) lookup(); else location.reload();
+      if (results) lookup(); else router.refresh();
     });
   }
 
@@ -159,7 +166,7 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Recorded as ${r.number}`);
       setRecording(false); setEntryBase(''); setEntryTds('');
-      location.reload();
+      router.refresh();
     });
   }
 
@@ -252,7 +259,7 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
             {shown.map((e) => (
               <TdsRow
                 key={e.id} e={e} selected={sel.has(e.id)} onToggle={() => toggle(e.id)} selectable={canManage}
-                onChanged={() => { if (results) lookup(); else location.reload(); }}
+                onChanged={() => { if (results) lookup(); else router.refresh(); }}
               />
             ))}
           </RecordList>

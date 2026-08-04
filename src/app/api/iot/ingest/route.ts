@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { requireHeaderSecret } from '@/lib/security/require-secret';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -34,6 +35,6 @@ export async function POST(req: NextRequest) {
     update: {},
     create: { serialNumber: serial, name: String(body.name ?? serial), kind: String(body.kind ?? 'SENSOR'), projectId },
   });
-  await prisma.iotReading.create({ data: { assetId: asset.id, metric, value, rawPayload: body as never } });
+  await prisma.iotReading.create({ data: { assetId: asset.id, metric, value, rawPayload: body as Prisma.InputJsonValue } });
   return NextResponse.json({ ok: true, assetId: asset.id }, { status: 201 });
 }

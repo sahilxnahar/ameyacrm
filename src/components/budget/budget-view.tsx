@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Loader2, Play, PencilLine } from 'lucide-react';
 import { setUpCostCodes, explainVariance, saveBudget } from '@/server/actions/budgets';
@@ -8,7 +9,6 @@ import type { HeadResult } from '@/lib/budget/variance';
 import type { rollUp } from '@/lib/budget/variance';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
 export interface CostCodeOption { id: string; code: string; name: string; parentId: string | null }
 export interface BudgetLineInput { costCode: string; amount: number; note: string | null }
@@ -120,12 +120,12 @@ export function BudgetView({
 
       {total && (
         <div className="stat-grid">
-          <Stat label="Budget" value={inr(total.budget)} />
-          <Stat label="Committed and incurred" value={inr(total.exposure)} hint={`${total.usedPct}% of budget`} />
-          <Stat label="Paid" value={inr(total.paid)} hint="Money actually gone" />
+          <Stat label="Budget" value={formatCurrency(total.budget)} />
+          <Stat label="Committed and incurred" value={formatCurrency(total.exposure)} hint={`${total.usedPct}% of budget`} />
+          <Stat label="Paid" value={formatCurrency(total.paid)} hint="Money actually gone" />
           <Stat
             label="Remaining"
-            value={inr(total.remaining)}
+            value={formatCurrency(total.remaining)}
             tone={total.remaining < 0 ? 'bad' : 'good'}
             hint={total.overCount ? `${total.overCount} head(s) over` : 'No head over budget'}
           />
@@ -146,10 +146,10 @@ export function BudgetView({
               <tr key={h.costCode} className={cn('border-t border-border', h.overBudget && 'bg-destructive/5')}>
                 <td className="px-3 py-1.5 text-xs text-muted-foreground">{h.costCode}</td>
                 <td className="px-3 py-1.5">{h.name}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{inr(h.budget)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{inr(h.exposure)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{inr(h.paid)}</td>
-                <td className={cn('px-3 py-1.5 text-right tabular-nums', h.remaining < 0 && 'font-medium text-destructive')}>{inr(h.remaining)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(h.budget)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{formatCurrency(h.exposure)}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{formatCurrency(h.paid)}</td>
+                <td className={cn('px-3 py-1.5 text-right tabular-nums', h.remaining < 0 && 'font-medium text-destructive')}>{formatCurrency(h.remaining)}</td>
                 <td className="px-3 py-1.5">
                   {h.needsExplanation && canManage && projectId && (
                     <ExplainButton
@@ -277,7 +277,7 @@ function BudgetEditor({
 
       <div className="toolbar items-center gap-3">
         <p className="text-sm">
-          {lines.length} head{lines.length === 1 ? '' : 's'} budgeted · total <strong className="tabular-nums">{inr(grand)}</strong>
+          {lines.length} head{lines.length === 1 ? '' : 's'} budgeted · total <strong className="tabular-nums">{formatCurrency(grand)}</strong>
         </p>
         <div className="flex gap-2">
           <button type="button" onClick={onCancel} className="focus-ring rounded-md border border-input px-3 py-1.5 text-sm">Cancel</button>
@@ -328,7 +328,7 @@ function ExplainButton({ projectId, head, onDone }: {
   return (
     <div className="min-w-[16rem] space-y-1.5">
       <p className="text-xs text-muted-foreground">
-        {head.name} is {head.variance > 0 ? 'over' : 'under'} by {inr(Math.abs(head.variance))} ({Math.abs(head.variancePct)}%).
+        {head.name} is {head.variance > 0 ? 'over' : 'under'} by {formatCurrency(Math.abs(head.variance))} ({Math.abs(head.variancePct)}%).
       </p>
       <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why did it move?"
         className="focus-ring w-full rounded-md border border-input bg-background px-2 py-1 text-xs" />

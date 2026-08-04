@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AiBillImport } from './ai-bill-import';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeVariant } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -35,7 +35,7 @@ export interface Bill {
   paidVoucher: string | null; paidOn: string | null; paidStatus: string | null;
 }
 const selectCls = 'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
-function statusVariant(s: string) { return s === 'PAID' || s === 'APPROVED' ? 'success' : ['OVERDUE', 'VOID', 'CANCELLED', 'REJECTED'].includes(s) ? 'destructive' : s === 'DRAFT' ? 'secondary' : s === 'PENDING_APPROVAL' ? 'warning' : 'default'; }
+function statusVariant(s: string): BadgeVariant { return s === 'PAID' || s === 'APPROVED' ? 'success' : ['OVERDUE', 'VOID', 'CANCELLED', 'REJECTED'].includes(s) ? 'destructive' : s === 'DRAFT' ? 'secondary' : s === 'PENDING_APPROVAL' ? 'warning' : 'default'; }
 
 type DialogKind = 'invoice' | 'po' | 'bill' | 'vendor' | 'void' | 'killInvoice' | null;
 
@@ -205,7 +205,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                   <Trash2 className="h-3 w-3" /> {i.status === 'DRAFT' ? 'Delete' : 'Void'}
                 </Button>
               )}
-              <Badge variant={statusVariant(i.status) as never} className="shrink-0">{titleCase(i.status)}</Badge>
+              <Badge variant={statusVariant(i.status)} className="shrink-0">{titleCase(i.status)}</Badge>
               <div className="w-24 shrink-0 text-right font-medium tabular-nums">{formatCurrency(i.total)}</div>
             </div>
           ))}
@@ -221,7 +221,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <div className="truncate font-medium">{p.vendor}</div>
                 <div className="truncate font-mono text-xs text-muted-foreground">{p.number}</div>
               </div>
-              <Badge variant={statusVariant(p.status) as never} className="shrink-0">{titleCase(p.status)}</Badge>
+              <Badge variant={statusVariant(p.status)} className="shrink-0">{titleCase(p.status)}</Badge>
               <div className="w-24 shrink-0 text-right tabular-nums">{formatCurrency(p.total)}</div>
               <div className="w-16 shrink-0">
                 {canApprove && p.needsMyApproval && (
@@ -276,7 +276,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                   {pending && busyId === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Pay'}
                 </Button>
               )}
-              <Badge variant={statusVariant(b.status) as never} className="shrink-0">{titleCase(b.status)}</Badge>
+              <Badge variant={statusVariant(b.status)} className="shrink-0">{titleCase(b.status)}</Badge>
               <div className="w-24 shrink-0 text-right tabular-nums">{formatCurrency(b.amount)}</div>
             </div>
           ))}

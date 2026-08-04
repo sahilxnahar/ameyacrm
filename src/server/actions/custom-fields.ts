@@ -1,11 +1,12 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
-export type FieldResult = { ok: true; id?: string } | { error: string };
+export type FieldResult = { ok: true; id?: string; undo?: Undoable | null } | { error: string };
 const TYPES = ['text', 'number', 'date', 'select', 'checkbox'] as const;
 
 const defSchema = z.object({
@@ -46,10 +47,16 @@ export async function toggleCustomField(id: string, isActive: boolean): Promise<
 export async function deleteCustomField(id: string): Promise<FieldResult> {
   try {
     const ctx = await ensure('admin.setting.manage');
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.customFieldDef.findUnique({ where: { id } });
     await prisma.customFieldDef.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('CustomFieldDef', row, { label: String(row.label), userId: ctx?.user.id })
+      : null;
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'CustomFieldDef', entityId: id, summary: 'Deleted custom field' });
     revalidatePath('/admin/fields'); revalidatePath('/sales');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (err) { return toActionError(err); }
 }
 

@@ -19,6 +19,17 @@ const badgeVariants = cva(
   },
 );
 
+/**
+ * The tones a Badge can take.
+ *
+ * Exported so the `statusVariant(...)`-style helpers scattered across the
+ * screens can be TYPED against it instead of returning `string` and being
+ * forced in with `as never` at every call site (AMH-050). A helper that
+ * returns a colour the Badge does not have is then a compile error rather
+ * than a badge that silently renders with no styling.
+ */
+export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>;
+
 export function Badge({ className, variant, ...props }: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { BadgeCheck, AlertTriangle, Gavel, ShieldQuestion, Plus, Trash2 } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -37,6 +38,12 @@ export function IpRegistryView({ counts, rows, projects }: {
   rows: Row[];
   projects: { id: string; name: string }[];
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<TrademarkInput>({ mark: '', proprietor: '', niceClass: 37, status: 'FILED' });
@@ -51,7 +58,7 @@ export function IpRegistryView({ counts, rows, projects }: {
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Trademark saved');
       setOpen(false);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -64,7 +71,7 @@ export function IpRegistryView({ counts, rows, projects }: {
   function remove(id: string) {
     deleteTrademark(id).then((r) => {
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Deleted'); location.reload();
+      toast.success('Deleted'); router.refresh();
     });
   }
 

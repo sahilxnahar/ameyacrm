@@ -1,5 +1,7 @@
 'use client';
 import * as React from 'react';
+import { MaintenanceStatus } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, Check } from 'lucide-react';
@@ -37,7 +39,7 @@ export function LeaseView({ leases, tenants, maintenance, tenantOptions, units, 
     start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(ok); close(); router.refresh(); });
   };
   const setStatus = (id: string, status: string) => start(async () => {
-    const r = await updateMaintenanceStatus(id, status as never); if ('error' in r) { toast.error(r.error); return; } toast.success('Updated'); router.refresh();
+    const r = await updateMaintenanceStatus(id, asEnum(MaintenanceStatus, status, 'OPEN')); if ('error' in r) { toast.error(r.error); return; } toast.success('Updated'); router.refresh();
   });
 
   return (
@@ -62,7 +64,7 @@ export function LeaseView({ leases, tenants, maintenance, tenantOptions, units, 
                 <TableCell className="font-medium">{l.tenant}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{l.unit ?? '—'}{l.project ? ` · ${l.project}` : ''}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{formatDate(l.startDate, 'dd MMM yy')} – {formatDate(l.endDate, 'dd MMM yy')}</TableCell>
-                <TableCell><Badge variant={lVariant(l.status) as never}>{titleCase(l.status)}</Badge></TableCell>
+                <TableCell><Badge variant={lVariant(l.status)}>{titleCase(l.status)}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums">{formatCurrency(l.rent)}/mo</TableCell>
               </TableRow>
             ))}

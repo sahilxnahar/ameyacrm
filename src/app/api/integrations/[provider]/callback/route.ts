@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db/prisma';
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       where: { provider },
       update: {
         status: 'CONNECTED',
-        accountName, meta: meta as never, lastError: lookupWarning,
+        accountName, meta: meta as Prisma.InputJsonValue, lastError: lookupWarning,
         accessToken: encrypt(tok.access_token),
         refreshToken: tok.refresh_token ? encrypt(tok.refresh_token) : null,
         expiresAt: tok.expires_in ? new Date(Date.now() + tok.expires_in * 1000) : null,
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       },
       create: {
         provider, status: 'CONNECTED',
-        accountName, meta: meta as never, lastError: lookupWarning,
+        accountName, meta: meta as Prisma.InputJsonValue, lastError: lookupWarning,
         accessToken: encrypt(tok.access_token),
         refreshToken: tok.refresh_token ? encrypt(tok.refresh_token) : null,
         expiresAt: tok.expires_in ? new Date(Date.now() + tok.expires_in * 1000) : null,

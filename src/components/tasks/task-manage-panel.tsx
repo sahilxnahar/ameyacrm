@@ -1,5 +1,7 @@
 'use client';
 import * as React from 'react';
+import { asEnum } from '@/lib/utils/enum';
+import { TaskStatus } from '@prisma/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -40,7 +42,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
             <Link key={s.id} href={`/tasks/${s.id}`} className="flex items-center gap-2 rounded-md border p-2 text-sm hover:bg-secondary">
               <span className="font-mono text-[11px] text-muted-foreground">{s.reference}</span>
               <span className="flex-1 truncate">{s.title}</span>
-              <StatusBadge status={s.status as never} />
+              <StatusBadge status={asEnum(TaskStatus, s.status, 'TODO')} />
             </Link>
           ))}
         </div>

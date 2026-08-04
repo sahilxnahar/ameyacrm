@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Package, Download, Upload, Trash2, Check, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,12 @@ const KIND_LABEL: Record<string, string> = { automation: 'automation', fields: '
 function pluralise(n: number, w: string) { return `${n} ${w}${n === 1 ? '' : 's'}`; }
 
 export function AppPackagesView({ packages, installed: initial }: { packages: AppPackage[]; installed: Array<{ packageId: string; source: string }> }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [installed, setInstalled] = React.useState(new Set(initial.map((i) => i.packageId)));
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -40,7 +47,7 @@ export function AppPackagesView({ packages, installed: initial }: { packages: Ap
     if ('error' in r || !r.json) { toast.error('error' in r ? r.error : 'Nothing to export'); return; }
     download(name, r.json); toast.success('Exported');
   });
-  const doImport = () => act('Imported', () => importAppPackage(importText), () => { setImportOpen(false); setImportText(''); location.reload(); });
+  const doImport = () => act('Imported', () => importAppPackage(importText), () => { setImportOpen(false); setImportText(''); router.refresh(); });
 
   return (
     <div className="space-y-5">

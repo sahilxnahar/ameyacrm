@@ -1,4 +1,5 @@
 // Channel-partner commission maths (v15.13). Client-safe, pure, testable.
+import { formatCurrency } from '@/lib/utils/format';
 
 export type CommissionBasis = 'PERCENT_OF_SALE' | 'MONTHS_OF_RENT' | 'FLAT_FEE';
 
@@ -14,7 +15,6 @@ export interface CommissionInputs {
   monthlyRent?: number; // for MONTHS_OF_RENT
 }
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
 /** The commission payable for a deal, given the partner's basis and the deal figures. */
@@ -34,7 +34,7 @@ export function commissionAmount(cfg: CommissionConfig, inputs: CommissionInputs
 /** A short human label for how a partner is paid. */
 export function commissionLabel(
   cfg: CommissionConfig,
-  money: (n: number) => string = (n) => `₹${inr.format(n)}`,
+  money: (n: number) => string = formatCurrency,
 ): string {
   if (cfg.basis === 'MONTHS_OF_RENT') return cfg.months ? `${cfg.months} mo rent + GST` : 'Months of rent';
   if (cfg.basis === 'FLAT_FEE') return cfg.flat ? `${money(Number(cfg.flat))} flat` : 'Flat fee';

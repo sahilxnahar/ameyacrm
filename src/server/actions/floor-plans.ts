@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
@@ -7,7 +8,7 @@ import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import { PLAN_KINDS } from '@/config/floor-plans';
 
-export type PlanResult = { ok: true; id?: string } | { error: string };
+export type PlanResult = { ok: true; id?: string; undo?: Undoable | null } | { error: string };
 
 const planSchema = z.object({
   projectId: z.string().min(1),
@@ -43,10 +44,16 @@ export async function createFloorPlan(input: unknown): Promise<PlanResult> {
 export async function deleteFloorPlan(id: string): Promise<PlanResult> {
   try {
     const ctx = await ensure('booking.manage');
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.floorPlan.findUnique({ where: { id } });
     await prisma.floorPlan.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('FloorPlan', row, { label: String(row.name), userId: ctx?.user.id })
+      : null;
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'Project', entityId: id, summary: 'Removed a floor plan' });
     revalidatePath('/floor-plans');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (err) { return toActionError(err); }
 }
 

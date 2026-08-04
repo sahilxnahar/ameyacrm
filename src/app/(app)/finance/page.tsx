@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { formatCurrency } from '@/lib/utils/format';
 import { requirePermission } from '@/lib/auth/current-user';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card } from '@/components/ui/card';
@@ -10,7 +11,6 @@ import { AlertTriangle } from 'lucide-react';
 export const metadata: Metadata = { title: 'Finance command center' };
 export const dynamic = 'force-dynamic';
 
-const inr = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n))}`;
 
 export default async function FinancePage() {
   await requirePermission('treasury.view');
@@ -40,10 +40,10 @@ export default async function FinancePage() {
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Cost of capital (bank &amp; NBFC debt)</h2>
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
-          <Tile label="Debt outstanding" value={inr(debt.totalOutstanding)} hint="Principal still owed" />
+          <Tile label="Debt outstanding" value={formatCurrency(debt.totalOutstanding)} hint="Principal still owed" />
           <Tile label="Weighted avg rate" value={`${debt.weightedAvgRate.toFixed(2)}%`} hint="Per year, balance-weighted" />
-          <Tile label="Interest / month" value={inr(debt.monthlyInterestRunRate)} hint="At current balances" />
-          <Tile label="Interest due" value={inr(debt.totalNetInterestDue)} hint="Accrued, not yet paid" />
+          <Tile label="Interest / month" value={formatCurrency(debt.monthlyInterestRunRate)} hint="At current balances" />
+          <Tile label="Interest due" value={formatCurrency(debt.totalNetInterestDue)} hint="Accrued, not yet paid" />
         </div>
       </section>
 
@@ -51,10 +51,10 @@ export default async function FinancePage() {
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Cash &amp; working capital</h2>
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
-          <Tile label="Cash in bank" value={inr(cash)} hint={`${positions.length} account${positions.length === 1 ? '' : 's'}`} />
-          <Tile label="Overdue to collect" value={inr(overdueRecv)} hint={`${overdue._count} milestone${overdue._count === 1 ? '' : 's'}`} tone={overdueRecv > 0 ? 'warn' : undefined} />
-          <Tile label="Upcoming receivables" value={inr(pendingRecv)} hint="Not yet due" />
-          <Tile label="Unpaid bills" value={inr(payables)} hint={`${bills._count} bill${bills._count === 1 ? '' : 's'} owing`} />
+          <Tile label="Cash in bank" value={formatCurrency(cash)} hint={`${positions.length} account${positions.length === 1 ? '' : 's'}`} />
+          <Tile label="Overdue to collect" value={formatCurrency(overdueRecv)} hint={`${overdue._count} milestone${overdue._count === 1 ? '' : 's'}`} tone={overdueRecv > 0 ? 'warn' : undefined} />
+          <Tile label="Upcoming receivables" value={formatCurrency(pendingRecv)} hint="Not yet due" />
+          <Tile label="Unpaid bills" value={formatCurrency(payables)} hint={`${bills._count} bill${bills._count === 1 ? '' : 's'} owing`} />
         </div>
       </section>
 
@@ -64,13 +64,13 @@ export default async function FinancePage() {
         {lowNegative && (
           <div className="mb-3 flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>Cash is forecast to go <strong>negative</strong> (low point {inr(forecast.lowestPoint)} in week {forecast.lowestWeekIndex + 1}). Bring collections forward or delay a payment run.</p>
+            <p>Cash is forecast to go <strong>negative</strong> (low point {formatCurrency(forecast.lowestPoint)} in week {forecast.lowestWeekIndex + 1}). Bring collections forward or delay a payment run.</p>
           </div>
         )}
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
-          <Tile label="Opening cash" value={inr(forecast.opening)} hint="Today" />
-          <Tile label="Lowest point" value={inr(forecast.lowestPoint)} hint={`Week ${forecast.lowestWeekIndex + 1}`} tone={lowNegative ? 'bad' : undefined} />
-          <Tile label="Closing (12 weeks)" value={inr(forecast.closing)} hint={forecast.horizonNote} />
+          <Tile label="Opening cash" value={formatCurrency(forecast.opening)} hint="Today" />
+          <Tile label="Lowest point" value={formatCurrency(forecast.lowestPoint)} hint={`Week ${forecast.lowestWeekIndex + 1}`} tone={lowNegative ? 'bad' : undefined} />
+          <Tile label="Closing (12 weeks)" value={formatCurrency(forecast.closing)} hint={forecast.horizonNote} />
         </div>
 
         <Card className="mt-4 overflow-hidden">
@@ -88,9 +88,9 @@ export default async function FinancePage() {
                 {forecast.buckets.map((b) => (
                   <tr key={b.index} className="border-b last:border-0">
                     <td className="px-3 py-1.5">{new Date(b.weekStart).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{b.inflow ? inr(b.inflow) : '—'}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-rose-600 dark:text-rose-400">{b.outflow ? inr(b.outflow) : '—'}</td>
-                    <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${b.closing < 0 ? 'text-destructive' : ''}`}>{inr(b.closing)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{b.inflow ? formatCurrency(b.inflow) : '—'}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-rose-600 dark:text-rose-400">{b.outflow ? formatCurrency(b.outflow) : '—'}</td>
+                    <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${b.closing < 0 ? 'text-destructive' : ''}`}>{formatCurrency(b.closing)}</td>
                   </tr>
                 ))}
               </tbody>

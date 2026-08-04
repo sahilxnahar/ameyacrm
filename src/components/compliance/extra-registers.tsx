@@ -1,6 +1,7 @@
 'use client';
 
 import { RegisterScreen } from '@/components/common/register-screen';
+import { formatCurrency } from '@/lib/utils/format';
 import {
   createContract, createInsurancePolicy, createRenewal, createSop, createLesson,
   createWasteManifest, createAccessReview, createPowerOfAttorney, createJda,
@@ -17,7 +18,6 @@ import {
  */
 
 const fmt = (d: Date | null) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—');
-const inr = (n: number | null) => (n == null ? '—' : `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`);
 const opt = (a: string[]) => a.map((v) => ({ value: v, label: v.replace(/_/g, ' ').toLowerCase() }));
 
 /** Days until a date, rendered so "already gone" is unmistakable. */
@@ -51,7 +51,7 @@ export function ContractsRegister({ rows, projects, projectId, canManage }: Base
         { label: 'Contract', render: (r) => r.title },
         { label: 'With', render: (r) => r.counterparty },
         { label: 'Type', render: (r) => r.kind ?? '—' },
-        { label: 'Value', render: (r) => inr(r.value) },
+        { label: 'Value', render: (r) => formatCurrency(r.value) },
         { label: 'Ends', render: (r) => fmt(r.endsOn) },
         { label: 'Renewal', render: (r) => <Due on={r.renewalOn} /> },
         { label: 'Status', render: (r) => r.status.toLowerCase() },
@@ -82,15 +82,15 @@ export function InsuranceRegister({ rows, projects, projectId, canManage }: Base
       onCreate={(v) => createInsurancePolicy({ ...v, projectId: projectId ?? '' })}
       tiles={[
         { label: 'Policies', value: String(rows.length) },
-        { label: 'Total cover', value: inr(rows.reduce((t, r) => t + (r.cover ?? 0), 0)) },
+        { label: 'Total cover', value: formatCurrency(rows.reduce((t, r) => t + (r.cover ?? 0), 0)) },
         { label: 'Lapsed', value: String(lapsed), tone: lapsed > 0 ? 'bad' : 'good' },
       ]}
       columns={[
         { label: 'Policy', render: (r) => r.name },
         { label: 'Insurer', render: (r) => r.insurer },
         { label: 'Number', render: (r) => r.policyNo ?? '—' },
-        { label: 'Cover', render: (r) => inr(r.cover) },
-        { label: 'Premium', render: (r) => inr(r.premium) },
+        { label: 'Cover', render: (r) => formatCurrency(r.cover) },
+        { label: 'Premium', render: (r) => formatCurrency(r.premium) },
         { label: 'Expires', render: (r) => <Due on={r.expiresOn} /> },
       ]}
       fields={[
@@ -312,7 +312,7 @@ export function JdaRegister({ rows, canManage, parcels }: Base & { rows: JdaRow[
       onCreate={(v) => createJda(v)}
       tiles={[
         { label: 'Agreements', value: String(rows.length) },
-        { label: 'Deposits committed', value: inr(rows.reduce((t, r) => t + (r.refundableDeposit ?? 0), 0)) },
+        { label: 'Deposits committed', value: formatCurrency(rows.reduce((t, r) => t + (r.refundableDeposit ?? 0), 0)) },
       ]}
       columns={[
         { label: 'Parcel', render: (r) => r.parcelName ?? r.parcelId },
@@ -320,7 +320,7 @@ export function JdaRegister({ rows, canManage, parcels }: Base & { rows: JdaRow[
         { label: 'Basis', render: (r) => r.shareType.replace(/_/g, ' ').toLowerCase() },
         { label: 'Developer', render: (r) => (r.developerShare == null ? '—' : `${r.developerShare}%`) },
         { label: 'Landowner', render: (r) => (r.landownerShare == null ? '—' : `${r.landownerShare}%`) },
-        { label: 'Deposit', render: (r) => inr(r.refundableDeposit) },
+        { label: 'Deposit', render: (r) => formatCurrency(r.refundableDeposit) },
         { label: 'Signed', render: (r) => fmt(r.signedOn) },
       ]}
       fields={[

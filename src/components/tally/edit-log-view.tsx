@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { formatAmountPlain } from '@/lib/utils/format';
 import { ShieldCheck, Plus, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import type { AuditRow, VoucherSnapshot } from '@/server/services/tally-audit-service';
 
@@ -11,7 +12,6 @@ import type { AuditRow, VoucherSnapshot } from '@/server/services/tally-audit-se
  * before/after state of the voucher, because "amount changed" is not an answer
  * to "changed from what, to what".
  */
-const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function EditLogView({ rows, onBack }: { rows: AuditRow[] | null; onBack: () => void }) {
   const [open, setOpen] = React.useState<string | null>(null);
@@ -128,12 +128,12 @@ function Snapshot({ title, snap }: { title: string; snap: VoucherSnapshot | null
           {snap.lines.map((l, i) => (
             <tr key={i} className="border-t border-[#0f2038]/10">
               <td className="py-0.5">{l.ledger}</td>
-              <td className="py-0.5 text-right">{l.debit ? inr(l.debit) : '—'}</td>
-              <td className="py-0.5 text-right">{l.credit ? inr(l.credit) : '—'}</td>
+              <td className="py-0.5 text-right">{l.debit ? formatAmountPlain(l.debit) : '—'}</td>
+              <td className="py-0.5 text-right">{l.credit ? formatAmountPlain(l.credit) : '—'}</td>
             </tr>
           ))}
         </tbody>
-        <tfoot><tr className="border-t border-[#0f2038]/30 font-semibold"><td>Total</td><td className="text-right">{inr(dr)}</td><td className="text-right">{inr(dr)}</td></tr></tfoot>
+        <tfoot><tr className="border-t border-[#0f2038]/30 font-semibold"><td>Total</td><td className="text-right">{formatAmountPlain(dr)}</td><td className="text-right">{formatAmountPlain(dr)}</td></tr></tfoot>
       </table></div>
       {snap.inventory && snap.inventory.length > 0 && (
         <p className="mt-1 text-[11px] text-[#5B4412]">

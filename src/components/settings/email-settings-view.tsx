@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Mail, Plug, CheckCircle2, Trash2, Send, AlertTriangle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,12 @@ import type { UserImapStatus } from '@/server/services/user-imap-service';
 import type { UserSmtpStatus } from '@/server/services/user-smtp-service';
 
 export function EmailSettingsView({ status, outbound, defaultEmail }: { status: UserImapStatus; outbound: UserSmtpStatus; defaultEmail: string }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [host, setHost] = React.useState(status.host ?? 'imap.gmail.com');
   const [port, setPort] = React.useState(status.port ?? 993);
   const [user, setUser] = React.useState(status.source === 'user' ? (status.user ?? '') : defaultEmail);
@@ -31,7 +38,7 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
     saveMyImap({ host, port, user, pass }).then((r) => {
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('Connected — your inbox is now syncing'); setPass(''); location.reload();
+      toast.success('Connected — your inbox is now syncing'); setPass(''); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -53,7 +60,7 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
       });
   }
   function disconnect() {
-    clearMyImap().then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Disconnected'); location.reload(); });
+    clearMyImap().then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Disconnected'); router.refresh(); });
   }
 
   function saveOutbound(next: boolean) {
@@ -62,7 +69,7 @@ export function EmailSettingsView({ status, outbound, defaultEmail }: { status: 
     saveMyOutbound({ sendAsSelf: next, smtpHost: smtpHost || undefined, smtpPort: smtpPort === '' ? undefined : Number(smtpPort) }).then((r) => {
       setOutBusy(null);
       if ('error' in r) { toast.error(r.error); setSendAsSelf(!next); return; }
-      toast.success(next ? 'Your sent mail now goes out as you' : 'Reverted to the shared org sender'); location.reload();
+      toast.success(next ? 'Your sent mail now goes out as you' : 'Reverted to the shared org sender'); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the

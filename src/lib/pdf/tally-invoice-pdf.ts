@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { rupeesInWords } from '@/lib/money-words';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
@@ -11,7 +12,6 @@ const NAVY_TINT = rgb(0.93, 0.945, 0.97);
 const MUTE = rgb(0.45, 0.42, 0.38);
 const LINE = rgb(0.85, 0.83, 0.79);
 
-const inr = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ascii = (s: string) => (s || '')
   .replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/·/g, '-').replace(/₹/g, 'Rs.').replace(/…/g, '...').replace(/[^\x20-\x7E]/g, ' ');
 const day = (d: Date | null) => (d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-');
@@ -89,7 +89,7 @@ export async function buildTallyInvoicePdf(d: TallyInvoiceData): Promise<Uint8Ar
   const shown = d.items.slice(0, maxRows);
   shown.forEach((it, i) => drawRow([
     String(i + 1), it.name, it.hsn ?? '-',
-    `${it.qty}${it.unit ? ' ' + it.unit : ''}`, inr.format(it.rate), String(it.gstRate), inr.format(it.amount),
+    `${it.qty}${it.unit ? ' ' + it.unit : ''}`, formatCurrency(it.rate), String(it.gstRate), formatCurrency(it.amount),
   ]));
   if (d.items.length > shown.length) { y -= 15; text(`... and ${d.items.length - shown.length} more line(s)`, M + 26, y + 4, 8, font, MUTE); }
 
@@ -101,11 +101,11 @@ export async function buildTallyInvoicePdf(d: TallyInvoiceData): Promise<Uint8Ar
     right(val, W - M, y, 9, b ? bold : font, b ? NAVY : CHARCOAL);
     y -= 14;
   };
-  line('Taxable value', `Rs. ${inr.format(d.taxable)}`);
-  line('CGST', `Rs. ${inr.format(d.cgst)}`);
-  line('SGST', `Rs. ${inr.format(d.sgst)}`);
+  line('Taxable value', `Rs. ${formatCurrency(d.taxable)}`);
+  line('CGST', `Rs. ${formatCurrency(d.cgst)}`);
+  line('SGST', `Rs. ${formatCurrency(d.sgst)}`);
   page.drawLine({ start: { x: tx, y: y + 6 }, end: { x: W - M, y: y + 6 }, thickness: 0.6, color: GOLD });
-  line('Invoice total', `Rs. ${inr.format(d.total)}`, true);
+  line('Invoice total', `Rs. ${formatCurrency(d.total)}`, true);
 
   // Amount in words
   y -= 6;

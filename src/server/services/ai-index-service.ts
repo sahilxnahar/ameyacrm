@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrencyForPdf } from '@/lib/utils/format';
 import { prisma } from '@/lib/db/prisma';
 import { indexText } from '@/server/services/docqa-service';
 
@@ -21,7 +22,6 @@ export const AI_SOURCES = [
 
 export type AiSourceKey = (typeof AI_SOURCES)[number]['key'];
 
-const inr = (n: number) => `Rs. ${new Intl.NumberFormat('en-IN').format(n)}`;
 const day = (d: Date | null) => (d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'no date');
 
 /** Turn a record into the sentences a person would actually ask about. */
@@ -41,7 +41,7 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
           `Lead ${l.reference} is ${l.name}.`, l.phone ? `Phone ${l.phone}.` : '', l.email ? `Email ${l.email}.` : '',
           `Source ${l.source}. Status ${l.status}.`,
           l.project?.name ? `Interested in ${l.project.name}.` : '',
-          l.budgetMin || l.budgetMax ? `Budget ${inr(Number(l.budgetMin ?? 0))} to ${inr(Number(l.budgetMax ?? 0))}.` : '',
+          l.budgetMin || l.budgetMax ? `Budget ${formatCurrencyForPdf(Number(l.budgetMin ?? 0))} to ${formatCurrencyForPdf(Number(l.budgetMax ?? 0))}.` : '',
           l.requirement ? `Requirement: ${l.requirement}.` : '',
           where ? `Located in ${where}.` : '',
           l.isNri ? 'This is an NRI enquiry.' : '',
@@ -64,7 +64,7 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
         b.lead?.phone ? `Phone ${b.lead.phone}.` : '',
         b.unit?.code ? `Unit ${b.unit.code}${b.unit.typology ? ` (${b.unit.typology})` : ''}${b.unit.tower ? ` in tower ${b.unit.tower}` : ''}.` : '',
         b.unit?.project?.name ? `Project ${b.unit.project.name}.` : '',
-        `Status ${b.status}. Payment status ${b.paymentStatus}. Agreement value ${inr(Number(b.agreementValue ?? 0))}. Booked on ${day(b.bookedAt)}.`,
+        `Status ${b.status}. Payment status ${b.paymentStatus}. Agreement value ${formatCurrencyForPdf(Number(b.agreementValue ?? 0))}. Booked on ${day(b.bookedAt)}.`,
       ].filter(Boolean).join(' '),
     }));
   }
@@ -78,8 +78,8 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
     return rows.map((i) => ({
       id: i.id, title: `Invoice ${i.number}`,
       text: [
-        `Invoice ${i.number} to ${i.clientName} for ${inr(Number(i.total))}.`,
-        `Status ${i.status}. Received so far ${inr(Number(i.amountPaid))}.`,
+        `Invoice ${i.number} to ${i.clientName} for ${formatCurrencyForPdf(Number(i.total))}.`,
+        `Status ${i.status}. Received so far ${formatCurrencyForPdf(Number(i.amountPaid))}.`,
         i.project?.name ? `Project ${i.project.name}.` : '',
         `Issued ${day(i.issueDate)}${i.dueDate ? `, due ${day(i.dueDate)}` : ''}.`,
         i.notes ?? '',
@@ -96,7 +96,7 @@ async function buildRows(key: AiSourceKey): Promise<Array<{ id: string; title: s
     return rows.map((v) => ({
       id: v.id, title: `${v.number} — ${v.partyName}`,
       text: [
-        `${v.kind.replace(/_/g, ' ').toLowerCase()} ${v.number}: ${inr(Number(v.amount))} ${v.kind.includes('PAID') ? 'paid to' : 'received from'} ${v.partyName}.`,
+        `${v.kind.replace(/_/g, ' ').toLowerCase()} ${v.number}: ${formatCurrencyForPdf(Number(v.amount))} ${v.kind.includes('PAID') ? 'paid to' : 'received from'} ${v.partyName}.`,
         `Dated ${day(v.paidOn ?? v.voucherDate)}. Mode ${v.mode}.`,
         v.utr ? `UTR ${v.utr}.` : 'No UTR recorded.',
         v.status === 'CANCELLED' ? 'This voucher is cancelled.' : '',

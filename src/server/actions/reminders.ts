@@ -1,11 +1,12 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { getActionContext, toActionError } from './_helpers';
 import { datetimeLocalToUTC } from '@/lib/date/ist';
 
-export type ReminderResult = { ok: true; id?: string } | { error: string };
+export type ReminderResult = { ok: true; id?: string; undo?: Undoable | null } | { error: string };
 
 const createSchema = z.object({
   title: z.string().min(2).max(160),
@@ -65,8 +66,14 @@ export async function snoozeReminder(id: string, minutes: number): Promise<Remin
 export async function deleteReminder(id: string): Promise<ReminderResult> {
   try {
     const g = await ownOrFail(id); if (g.error) return { error: g.error };
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.reminder.findUnique({ where: { id } });
     await prisma.reminder.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('Reminder', row, { label: String(row.title), userId: g.r?.userId ?? null })
+      : null;
     revalidatePath('/reminders');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (err) { return toActionError(err); }
 }

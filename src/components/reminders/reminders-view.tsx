@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { toastWithUndo } from '@/lib/forms/undo-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -15,8 +16,16 @@ interface Rem { id: string; title: string; notes: string | null; dueAt: string; 
 export function RemindersView({ reminders }: { reminders: Rem[] }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
-  const act = (fn: () => Promise<{ ok: true } | { error: string }>, msg: string) =>
-    start(async () => { const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(msg); router.refresh(); });
+  const act = (fn: () => Promise<{ ok: true; undo?: { id: string; label: string } | null } | { error: string }>, msg: string) =>
+    start(async () => {
+      const r = await fn();
+      if ('error' in r) { toast.error(r.error); return; }
+      // The offer rides on the confirmation toast (AMH-033). A recycle bin
+      // somebody has to go and find is used by nobody — the moment you want
+      // undo is the second after you pressed delete.
+      toastWithUndo(msg, r.undo, () => router.refresh());
+      router.refresh();
+    });
 
   const add = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form);

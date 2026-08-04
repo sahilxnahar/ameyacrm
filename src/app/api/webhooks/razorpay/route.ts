@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   await prisma.webhookEvent.upsert({
     where: { provider_externalId: { provider: 'RAZORPAY', externalId } },
     update: {},
-    create: { provider: 'RAZORPAY', externalId, type, payload: body as never, status: 'PENDING' },
+    create: { provider: 'RAZORPAY', externalId, type, payload: body as Prisma.InputJsonValue, status: 'PENDING' },
   }).catch(() => undefined);
 
   return NextResponse.json({ ok: true });

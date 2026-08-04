@@ -1,5 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
+import { Priority, TaskStatus } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -57,8 +59,8 @@ export function TaskList({ tasks, people = [] }: { tasks: BoardTask[]; people?: 
                   <TableCell><RowCheck checked={on} onChange={(v) => toggle(t.id, v)} label={`Select ${t.reference}`} /></TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{t.reference}</TableCell>
                   <TableCell><Link href={`/tasks/${t.id}`} className="font-medium hover:text-primary">{t.title}</Link></TableCell>
-                  <TableCell><StatusBadge status={t.status as never} /></TableCell>
-                  <TableCell><PriorityBadge priority={t.priority as never} /></TableCell>
+                  <TableCell><StatusBadge status={asEnum(TaskStatus, t.status, 'TODO')} /></TableCell>
+                  <TableCell><PriorityBadge priority={asEnum(Priority, t.priority, 'MEDIUM')} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(t.dueDate, 'dd MMM yyyy')}</TableCell>
                   <TableCell>
                     <div className="flex -space-x-2">

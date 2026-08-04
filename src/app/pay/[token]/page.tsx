@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { formatCurrency } from '@/lib/utils/format';
 import { IndianRupee, CheckCircle2, FileText } from 'lucide-react';
 import { prisma } from '@/lib/db/prisma';
 import { ConfirmPayment } from '@/components/payments/confirm-payment';
@@ -6,7 +7,6 @@ import { ConfirmPayment } from '@/components/payments/confirm-payment';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Payment request · Ameya Heights', robots: { index: false } };
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 
 export default async function PayPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -48,7 +48,7 @@ export default async function PayPage({ params }: { params: Promise<{ token: str
 
           <div className="mt-5 flex items-baseline gap-2 border-y py-4">
             <IndianRupee className="h-6 w-6 text-[#8C6E2C]" />
-            <span className="font-display text-4xl font-semibold">{inr.format(Number(pr.amount))}</span>
+            <span className="font-display text-4xl font-semibold">{formatCurrency(Number(pr.amount))}</span>
           </div>
 
           {pr.dueDate && <p className="mt-3 text-sm text-[#5E584C]">Due by <b>{pr.dueDate.toLocaleDateString('en-IN')}</b></p>}

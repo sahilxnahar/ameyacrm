@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X, GitBranch, Activity, AlertTriangle } from 'lucide-react';
 import { saveActivity, linkActivities, recordProgress, saveDelay, saveBoqItem } from '@/server/actions/programme';
 import type { EvResult } from '@/lib/programme/schedule';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const fmtDate = (d: Date | string | null) => d == null ? '—' : new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
 interface Row {
@@ -164,20 +164,20 @@ export function ProgrammeView({ canManage, projects, projectId, activities, over
       {tab === 'earned' && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Tile label="Budget (BAC)" value={inr(ev.budgetAtCompletion)} sub="planned total" />
-            <Tile label="Earned (EV)" value={inr(ev.earnedValue)} sub="value of work done" />
-            <Tile label="Actual (AC)" value={inr(ev.actualCost)} sub="spent so far" />
-            <Tile label="Planned (PV)" value={inr(ev.plannedValue)} sub="should be done by now" />
+            <Tile label="Budget (BAC)" value={formatCurrency(ev.budgetAtCompletion)} sub="planned total" />
+            <Tile label="Earned (EV)" value={formatCurrency(ev.earnedValue)} sub="value of work done" />
+            <Tile label="Actual (AC)" value={formatCurrency(ev.actualCost)} sub="spent so far" />
+            <Tile label="Planned (PV)" value={formatCurrency(ev.plannedValue)} sub="should be done by now" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-border p-3">
               <div className="text-xs text-muted-foreground">Schedule variance (EV − PV)</div>
-              <div className={cn('mt-1 font-display text-xl font-semibold', ev.scheduleVariance < 0 ? 'text-destructive' : 'text-emerald-600')}>{inr(ev.scheduleVariance)}</div>
+              <div className={cn('mt-1 font-display text-xl font-semibold', ev.scheduleVariance < 0 ? 'text-destructive' : 'text-emerald-600')}>{formatCurrency(ev.scheduleVariance)}</div>
               <div className="text-xs text-muted-foreground">{ev.scheduleVariance < 0 ? 'behind schedule' : 'on or ahead of schedule'}</div>
             </div>
             <div className="rounded-lg border border-border p-3">
               <div className="text-xs text-muted-foreground">Cost variance (EV − AC)</div>
-              <div className={cn('mt-1 font-display text-xl font-semibold', ev.costVariance < 0 ? 'text-destructive' : 'text-emerald-600')}>{inr(ev.costVariance)}</div>
+              <div className={cn('mt-1 font-display text-xl font-semibold', ev.costVariance < 0 ? 'text-destructive' : 'text-emerald-600')}>{formatCurrency(ev.costVariance)}</div>
               <div className="text-xs text-muted-foreground">{ev.costVariance < 0 ? 'over cost' : 'on or under cost'}</div>
             </div>
           </div>
@@ -232,8 +232,8 @@ function BoqTab({ boq, total, canManage, projectId, pending, openForm, setOpenFo
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Code</th><th className="p-2">Description</th><th className="p-2">Qty</th><th className="p-2">Unit</th><th className="p-2">Rate</th><th className="p-2">Amount</th></tr></thead>
             <tbody>
-              {boq.map((b) => <tr key={b.id} className="border-t border-border"><td className="p-2 text-xs">{b.code ?? '—'}</td><td className="p-2">{b.description}</td><td className="p-2">{b.quantity}</td><td className="p-2 text-xs">{b.unit ?? '—'}</td><td className="p-2">{inr(b.rate)}</td><td className="p-2 font-medium">{inr(b.amount)}</td></tr>)}
-              <tr className="border-t border-border font-medium"><td className="p-2" colSpan={5}>Total</td><td className="p-2">{inr(total)}</td></tr>
+              {boq.map((b) => <tr key={b.id} className="border-t border-border"><td className="p-2 text-xs">{b.code ?? '—'}</td><td className="p-2">{b.description}</td><td className="p-2">{b.quantity}</td><td className="p-2 text-xs">{b.unit ?? '—'}</td><td className="p-2">{formatCurrency(b.rate)}</td><td className="p-2 font-medium">{formatCurrency(b.amount)}</td></tr>)}
+              <tr className="border-t border-border font-medium"><td className="p-2" colSpan={5}>Total</td><td className="p-2">{formatCurrency(total)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -247,7 +247,7 @@ function DelaysTab({ delays, activities, canManage, projectId, pending, openForm
     <div className="space-y-3">
       {canManage && projectId && <AddBtn open={openForm === 'delay'} onClick={() => setOpenForm(openForm === 'delay' ? null : 'delay')} label="Record delay" icon={<Activity className="h-4 w-4" />} />}
       {openForm === 'delay' && canManage && projectId && (
-        <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveDelay({ projectId, activityId: (f.get('activityId') as string) || null, cause: f.get('cause') as string, responsibility: (f.get('responsibility') as string) as never, days: Number(f.get('days') || 0), costImpact: f.get('costImpact') ? Number(f.get('costImpact')) : null, occurredOn: (f.get('occurredOn') as string) || null })); }}>
+        <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveDelay({ projectId, activityId: (f.get('activityId') as string) || null, cause: f.get('cause') as string, responsibility: (f.get('responsibility') as string), days: Number(f.get('days') || 0), costImpact: f.get('costImpact') ? Number(f.get('costImpact')) : null, occurredOn: (f.get('occurredOn') as string) || null })); }}>
           <Field label="Cause *"><input name="cause" required className={inputCls} /></Field>
           <Field label="Responsibility"><select name="responsibility" defaultValue="CONTRACTOR" className={inputCls}>{['DEVELOPER', 'CONTRACTOR', 'CONSULTANT', 'AUTHORITY', 'FORCE_MAJEURE', 'OTHER'].map((v) => <option key={v} value={v}>{v.replace(/_/g, ' ').toLowerCase()}</option>)}</select></Field>
           <Field label="Days"><input name="days" type="number" min="0" className={inputCls} /></Field>
@@ -262,7 +262,7 @@ function DelaysTab({ delays, activities, canManage, projectId, pending, openForm
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground"><tr className="text-left"><th className="p-2">Cause</th><th className="p-2">Responsibility</th><th className="p-2">Activity</th><th className="p-2">Days</th><th className="p-2">Cost</th><th className="p-2">When</th></tr></thead>
             <tbody>
-              {delays.map((d) => <tr key={d.id} className="border-t border-border"><td className="p-2">{d.cause}</td><td className="p-2 text-xs capitalize">{d.responsibility.replace(/_/g, ' ').toLowerCase()}</td><td className="p-2 text-xs">{d.activityName ?? '—'}</td><td className="p-2">{d.days}d</td><td className="p-2">{d.costImpact != null ? inr(d.costImpact) : '—'}</td><td className="p-2 text-xs">{fmtDate(d.occurredOn)}</td></tr>)}
+              {delays.map((d) => <tr key={d.id} className="border-t border-border"><td className="p-2">{d.cause}</td><td className="p-2 text-xs capitalize">{d.responsibility.replace(/_/g, ' ').toLowerCase()}</td><td className="p-2 text-xs">{d.activityName ?? '—'}</td><td className="p-2">{d.days}d</td><td className="p-2">{d.costImpact != null ? formatCurrency(d.costImpact) : '—'}</td><td className="p-2 text-xs">{fmtDate(d.occurredOn)}</td></tr>)}
             </tbody>
           </table>
         </div>

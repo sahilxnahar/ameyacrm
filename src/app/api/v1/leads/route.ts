@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { asEnumOrUndefined } from '@/lib/utils/enum';
+import { LeadStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { authenticateApiToken, hasScope } from '@/lib/api/token-auth';
 import { nextReference } from '@/lib/utils/reference';
@@ -14,7 +16,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(500, Number(req.nextUrl.searchParams.get('limit') || 100) || 100);
   const status = req.nextUrl.searchParams.get('status') || undefined;
   const leads = await prisma.lead.findMany({
-    where: { deletedAt: null, ...(status ? { status: status as never } : {}) },
+    where: { deletedAt: null, status: asEnumOrUndefined(LeadStatus, status) },
     orderBy: { updatedAt: 'desc' }, take: limit,
     select: { id: true, reference: true, name: true, email: true, phone: true, source: true, status: true, score: true, budgetMax: true, requirement: true, customFields: true, createdAt: true, updatedAt: true },
   });

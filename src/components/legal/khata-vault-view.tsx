@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { FileText, BadgeCheck, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -16,13 +17,19 @@ const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> 
 function fmt(d: string | null) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
 
 export function KhataVaultView({ counts, rows, projects }: { counts: { total: number; aKhata: number; ecClear: number }; rows: Row[]; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<KhataInput>({ khataType: 'A_KHATA', ecClear: false });
   function set<K extends keyof KhataInput>(k: K, v: KhataInput[K]) { setForm((f) => ({ ...f, [k]: v })); }
   function submit() {
     setSaving(true);
-    saveKhata(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Khata saved'); setOpen(false); location.reload(); })
+    saveKhata(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Khata saved'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

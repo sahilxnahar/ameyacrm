@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ShieldCheck, ShieldAlert, Check, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -18,12 +19,18 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'secondary' | 'destruc
 };
 
 export function LabourComplianceView({ month, allVendors, labourVendors }: { month: string; allVendors: Vendor[]; labourVendors: LabourVendor[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   // Kept, not discarded — verifying a challan twice double-writes the record.
   const [pending, start] = React.useTransition();
   const [addOpen, setAddOpen] = React.useState(false);
 
   const act = (msg: string, fn: () => Promise<{ ok: true } | { error: string }>) => start(async () => {
-    const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(msg); location.reload();
+    const r = await fn(); if ('error' in r) { toast.error(r.error); return; } toast.success(msg); router.refresh();
   });
 
   function record(vendorId: string, kind: 'EPF' | 'ESI', challanNo: string, verify: boolean) {

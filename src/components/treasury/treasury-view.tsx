@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition, type ReactNode } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X, Upload, Landmark, TrendingDown, Link2, Ban } from 'lucide-react';
 import {
@@ -11,7 +12,6 @@ import { readSpreadsheetAsCsv } from '@/lib/import/read-spreadsheet';
 import { ImportDropzone } from '@/components/import/import-dropzone';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const fmtDate = (d: Date | string | null) =>
   d == null ? '—' : new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -73,10 +73,10 @@ export function TreasuryView(props: {
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile icon={<Landmark className="h-4 w-4" />} label="Bank position" value={inr(totalPosition)} sub={`${positions.length} account${positions.length === 1 ? '' : 's'}`} />
-        <Tile icon={<TrendingDown className="h-4 w-4" />} label="12-week low" value={inr(forecast.lowestPoint)} sub={forecast.lowestWeekIndex >= 0 ? `week ${forecast.lowestWeekIndex + 1}` : 'at opening'} bad={forecast.lowestPoint < 0} />
+        <Tile icon={<Landmark className="h-4 w-4" />} label="Bank position" value={formatCurrency(totalPosition)} sub={`${positions.length} account${positions.length === 1 ? '' : 's'}`} />
+        <Tile icon={<TrendingDown className="h-4 w-4" />} label="12-week low" value={formatCurrency(forecast.lowestPoint)} sub={forecast.lowestWeekIndex >= 0 ? `week ${forecast.lowestWeekIndex + 1}` : 'at opening'} bad={forecast.lowestPoint < 0} />
         <Tile icon={<Link2 className="h-4 w-4" />} label="To reconcile" value={String(positions.reduce((s, p) => s + p.unmatched, 0))} sub="unmatched lines" bad={positions.reduce((s, p) => s + p.unmatched, 0) > 0} />
-        <Tile icon={<Landmark className="h-4 w-4" />} label="Loans outstanding" value={inr(loans.reduce((s, l) => s + l.outstanding, 0))} sub={`${loans.filter((l) => l.isActive).length} active`} />
+        <Tile icon={<Landmark className="h-4 w-4" />} label="Loans outstanding" value={formatCurrency(loans.reduce((s, l) => s + l.outstanding, 0))} sub={`${loans.filter((l) => l.isActive).length} active`} />
       </div>
 
       <div className="flex gap-1 border-b border-border">
@@ -215,9 +215,9 @@ function PositionTab({ positions, projects, projectId, canManage, pending, openF
               {positions.map((p) => (
                 <tr key={p.id} className="border-t border-border">
                   <td className="p-2">{p.name}<span className="block text-xs text-muted-foreground">{p.bankName}{p.accountLast4 ? ` ••${p.accountLast4}` : ''}</span></td>
-                  <td className="p-2">{inr(p.openingBalance)}</td>
-                  <td className="p-2">{inr(p.movement)}</td>
-                  <td className="p-2 font-medium">{inr(p.position)}</td>
+                  <td className="p-2">{formatCurrency(p.openingBalance)}</td>
+                  <td className="p-2">{formatCurrency(p.movement)}</td>
+                  <td className="p-2 font-medium">{formatCurrency(p.position)}</td>
                   <td className="p-2">{p.lineCount}</td>
                   <td className="p-2">{p.unmatched > 0 ? <span className="text-amber-600">{p.unmatched}</span> : '—'}</td>
                 </tr>
@@ -256,7 +256,7 @@ function ReconcileTab({ positions, activeAccountId, lines, suggByLine, candidate
                 <div className="toolbar items-start gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className={cn('font-medium', l.amount >= 0 ? 'text-emerald-600' : 'text-destructive')}>{l.amount >= 0 ? '+' : ''}{inr(l.amount)}</span>
+                      <span className={cn('font-medium', l.amount >= 0 ? 'text-emerald-600' : 'text-destructive')}>{l.amount >= 0 ? '+' : ''}{formatCurrency(l.amount)}</span>
                       <span className="text-xs text-muted-foreground">{fmtDate(l.txnDate)}</span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">{l.description}{l.refNo ? ` · ref ${l.refNo}` : ''}</p>
@@ -290,9 +290,9 @@ function ForecastTab({ forecast }: { forecast: Forecast & { horizonNote: string 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-sm">
-        <span>Opening: <strong>{inr(forecast.opening)}</strong></span>
-        <span>Closing (12wk): <strong>{inr(forecast.closing)}</strong></span>
-        <span className={forecast.lowestPoint < 0 ? 'text-destructive' : ''}>Lowest: <strong>{inr(forecast.lowestPoint)}</strong>{forecast.lowestWeekIndex >= 0 ? ` (week ${forecast.lowestWeekIndex + 1})` : ''}</span>
+        <span>Opening: <strong>{formatCurrency(forecast.opening)}</strong></span>
+        <span>Closing (12wk): <strong>{formatCurrency(forecast.closing)}</strong></span>
+        <span className={forecast.lowestPoint < 0 ? 'text-destructive' : ''}>Lowest: <strong>{formatCurrency(forecast.lowestPoint)}</strong>{forecast.lowestWeekIndex >= 0 ? ` (week ${forecast.lowestWeekIndex + 1})` : ''}</span>
       </div>
       <p className="text-xs text-muted-foreground">{forecast.horizonNote} A negative lowest point means a payment run in that week would overdraw — act before it, while it is still cheap.</p>
       <div className="overflow-x-auto rounded-lg border border-border">
@@ -305,10 +305,10 @@ function ForecastTab({ forecast }: { forecast: Forecast & { horizonNote: string 
               <tr key={b.index} className={cn('border-t border-border', b.closing < 0 ? 'bg-destructive/5' : '')}>
                 <td className="p-2">W{b.index + 1}</td>
                 <td className="p-2 text-xs text-muted-foreground">{fmtDate(b.weekStart)}</td>
-                <td className="p-2 text-emerald-600">{b.inflow ? inr(b.inflow) : '—'}</td>
-                <td className="p-2 text-destructive">{b.outflow ? inr(b.outflow) : '—'}</td>
-                <td className="p-2">{inr(b.net)}</td>
-                <td className={cn('p-2 font-medium', b.closing < 0 ? 'text-destructive' : '')}>{inr(b.closing)}</td>
+                <td className="p-2 text-emerald-600">{b.inflow ? formatCurrency(b.inflow) : '—'}</td>
+                <td className="p-2 text-destructive">{b.outflow ? formatCurrency(b.outflow) : '—'}</td>
+                <td className="p-2">{formatCurrency(b.net)}</td>
+                <td className={cn('p-2 font-medium', b.closing < 0 ? 'text-destructive' : '')}>{formatCurrency(b.closing)}</td>
               </tr>
             ))}
           </tbody>
@@ -333,7 +333,7 @@ function LoansTab({ loans, projects, projectId, canManage, pending, openForm, se
             e.preventDefault();
             const f = new FormData(e.currentTarget);
             run(() => saveLoan({
-              lender: f.get('lender') as string, kind: (f.get('kind') as string) as never,
+              lender: f.get('lender') as string, kind: (f.get('kind') as string),
               sanctionedAmount: f.get('sanctionedAmount') ? Number(f.get('sanctionedAmount')) : 0,
               interestRate: f.get('interestRate') ? Number(f.get('interestRate')) : null,
               startedOn: (f.get('startedOn') as string) || null,
@@ -367,9 +367,9 @@ function LoansTab({ loans, projects, projectId, canManage, pending, openForm, se
             <div>
               <span className="font-medium">{l.lender}</span>
               <span className="ml-2 text-xs text-muted-foreground capitalize">{l.kind.replace(/_/g, ' ').toLowerCase()}{l.interestRate != null ? ` · ${l.interestRate}%` : ''}</span>
-              <p className="mt-0.5 text-xs text-muted-foreground">Sanctioned {inr(l.sanctionedAmount)} · Drawn {inr(l.drawn)} · Repaid {inr(l.repaid)} · Interest {inr(l.interestPaid)}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Sanctioned {formatCurrency(l.sanctionedAmount)} · Drawn {formatCurrency(l.drawn)} · Repaid {formatCurrency(l.repaid)} · Interest {formatCurrency(l.interestPaid)}</p>
             </div>
-            <span className={cn('rounded-full px-2 py-0.5 text-sm font-medium', l.outstanding > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600')}>Outstanding {inr(l.outstanding)}</span>
+            <span className={cn('rounded-full px-2 py-0.5 text-sm font-medium', l.outstanding > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600')}>Outstanding {formatCurrency(l.outstanding)}</span>
           </div>
           {canManage && (
             <div className="mt-2">
@@ -379,7 +379,7 @@ function LoansTab({ loans, projects, projectId, canManage, pending, openForm, se
                   onSubmit={(e) => {
                     e.preventDefault();
                     const f = new FormData(e.currentTarget);
-                    run(() => addLoanEvent({ loanId: l.id, kind: (f.get('kind') as string) as never, amount: Number(f.get('amount')), eventDate: (f.get('eventDate') as string) || null }));
+                    run(() => addLoanEvent({ loanId: l.id, kind: (f.get('kind') as string), amount: Number(f.get('amount')), eventDate: (f.get('eventDate') as string) || null }));
                   }}>
                   <select name="kind" defaultValue="DRAWDOWN" className={cn(inputCls, 'w-36')}>
                     {['DRAWDOWN', 'REPAYMENT', 'INTEREST', 'FEE'].map((k) => <option key={k} value={k}>{k.toLowerCase()}</option>)}

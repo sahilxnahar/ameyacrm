@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, Loader2, Landmark, ArrowDownToLine, ArrowUpFromLine, Percent } from 'lucide-react';
@@ -24,7 +25,6 @@ interface Summary {
   totalNetInterestDue: number; weightedAvgRate: number; monthlyInterestRunRate: number;
 }
 
-const inr = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n))}`;
 const KIND_LABEL: Record<string, string> = {
   TERM_LOAN: 'Term loan', OVERDRAFT: 'Overdraft', VENTURE_DEBT: 'Venture debt', PROJECT_LOAN: 'Project loan', OTHER: 'Other',
 };
@@ -75,10 +75,10 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
     <div className="space-y-5">
       {/* Portfolio totals */}
       <div className="stat-grid">
-        <Tile label="Outstanding" value={inr(summary.totalOutstanding)} hint="Principal still owed across all lenders" />
-        <Tile label="Interest due" value={inr(summary.totalNetInterestDue)} hint="Accrued, not yet paid" />
+        <Tile label="Outstanding" value={formatCurrency(summary.totalOutstanding)} hint="Principal still owed across all lenders" />
+        <Tile label="Interest due" value={formatCurrency(summary.totalNetInterestDue)} hint="Accrued, not yet paid" />
         <Tile label="Avg. rate" value={`${summary.weightedAvgRate.toFixed(2)}%`} hint="Balance-weighted, per year" />
-        <Tile label="Interest / month" value={inr(summary.monthlyInterestRunRate)} hint="At current balances & rates" />
+        <Tile label="Interest / month" value={formatCurrency(summary.monthlyInterestRunRate)} hint="At current balances & rates" />
       </div>
 
       {canManage && (
@@ -106,7 +106,7 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {r.interestRate != null ? `${r.interestRate}% p.a.` : 'No rate set'}
-                    {r.sanctionedAmount > 0 ? ` · sanctioned ${inr(r.sanctionedAmount)}` : ''}
+                    {r.sanctionedAmount > 0 ? ` · sanctioned ${formatCurrency(r.sanctionedAmount)}` : ''}
                     {r.startedOn ? ` · since ${new Date(r.startedOn).toLocaleDateString('en-IN')}` : ''}
                   </p>
                 </div>
@@ -120,12 +120,12 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                <Figure label="Drawn" value={inr(r.drawn)} />
-                <Figure label="Repaid" value={inr(r.repaid)} />
-                <Figure label="Outstanding" value={inr(r.outstanding)} strong />
-                <Figure label="Interest accrued" value={inr(r.interestAccrued)} />
-                <Figure label="Interest paid" value={inr(r.interestPaid)} />
-                <Figure label="Interest due" value={inr(r.netInterestDue)} strong />
+                <Figure label="Drawn" value={formatCurrency(r.drawn)} />
+                <Figure label="Repaid" value={formatCurrency(r.repaid)} />
+                <Figure label="Outstanding" value={formatCurrency(r.outstanding)} strong />
+                <Figure label="Interest accrued" value={formatCurrency(r.interestAccrued)} />
+                <Figure label="Interest paid" value={formatCurrency(r.interestPaid)} />
+                <Figure label="Interest due" value={formatCurrency(r.netInterestDue)} strong />
               </div>
 
               {r.events.length > 0 && (
@@ -135,7 +135,7 @@ export function BorrowingsView({ rows, summary, canManage }: { rows: Row[]; summ
                     {[...r.events].reverse().slice(0, 20).map((ev) => (
                       <li key={ev.id} className="flex items-center justify-between px-3 py-1.5">
                         <span>{EVENT_LABEL[ev.kind] ?? ev.kind}<span className="text-muted-foreground"> · {new Date(ev.date).toLocaleDateString('en-IN')}</span></span>
-                        <span className="tabular-nums">{inr(ev.amount)}</span>
+                        <span className="tabular-nums">{formatCurrency(ev.amount)}</span>
                       </li>
                     ))}
                   </ul>

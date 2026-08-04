@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -83,8 +84,8 @@ export async function saveConnectorConfig(slug: string, config: Record<string, u
     const sealed = sealConfig(s, clean, (existing?.config as Record<string, unknown> | null) ?? null);
     await prisma.connectorInstall.upsert({
       where: { slug: s },
-      update: { config: sealed as never, status: 'INSTALLED' },
-      create: { slug: s, status: 'INSTALLED', config: sealed as never, installedById: ctx.user.id },
+      update: { config: sealed as Prisma.InputJsonValue, status: 'INSTALLED' },
+      create: { slug: s, status: 'INSTALLED', config: sealed as Prisma.InputJsonValue, installedById: ctx.user.id },
     });
     revalidatePath('/app-exchange');
     return { ok: true };
@@ -114,8 +115,8 @@ export async function generateInboundSecret(slug: string): Promise<{ ok: true; s
     const sealed = sealConfig(s, { inboundSecret: secret }, (existing?.config as Record<string, unknown> | null) ?? null);
     await prisma.connectorInstall.upsert({
       where: { slug: s },
-      update: { config: sealed as never, status: 'INSTALLED' },
-      create: { slug: s, status: 'INSTALLED', config: sealed as never, installedById: ctx.user.id },
+      update: { config: sealed as Prisma.InputJsonValue, status: 'INSTALLED' },
+      create: { slug: s, status: 'INSTALLED', config: sealed as Prisma.InputJsonValue, installedById: ctx.user.id },
     });
     revalidatePath('/app-exchange');
     return { ok: true, secret, path: `/api/connectors/leads/${s}` };

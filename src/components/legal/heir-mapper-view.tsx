@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Users, FileSignature, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -22,6 +23,12 @@ export function HeirMapperView({ counts, owners, projects, pickable }: {
   projects: { id: string; name: string }[];
   pickable: { id: string; name: string }[];
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<LandownerInput>({ name: '' });
@@ -29,7 +36,7 @@ export function HeirMapperView({ counts, owners, projects, pickable }: {
   function submit() {
     if (!form.name.trim()) { toast.error('Name is required.'); return; }
     setSaving(true);
-    saveLandowner(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Owner added'); setOpen(false); location.reload(); })
+    saveLandowner(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Owner added'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

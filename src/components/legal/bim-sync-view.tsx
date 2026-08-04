@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Box, Plus, CheckCircle2, Zap, ListPlus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -16,6 +17,12 @@ interface Model { id: string; name: string; project: string; discipline: string 
 function fmt(d: string | null) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
 
 export function BimSyncView({ models, projects, milestones }: { models: Model[]; projects: { id: string; name: string }[]; milestones: { id: string; label: string; amount: number }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [openModel, setOpenModel] = React.useState(false);
   const [phaseFor, setPhaseFor] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -28,7 +35,7 @@ export function BimSyncView({ models, projects, milestones }: { models: Model[];
   function submitModel() {
     if (!mForm.projectId || !mForm.name.trim()) { toast.error('Project and name required.'); return; }
     setSaving(true);
-    saveBimModel(mForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Model added'); setOpenModel(false); location.reload(); })
+    saveBimModel(mForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Model added'); setOpenModel(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -40,7 +47,7 @@ export function BimSyncView({ models, projects, milestones }: { models: Model[];
   function submitPhase() {
     if (!pForm.label.trim()) { toast.error('Phase label required.'); return; }
     setSaving(true);
-    saveBimPhase(pForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Phase added'); setPhaseFor(null); location.reload(); })
+    saveBimPhase(pForm).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Phase added'); setPhaseFor(null); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -50,7 +57,7 @@ export function BimSyncView({ models, projects, milestones }: { models: Model[];
       });
   }
   function complete(id: string) {
-    completeBimPhase(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(r.triggered ? 'Phase complete → demand triggered' : 'Phase complete'); location.reload(); });
+    completeBimPhase(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(r.triggered ? 'Phase complete → demand triggered' : 'Phase complete'); router.refresh(); });
   }
 
   return (

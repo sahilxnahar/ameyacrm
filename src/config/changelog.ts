@@ -17,6 +17,28 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.24',
+    date: '4 Aug 2026',
+    highlights: [
+      'Deleting something can now be undone. An Undo button appears on the confirmation for 10 seconds, and the record stays recoverable for 72 hours \u2014 wired first to reminders, floor plans, custom fields, marketing assets, home loans, hearings and due-diligence records. Undo previously existed on 3 of about 120 places where you can delete something.',
+      'A record put back keeps its original id, so anything that pointed at it \u2014 an audit entry, a linked document \u2014 still resolves. If what it belonged to has been deleted as well, it tells you that instead of half-restoring it.',
+      'Fewer places where an unchecked value could reach the database. 57 unsafe type casts were replaced with real validation. The ones in filters mattered most: an unrecognised value used to match nothing and show an empty list, which reads as a true answer about your data rather than as rejected input.',
+      'This release adds one new table. Run MIGRATION_v16.24_all.sql, or press Repair in Admin \u2192 Settings.',
+    ],
+  },
+  {
+    version: 'v16.23',
+    date: '4 Aug 2026',
+    highlights: [
+      'Saving something no longer reloads the whole page. 55 places threw the entire page away and rebuilt it \u2014 losing your scroll position, your open filters and anything half-typed in another panel, with a second of blank screen each time. They now refresh just the data.',
+      'Money is written the same way everywhere. It was formatted 28 different ways and they disagreed: fifty paise showed as \u20B91 on one screen and \u20B90.50 on another, and a minus sign moved from one side of the \u20B9 to the other. Paise now show when there are paise and not when there aren\u2019t \u2014 so two amounts that differ never look identical, which matters most on GSTR reconciliation.',
+      'You can select several enquiries and change their status, owner or temperature in one go. Reassigning forty leads to a new sales executive used to mean opening forty leads \u2014 the feature was fully built and simply had no button.',
+      '\u201CNew lead\u201D from the New menu now opens the form. It used to drop you on the sales board with the form closed, so the menu item looked like it did nothing.',
+      'The full search page can be reached. Type in the command palette and there is now a \u201Csee all results\u201D link \u2014 the page existed and worked, and nothing anywhere linked to it.',
+      'The nightly backup now warns you in the audit trail before it grows too large to complete, rather than silently dying one night.',
+    ],
+  },
+  {
     version: 'v16.22',
     date: '4 Aug 2026',
     highlights: [

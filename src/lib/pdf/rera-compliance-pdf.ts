@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
 import { EMBLEM_PNG_BASE64 } from '@/lib/pdf/brand-marks';
@@ -13,8 +14,7 @@ const GREEN = rgb(0.18, 0.49, 0.20);
 const RUBY = rgb(0.608, 0.067, 0.118);
 const AMBER = rgb(0.60, 0.44, 0.10);
 
-const inr = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const money = (n: number) => `Rs. ${inr.format(Math.round(n * 100) / 100)}`;
+const money = (n: number) => `Rs. ${formatCurrency(Math.round(n * 100) / 100)}`;
 const ascii = (s: string) => (s || '').replace(/[^\x20-\x7E]/g, ' ');
 const day = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import Link from 'next/link';
 import { Download, Search, ShieldCheck, ShieldAlert, Sparkles, Loader2, ChevronDown, GitMerge, FileSpreadsheet } from 'lucide-react';
 import { recordUtr, readPaymentAdvice } from '@/server/actions/vouchers';
@@ -17,7 +18,6 @@ export interface PaymentRow {
   reference: string | null; narration: string | null; paidOn: string; dated: string;
 }
 
-const inr = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)}`;
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
 export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = false }: { payments: PaymentRow[]; totalPaid: number; missingUtr: number; canApprove?: boolean }) {
@@ -88,14 +88,14 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
           <div className="flex items-center gap-2 border-b border-amber-500/30 px-3 py-2 text-sm font-medium text-amber-900 dark:text-amber-200">
             <ShieldAlert className="h-4 w-4 shrink-0" />
             <span>{awaiting.length} payment{awaiting.length > 1 ? 's' : ''} awaiting approval</span>
-            <span className="ml-auto tabular-nums">{inr(awaiting.reduce((t, p) => t + p.amount, 0))}</span>
+            <span className="ml-auto tabular-nums">{formatCurrency(awaiting.reduce((t, p) => t + p.amount, 0))}</span>
           </div>
           <ul className="divide-y divide-amber-500/20">
             {awaiting.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
                 <span className="font-mono text-xs text-muted-foreground">{p.number}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{p.partyName}</span>
-                <span className="tabular-nums">{inr(p.amount)}</span>
+                <span className="tabular-nums">{formatCurrency(p.amount)}</span>
                 <span className="text-xs text-muted-foreground">{day(p.dated)}</span>
                 {canApprove ? (
                   <span className="flex items-center gap-2">
@@ -125,7 +125,7 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Total paid out" value={inr(totalPaid)} />
+        <Stat label="Total paid out" value={formatCurrency(totalPaid)} />
         <Stat label="People & vendors paid" value={String(new Set(payments.filter((p) => p.status !== 'CANCELLED' && p.status !== 'DRAFT').map((p) => p.partyName.toLowerCase())).size)} />
         <Stat
           label="Missing a UTR"
@@ -205,7 +205,7 @@ export function PaymentsView({ payments, totalPaid, missingUtr, canApprove = fal
                       {p.missing > 0 && <span className="ml-2 text-amber-700 dark:text-amber-500">{p.missing} without a UTR</span>}
                     </p>
                   </div>
-                  <p className="shrink-0 font-semibold tabular-nums">{inr(p.total)}</p>
+                  <p className="shrink-0 font-semibold tabular-nums">{formatCurrency(p.total)}</p>
                 </button>
                 {open && (
                   <div className="divide-y border-t">
@@ -239,7 +239,7 @@ function PaymentLine({ row }: { row: PaymentRow }) {
         <span className="font-mono text-xs text-muted-foreground">{row.number}</span>
         <span className="text-sm">{day(row.paidOn)}</span>
         <span className="text-sm text-muted-foreground">{PAY_MODE_LABEL[row.mode] ?? row.mode}</span>
-        <span className="ml-auto font-medium tabular-nums">{inr(row.amount)}</span>
+        <span className="ml-auto font-medium tabular-nums">{formatCurrency(row.amount)}</span>
       </div>
       {row.narration && <p className="mt-1 text-sm text-muted-foreground">{row.narration}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -292,7 +292,7 @@ function UtrForm({ row, onDone }: { row: PaymentRow; onDone: () => void }) {
       if (res.paidOn) setPaidOn(res.paidOn);
       if (res.bankName) setBankName(res.bankName);
       const gap = res.amount && Math.abs(res.amount - row.amount) > 1
-        ? ` The message says ₹${res.amount.toLocaleString('en-IN')} but this voucher is ${inr(row.amount)} — check which is right.`
+        ? ` The message says ₹${res.amount.toLocaleString('en-IN')} but this voucher is ${formatCurrency(row.amount)} — check which is right.`
         : '';
       setMsg({ kind: res.warning || gap ? 'err' : 'ok', text: (res.warning ?? 'Filled in from the message.') + gap });
     });

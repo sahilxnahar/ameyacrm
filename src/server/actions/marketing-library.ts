@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
@@ -7,7 +8,7 @@ import { can } from '@/lib/rbac/can';
 import { getActionContext, toActionError } from './_helpers';
 import { MARKETING_CATEGORIES, heuristicCategory, kindFromType } from '@/lib/marketing/library';
 
-export type LibResult = { ok: true; count?: number } | { error: string };
+export type LibResult = { ok: true; count?: number; undo?: Undoable | null } | { error: string };
 
 /** AI categorisation with a keyword/extension fallback so it always returns something. */
 async function categorize(files: Array<{ name: string; type: string }>): Promise<string[]> {
@@ -79,9 +80,15 @@ export async function deleteMarketingLibraryItem(id: string): Promise<LibResult>
     if (!can(ctx.permissions, 'marketing.manage')) return { error: 'Only marketing managers can remove library items.' };
     const item = await prisma.marketingLibraryItem.findUnique({ where: { id }, select: { title: true } });
     if (!item) return { error: 'Item not found.' };
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.marketingLibraryItem.findUnique({ where: { id } });
     await prisma.marketingLibraryItem.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('MarketingLibraryItem', row, { label: String(row.title), userId: ctx?.user.id })
+      : null;
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'MarketingLibraryItem', entityId: id, summary: `Removed marketing file ${item.title}` });
     revalidatePath('/marketing/library');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (e) { return toActionError(e); }
 }

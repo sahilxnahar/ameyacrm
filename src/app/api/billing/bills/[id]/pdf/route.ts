@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { formatCurrencyForPdf } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prisma } from '@/lib/db/prisma';
 import { getCurrentUser } from '@/lib/auth/current-user';
@@ -22,7 +23,6 @@ const CHARCOAL = rgb(0.08, 0.07, 0.05);
 const MUTED = rgb(0.37, 0.35, 0.30);
 const GOLD = rgb(0.63, 0.49, 0.20);
 
-const inr = (n: number) => `Rs ${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const ascii = (s: string) => (s ?? '').replace(/[^\x20-\x7E]/g, (c) => ({ '—': '-', '–': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '₹': 'Rs' }[c] ?? ''));
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -102,7 +102,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   ];
   for (const [k, v, strong] of money) {
     text(k, M, y, strong ? 11 : 10, strong ? bold : font, strong ? CHARCOAL : MUTED);
-    right(inr(v), W - M, y, strong ? 12 : 10, strong ? bold : font);
+    right(formatCurrencyForPdf(v), W - M, y, strong ? 12 : 10, strong ? bold : font);
     y -= strong ? 22 : 18;
   }
 
@@ -113,7 +113,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     for (const [k, v] of [
       ['Voucher', voucher.number],
       ['Paid on', voucher.voucherDate ? voucher.voucherDate.toLocaleDateString('en-IN') : '—'],
-      ['Amount paid out', inr(Number(voucher.amount))],
+      ['Amount paid out', formatCurrencyForPdf(Number(voucher.amount))],
       ['Mode', voucher.mode ?? '—'],
       ['UTR / reference', voucher.utr ?? '—'],
       ['Voucher status', voucher.status],

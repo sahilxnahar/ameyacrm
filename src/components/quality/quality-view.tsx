@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X, ShieldCheck, ShieldAlert, HardHat, ClipboardCheck } from 'lucide-react';
 import {
@@ -8,7 +9,6 @@ import {
 } from '@/server/actions/quality';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number | null) => n == null ? '—' : n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const fmtDate = (d: Date | string | null) => d == null ? '—' : new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
 
 interface Overview {
@@ -72,7 +72,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
         <div className="space-y-3">
           {canManage && projectId && <AddBtn open={openForm === 'insp'} onClick={() => setOpenForm(openForm === 'insp' ? null : 'insp')} label="Add inspection" />}
           {openForm === 'insp' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveInspection({ projectId, title: f.get('title') as string, discipline: (f.get('discipline') as string) || null, isHoldPoint: f.get('isHoldPoint') === 'on', status: (f.get('status') as string) as never, inspectedBy: (f.get('inspectedBy') as string) || null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveInspection({ projectId, title: f.get('title') as string, discipline: (f.get('discipline') as string) || null, isHoldPoint: f.get('isHoldPoint') === 'on', status: (f.get('status') as string), inspectedBy: (f.get('inspectedBy') as string) || null })); }}>
               <Field label="Inspection *"><input name="title" required placeholder="Pre-pour reinforcement" className={inputCls} /></Field>
               <Field label="Discipline"><input name="discipline" placeholder="Structure, MEP…" className={inputCls} /></Field>
               <Field label="Status"><select name="status" defaultValue="SCHEDULED" className={inputCls}>{['SCHEDULED', 'PASSED', 'FAILED'].map((v) => <option key={v} value={v}>{v.toLowerCase()}</option>)}</select></Field>
@@ -106,7 +106,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
         <div className="space-y-3">
           {canManage && projectId && <AddBtn open={openForm === 'ncr'} onClick={() => setOpenForm(openForm === 'ncr' ? null : 'ncr')} label="Raise NCR" />}
           {openForm === 'ncr' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveNcr({ projectId, title: f.get('title') as string, description: (f.get('description') as string) || null, severity: (f.get('severity') as string) as never, assignedTo: (f.get('assignedTo') as string) || null, costImpact: f.get('costImpact') ? Number(f.get('costImpact')) : null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveNcr({ projectId, title: f.get('title') as string, description: (f.get('description') as string) || null, severity: (f.get('severity') as string), assignedTo: (f.get('assignedTo') as string) || null, costImpact: f.get('costImpact') ? Number(f.get('costImpact')) : null })); }}>
               <Field label="Title *"><input name="title" required className={inputCls} /></Field>
               <Field label="Severity"><select name="severity" defaultValue="MAJOR" className={inputCls}>{['MINOR', 'MAJOR', 'CRITICAL'].map((v) => <option key={v} value={v}>{v.toLowerCase()}</option>)}</select></Field>
               <Field label="Assigned to"><input name="assignedTo" className={inputCls} /></Field>
@@ -122,7 +122,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
                   <div>
                     <span className="font-medium">{n.title}</span>
                     <span className={cn('ml-2 rounded-full px-2 py-0.5 text-xs', n.severity === 'CRITICAL' ? 'bg-destructive/10 text-destructive' : n.severity === 'MAJOR' ? 'bg-amber-500/10 text-amber-600' : 'bg-muted text-muted-foreground')}>{n.severity.toLowerCase()}</span>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{[n.assignedTo && `→ ${n.assignedTo}`, `raised ${fmtDate(n.raisedOn)}`, n.costImpact != null && inr(n.costImpact)].filter(Boolean).join(' · ')}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{[n.assignedTo && `→ ${n.assignedTo}`, `raised ${fmtDate(n.raisedOn)}`, n.costImpact != null && formatCurrency(n.costImpact)].filter(Boolean).join(' · ')}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={n.status} kind="ncr" />
@@ -139,7 +139,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
         <div className="space-y-3">
           {canManage && projectId && <AddBtn open={openForm === 'saf'} onClick={() => setOpenForm(openForm === 'saf' ? null : 'saf')} label="Add safety record" />}
           {openForm === 'saf' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveSafetyRecord({ projectId, kind: (f.get('kind') as string) as never, severity: (f.get('severity') as string) as never, description: f.get('description') as string, rootCause: (f.get('rootCause') as string) || null, personsAffected: Number(f.get('personsAffected') || 0), occurredOn: (f.get('occurredOn') as string) || null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveSafetyRecord({ projectId, kind: (f.get('kind') as string), severity: (f.get('severity') as string), description: f.get('description') as string, rootCause: (f.get('rootCause') as string) || null, personsAffected: Number(f.get('personsAffected') || 0), occurredOn: (f.get('occurredOn') as string) || null })); }}>
               <Field label="Kind"><select name="kind" defaultValue="NEAR_MISS" className={inputCls}>{['INCIDENT', 'NEAR_MISS', 'TOOLBOX_TALK'].map((v) => <option key={v} value={v}>{v.replace(/_/g, ' ').toLowerCase()}</option>)}</select></Field>
               <Field label="Severity"><select name="severity" defaultValue="LOW" className={inputCls}>{['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((v) => <option key={v} value={v}>{v.toLowerCase()}</option>)}</select></Field>
               <Field label="Persons affected"><input name="personsAffected" type="number" min="0" defaultValue="0" className={inputCls} /></Field>
@@ -171,7 +171,7 @@ export function QualityView({ canManage, projects, projectId, overview }: {
         <div className="space-y-3">
           {canManage && projectId && <AddBtn open={openForm === 'perm'} onClick={() => setOpenForm(openForm === 'perm' ? null : 'perm')} label="Issue permit" />}
           {openForm === 'perm' && canManage && projectId && (
-            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveWorkPermit({ projectId, type: (f.get('type') as string) as never, issuedTo: f.get('issuedTo') as string, location: (f.get('location') as string) || null, validFrom: (f.get('validFrom') as string) || null, validTo: (f.get('validTo') as string) || null })); }}>
+            <form className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => saveWorkPermit({ projectId, type: (f.get('type') as string), issuedTo: f.get('issuedTo') as string, location: (f.get('location') as string) || null, validFrom: (f.get('validFrom') as string) || null, validTo: (f.get('validTo') as string) || null })); }}>
               <Field label="Type"><select name="type" defaultValue="HOT_WORK" className={inputCls}>{['HOT_WORK', 'HEIGHT', 'CONFINED_SPACE', 'LIFTING', 'ELECTRICAL', 'EXCAVATION', 'OTHER'].map((v) => <option key={v} value={v}>{v.replace(/_/g, ' ').toLowerCase()}</option>)}</select></Field>
               <Field label="Issued to *"><input name="issuedTo" required className={inputCls} /></Field>
               <Field label="Location"><input name="location" className={inputCls} /></Field>

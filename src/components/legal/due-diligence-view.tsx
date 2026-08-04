@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { upload } from '@vercel/blob/client';
 import { Landmark, Search, ExternalLink, UploadCloud, ChevronDown, ShieldAlert, FileCheck2, Trash2, Loader2 } from 'lucide-react';
@@ -21,6 +22,12 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secon
 interface Rec { id: string; project: string; recordType: string; state: string; region: string | null; authorityName: string; reference: string | null; documentUrl: string | null; validUntil: string | null; status: string; expiring: boolean }
 
 export function DueDiligenceView({ records, projects }: { records: Rec[]; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [q, setQ] = React.useState('');
   const [openState, setOpenState] = React.useState<string | null>(DD_DIRECTORY[0]?.state ?? null);
   const [fileFor, setFileFor] = React.useState<{ authority: Authority; state: string } | null>(null);
@@ -33,8 +40,8 @@ export function DueDiligenceView({ records, projects }: { records: Rec[]; projec
 
   const expiringCount = records.filter((r) => r.expiring).length;
 
-  function verify(id: string, status: 'VERIFIED' | 'REJECTED') { verifyDueDiligenceRecord(id, status).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(`Marked ${status.toLowerCase()}`); location.reload(); }); }
-  function remove(id: string) { deleteDueDiligenceRecord(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Removed'); location.reload(); }); }
+  function verify(id: string, status: 'VERIFIED' | 'REJECTED') { verifyDueDiligenceRecord(id, status).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success(`Marked ${status.toLowerCase()}`); router.refresh(); }); }
+  function remove(id: string) { deleteDueDiligenceRecord(id).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('Removed'); router.refresh(); }); }
 
   return (
     <div className="space-y-6">
@@ -111,6 +118,12 @@ export function DueDiligenceView({ records, projects }: { records: Rec[]; projec
 }
 
 function FileDialog({ projects, authority, state, onClose }: { projects: { id: string; name: string }[]; authority: Authority; state: string; onClose: () => void }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [over, setOver] = React.useState(false);
@@ -130,7 +143,7 @@ function FileDialog({ projects, authority, state, onClose }: { projects: { id: s
   function submit() {
     if (!form.projectId) { toast.error('Pick a project.'); return; }
     setSaving(true);
-    saveDueDiligenceRecord(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Filed to vault'); onClose(); location.reload(); })
+    saveDueDiligenceRecord(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Filed to vault'); onClose(); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

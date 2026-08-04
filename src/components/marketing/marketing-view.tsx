@@ -125,7 +125,7 @@ export function MarketingView({ campaigns, posts, projects, socialActivities, co
               <TableRow key={c.id}>
                 <TableCell><p className="font-medium">{c.name}</p><p className="text-xs text-muted-foreground">{c.owner ?? '—'}{c.project ? ` · ${c.project}` : ''}</p></TableCell>
                 <TableCell><Badge variant="outline">{titleCase(c.channel)}</Badge></TableCell>
-                <TableCell><Badge variant={cVariant(c.status) as never}>{titleCase(c.status)}</Badge></TableCell>
+                <TableCell><Badge variant={cVariant(c.status)}>{titleCase(c.status)}</Badge></TableCell>
                 <TableCell className="tabular-nums">{c.leads}</TableCell>
                 <TableCell className="text-right tabular-nums">{c.budget != null ? formatCurrency(c.budget) : '—'}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCurrency(c.spend)}</TableCell>

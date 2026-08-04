@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { upload } from '@vercel/blob/client';
@@ -27,7 +28,6 @@ const STATUS_COLOR: Record<string, string> = {
   SOLD: 'rgba(120,113,108,0.65)',
   BLOCKED: 'rgba(190,18,60,0.55)',
 };
-const money = (n: number) => (n >= 10000000 ? `₹${(n / 10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n / 100000).toFixed(1)} L` : `₹${n.toLocaleString('en-IN')}`);
 
 export function FloorPlanView({
   plans, units, projects, canManage,
@@ -216,7 +216,7 @@ export function FloorPlanView({
                   <Row k="Floor" v={String(picked.floor)} />
                   {picked.tower && <Row k="Tower" v={picked.tower} />}
                   {picked.facing && <Row k="Facing" v={picked.facing} />}
-                  <Row k="Price" v={money(picked.price)} />
+                  <Row k="Price" v={formatCurrency(picked.price)} />
                   {picked.area > 0 && <Row k="Rate" v={`₹${Math.round(picked.price / picked.area).toLocaleString('en-IN')}/sqft`} />}
                 </dl>
                 <Button asChild size="sm" className="w-full"><a href={`/inventory?unit=${picked.id}`}>Open in inventory</a></Button>

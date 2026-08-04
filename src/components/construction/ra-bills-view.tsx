@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useFocusTrap } from '@/lib/a11y/use-focus-trap';
 import { useUnsavedChanges } from '@/lib/forms/use-unsaved-changes';
 import { toast } from 'sonner';
@@ -28,6 +29,12 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
   summary: { pendingCount: number; certifiedUnpaid: number; cessAccrued: number; retentionHeld: number };
   canManage: boolean; canPay: boolean;
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [showNew, setShowNew] = React.useState(false);
   const [submitting, setSubmitting] = React.useState<Bill | null>(null);
   /*
@@ -68,14 +75,14 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
     start(async () => {
       const r = await createRaBill({ vendorId: vendorId || undefined, projectId: projectId || undefined, grossValue: gross, deductions: ded, cessPercent: cessPct, retentionPercent: retPct, tdsSection: section, narration: narration || undefined });
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success('RA bill created'); setShowNew(false); setGross(''); setNarration(''); location.reload();
+      toast.success('RA bill created'); setShowNew(false); setGross(''); setNarration(''); router.refresh();
     });
   }
 
   const settle = (b: Bill) => start(async () => {
     const r = await settleRaBill(b.id);
     if ('error' in r) { toast.error(r.error); return; }
-    toast.success(`${b.number} settled`); location.reload();
+    toast.success(`${b.number} settled`); router.refresh();
   });
 
   return (
@@ -169,6 +176,12 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
 }
 
 function SubmitModal({ bill, approvers, onClose }: { bill: Bill; approvers: Opt[]; onClose: () => void }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [sel, setSel] = React.useState<string[]>([]);
   const [, start] = React.useTransition();
   function submit() {
@@ -176,7 +189,7 @@ function SubmitModal({ bill, approvers, onClose }: { bill: Bill; approvers: Opt[
     start(async () => {
       const r = await submitRaBill(bill.id, sel);
       if ('error' in r) { toast.error(r.error); return; }
-      toast.success(`${bill.number} sent for certification`); onClose(); location.reload();
+      toast.success(`${bill.number} sent for certification`); onClose(); router.refresh();
     });
   }
   const panel = useFocusTrap<HTMLDivElement>(true, onClose);

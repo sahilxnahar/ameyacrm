@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { formatAmountPlain } from '@/lib/utils/format';
 import { toast } from 'sonner';
 import { ChevronDown, Plus } from 'lucide-react';
 import { AGEING_BUCKETS, type BillWiseReport, type PartyAgeing, type BucketKey } from '@/lib/tally/bills-shared';
@@ -16,7 +17,6 @@ import { PartyReminderPanel } from './party-reminder-panel';
  * instalment while disputing the second used to appear as having settled the
  * second — so the genuinely overdue amount hid, and nobody chased it.
  */
-const inr = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
 export function BillWiseView({
   report, ledgers, onBack, onRefresh,
@@ -57,7 +57,7 @@ export function BillWiseView({
         {(['RECEIVABLE', 'PAYABLE'] as const).map((s) => (
           <button key={s} onClick={() => setSide(s)}
             className={`rounded px-2 py-0.5 ${side === s ? 'bg-[#1B2A4A] text-white' : 'bg-white/70 hover:bg-white'}`}>
-            {s === 'RECEIVABLE' ? `Receivable ₹${inr(report.totals.receivable)}` : `Payable ₹${inr(report.totals.payable)}`}
+            {s === 'RECEIVABLE' ? `Receivable ₹${formatAmountPlain(report.totals.receivable)}` : `Payable ₹${formatAmountPlain(report.totals.payable)}`}
           </button>
         ))}
       </div>
@@ -72,7 +72,7 @@ export function BillWiseView({
           return (
             <div key={b.key} className={`border p-2 ${overdue ? 'border-rose-400/60 bg-rose-50' : 'border-[#0f2038]/25 bg-white'}`}>
               <p className="text-[11px] text-[#5B4412]">{b.label}</p>
-              <p className={`font-semibold ${overdue ? 'text-rose-700' : ''}`}>₹{inr(v)}</p>
+              <p className={`font-semibold ${overdue ? 'text-rose-700' : ''}`}>₹{formatAmountPlain(v)}</p>
             </div>
           );
         })}
@@ -98,7 +98,7 @@ export function BillWiseView({
             <tfoot>
               <tr className="border-t-2 border-[#0f2038] bg-[#eef2f6] font-semibold">
                 <td className="p-1.5">Total</td>
-                <td className="p-1.5 text-right">₹{inr(total)}</td>
+                <td className="p-1.5 text-right">₹{formatAmountPlain(total)}</td>
                 <td colSpan={2} />
               </tr>
             </tfoot>
@@ -117,7 +117,7 @@ function PartyRow({ party }: { party: PartyAgeing }) {
     <>
       <tr className="border-t border-[#0f2038]/15">
         <td className="p-1.5 font-medium">{party.party}</td>
-        <td className="p-1.5 text-right">₹{inr(party.total)}</td>
+        <td className="p-1.5 text-right">₹{formatAmountPlain(party.total)}</td>
         <td className={`p-1.5 text-right ${late > 60 ? 'font-semibold text-rose-700' : late > 0 ? 'text-amber-700' : 'text-[#5B4412]'}`}>
           {late > 0 ? `${late} days late` : 'not yet due'}
         </td>
@@ -140,8 +140,8 @@ function PartyRow({ party }: { party: PartyAgeing }) {
             <span className="block text-[#5B4412]">dated {b.billDate}{b.dueDate ? ` · due ${b.dueDate}` : ''}</span>
           </td>
           <td className="p-1 text-right">
-            ₹{inr(b.outstanding)}
-            {b.settled > 0 && <span className="block text-[#5B4412]">₹{inr(b.settled)} of ₹{inr(b.amount)} received</span>}
+            ₹{formatAmountPlain(b.outstanding)}
+            {b.settled > 0 && <span className="block text-[#5B4412]">₹{formatAmountPlain(b.settled)} of ₹{formatAmountPlain(b.amount)} received</span>}
           </td>
           <td className="p-1 text-right">{b.daysOverdue > 0 ? `${b.daysOverdue}d` : '—'}</td>
           <td />

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Radio, CheckCircle2, AlertTriangle, Activity, Play } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -15,6 +16,12 @@ const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> 
 };
 
 export function IntegrationBusView({ counts, events }: { counts: { pending: number; done: number; failed: number; iot: number }; events: Evt[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   function runNow() {
     setBusy(true);
@@ -22,7 +29,7 @@ export function IntegrationBusView({ counts, events }: { counts: { pending: numb
       setBusy(false);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Processed ${r.result.processed}, ${r.result.failed} failed, ${r.result.remaining} remaining`);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the

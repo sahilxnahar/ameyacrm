@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import Link from 'next/link';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval,
@@ -29,7 +30,6 @@ const KIND: Record<WorkKind, { label: string; icon: React.ElementType; dot: stri
   EVENT:      { label: 'Meeting',    icon: CalendarDays, dot: 'bg-slate-500',   text: 'text-slate-600' },
 };
 
-const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 export function CalendarView({
   items, workload, users, meId, canSeeEveryone,
@@ -155,7 +155,7 @@ export function CalendarView({
                           <span className="block text-xs text-muted-foreground">
                             {[format(new Date(i.due), 'HH:mm'), i.detail, i.ownerName].filter(Boolean).join(' · ')}
                           </span>
-                          {i.amount !== undefined && <Badge variant="secondary" className="mt-1">{money(i.amount)}</Badge>}
+                          {i.amount !== undefined && <Badge variant="secondary" className="mt-1">{formatCurrency(i.amount)}</Badge>}
                         </span>
                       </Link>
                     </li>

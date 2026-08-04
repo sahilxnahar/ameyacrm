@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { asEnumOrUndefined } from '@/lib/utils/enum';
+import { AuditAction } from '@prisma/client';
 import { requirePermission } from '@/lib/auth/current-user';
 import { prisma } from '@/lib/db/prisma';
 import { PageHeader } from '@/components/layout/page-header';
@@ -14,7 +16,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   await requirePermission('audit.view');
   const { action } = await searchParams;
   const logs = await prisma.auditLog.findMany({
-    where: action ? { action: action as never } : undefined,
+    where: action ? { action: asEnumOrUndefined(AuditAction, action) } : undefined,
     orderBy: { createdAt: 'desc' }, take: 200, include: { actor: { select: { name: true } } },
   });
   const actions = ['LOGIN', 'CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'UPLOAD', 'DOWNLOAD', 'PASSWORD_CHANGE', 'ROLE_CHANGE'];

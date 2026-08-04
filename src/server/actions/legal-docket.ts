@@ -1,11 +1,12 @@
 'use server';
 import { z } from 'zod';
+import { recordDeletion, type Undoable } from '@/server/services/undo-service';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
 
-export type DocketResult = { ok: true; id?: string } | { error: string };
+export type DocketResult = { ok: true; id?: string; undo?: Undoable | null } | { error: string };
 
 const optDate = (s?: string | null) => (s ? new Date(s) : null);
 
@@ -45,10 +46,16 @@ export async function deleteHearing(id: string): Promise<DocketResult> {
     const ctx = await ensure('land.manage');
     const h = await prisma.litigationHearing.findUnique({ where: { id }, select: { id: true } });
     if (!h) return { error: 'Hearing not found.' };
+    // AMH-033 — keep the row so the delete can be undone. Read BEFORE
+    // deleting: after it is gone there is nothing left to serialise.
+    const row = await prisma.litigationHearing.findUnique({ where: { id } });
     await prisma.litigationHearing.delete({ where: { id } });
+    const undo = row
+      ? await recordDeletion('LitigationHearing', row, { label: String(row.purpose ?? "hearing"), userId: ctx?.user.id })
+      : null;
     await writeAudit({ actorId: ctx.user.id, action: 'DELETE', entityType: 'LitigationHearing', entityId: id, summary: 'Deleted a hearing' });
     revalidatePath('/litigation');
-    return { ok: true };
+    return { ok: true, undo };
   } catch (e) { return toActionError(e); }
 }
 

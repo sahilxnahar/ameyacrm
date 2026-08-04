@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { RefreshCw, X } from 'lucide-react';
 import { APP_VERSION } from '@/config/version';
 
@@ -11,6 +12,12 @@ import { APP_VERSION } from '@/config/version';
  * with no reinstall and only the changed files re-downloaded.
  */
 export function UpdateBanner() {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [latest, setLatest] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [hidden, setHidden] = React.useState(false);
@@ -59,6 +66,15 @@ export function UpdateBanner() {
     } catch {
       /* best effort — reload regardless */
     }
+    /*
+     * A REAL reload, deliberately — not router.refresh() (AMH-029).
+     *
+     * This is the one place a full document reload is the correct tool. The
+     * point of this button is to activate a waiting service worker and pick up
+     * new JavaScript; router.refresh() re-runs the server components and swaps
+     * HTML into the SAME page, still running the OLD bundle. The user would
+     * press "Update" and stay on the version they were trying to leave.
+     */
     window.location.reload();
   };
 

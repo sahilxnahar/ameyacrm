@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { BadgeCheck, ShieldX, Users, ClipboardPaste } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -17,6 +18,12 @@ interface Row { id: string; workerName: string; uan: string; status: string; ven
 const TONE: Record<string, 'success' | 'destructive' | 'warning'> = { VALID: 'success', INVALID: 'destructive', PENDING: 'warning' };
 
 export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: number; invalid: number; total: number }; rows: Row[]; vendors: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [text, setText] = React.useState('');
@@ -32,7 +39,7 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
       setBusy(false);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Validated ${r.imported} — ${r.invalid} invalid`);
-      setOpen(false); location.reload();
+      setOpen(false); router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -74,7 +81,7 @@ export function UanValidatorView({ counts, rows, vendors }: { counts: { valid: n
             setBusy(false);
             if ('error' in r) { toast.error(r.error); return; }
             toast.success(`${name} checked`);
-            location.reload();
+            router.refresh();
           })
             .catch(() => {
               // A rejected server action never reaches .then, so the flag the

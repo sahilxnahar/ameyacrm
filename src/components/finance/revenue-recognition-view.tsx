@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { TrendingUp, Percent, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -16,6 +17,12 @@ interface Row { id: string; project: string; period: string; pocmPercent: number
 function thisMonth() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
 
 export function RevenueRecognitionView({ rows, projects }: { rows: Row[]; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState({ projectId: '', period: thisMonth(), costToDate: 0, totalEstCost: 0, totalContractVal: 0 });
@@ -27,7 +34,7 @@ export function RevenueRecognitionView({ rows, projects }: { rows: Row[]; projec
   function submit() {
     if (!form.projectId || !/^\d{4}-\d{2}$/.test(form.period)) { toast.error('Project and a YYYY-MM period are required.'); return; }
     setSaving(true);
-    snapshotPocmRevenue(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Revenue snapshot saved'); setOpen(false); location.reload(); })
+    snapshotPocmRevenue(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Revenue snapshot saved'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled

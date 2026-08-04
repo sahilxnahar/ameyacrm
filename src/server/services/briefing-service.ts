@@ -1,4 +1,5 @@
 import 'server-only';
+import { formatCurrency } from '@/lib/utils/format';
 import { prisma } from '@/lib/db/prisma';
 import { generateBriefing as geminiBriefing } from '@/lib/ai/gemini';
 import { aiChat, activeProvider } from '@/lib/ai/provider';
@@ -44,8 +45,7 @@ export async function generateBriefingContent(signals: Signals): Promise<Briefin
   return fallbackBriefing(alerts);
 }
 
-const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-const money = (n: number) => `Rs.${inr.format(Math.round(n))}`;
+const money = (n: number) => `Rs.${formatCurrency(Math.round(n))}`;
 
 /** Gather the numbers that matter today, plus rule-based risk alerts. */
 export async function collectSignals(): Promise<Signals> {

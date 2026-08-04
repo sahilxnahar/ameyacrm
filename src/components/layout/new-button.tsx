@@ -14,7 +14,9 @@ interface NewItem { label: string; href: string; icon: LucideIcon; permission?: 
  * are shown.
  */
 const ITEMS: NewItem[] = [
-  { label: 'New lead', href: '/sales', icon: UserPlus, permission: 'lead.create' },
+  // ?new=1 opens the dialog on arrival (AMH-045) — landing on the board with
+  // it closed made this menu item look like it did nothing.
+  { label: 'New lead', href: '/sales?new=1', icon: UserPlus, permission: 'lead.create' },
   { label: 'Log a site visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
   { label: 'New task', href: '/tasks', icon: CheckSquare, permission: 'task.create' },
   { label: 'Record a payment', href: '/payments', icon: Wallet, permission: 'finance.ledger.manage' },

@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CheckCircle2, AlertTriangle, HelpCircle, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -22,6 +23,12 @@ const TONE: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> 
 function thisMonth() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
 
 export function GstrReconView({ summary, rows }: { summary: { matched: number; unmatched: number; mismatch: number; missing: number }; rows: Row[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [period, setPeriod] = React.useState(thisMonth());
   const [busy, setBusy] = React.useState(false);
 
@@ -33,7 +40,7 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
       const r = await importGstr2b(csv, period);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Imported ${r.imported} lines & reconciled`);
-      location.reload();
+      router.refresh();
     } catch { toast.error('Could not read that file.'); } finally { setBusy(false); }
   }
   function reconcile() {
@@ -42,7 +49,7 @@ export function GstrReconView({ summary, rows }: { summary: { matched: number; u
       setBusy(false);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Matched ${r.result.matched}, ${r.result.mismatched} mismatch, ${r.result.missing} missing`);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -127,6 +134,12 @@ function ManualOrUpload({ period, busy, onFile }: { period: string; busy: boolea
  * precedence for a government return.
  */
 function ManualGstrLine({ period }: { period: string }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [gstin, setGstin] = React.useState('');
   const [invoiceNo, setInvoiceNo] = React.useState('');
   const [invoiceDate, setInvoiceDate] = React.useState('');
@@ -149,7 +162,7 @@ function ManualGstrLine({ period }: { period: string }) {
           setBusy(false);
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${r.invoiceNo} added and reconciled`);
-          location.reload();
+          router.refresh();
         })
           .catch(() => {
             // A rejected server action never reaches .then, so the flag the

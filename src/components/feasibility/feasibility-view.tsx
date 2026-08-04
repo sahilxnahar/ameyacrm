@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { formatCurrency } from '@/lib/utils/format';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus, X } from 'lucide-react';
 import { saveFeasibility } from '@/server/actions/feasibility';
@@ -11,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { ChipRow, ChipLink } from '@/components/ui/chip';
 import { cn } from '@/lib/utils/cn';
 
-const inr = (n: number | null) => (n == null ? '—' : n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }));
 
 interface Row {
   id: string; name: string; landCost: number; constructionCost: number; financeCost: number; otherCost: number;
@@ -38,7 +38,7 @@ export function FeasibilityView({ canManage, projects, projectId, rows }: {
       <StatTileRow cols={3}>
         <StatTile label="Appraisals" value={String(rows.length)} sub="on record" />
         <StatTile label="Best profit-on-cost" value={`${best}%`} sub="across models" tone={best > 0 ? 'good' : 'default'} />
-        <StatTile label="Total sale value" value={inr(rows.reduce((s, r) => s + r.result.saleValue, 0))} sub="modelled" />
+        <StatTile label="Total sale value" value={formatCurrency(rows.reduce((s, r) => s + r.result.saleValue, 0))} sub="modelled" />
       </StatTileRow>
 
       {canManage && (
@@ -73,12 +73,12 @@ export function FeasibilityView({ canManage, projects, projectId, rows }: {
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border">
                   <td className="p-2">{r.name}{(r.salePriceDeltaPct !== 0 || r.costDeltaPct !== 0) && <span className="ml-1 text-xs text-amber-600">scenario</span>}</td>
-                  <td className="p-2">{inr(r.result.totalCost)}</td>
-                  <td className="p-2">{inr(r.result.saleValue)}</td>
-                  <td className={cn('p-2 font-medium', r.result.profit < 0 ? 'text-destructive' : 'text-emerald-600')}>{inr(r.result.profit)}</td>
+                  <td className="p-2">{formatCurrency(r.result.totalCost)}</td>
+                  <td className="p-2">{formatCurrency(r.result.saleValue)}</td>
+                  <td className={cn('p-2 font-medium', r.result.profit < 0 ? 'text-destructive' : 'text-emerald-600')}>{formatCurrency(r.result.profit)}</td>
                   <td className="p-2">{r.result.profitOnCostPct}%</td>
                   <td className="p-2">{r.result.marginPct}%</td>
-                  <td className="p-2">{r.residualLand != null ? inr(r.residualLand) : '—'}</td>
+                  <td className="p-2">{r.residualLand != null ? formatCurrency(r.residualLand) : '—'}</td>
                 </tr>
               ))}
             </tbody>

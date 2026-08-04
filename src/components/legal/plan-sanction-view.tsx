@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Building2, ShieldAlert, BadgeCheck, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -19,6 +20,12 @@ interface Row {
 const RISK_TONE: Record<string, 'success' | 'warning' | 'destructive'> = { OK: 'success', WATCH: 'warning', AT_RISK: 'destructive' };
 
 export function PlanSanctionView({ counts, rows, projects }: { counts: { atRisk: number; ocDone: number; total: number }; rows: Row[]; projects: { id: string; name: string }[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<PlanSanctionInput>({ projectId: '', authority: 'BBMP', sanctionedFar: 0, builtFar: 0 });
@@ -26,7 +33,7 @@ export function PlanSanctionView({ counts, rows, projects }: { counts: { atRisk:
   function submit() {
     if (!form.projectId || !(form.sanctionedFar > 0)) { toast.error('Project and a sanctioned FAR are required.'); return; }
     setSaving(true);
-    savePlanSanction(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Sanction saved'); setOpen(false); location.reload(); })
+    savePlanSanction(form).then((r) => { setSaving(false); if ('error' in r) { toast.error(r.error); return; } toast.success('Sanction saved'); setOpen(false); router.refresh(); })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
         // success path clears was never cleared: the button stayed disabled
@@ -37,7 +44,7 @@ export function PlanSanctionView({ counts, rows, projects }: { counts: { atRisk:
   }
   function bump(id: string, current: number) {
     const v = prompt('Update as-built FAR:', String(current)); if (v == null) return;
-    updateBuiltFar(id, Number(v)).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('As-built FAR updated'); location.reload(); });
+    updateBuiltFar(id, Number(v)).then((r) => { if ('error' in r) { toast.error(r.error); return; } toast.success('As-built FAR updated'); router.refresh(); });
   }
 
   return (

@@ -1,5 +1,10 @@
 'use client';
 import * as React from 'react';
+import { LeadStatus } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
+import { bulkUpdateLeads } from '@/server/actions/bulk';
+import { BulkBar, RowCheck } from '@/components/ui/bulk-bar';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core';
 import { toast } from 'sonner';
@@ -51,12 +56,15 @@ function relTime(iso: string | null | undefined): string {
   return `${Math.round(h / 24)}d`;
 }
 
-function LeadRow({ lead }: { lead: Lead }) {
+function LeadRow({ lead, checked, onCheck }: { lead: Lead; checked: boolean; onCheck: (v: boolean) => void }) {
   return (
-    <Link
-      href={`/sales/${lead.id}`}
-      className={cn('flex items-center gap-3 border-b border-l-2 px-3 py-2.5 transition-colors hover:bg-muted/40', rowAccent(lead.status))}
-    >
+    <div className={cn('flex items-center gap-3 border-b border-l-2 pl-3 transition-colors hover:bg-muted/40', rowAccent(lead.status))}>
+      {/* Outside the Link: a tick box inside an anchor navigates instead of ticking. */}
+      <RowCheck checked={checked} onChange={onCheck} label={`Select ${lead.name}`} />
+      <Link
+        href={`/sales/${lead.id}`}
+        className="flex flex-1 items-center gap-3 py-2.5 pr-3"
+      >
       <Monogram name={lead.name} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
@@ -74,17 +82,94 @@ function LeadRow({ lead }: { lead: Lead }) {
       <StatusBadge status={lead.status} className="shrink-0" />
       <div className="hidden w-28 shrink-0 truncate text-right text-xs text-muted-foreground md:block">
         {lead.ownerName ?? 'Unassigned'}{lead.updatedAt ? ` · ${relTime(lead.updatedAt)}` : ''}
-      </div>
-    </Link>
+        </div>
+      </Link>
+    </div>
   );
 }
 
-function LeadListView({ leads }: { leads: Lead[] }) {
+/**
+ * The leads list, with bulk actions.
+ *
+ * ── AMH-014 ────────────────────────────────────────────────────────────────
+ *
+ * `bulkUpdateLeads` already existed in server/actions/bulk.ts: permission
+ * checked, audited, notifying the new owner, and calling
+ * `revalidatePath('/sales')` — written for THIS screen and never called from
+ * anywhere. Reassigning forty enquiries to a new sales executive meant opening
+ * forty leads.
+ *
+ * The BulkBar and RowCheck primitives existed too, used on exactly one screen.
+ */
+function LeadListView({ leads, users }: { leads: Lead[]; users: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const [picked, setPicked] = React.useState<string[]>([]);
+  const [pending, start] = React.useTransition();
+
+  const allOn = leads.length > 0 && picked.length === leads.length;
+  const toggleAll = (on: boolean) => setPicked(on ? leads.map((l) => l.id) : []);
+  const toggle = (id: string, on: boolean) =>
+    setPicked((p) => (on ? [...p, id] : p.filter((x) => x !== id)));
+
+  const run = (payload: Record<string, unknown>) =>
+    start(async () => {
+      const res = await bulkUpdateLeads({ ids: picked, ...payload });
+      if ('error' in res) { toast.error(res.error); return; }
+      toast.success(res.message);
+      setPicked([]);
+      router.refresh();
+    });
+
   if (leads.length === 0) return <p className="py-10 text-center text-sm text-muted-foreground">No leads to show.</p>;
   return (
-    <div className="overflow-hidden rounded-lg border">
-      {leads.map((l) => <LeadRow key={l.id} lead={l} />)}
-    </div>
+    <>
+      <div className="overflow-hidden rounded-lg border">
+        <div className="flex items-center gap-3 border-b bg-muted/40 px-3 py-2">
+          <RowCheck checked={allOn} onChange={toggleAll} label="Select every lead on this page" />
+          <span className="text-xs text-muted-foreground">
+            {picked.length ? `${picked.length} selected` : 'Select all'}
+          </span>
+        </div>
+        {leads.map((l) => (
+          <LeadRow
+            key={l.id}
+            lead={l}
+            checked={picked.includes(l.id)}
+            onCheck={(v) => toggle(l.id, v)}
+          />
+        ))}
+      </div>
+
+      <BulkBar count={picked.length} onClear={() => setPicked([])} busy={pending}>
+        <select
+          aria-label="Set status"
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { run({ action: 'status', status: e.target.value }); e.target.value = ''; } }}
+        >
+          <option value="" disabled>Set status…</option>
+          {STAGES.map((st) => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
+        </select>
+        <select
+          aria-label="Reassign owner"
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { run({ action: 'owner', ownerId: e.target.value }); e.target.value = ''; } }}
+        >
+          <option value="" disabled>Reassign to…</option>
+          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <select
+          aria-label="Set temperature"
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { run({ action: 'temperature', temperature: e.target.value }); e.target.value = ''; } }}
+        >
+          <option value="" disabled>Mark as…</option>
+          {(['HOT', 'WARM', 'COLD'] as const).map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}
+        </select>
+      </BulkBar>
+    </>
   );
 }
 
@@ -131,7 +216,20 @@ export function SalesPipeline({
   projects: { id: string; name: string }[];
 }) {
   const [leads, setLeads] = React.useState(initial);
-  const [newOpen, setNewOpen] = React.useState(false);
+  /*
+   * AMH-045 — "New lead" in the global New menu used to point at `/sales`.
+   *
+   * It navigated to the board and stopped there, with the dialog closed. The
+   * person had picked "New lead" from a menu and then had to find the New lead
+   * button on the page they had just been sent to. The menu item looked like it
+   * did nothing.
+   *
+   * It now points at `/sales?new=1` and this opens on arrival. Initialised from
+   * the parameter rather than set in an effect, so the dialog is open on the
+   * first paint instead of flashing the board first.
+   */
+  const searchParams = useSearchParams();
+  const [newOpen, setNewOpen] = React.useState(() => searchParams.get('new') === '1');
   const [view, setView] = React.useState<'board' | 'list'>('board');
   React.useEffect(() => setLeads(initial), [initial]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -143,7 +241,7 @@ export function SalesPipeline({
     const cur = leads.find((l) => l.id === leadId);
     if (!cur || cur.status === target) return;
     setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, status: target } : l)));
-    const res = await moveLeadStage(leadId, target as never);
+    const res = await moveLeadStage(leadId, asEnum(LeadStatus, target, 'NEW'));
     if ('error' in res) { toast.error(res.error); setLeads(initial); }
     else toast.success(`${cur.name} → ${titleCase(target)}`);
   };
@@ -179,7 +277,7 @@ export function SalesPipeline({
           </div>
         </DndContext>
       ) : (
-        <LeadListView leads={listLeads} />
+        <LeadListView leads={listLeads} users={users} />
       )}
       <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} users={users} projects={projects} />
     </div>

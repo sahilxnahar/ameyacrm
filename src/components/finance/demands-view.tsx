@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Send, Clock, CheckCircle2, HandCoins, Play, RefreshCw, X, Plus } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -29,6 +30,12 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
   bookings?: BookingOption[];
   canManage?: boolean;
 }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [busy, setBusy] = React.useState<null | 'run' | 'resend' | 'raise'>(null);
   const [raising, setRaising] = React.useState(false);
 
@@ -38,7 +45,7 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`${r.result.created} new · ${r.result.dispatched} sent · ${r.result.closed} closed · ${r.result.skipped} need contact`);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -54,7 +61,7 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
       setBusy(null);
       if ('error' in r) { toast.error(r.error); return; }
       toast.success(`Re-sent ${r.dispatched} pending demand(s)`);
-      location.reload();
+      router.refresh();
     })
       .catch(() => {
         // A rejected server action never reaches .then, so the flag the
@@ -68,7 +75,7 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
     cancelDemand(id).then((r) => {
       if ('error' in r) { toast.error(r.error); return; }
       toast.success('Demand cancelled');
-      location.reload();
+      router.refresh();
     });
   }
   function changeLang(leadId: string, lang: string) {
@@ -137,7 +144,7 @@ export function DemandsView({ counts, rows, bookings = [], canManage = false }: 
               setBusy(null);
               if ('error' in r) { toast.error(r.error); return; }
               toast.success(`${r.number} raised — it will go out on the next dispatch`);
-              setRaising(false); location.reload();
+              setRaising(false); router.refresh();
             })
               .catch(() => {
                 // A rejected server action never reaches .then, so the flag the

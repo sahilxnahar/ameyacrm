@@ -91,6 +91,9 @@ export async function runNightlyPass(now = new Date()): Promise<AutomationRun> {
     {
       step: 'Guest sandboxes',
       run: async () => {
+        // The recycle bin is a window, not an archive — 72 hours, then gone.
+        const { pruneDeletedRecords } = await import('@/server/services/undo-service');
+        await pruneDeletedRecords(now).catch(() => 0);
         const { pruneExpiredSandboxes } = await import('@/server/services/sandbox-service');
         return pruneExpiredSandboxes();
       },

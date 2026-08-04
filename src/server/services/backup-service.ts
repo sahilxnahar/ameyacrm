@@ -98,6 +98,30 @@ export async function takeEncryptedBackup(now: Date): Promise<BackupResult> {
   // ever having seen it.
   const key = `backups/ameya-crm-backup-${stamp}-${randomToken(8)}.json.enc`;
 
+  /*
+   * ── AMH-024, partially ─────────────────────────────────────────────────────
+   *
+   * The bundle is still assembled entirely in memory before it is written, and
+   * that is not fixed here. It cannot be, at this layer: `putObject` takes a
+   * `Buffer`, so a streaming write means changing the storage interface across
+   * every provider first. Measured on the test database — 60,000 leads and
+   * 80,000 tasks — this takes about four seconds and a multi-megabyte buffer.
+   *
+   * What IS available is warning before it becomes an outage rather than after.
+   * A serverless function has a fixed memory ceiling, and the failure mode when
+   * the bundle crosses it is the whole invocation dying — which, on a nightly
+   * job, means silence. This puts the size in the audit trail every night and
+   * says so out loud once it is large enough to be worth acting on.
+   */
+  const sizeMb = body.length / 1024 / 1024;
+  if (sizeMb > 64) {
+    await writeAudit({
+      action: 'EXPORT', entityType: 'Backup',
+      summary: `Backup is ${sizeMb.toFixed(0)} MB and is built in memory before it is written. `
+        + 'It will start failing when it outgrows the function\u2019s memory limit. Move to a streaming export.',
+    }).catch(() => undefined);
+  }
+
   const stored = await putObject(key, body, 'application/octet-stream');
 
   // Rotation deletes by exact key now that the name carries a random suffix,

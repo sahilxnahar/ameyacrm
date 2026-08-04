@@ -1,5 +1,7 @@
 'use client';
 import * as React from 'react';
+import { TaskStatus, Priority } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
 import Link from 'next/link';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
@@ -30,7 +32,7 @@ function Card({ task }: { task: BoardTask }) {
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="font-mono text-[11px] text-muted-foreground">{task.reference}</span>
-        <PriorityBadge priority={task.priority as never} />
+        <PriorityBadge priority={asEnum(Priority, task.priority, 'MEDIUM')} />
       </div>
       <Link href={`/tasks/${task.id}`} onClick={(e) => e.stopPropagation()} className="line-clamp-2 text-sm font-medium hover:text-primary">
         {task.title}
@@ -87,7 +89,7 @@ export function TaskBoard({ tasks: initial }: { tasks: BoardTask[] }) {
 
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: target } : t)));
     const position = tasks.filter((t) => t.status === target).length;
-    const res = await moveTask(taskId, target as never, position);
+    const res = await moveTask(taskId, asEnum(TaskStatus, target, 'TODO'), position);
     if ('error' in res) {
       toast.error(res.error);
       setTasks(initial); // rollback

@@ -1,5 +1,6 @@
 'use server';
 import { z } from 'zod';
+import { formatAmountPlain } from '@/lib/utils/format';
 import { cookies } from 'next/headers';
 import { activeTallyCompanyId, TALLY_COMPANY_COOKIE } from '@/lib/tally/company';
 import { snapshotVoucher, logVoucherChange } from '@/server/services/tally-audit-service';
@@ -15,7 +16,6 @@ import { ensure, toActionError } from './_helpers';
 
 export type TallyResult = { ok: true; id?: string } | { error: string };
 
-const inr = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Re-fetch all Tally data for a chosen period, for the on-screen reports. */
 /**
@@ -67,20 +67,20 @@ export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock', f
     if (kind === 'trial') {
       title = 'Trial Balance';
       columns = [{ label: 'Ledger', weight: 3 }, { label: 'Group', weight: 3 }, { label: 'Debit', align: 'right', weight: 2 }, { label: 'Credit', align: 'right', weight: 2 }];
-      rows = data.trial.rows.map((r) => ({ cells: [r.name, r.group, r.debit ? inr(r.debit) : '', r.credit ? inr(r.credit) : ''] }));
-      rows.push({ kind: 'total', cells: ['Total', '', inr(data.trial.totalDebit), inr(data.trial.totalCredit)] });
+      rows = data.trial.rows.map((r) => ({ cells: [r.name, r.group, r.debit ? formatAmountPlain(r.debit) : '', r.credit ? formatAmountPlain(r.credit) : ''] }));
+      rows.push({ kind: 'total', cells: ['Total', '', formatAmountPlain(data.trial.totalDebit), formatAmountPlain(data.trial.totalCredit)] });
       filename = 'Tally-Trial-Balance.pdf';
     } else if (kind === 'pl') {
       title = 'Profit & Loss A/c';
       columns = [{ label: 'Particulars', weight: 4 }, { label: 'Amount', align: 'right', weight: 2 }];
       rows = [
         { kind: 'head', cells: ['Income', ''] },
-        ...data.pl.income.map((l) => ({ cells: [l.name, inr(l.amount)] })),
-        { kind: 'total', cells: ['Total income', inr(data.pl.totalIncome)] },
+        ...data.pl.income.map((l) => ({ cells: [l.name, formatAmountPlain(l.amount)] })),
+        { kind: 'total', cells: ['Total income', formatAmountPlain(data.pl.totalIncome)] },
         { kind: 'head', cells: ['Expenses', ''] },
-        ...data.pl.expense.map((l) => ({ cells: [l.name, inr(l.amount)] })),
-        { kind: 'total', cells: ['Total expenses', inr(data.pl.totalExpense)] },
-        { kind: 'total', cells: [data.pl.profit >= 0 ? 'Net Profit' : 'Net Loss', inr(Math.abs(data.pl.profit))] },
+        ...data.pl.expense.map((l) => ({ cells: [l.name, formatAmountPlain(l.amount)] })),
+        { kind: 'total', cells: ['Total expenses', formatAmountPlain(data.pl.totalExpense)] },
+        { kind: 'total', cells: [data.pl.profit >= 0 ? 'Net Profit' : 'Net Loss', formatAmountPlain(Math.abs(data.pl.profit))] },
       ];
       filename = 'Tally-Profit-and-Loss.pdf';
     } else if (kind === 'bs') {
@@ -93,19 +93,19 @@ export async function tallyStatementPdf(kind: 'trial' | 'pl' | 'bs' | 'stock', f
       const ta = assets.reduce((s, l) => s + l.balance, 0);
       rows = [
         { kind: 'head', cells: ['Liabilities', ''] },
-        ...liabs.map((l) => ({ cells: [l.name, inr(l.balance)] })),
-        { cells: ['Profit & Loss A/c (current)', inr(profit)] },
-        { kind: 'total', cells: ['Total liabilities', inr(tl)] },
+        ...liabs.map((l) => ({ cells: [l.name, formatAmountPlain(l.balance)] })),
+        { cells: ['Profit & Loss A/c (current)', formatAmountPlain(profit)] },
+        { kind: 'total', cells: ['Total liabilities', formatAmountPlain(tl)] },
         { kind: 'head', cells: ['Assets', ''] },
-        ...assets.map((l) => ({ cells: [l.name, inr(l.balance)] })),
-        { kind: 'total', cells: ['Total assets', inr(ta)] },
+        ...assets.map((l) => ({ cells: [l.name, formatAmountPlain(l.balance)] })),
+        { kind: 'total', cells: ['Total assets', formatAmountPlain(ta)] },
       ];
       filename = 'Tally-Balance-Sheet.pdf';
     } else {
       title = 'Stock Summary';
       columns = [{ label: 'Item', weight: 3 }, { label: 'Unit', weight: 1 }, { label: 'Inward', align: 'right', weight: 1.4 }, { label: 'Outward', align: 'right', weight: 1.4 }, { label: 'Closing', align: 'right', weight: 1.4 }, { label: 'Rate', align: 'right', weight: 1.4 }, { label: 'Value', align: 'right', weight: 1.6 }];
-      rows = data.stock.map((s) => ({ cells: [s.name, s.unit, String(s.inQty), String(s.outQty), String(s.closingQty), inr(s.rate), inr(s.value)] }));
-      rows.push({ kind: 'total', cells: ['Total', '', '', '', '', '', inr(data.stock.reduce((a, s) => a + s.value, 0))] });
+      rows = data.stock.map((s) => ({ cells: [s.name, s.unit, String(s.inQty), String(s.outQty), String(s.closingQty), formatAmountPlain(s.rate), formatAmountPlain(s.value)] }));
+      rows.push({ kind: 'total', cells: ['Total', '', '', '', '', '', formatAmountPlain(data.stock.reduce((a, s) => a + s.value, 0))] });
       filename = 'Tally-Stock-Summary.pdf';
     }
 
@@ -711,7 +711,7 @@ export async function tallyRatios(fromISO: string | null, toISO: string | null, 
     const income = data.pl.totalIncome, profit = data.pl.profit;
     const capitalEmployed = equity + debt;
 
-    const money = (x: number) => `₹ ${inr(r2(x))}`;
+    const money = (x: number) => `₹ ${formatAmountPlain(r2(x))}`;
     const times = (num: number, den: number) => (den > 0.009 ? `${(num / den).toFixed(2)} : 1` : '—');
     const pct = (num: number, den: number) => (Math.abs(den) > 0.009 ? `${r2((num / den) * 100).toFixed(2)} %` : '—');
 

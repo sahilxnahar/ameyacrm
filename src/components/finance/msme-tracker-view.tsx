@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, Clock, IndianRupee } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +108,12 @@ function AddMsme({ candidates, vendors }: { candidates: Candidate[]; vendors: Ve
  * disagreeing about what is owed.
  */
 function ManualMsmeBill({ vendors }: { vendors: VendorOption[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [vendorId, setVendorId] = React.useState('');
   const [number, setNumber] = React.useState('');
   const [amount, setAmount] = React.useState('');
@@ -152,7 +159,7 @@ function ManualMsmeBill({ vendors }: { vendors: VendorOption[] }) {
           setBusy(false);
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${r.number} recorded — payable by ${new Date(r.dueDate).toLocaleDateString('en-IN')}`);
-          location.reload();
+          router.refresh();
         })
           .catch(() => {
             // A rejected server action never reaches .then, so the flag the
@@ -206,6 +213,12 @@ function ManualMsmeBill({ vendors }: { vendors: VendorOption[] }) {
 }
 
 function StartClock({ candidates }: { candidates: Candidate[] }) {
+  // AMH-029 — router.refresh() re-runs the server components and swaps the
+  // new HTML in. router.refresh() threw the whole document away: scroll
+  // position, open filters, a half-typed field in another panel, and a
+  // second of white screen. The server action already calls revalidatePath,
+  // so the data is fresh either way.
+  const router = useRouter();
   const [billId, setBillId] = React.useState('');
   const [udyam, setUdyam] = React.useState('');
   const [hasAgreement, setHasAgreement] = React.useState(true);
@@ -226,7 +239,7 @@ function StartClock({ candidates }: { candidates: Candidate[] }) {
           setBusy(false);
           if ('error' in r) { toast.error(r.error); return; }
           toast.success(`${bill.number} is on the clock`);
-          location.reload();
+          router.refresh();
         })
           .catch(() => {
             // A rejected server action never reaches .then, so the flag the

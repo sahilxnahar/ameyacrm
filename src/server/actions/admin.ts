@@ -1,5 +1,7 @@
 'use server';
 import { z } from 'zod';
+import { RoleName } from '@prisma/client';
+import { asEnum } from '@/lib/utils/enum';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { breachVerdict } from '@/lib/auth/breach';
@@ -249,7 +251,7 @@ export async function setUserRole(userId: string, role: string): Promise<AdminRe
     });
     if ('error' in verdict) return verdict;
 
-    await prisma.user.update({ where: { id: userId }, data: { role: role as never } });
+    await prisma.user.update({ where: { id: userId }, data: { role: asEnum(RoleName, role, 'EMPLOYEE') } });
 
     await writeAudit({
       actorId: ctx.user.id, action: 'UPDATE', entityType: 'User', entityId: userId,
