@@ -22,7 +22,11 @@ RUN npx prisma generate && npm run build
 
 # 3) Runtime
 FROM base AS runner
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
+# Everyone using this product is in India, and the server is the thing that
+# decides what "today" means — for the FY boundary, the MSME 45-day clock, the
+# statutory registers and every displayed timestamp. Left unset the container
+# runs UTC, which put evening entries on the previous date.
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 TZ=Asia/Kolkata
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public

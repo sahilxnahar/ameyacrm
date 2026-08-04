@@ -4,6 +4,17 @@
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/cron/daily", "schedule": "0 1 * * *" }
-  ]
+    {
+      "path": "/api/cron/daily",
+      "schedule": "0 1 * * *"
+    }
+  ],
+  "env": {
+    "TZ": "Asia/Kolkata"
+  },
+  "build": {
+    "env": {
+      "TZ": "Asia/Kolkata"
+    }
+  }
 }

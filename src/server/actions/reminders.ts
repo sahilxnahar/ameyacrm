@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { getActionContext, toActionError } from './_helpers';
+import { datetimeLocalToUTC } from '@/lib/date/ist';
 
 export type ReminderResult = { ok: true; id?: string } | { error: string };
 
@@ -18,7 +19,13 @@ export async function createReminder(input: unknown): Promise<ReminderResult> {
   try {
     const ctx = await getActionContext();
     const d = createSchema.parse(input);
-    const due = new Date(d.dueAt);
+    /*
+     * A datetime-local input submits a bare wall-clock string with no offset, so
+     * `new Date(s)` resolved it in the server's zone — UTC — and a reminder set
+     * for 15:30 IST fired at 21:00. Parsed as IST explicitly.
+     */
+    const due = datetimeLocalToUTC(d.dueAt);
+    if (!due) return { error: 'That reminder time could not be read.' };
     if (Number.isNaN(due.getTime())) return { error: 'Enter a valid date and time.' };
     const r = await prisma.reminder.create({
       data: { title: d.title, notes: d.notes || null, dueAt: due, leadId: d.leadId || null, userId: d.userId || ctx.user.id, createdById: ctx.user.id },

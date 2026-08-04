@@ -50,7 +50,7 @@ export default async function CpPortalPage({ params }: { params: Promise<{ token
 
       <section className="rounded-xl border p-5">
         <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold"><UserPlus className="h-5 w-5 text-brass" /> Register a client</h2>
-        <p className="mb-3 text-xs text-muted-foreground">Register your client here to lock them to you for 60 days. If someone else has already registered the same phone or email, you'll be told — this prevents disputes.</p>
+        <p className="mb-3 text-xs text-muted-foreground">Register your client here to lock them to you for 60 days. If someone else has already registered the same phone or email, you&rsquo;ll be told — this prevents disputes.</p>
         <CpLeadForm token={token} />
       </section>
 

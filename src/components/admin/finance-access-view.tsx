@@ -15,7 +15,7 @@ export function FinanceAccessView({ people }: { people: FinancePerson[] }) {
   const [q, setQ] = useState('');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
 
   const withAccess = rows.filter((p) => p.canView);
   const filtered = useMemo(() => {

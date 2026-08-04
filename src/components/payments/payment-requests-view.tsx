@@ -60,7 +60,7 @@ export function PaymentRequestsView({ requests, customers, instructions, appUrl 
           <p className="mb-1 text-sm font-semibold">Share this payment link</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all rounded bg-background/70 p-2 font-mono text-xs">{fresh}</code>
-            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard?.writeText(fresh); toast.success('Copied'); }}><Link2 className="h-4 w-4" /></Button>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard?.writeText(fresh); toast.success('Copied'); }} aria-label="Copy the payment link"><Link2 className="h-4 w-4" /></Button>
           </div>
         </Card>
       )}

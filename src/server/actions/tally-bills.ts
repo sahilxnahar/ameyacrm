@@ -109,26 +109,68 @@ export async function allocateToBills(input: unknown): Promise<BillResult> {
     });
     if (!voucher) return { error: 'That voucher is not in this company’s books.' };
 
+    // Existence and company scope only — the amounts are re-read inside the
+    // transaction below, because anything read out here can be stale by the
+    // time it is written.
     const bills = await prisma.tallyBill.findMany({
       where: { id: { in: d.allocations.map((a) => a.billId) }, companyId },
-      include: { allocations: { select: { amount: true } } },
+      select: { id: true },
     });
     if (bills.length !== d.allocations.length) return { error: 'One of those bills no longer exists.' };
 
-    for (const a of d.allocations) {
-      const bill = bills.find((b) => b.id === a.billId)!;
-      const settled = bill.allocations.reduce((s, x) => s + Number(x.amount), 0);
-      const open = Number(bill.amount) - settled;
-      if (a.amount > open + 0.005) {
-        return { error: `${bill.reference} only has ₹${open.toLocaleString('en-IN')} outstanding — you cannot set ₹${a.amount.toLocaleString('en-IN')} against it.` };
+    /*
+     * Re-check the outstanding amount INSIDE the transaction.
+     *
+     * The check used to run out here, against rows read before the transaction
+     * opened, and the transaction itself never looked again. Two people
+     * allocating ₹50,000 each against a ₹60,000 bill both passed and both
+     * wrote — ₹100,000 set against ₹60,000, after which the bill register and
+     * the ledger disagree and the difference has to be found by hand.
+     *
+     * Money is compared in integer paise rather than rupees as a float. The old
+     * `open + 0.005` fudge was an admission that a float comparison was driving
+     * a control decision; at paise scale the comparison is exact and the fudge
+     * is unnecessary.
+     */
+    const paise = (n: number) => Math.round(n * 100);
+    const attempt = () => prisma.$transaction(async (tx) => {
+      for (const a of d.allocations) {
+        const bill = await tx.tallyBill.findUnique({
+          where: { id: a.billId },
+          select: { amount: true, reference: true, allocations: { select: { amount: true } } },
+        });
+        if (!bill) return 'One of those bills no longer exists.';
+        const settled = bill.allocations.reduce((s, x) => s + paise(Number(x.amount)), 0);
+        const open = paise(Number(bill.amount)) - settled;
+        if (paise(a.amount) > open) {
+          return `${bill.reference} only has ₹${(open / 100).toLocaleString('en-IN')} outstanding — you cannot set ₹${a.amount.toLocaleString('en-IN')} against it.`;
+        }
+        await tx.tallyBillAllocation.create({ data: { billId: a.billId, voucherId: d.voucherId, amount: a.amount } });
       }
-    }
+      return null;
+    }, { isolationLevel: 'Serializable' });
 
-    await prisma.$transaction(
-      d.allocations.map((a) =>
-        prisma.tallyBillAllocation.create({ data: { billId: a.billId, voucherId: d.voucherId, amount: a.amount } }),
-      ),
-    );
+    /*
+     * Serializable isolation is what makes the re-check above trustworthy, and
+     * its cost is that Postgres aborts one of two genuinely concurrent
+     * transactions with a serialization failure. That is not a user error and
+     * must not be shown as one — the correct response is to run it again, at
+     * which point the loser sees the winner's allocation and either fits or is
+     * told the bill is now short. One retry is enough for two writers; beyond
+     * that the contention is real and worth surfacing.
+     */
+    let failure: string | null;
+    try {
+      failure = await attempt();
+    } catch {
+      // Staggered, not immediate. Two writers that abort together and retry
+      // together simply collide again; a short random pause lets one land.
+      await new Promise((r) => setTimeout(r, 40 + Math.floor(Math.random() * 120)));
+      failure = await attempt().catch(
+        () => 'Another allocation was being saved at the same moment. Nothing was changed — try again.',
+      );
+    }
+    if (failure) return { error: failure };
 
     const total = d.allocations.reduce((s, a) => s + a.amount, 0);
     await writeAudit({

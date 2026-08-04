@@ -159,7 +159,7 @@ function ItemCard({ it, canManage, onRemove }: { it: LibraryItem; canManage: boo
         <div className="flex items-center gap-3 text-xs">
           {isViewable(it.kind) && <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline"><ExternalLink className="h-3 w-3" /> {it.source === 'DRIVE' ? 'Open in Drive' : 'View'}</a>}
           {it.source !== 'DRIVE' && <a href={it.url} download className="inline-flex items-center gap-1 text-primary hover:underline"><Download className="h-3 w-3" /> Download</a>}
-          {canManage && <button onClick={() => onRemove(it.id)} className="ml-auto inline-flex items-center gap-1 text-rose-600 hover:underline"><Trash2 className="h-3 w-3" /></button>}
+          {canManage && <button onClick={() => onRemove(it.id)} className="ml-auto inline-flex items-center gap-1 text-rose-600 hover:underline" aria-label="Remove this asset"><Trash2 className="h-3 w-3" /></button>}
         </div>
       </div>
     </div>

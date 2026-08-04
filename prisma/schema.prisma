@@ -1758,6 +1758,9 @@ model Task {
   @@index([departmentId])
   @@index([dueDate])
   @@index([createdById])
+  // Task's due-date screens are already served by @@index([dueDate]) above —
+  // measured at 3 buffers, so no new index is warranted there. The board and the
+  // recent-tasks list need partial indexes; those are in prisma/constraints.sql.
 }
 
 model TaskAssignee {
@@ -1916,6 +1919,13 @@ model Lead {
   @@index([isNri])
   @@index([nextFollowUp])
   @@index([status, ownerId])
+  @@index([projectId, deletedAt]) // the active-project scope on every screen
+  // The two indexes the list screens most need are PARTIAL — `WHERE "deletedAt"
+  // IS NULL` — and schema.prisma has no syntax for that. They live in
+  // prisma/constraints.sql. An ordinary composite leading with deletedAt was
+  // tried first and measured: the planner ignored it and sequentially scanned
+  // anyway, because deletedAt IS NULL matches 95% of the table and so is not
+  // selective. Do not re-add it — see constraints.sql for the numbers.
 }
 
 model LeadActivity {
@@ -2445,6 +2455,11 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([createdAt])
+  // The bell and the notifications page both read `where userId ORDER BY
+  // createdAt DESC`. [userId, readAt] cannot serve the sort and [createdAt]
+  // cannot serve the filter, so neither existing index was ever used for the
+  // one query this table exists to answer.
+  @@index([userId, createdAt])
 }
 
 model NotificationPreference {

@@ -21,7 +21,7 @@ export function PendingInvites({ invites }: { invites: PendingInvite[] }) {
   const [rows, setRows] = useState(invites);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
 
   if (!rows.length) return null;
 

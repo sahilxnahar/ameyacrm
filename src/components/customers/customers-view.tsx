@@ -95,7 +95,7 @@ export function CustomersView({ customers, updates, tickets, docs, projects, boo
             <Card key={u.id} className="p-4">
               <div className="flex items-start justify-between">
                 <div><p className="text-sm font-semibold">{u.title} {u.milestone && <Badge variant="secondary" className="ml-1">{u.milestone}</Badge>}</p><p className="text-xs text-muted-foreground">{u.projectName} · {new Date(u.createdAt).toLocaleDateString('en-IN')}</p>{u.body && <p className="mt-1 text-sm text-foreground/80">{u.body}</p>}</div>
-                {canManage && <Button size="icon" variant="ghost" onClick={() => act(() => deleteConstructionUpdate(u.id), 'Deleted')}><Trash2 className="h-4 w-4" /></Button>}
+                {canManage && <Button size="icon" variant="ghost" onClick={() => act(() => deleteConstructionUpdate(u.id), 'Deleted')} aria-label="Delete this construction update"><Trash2 className="h-4 w-4" /></Button>}
               </div>
             </Card>
           ))}

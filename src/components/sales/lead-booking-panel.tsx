@@ -100,7 +100,7 @@ export function LeadBookingPanel({ leadId, units, bookings }: { leadId: string; 
                   <Input className="flex-[2]" placeholder="Label" value={m.label} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
                   <Input className="w-28" type="number" placeholder="Amount" value={m.amount} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))} />
                   <Input className="w-36" type="date" value={m.dueDate} onChange={(e) => setRows((p) => p.map((x, j) => j === i ? { ...x, dueDate: e.target.value } : x))} />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setRows((p) => p.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setRows((p) => p.filter((_, j) => j !== i))} aria-label="Remove this row"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
               <Button type="button" variant="outline" size="sm" onClick={() => setRows((p) => [...p, { label: '', amount: '', dueDate: '' }])}><Plus className="h-4 w-4" /> Add milestone</Button>

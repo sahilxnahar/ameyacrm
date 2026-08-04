@@ -75,7 +75,7 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
                 <TableCell className="text-sm text-muted-foreground">{dr.discipline}</TableCell>
                 <TableCell><Badge variant="secondary" className="gap-1"><History className="h-3 w-3" />v{dr.revision}</Badge></TableCell>
                 <TableCell><Badge variant={dr.status === 'APPROVED' || dr.status === 'ISSUED_FOR_CONSTRUCTION' ? 'success' : dr.status === 'FOR_REVIEW' ? 'warning' : 'secondary'}>{titleCase(dr.status)}</Badge></TableCell>
-                <TableCell>{dr.fileId && <Button asChild variant="ghost" size="icon"><a href={`/api/files/${dr.fileId}`} target="_blank" rel="noreferrer"><Download className="h-4 w-4" /></a></Button>}</TableCell>
+                <TableCell>{dr.fileId && <Button asChild variant="ghost" size="icon" aria-label="Open the drawing file"><a href={`/api/files/${dr.fileId}`} target="_blank" rel="noreferrer"><Download className="h-4 w-4" /></a></Button>}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -114,7 +114,7 @@ export function ArchitectureView({ drawings, rfis, issues, consultants, projects
                 <TableCell><Badge variant={i.status === 'RESOLVED' || i.status === 'CLOSED' ? 'success' : i.status === 'OPEN' ? 'secondary' : 'default'}>{titleCase(i.status)}</Badge></TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">⋯</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" aria-label="Change the status of this issue">⋯</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">{ISTATUS.map((s) => <DropdownMenuItem key={s} onClick={() => setIssue(i.id, s)}><Check className="h-4 w-4" /> {titleCase(s)}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

@@ -110,7 +110,7 @@ export function WebhooksView({ hooks }: { hooks: Hook[] }) {
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => act('Test sent', () => testWebhook(h.id))} className="gap-1"><Send className="h-3.5 w-3.5" /> Test</Button>
                   <Button size="sm" variant="outline" onClick={() => act(h.isActive ? 'Disabled' : 'Enabled', () => toggleWebhook(h.id, !h.isActive))} className="gap-1"><Power className="h-3.5 w-3.5" /> {h.isActive ? 'Disable' : 'Enable'}</Button>
-                  <Button size="sm" variant="outline" onClick={() => act('Removed', () => deleteWebhook(h.id))} className="gap-1 text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => act('Removed', () => deleteWebhook(h.id))} className="gap-1 text-destructive" aria-label="Delete this webhook"><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </div>
             </Card>

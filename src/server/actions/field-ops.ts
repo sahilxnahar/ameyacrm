@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db/prisma';
 import { can } from '@/lib/rbac/can';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
+import { datetimeLocalToUTC } from '@/lib/date/ist';
 
 export type FieldResult = { ok: true; message?: string; withinSite?: boolean; distanceM?: number | null } | { error: string };
 
@@ -53,7 +54,8 @@ export async function punch(input: unknown): Promise<FieldResult> {
       }
     }
 
-    const at = d.at ? new Date(d.at) : new Date();
+    // Site staff enter the time they are standing there, in IST.
+    const at = datetimeLocalToUTC(d.at) ?? new Date();
     await prisma.attendance.create({
       data: {
         userId: ctx.user.id, projectId: d.projectId || null, kind: d.kind, at,

@@ -33,7 +33,7 @@ export function ApiTokensView({ tokens }: { tokens: Tok[] }) {
           <p className="mb-1 text-sm font-semibold">Copy this token now — it won&apos;t be shown again.</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all rounded bg-background/70 p-2 font-mono text-xs">{fresh}</code>
-            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard?.writeText(fresh); toast.success('Copied'); }}><Copy className="h-4 w-4" /></Button>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard?.writeText(fresh); toast.success('Copied'); }} aria-label="Copy this API token"><Copy className="h-4 w-4" /></Button>
           </div>
         </Card>
       )}

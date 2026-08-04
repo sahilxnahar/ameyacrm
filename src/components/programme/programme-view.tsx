@@ -146,7 +146,7 @@ export function ProgrammeView({ canManage, projects, projectId, activities, over
                             <form className="mt-1 flex gap-1" onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); run(() => recordProgress({ activityId: r.id, percentComplete: Number(f.get('pc')), note: (f.get('note') as string) || null })); }}>
                               <input name="pc" type="number" min="0" max="100" defaultValue={r.percentComplete} className={cn(inputCls, 'w-16 mt-0')} />
                               <input name="note" placeholder="note" className={cn(inputCls, 'w-24 mt-0')} />
-                              <button type="submit" disabled={pending} className="focus-ring rounded bg-primary px-2 text-xs text-primary-foreground">✓</button>
+                              <button type="submit" disabled={pending} className="focus-ring rounded bg-primary px-2 text-xs text-primary-foreground" aria-label="Save this progress update">✓</button>
                             </form>
                           )}
                         </td>

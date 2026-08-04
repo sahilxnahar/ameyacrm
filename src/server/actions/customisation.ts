@@ -1,6 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { revalidateSetting } from '@/lib/cache/settings-cache';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import { DEFAULT_TERMS, DEFAULT_STAGES, PIPELINE_KEYS } from '@/config/customisation';
@@ -17,6 +18,9 @@ export async function saveTerms(input: Record<string, string>): Promise<CustResu
     }
     await prisma.setting.upsert({ where: { key: 'terms' }, update: { value: clean }, create: { key: 'terms', value: clean } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: 'Updated terminology' });
+    // This row is cached across requests. Without this line the admin saves a
+    // rename, the page reloads, and nothing changes for five minutes.
+    revalidateSetting('terms');
     revalidatePath('/', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }
@@ -40,6 +44,7 @@ export async function saveStages(input: Record<string, { label: string; probabil
     const probs = Object.fromEntries(Object.entries(clean).map(([k, v]) => [k, v.probability]));
     await prisma.setting.upsert({ where: { key: 'forecast.probability' }, update: { value: probs }, create: { key: 'forecast.probability', value: probs } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: 'Updated pipeline stages' });
+    revalidateSetting('pipeline.stages');
     revalidatePath('/sales'); revalidatePath('/forecast');
     return { ok: true };
   } catch (err) { return toActionError(err); }
@@ -50,6 +55,9 @@ export async function resetCustomisation(what: 'terms' | 'stages'): Promise<Cust
     const ctx = await ensure('admin.setting.manage');
     await prisma.setting.deleteMany({ where: { key: what === 'terms' ? 'terms' : 'pipeline.stages' } });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: `Reset ${what}` });
+    // The reset path is the easy one to forget, and it has the worst symptom:
+    // "I pressed Reset and nothing happened."
+    revalidateSetting(what === 'terms' ? 'terms' : 'pipeline.stages');
     revalidatePath('/', 'layout');
     return { ok: true };
   } catch (err) { return toActionError(err); }

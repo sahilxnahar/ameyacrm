@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { ensure, getActionContext, toActionError } from './_helpers';
 import { canTransition, isTerminal, type WRSide, type WRStatus } from '@/lib/workrequests/lifecycle';
 import { userDeptIds } from '@/server/services/workrequest-service';
@@ -15,9 +16,18 @@ export type WRResult = { ok: true; message: string; id?: string } | { error: str
 
 const opt = (s: string) => { const t = (s ?? '').trim(); return t === '' ? null : t; };
 
+/*
+ * `count() + 1` against a @unique column is a race, and this file had a local
+ * function shadowing the name of the atomic one two directories away. Two
+ * simultaneous requests both counted N, both built WR-000N+1, and one died on
+ * the unique index — losing the request behind a generic error.
+ *
+ * `nextSequence` is a single INSERT … ON CONFLICT DO UPDATE … RETURNING, which
+ * Postgres serialises. partners.ts and billing.ts were converted with comments
+ * saying exactly this; this file and two others were missed.
+ */
 async function nextReference(): Promise<string> {
-  const n = await prisma.workRequest.count();
-  return `WR-${String(n + 1).padStart(4, '0')}`;
+  return docNumber('WR', await nextSequence('ref:WR', prisma, 0), 4);
 }
 
 /** Raise a request to another department. */

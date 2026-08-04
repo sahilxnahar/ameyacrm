@@ -98,20 +98,34 @@ export async function enrolLeads(sequenceId: string, leadIds: string[]): Promise
       select: { id: true },
     });
 
-    let added = 0, skipped = 0;
-    for (const l of leads) {
-      const exists = await prisma.sequenceEnrollment.findUnique({
-        where: { sequenceId_leadId: { sequenceId, leadId: l.id } }, select: { id: true },
-      });
-      if (exists) { skipped++; continue; }
-      await prisma.sequenceEnrollment.create({
-        data: {
-          sequenceId, leadId: l.id, enrolledById: ctx.user.id,
-          nextStepAt: addDays(startOfDay(new Date()), seq.steps[0]?.dayOffset ?? 0),
-        },
-      });
-      added++;
-    }
+    /*
+     * Two round-trips, not two per lead. Enrolling the 500-lead maximum this
+     * action allows used to mean up to a thousand sequential queries — a lookup
+     * and an insert each — which is minutes of a held request, and the person
+     * pressing the button sees a spinner the whole time.
+     *
+     * `skipDuplicates` leans on the sequenceId_leadId unique constraint, so the
+     * race the read-then-write loop had is gone too: two admins enrolling the
+     * same list at once previously both read "not enrolled" and both inserted.
+     */
+    const already = await prisma.sequenceEnrollment.findMany({
+      where: { sequenceId, leadId: { in: leads.map((l) => l.id) } },
+      select: { leadId: true },
+    });
+    const enrolled = new Set(already.map((e) => e.leadId));
+    const fresh = leads.filter((l) => !enrolled.has(l.id));
+    const nextStepAt = addDays(startOfDay(new Date()), seq.steps[0]?.dayOffset ?? 0);
+
+    const created = fresh.length
+      ? await prisma.sequenceEnrollment.createMany({
+          data: fresh.map((l) => ({ sequenceId, leadId: l.id, enrolledById: ctx.user.id, nextStepAt })),
+          skipDuplicates: true,
+        })
+      : { count: 0 };
+
+    const added = created.count;
+    // Anything skipDuplicates dropped was enrolled by someone else in between.
+    const skipped = leads.length - added;
 
     const noEmail = leadIds.length - leads.length;
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Lead', entityId: sequenceId, summary: `Enrolled ${added} leads` });

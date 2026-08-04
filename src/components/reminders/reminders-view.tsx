@@ -57,8 +57,8 @@ export function RemindersView({ reminders }: { reminders: Rem[] }) {
             <div className="flex shrink-0 items-center gap-1">
               {overdue(r.dueAt) && <Badge variant="destructive">Overdue</Badge>}
               <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={pending} onClick={() => act(() => snoozeReminder(r.id, 60), 'Snoozed 1 hour')}><Clock className="h-3 w-3" /> 1h</Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs text-success" disabled={pending} onClick={() => act(() => completeReminder(r.id), 'Done')}><Check className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => act(() => deleteReminder(r.id), 'Deleted')}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-success" disabled={pending} onClick={() => act(() => completeReminder(r.id), 'Done')} aria-label="Mark this reminder done"><Check className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => act(() => deleteReminder(r.id), 'Deleted')} aria-label="Delete this reminder"><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
         ))}
@@ -71,7 +71,7 @@ export function RemindersView({ reminders }: { reminders: Rem[] }) {
             {done.slice(0, 20).map((r) => (
               <div key={r.id} className="flex items-center justify-between p-2 text-sm">
                 <span className="line-through">{r.title}</span>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => act(() => deleteReminder(r.id), 'Deleted')}><Trash2 className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => act(() => deleteReminder(r.id), 'Deleted')} aria-label="Delete this reminder"><Trash2 className="h-4 w-4" /></Button>
               </div>
             ))}
           </Card>

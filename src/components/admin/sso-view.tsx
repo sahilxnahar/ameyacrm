@@ -36,7 +36,7 @@ export function SsoView({ config, acsUrl }: { config: SamlConfig; acsUrl: string
             <div key={label} className="flex flex-wrap items-center gap-2">
               <span className="w-20 shrink-0 text-xs text-muted-foreground">{label}</span>
               <code className="min-w-0 flex-1 truncate rounded bg-secondary px-2 py-1 text-xs">{val}</code>
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copy(String(val))}><Copy className="h-3.5 w-3.5" /></Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => copy(String(val))} aria-label="Copy this value"><Copy className="h-3.5 w-3.5" /></Button>
             </div>
           ))}
         </div>

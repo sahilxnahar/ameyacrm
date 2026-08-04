@@ -18,7 +18,8 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'secondary' | 'destruc
 };
 
 export function LabourComplianceView({ month, allVendors, labourVendors }: { month: string; allVendors: Vendor[]; labourVendors: LabourVendor[] }) {
-  const [, start] = React.useTransition();
+  // Kept, not discarded — verifying a challan twice double-writes the record.
+  const [pending, start] = React.useTransition();
   const [addOpen, setAddOpen] = React.useState(false);
 
   const act = (msg: string, fn: () => Promise<{ ok: true } | { error: string }>) => start(async () => {
@@ -70,7 +71,7 @@ export function LabourComplianceView({ month, allVendors, labourVendors }: { mon
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(['EPF', 'ESI'] as const).map((kind) => {
                     const d = kind === 'EPF' ? v.epf : v.esi;
-                    return <ChallanRow key={kind} kind={kind} state={d} onRecord={(ch, ver) => record(v.id, kind, ch, ver)}
+                    return <ChallanRow key={kind} kind={kind} state={d} pending={pending} onRecord={(ch, ver) => record(v.id, kind, ch, ver)}
                       onVerify={() => d.id && act(`${kind} verified`, () => verifyComplianceDoc(d.id!))} />;
                   })}
                 </div>
@@ -83,7 +84,7 @@ export function LabourComplianceView({ month, allVendors, labourVendors }: { mon
   );
 }
 
-function ChallanRow({ kind, state, onRecord, onVerify }: { kind: string; state: DocState; onRecord: (ch: string, verify: boolean) => void; onVerify: () => void }) {
+function ChallanRow({ kind, state, onRecord, onVerify, pending }: { kind: string; state: DocState; onRecord: (ch: string, verify: boolean) => void; onVerify: () => void; pending: boolean }) {
   const [ch, setCh] = React.useState(state.challanNo ?? '');
   return (
     <div className="rounded-md border p-3">
@@ -94,11 +95,11 @@ function ChallanRow({ kind, state, onRecord, onVerify }: { kind: string; state: 
       <div className="flex gap-1.5">
         <Input value={ch} onChange={(e) => setCh(e.target.value)} placeholder="Challan no." className="h-8 text-sm" />
         {state.status === 'VERIFIED' ? null : state.id ? (
-          <Button size="sm" onClick={onVerify} className="gap-1"><Check className="h-3.5 w-3.5" /> Verify</Button>
+          <Button size="sm" disabled={pending} onClick={onVerify} className="gap-1"><Check className="h-3.5 w-3.5" /> Verify</Button>
         ) : (
           <>
-            <Button size="sm" variant="outline" onClick={() => onRecord(ch, false)}>Save</Button>
-            <Button size="sm" onClick={() => onRecord(ch, true)} className="gap-1"><Check className="h-3.5 w-3.5" /> Verify</Button>
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => onRecord(ch, false)}>Save</Button>
+            <Button size="sm" disabled={pending} onClick={() => onRecord(ch, true)} className="gap-1"><Check className="h-3.5 w-3.5" /> Verify</Button>
           </>
         )}
       </div>

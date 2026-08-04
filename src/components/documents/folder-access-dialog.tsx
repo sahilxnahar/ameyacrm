@@ -44,7 +44,7 @@ export function FolderAccessDialog({ open, onOpenChange, folderId, folderName, p
           {permissions.map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
               <span><Badge variant="outline" className="mr-2">{p.kind}</Badge>{p.who}</span>
-              <span className="flex items-center gap-2"><Badge variant="secondary">{titleCase(p.level)}</Badge><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4" /></Button></span>
+              <span className="flex items-center gap-2"><Badge variant="secondary">{titleCase(p.level)}</Badge><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(p.id)} aria-label="Remove this person’s access"><Trash2 className="h-4 w-4" /></Button></span>
             </div>
           ))}
         </div>

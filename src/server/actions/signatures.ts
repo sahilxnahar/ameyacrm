@@ -4,6 +4,7 @@ import { fetchWithTimeout } from '@/lib/utils/fetch-timeout';
 import { randomBytes } from 'node:crypto';
 import { addDays } from 'date-fns';
 import { revalidatePath } from 'next/cache';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
@@ -35,8 +36,8 @@ export async function createSignatureRequest(input: unknown): Promise<SigResult>
     const ctx = await ensure('document.manage');
     const d = schema.parse(input);
     const token = randomBytes(24).toString('hex');
-    const count = await prisma.signatureRequest.count();
-    const reference = `SIG-${1001 + count}`;
+    // Atomic, not count()+1 — see the note in workrequests.ts.
+    const reference = docNumber('SIG', await nextSequence('ref:SIG', prisma, 1000));
 
     const sr = await prisma.signatureRequest.create({
       data: {

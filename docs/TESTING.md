@@ -6,14 +6,32 @@
 |---|---|---|
 | Unit | **Vitest** | Pure logic: RBAC expansion, password policy, formatters, ICS builder |
 | Type safety | **tsc --noEmit** (strict, `noUncheckedIndexedAccess`) | Whole codebase compiles |
-| Lint | **ESLint** (`next/core-web-vitals`, `next/typescript`) | Style & correctness |
+| Lint | **ESLint 8** (`next/core-web-vitals`, `.eslintrc.cjs`) | Bans `as never`, `location.reload()` and raw-unsafe SQL. Runs under a warning ratchet — see below |
 | Schema | **prisma validate** | Data model integrity |
-| Integration | Prisma against a disposable Postgres (CI service) | Migrations apply; queries run |
+| Integration | Prisma against a disposable Postgres (CI service, `LIVE_DB` set) | The money chain: vouchers post, the ledger balances, reversals invert cleanly, and a double-settlement is refused |
 | Build | `next build` | Production bundle succeeds |
 | Container | `docker build` | Image builds & starts (healthcheck) |
 
-CI (`.github/workflows/ci.yml`) runs lint → typecheck → test → build against an ephemeral
-Postgres, then builds the Docker image.
+CI (`.github/workflows/ci.yml`) runs lint → typecheck → `prisma db push` → test → build
+against an ephemeral `postgres:16` service container, with `LIVE_DB` set so the money-chain
+tests actually execute.
+
+### Honest statement of coverage
+
+Until August 2026 none of this was true: `ci.yml` did not exist, the only workflow ran
+`npm audit` and `tsc`, and there was no ESLint config at all — `next lint` would have dropped
+into an interactive setup prompt. The 612 passing tests were unenforced, and the 25
+`LIVE_DB`-gated database tests had never run in CI.
+
+What is still true today:
+
+- **No test imports a `'use server'` action module.** Coverage is pure functions in `src/lib`
+  plus a handful of services. The money-moving actions are covered only by the integration
+  tests added in the same change, not comprehensively.
+- **There is no end-to-end or browser test.** No Playwright, no Cypress.
+- **The lint warning cap is a ratchet, not a clean bill.** 148 known violations remain (93
+  `as never`, 53 `location.reload()`, 2 hook deps). CI fails if the count rises. Lower the
+  `--max-warnings` number in `ci.yml` and `package.json` as batches clear them.
 
 ## Running locally
 

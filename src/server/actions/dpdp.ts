@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { sendEmail } from '@/lib/email/email';
 import { writeAudit } from '@/lib/audit/log';
+import { nextSequence, docNumber } from '@/lib/db/sequence';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 
 export type DpdpResult = { ok: true; message?: string; data?: unknown } | { error: string };
@@ -20,10 +21,12 @@ export async function createDataRequest(input: unknown): Promise<DpdpResult> {
   try {
     const ctx = await ensure('admin.setting.manage');
     const d = requestSchema.parse(input);
-    const count = await prisma.dataRequest.count();
+    // Atomic, not count()+1 — DataRequest.reference is unique and two DSRs
+    // raised in the same second would otherwise collide.
+    const seq = await nextSequence('ref:DSR', prisma, 1000);
     await prisma.dataRequest.create({
       data: {
-        reference: `DSR-${1001 + count}`, type: d.type,
+        reference: docNumber('DSR', seq), type: d.type,
         subjectName: d.subjectName, subjectEmail: d.subjectEmail.toLowerCase(),
         subjectPhone: d.subjectPhone || null, details: d.details || null,
       },
@@ -71,10 +74,11 @@ export async function erasePersonalData(email: string, reason: string): Promise<
     const e = email.toLowerCase().trim();
     const stamp = `erased-${Date.now()}`;
 
+    // Every erased lead gets the identical value, so one statement does it.
     const leads = await prisma.lead.findMany({ where: { email: e }, select: { id: true } });
-    for (const l of leads) {
-      await prisma.lead.update({
-        where: { id: l.id },
+    if (leads.length) {
+      await prisma.lead.updateMany({
+        where: { id: { in: leads.map((l) => l.id) } },
         data: {
           name: 'Erased at request', email: null, phone: null, requirement: null,
           locality: null, latitude: null, longitude: null,
@@ -83,13 +87,13 @@ export async function erasePersonalData(email: string, reason: string): Promise<
       });
     }
 
-    const customers = await prisma.customer.findMany({ where: { email: e }, select: { id: true } });
-    for (const c of customers) {
-      await prisma.customer.update({
-        where: { id: c.id },
-        data: { name: 'Erased at request', email: `${stamp}@erased.invalid`, phone: null, isActive: false },
-      });
-    }
+    // Same for customers. Customer.email is nullable and NOT unique (checked —
+    // only portalToken is), so every matching row can take the same placeholder
+    // in one statement, exactly as the loop did one at a time.
+    const customersErased = await prisma.customer.updateMany({
+      where: { email: e },
+      data: { name: 'Erased at request', email: `${stamp}@erased.invalid`, phone: null, isActive: false },
+    });
 
     await prisma.paymentRequest.updateMany({ where: { payeeEmail: e }, data: { payeeEmail: null, payeePhone: null } });
 
@@ -102,7 +106,7 @@ export async function erasePersonalData(email: string, reason: string): Promise<
 
     await writeAudit({
       actorId: ctx.user.id, action: 'DELETE', entityType: 'Setting',
-      summary: `DPDP erasure for ${e}: ${leads.length} leads, ${customers.length} buyers. Reason: ${reason.slice(0, 200)}`,
+      summary: `DPDP erasure for ${e}: ${leads.length} leads, ${customersErased.count} buyers. Reason: ${reason.slice(0, 200)}`,
     });
 
     await sendEmail({
@@ -112,7 +116,7 @@ export async function erasePersonalData(email: string, reason: string): Promise<
     }).catch(() => undefined);
 
     revalidatePath('/admin/privacy');
-    return { ok: true, message: `Erased ${leads.length} lead records and ${customers.length} buyer records.` };
+    return { ok: true, message: `Erased ${leads.length} lead records and ${customersErased.count} buyer records.` };
   } catch (err) { return toActionError(err); }
 }
 

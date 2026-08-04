@@ -22,7 +22,7 @@ export function MyAutomations({ prefs: initial }: { prefs: MyAutomationPrefs }) 
   const [prefs, setPrefs] = React.useState<MyAutomationPrefs>(initial);
   const [q, setQ] = React.useState('');
   const [openDepts, setOpenDepts] = React.useState<Set<string>>(new Set());
-  const [, start] = React.useTransition();
+  const [pending, start] = React.useTransition();
 
   const onCount = Object.values(prefs).filter((p) => p.on).length;
 

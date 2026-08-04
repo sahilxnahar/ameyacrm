@@ -46,7 +46,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
         </div>
         <div className="mt-2 flex gap-2">
           <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Add a subtask…" />
-          <Button size="sm" disabled={pending || subtitle.trim().length < 3} onClick={() => run(() => addSubtask(taskId, subtitle), 'Subtask added', () => setSubtitle(''))}><Plus className="h-4 w-4" /></Button>
+          <Button size="sm" disabled={pending || subtitle.trim().length < 3} onClick={() => run(() => addSubtask(taskId, subtitle), 'Subtask added', () => setSubtitle(''))} aria-label="Add this subtask"><Plus className="h-4 w-4" /></Button>
         </div>
       </section>
 
@@ -85,7 +85,7 @@ export function TaskManagePanel({ taskId, subtasks, dependencies, candidates, al
             <option value="">Select a task…</option>
             {candidates.map((c) => <option key={c.id} value={c.id}>{c.reference} · {c.title}</option>)}
           </select>
-          <Button size="sm" disabled={pending || !depId} onClick={() => run(() => addTaskDependency(taskId, depId), 'Dependency added', () => setDepId(''))}><Plus className="h-4 w-4" /></Button>
+          <Button size="sm" disabled={pending || !depId} onClick={() => run(() => addTaskDependency(taskId, depId), 'Dependency added', () => setDepId(''))} aria-label="Add this dependency"><Plus className="h-4 w-4" /></Button>
         </div>
       </section>
 

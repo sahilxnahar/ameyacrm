@@ -106,9 +106,9 @@ export function MarketingView({ campaigns, posts, projects, socialActivities, co
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {a.leadId && <Button asChild size="sm" variant="ghost" className="h-7 text-xs"><a href={`/sales/${a.leadId}`}>Lead</a></Button>}
-                {a.url && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={a.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
+                {a.url && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label="Open the original post"><a href={a.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
                 {!a.isRead && <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => readAct(a.id)} title="Mark read"><CheckCheck className="h-4 w-4" /></Button>}
-                {canManage && <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => delAct(a.id)}><Trash2 className="h-4 w-4" /></Button>}
+                {canManage && <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => delAct(a.id)} aria-label="Delete this activity"><Trash2 className="h-4 w-4" /></Button>}
               </div>
             </div>
           ))}

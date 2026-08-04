@@ -1,4 +1,5 @@
 'use server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
@@ -139,6 +140,10 @@ export async function settleRaBill(id: string): Promise<RaResult> {
         return { error: held.status === 'DRAFT' ? `Settlement ${held.number} is already raised and waiting for approval.` : 'This RA bill is already settled.' };
       }
     }
+    // The exact link we saw. The claim below swaps FROM this value, so a
+    // settlement that was rejected (leaving a cancelled voucher attached) can be
+    // re-attempted, while a settlement already in flight cannot.
+    const seenVoucherId = bill.voucherId;
 
     // Document gate: block labour vendors without verified EPF/ESI for the month.
     if (bill.vendorId) {
@@ -178,8 +183,36 @@ export async function settleRaBill(id: string): Promise<RaResult> {
     // largest single amounts leaving the business.
     const needsApproval = await needsPaymentApproval(Number(bill.netPayable));
 
+    /*
+     * Claim the bill BEFORE spending a voucher number on it.
+     *
+     * The checks above are separated from this write by roughly eight `await`
+     * boundaries — three compliance gates, an MSME lookup, a vendor lookup and
+     * the approval-threshold read. Read-then-write across that gap is a race,
+     * and it was a real one: two concurrent settlements both read CERTIFIED,
+     * both passed, and both created a payment voucher. Reproduced during the
+     * August 2026 audit at ₹18,80,000 against a ₹9,40,000 bill. The ledger's
+     * `once` idempotency key does not help, because it keys on the voucher id
+     * and those are two different vouchers.
+     *
+     * `updateMany` with the state we expect in its WHERE is a compare-and-swap:
+     * one statement, serialised by Postgres, so the loser matches zero rows and
+     * stops here. The voucher id is generated up front so the claim can carry
+     * it — otherwise the winner would have to be decided on `status` alone, and
+     * an above-threshold settlement deliberately leaves the status at CERTIFIED.
+     */
+    const voucherId = randomUUID();
+    const claimed = await prisma.raBill.updateMany({
+      where: { id: billId, status: 'CERTIFIED', voucherId: seenVoucherId },
+      data: { status: needsApproval ? 'CERTIFIED' : 'PAID', voucherId },
+    });
+    if (claimed.count === 0) {
+      return { error: 'Somebody settled this RA bill a moment ago. Refresh to see the settlement — nothing was paid twice.' };
+    }
+
     const voucher = await prisma.voucher.create({
       data: {
+        id: voucherId,
         number: await nextVoucherNumber('CP'), kind: 'BANK_PAID', status: needsApproval ? 'DRAFT' : 'POSTED',
         voucherDate: new Date(), partyName: vendor?.name ?? 'Contractor', vendorId: bill.vendorId,
         projectId: bill.projectId, amount: bill.netPayable, mode: 'BANK_TRANSFER',
@@ -188,7 +221,7 @@ export async function settleRaBill(id: string): Promise<RaResult> {
         retentionAmount: bill.retentionAmount, cessAmount: bill.cessAmount, deductionAmount: bill.deductions, createdById: ctx.user.id,
       },
     });
-    await prisma.raBill.update({ where: { id: billId }, data: { status: needsApproval ? 'CERTIFIED' : 'PAID', voucherId: voucher.id } });
+    // Status and voucherId were both set by the claim above; nothing to update.
     if (needsApproval) await notifyPaymentApprovers(voucher.id, ctx.user.id, `${voucher.number} · ${vendor?.name ?? 'Contractor'} · Rs ${Number(bill.netPayable).toLocaleString('en-IN')}`);
     else await postVoucherById(voucher.id, ctx.user.id);
     await writeAudit({ actorId: ctx.user.id, action: 'CREATE', entityType: 'RaBill', entityId: billId, summary: `Settled ${bill.number} → voucher ${voucher.number} (net ₹${Number(bill.netPayable)})` });

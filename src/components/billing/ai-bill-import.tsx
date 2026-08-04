@@ -175,7 +175,7 @@ export function AiBillImport({ geminiEnabled, projects }: { geminiEnabled: boole
                     <Input value={it.quantity} onChange={(e) => patch(idx, 'quantity', e.target.value)} placeholder="Qty" />
                     <Input value={it.rate} onChange={(e) => patch(idx, 'rate', e.target.value)} placeholder="Price" />
                     <Input value={it.gstRate} onChange={(e) => patch(idx, 'gstRate', e.target.value)} placeholder="GST %" />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setItems(items.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setItems(items.filter((_, i) => i !== idx))} aria-label="Remove this line"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={() => setItems([...items, { description: '', quantity: '1', rate: '', gstRate: '18' }])}><Plus className="h-4 w-4" /> Add line</Button>

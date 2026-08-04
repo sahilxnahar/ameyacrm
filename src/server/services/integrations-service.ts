@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
 import { env } from '@/config/env';
+import { storageIsPrivate } from '@/lib/storage/storage';
 
 export type Health = 'live' | 'configured' | 'off' | 'broken';
 
@@ -56,8 +57,20 @@ export async function getIntegrations(): Promise<Integration[]> {
     {
       key: 'blob', name: 'Vercel Blob', category: 'Storage',
       what: 'Every uploaded document, floor plan, photo and signed PDF.',
-      health: env.BLOB_READ_WRITE_TOKEN ? 'live' : 'broken',
-      detail: env.BLOB_READ_WRITE_TOKEN ? 'Token present' : 'No token — uploads will fail',
+      /*
+       * 'warn', not 'live', when Blob is the provider and it is holding real
+       * documents. Vercel Blob has no private mode: every object is readable by
+       * anyone with the URL, permanently, and the folder-permission checks are
+       * bypassed entirely by anyone who obtains one. That is a defensible
+       * trade for a floor plan and an indefensible one for a title deed, and
+       * the operator cannot make that call without being told.
+       */
+      health: !env.BLOB_READ_WRITE_TOKEN ? 'broken' : storageIsPrivate() ? 'live' : 'configured',
+      detail: !env.BLOB_READ_WRITE_TOKEN
+        ? 'No token — uploads will fail'
+        : storageIsPrivate()
+          ? 'Token present, files are private'
+          : 'Token present — but files on Vercel Blob are readable by anyone with the link, forever. Use STORAGE_PROVIDER=s3 for title deeds, agreements and ID documents.',
       needs: 'Free tier on your Vercel account',
       setupHref: '/api/admin/storage-check',
     },

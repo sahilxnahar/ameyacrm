@@ -5,6 +5,7 @@ import { can } from '@/lib/rbac/can';
 import { getObjectStream, signedDownloadUrl } from '@/lib/storage/storage';
 import { writeAudit } from '@/lib/audit/log';
 import { lockedFolderIds, getFolderTree } from '@/server/services/folder-access-service';
+import { isInlineSafe } from '@/lib/files/safety';
 
 /** Secure, audited file access for ANY type. ?download=1 forces a download; default previews inline. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -70,6 +71,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const download = req.nextUrl.searchParams.get('download') === '1';
   await writeAudit({ actorId: ctx.user.id, action: 'DOWNLOAD', entityType: 'FileObject', entityId: file.id, summary: `${download ? 'Downloaded' : 'Viewed'} ${file.originalName}` });
 
+  /*
+   * Never render something we are not sure is inert.
+   *
+   * `file.mimeType` is whatever the browser claimed at upload — see
+   * registerUploadedDocument, which stores `file.type` verbatim. Serving those
+   * bytes back with that type AND `Content-Disposition: inline` from our own
+   * origin is same-origin script execution for anything the browser will run.
+   * On the S3 and Blob providers the redirect below moves it off our origin,
+   * but the `local` provider has no signed URL, so it streamed from here.
+   *
+   * Uploads are now filtered too (lib/files/safety.ts), so this is the second
+   * of two locks — it also covers every file uploaded BEFORE that filter
+   * existed, which is the set that actually matters today.
+   */
+  const inline = !download && isInlineSafe(file.mimeType, file.originalName);
+
   if (!download) {
     const signed = await signedDownloadUrl(file.key);
     if (signed) return NextResponse.redirect(signed);
@@ -78,8 +95,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   return new NextResponse(Buffer.from(body) as BodyInit, {
     headers: {
       'Content-Type': file.mimeType || 'application/octet-stream',
-      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="${encodeURIComponent(file.originalName)}"`,
+      'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(file.originalName)}"`,
       'Content-Length': String(file.size),
+      // Stops the browser second-guessing the type and deciding a text/plain
+      // file full of markup is really HTML.
+      'X-Content-Type-Options': 'nosniff',
+      // Belt to that brace: even if something does execute, it can reach nothing.
+      'Content-Security-Policy': "default-src 'none'; sandbox; style-src 'unsafe-inline'",
     },
   });
 }

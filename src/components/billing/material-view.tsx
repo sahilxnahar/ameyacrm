@@ -71,8 +71,8 @@ export function MaterialView({ requests, projects, departments, approvers, canAp
                 <TableCell>
                   {canApprove && r.needsMyApproval && (
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(r.id, 'APPROVED')}><Check className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(r.id, 'REJECTED')}><X className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(r.id, 'APPROVED')} aria-label="Approve this material request"><Check className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(r.id, 'REJECTED')} aria-label="Reject this material request"><X className="h-4 w-4" /></Button>
                     </div>
                   )}
                 </TableCell>
@@ -102,7 +102,7 @@ export function MaterialView({ requests, projects, departments, approvers, canAp
                   <input list="materials" className={selectCls + ' flex-[2]'} placeholder="Material" value={it.material} onChange={(e) => setItems((p) => p.map((x, i) => i === idx ? { ...x, material: e.target.value } : x))} />
                   <Input className="w-20" placeholder="Qty" type="number" value={it.quantity} onChange={(e) => setItems((p) => p.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
                   <Input className="w-20" placeholder="Unit" value={it.unit} onChange={(e) => setItems((p) => p.map((x, i) => i === idx ? { ...x, unit: e.target.value } : x))} />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} aria-label="Remove this line"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
               <datalist id="materials">{COMMON.map((m) => <option key={m} value={m} />)}</datalist>

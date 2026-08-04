@@ -63,7 +63,7 @@ export function AutomationView({ rules, runs, users, templates }: {
       <div className="flex justify-end"><Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> New rule</Button></div>
 
       <div className="grid gap-3">
-        {rules.length === 0 && <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No automations yet. Create your first — e.g. "When a lead is created, assign round-robin and notify."</CardContent></Card>}
+        {rules.length === 0 && <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">No automations yet. Create your first — e.g. &ldquo;When a lead is created, assign round-robin and notify.&rdquo;</CardContent></Card>}
         {rules.map((r) => (
           <Card key={r.id}><CardContent className="flex items-center gap-4 p-4">
             <Zap className={`h-5 w-5 ${r.isActive ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -73,7 +73,7 @@ export function AutomationView({ rules, runs, users, templates }: {
             </div>
             <Switch checked={r.isActive} onCheckedChange={(v) => toggle(r.id, v)} />
             <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Edit</Button>
-            <Button variant="ghost" size="icon" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => remove(r.id)} aria-label="Delete this automation"><Trash2 className="h-4 w-4" /></Button>
           </CardContent></Card>
         ))}
       </div>
@@ -105,7 +105,7 @@ export function AutomationView({ rules, runs, users, templates }: {
                   <select value={c.field} className={sel} onChange={(e) => setConds((p) => p.map((x, j) => j === i ? { ...x, field: e.target.value } : x))}>{FIELDS.map((f) => <option key={f} value={f}>{f}</option>)}</select>
                   <select value={c.op} className={sel} onChange={(e) => setConds((p) => p.map((x, j) => j === i ? { ...x, op: e.target.value } : x))}>{OPS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                   <Input className="flex-1" value={c.value} onChange={(e) => setConds((p) => p.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} placeholder="value" />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setConds((p) => p.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setConds((p) => p.filter((_, j) => j !== i))} aria-label="Remove this condition"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
               <Button type="button" variant="outline" size="sm" onClick={() => setConds((p) => [...p, { field: 'source', op: 'eq', value: '' }])}><Plus className="h-4 w-4" /> Add condition</Button>
@@ -117,7 +117,7 @@ export function AutomationView({ rules, runs, users, templates }: {
                 <div key={i} className="space-y-2 rounded-md border p-2">
                   <div className="flex gap-2">
                     <select value={a.type} className={sel + ' flex-1'} onChange={(e) => setActs((p) => p.map((x, j) => j === i ? { type: e.target.value, params: {} } : x))}>{ACTION_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setActs((p) => p.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setActs((p) => p.filter((_, j) => j !== i))} aria-label="Remove this action"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                   {a.type === 'ASSIGN_ROUND_ROBIN' && (
                     <div className="flex flex-wrap gap-1">{users.map((u) => { const ids = (a.params.userIds as string[]) ?? []; const on = ids.includes(u.id); return (

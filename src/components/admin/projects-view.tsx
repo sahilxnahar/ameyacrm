@@ -28,12 +28,23 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
   const [pending, start] = React.useTransition();
   const [addOpen, setAddOpen] = React.useState(projects.length === 0);
   const [editing, setEditing] = React.useState<string | null>(null);
+  /*
+   * Per-field validation messages from the server action (AMH-015).
+   *
+   * A rejected save used to raise one toast reading "Code: must be at most 12
+   * characters  •  ReraNumber: invalid". On a six-field form that is workable;
+   * on the company statutory form it is fifteen field names in a strip that
+   * disappears after four seconds, above a form that has scrolled. The message
+   * belongs under the box it is about.
+   */
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
   const add = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const name = String(f.get('name') || '').trim();
-    if (!name) { toast.error('Give the project a name.'); return; }
+    if (!name) { setFieldErrors({ name: 'Give the project a name.' }); return; }
+    setFieldErrors({});
     start(async () => {
       const r = await createProject({
         name,
@@ -43,7 +54,14 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
         reraNumber: String(f.get('reraNumber') || ''),
         description: String(f.get('description') || ''),
       });
-      if ('error' in r) { toast.error(r.error); return; }
+      if ('error' in r) {
+        // Keep the toast: it is what someone notices. The inline copy is what
+        // they act on. Neither replaces the other.
+        toast.error(r.error);
+        setFieldErrors(r.fields ?? {});
+        return;
+      }
+      setFieldErrors({});
       toast.success(`Project “${name}” created`);
       setAddOpen(false);
       router.refresh();
@@ -90,12 +108,12 @@ export function ProjectsView({ projects }: { projects: ProjectRow[] }) {
         <Card className="p-4">
           <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-brass" /> Add a project</p>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-2">
-            <Field label="Project name *"><Input name="name" required placeholder="e.g. Ameya 494" /></Field>
-            <Field label="Short code (optional)"><Input name="code" placeholder="Auto-made from the name if left blank" /></Field>
-            <Field label="City"><Input name="city" defaultValue="Bangalore" /></Field>
-            <Field label="RERA number (optional)"><Input name="reraNumber" placeholder="PRM/KA/RERA/…" /></Field>
-            <div className="sm:col-span-2"><Field label="Address (optional)"><Input name="address" placeholder="Site address" /></Field></div>
-            <div className="sm:col-span-2"><Field label="Description (optional)"><Input name="description" placeholder="One line about this project" /></Field></div>
+            <Field label="Project name *" error={fieldErrors.name}><Input name="name" required placeholder="e.g. Ameya 494" /></Field>
+            <Field label="Short code (optional)" error={fieldErrors.code}><Input name="code" placeholder="Auto-made from the name if left blank" /></Field>
+            <Field label="City" error={fieldErrors.city}><Input name="city" defaultValue="Bangalore" /></Field>
+            <Field label="RERA number (optional)" error={fieldErrors.reraNumber}><Input name="reraNumber" placeholder="PRM/KA/RERA/…" /></Field>
+            <div className="sm:col-span-2"><Field label="Address (optional)" error={fieldErrors.address}><Input name="address" placeholder="Site address" /></Field></div>
+            <div className="sm:col-span-2"><Field label="Description (optional)" error={fieldErrors.description}><Input name="description" placeholder="One line about this project" /></Field></div>
             <div className="sm:col-span-2">
               <Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />} Create project</Button>
             </div>

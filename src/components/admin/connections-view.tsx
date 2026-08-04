@@ -26,7 +26,7 @@ export function ConnectionsView({ providers, flashOk, flashError }: { providers:
   );
   const [busy, setBusy] = useState<string | null>(null);
   const [testTo, setTestTo] = useState('');
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
 
   const groups = [...new Set(providers.map((p) => p.group))];
 

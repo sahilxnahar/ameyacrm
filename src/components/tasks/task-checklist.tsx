@@ -6,7 +6,7 @@ import { toggleChecklistItem } from '@/server/actions/tasks';
 
 export function TaskChecklist({ items }: { items: { id: string; text: string; isDone: boolean; isMilestone: boolean }[] }) {
   const router = useRouter();
-  const [, start] = React.useTransition();
+  const [pending, start] = React.useTransition();
   const done = items.filter((i) => i.isDone).length;
 
   return (

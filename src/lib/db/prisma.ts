@@ -45,6 +45,29 @@ export function isPooledConnection(): boolean {
  */
 const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_MS ?? 800);
 
+/**
+ * How many database round-trips this process has made.
+ *
+ * A page is slow far more often because it issues forty queries than because
+ * any one of them is slow, and the slow-query log above cannot see that — forty
+ * queries of 12ms each never trip an 800ms threshold, but they are half a second
+ * of latency. This counter is what makes "the dashboard costs N queries" a
+ * number that can be asserted on rather than argued about.
+ *
+ * An integer increment, so it costs nothing in production.
+ */
+let queriesIssued = 0;
+
+/** Round-trips since the process started. Monotonic. */
+export const queryCount = (): number => queriesIssued;
+
+/** Count the round-trips `fn` makes. Single-threaded per request, so this is exact. */
+export async function countQueries<T>(fn: () => Promise<T>): Promise<{ result: T; queries: number }> {
+  const before = queriesIssued;
+  const result = await fn();
+  return { result, queries: queriesIssued - before };
+}
+
 function makePrisma() {
   const base = new PrismaClient({
     datasourceUrl: connectionUrl(),
@@ -53,6 +76,7 @@ function makePrisma() {
   return base.$extends({
     query: {
       async $allOperations({ model, operation, args, query }) {
+        queriesIssued++;
         const start = performance.now();
         // Transparent at-rest encryption for PII (bank account numbers, PAN).
         // Encrypt on the way in, decrypt on the way out — every call site, and

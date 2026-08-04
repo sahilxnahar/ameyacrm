@@ -5,6 +5,7 @@ import path from 'node:path';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '@/config/env';
+import { safeSegment } from '@/lib/files/safety';
 
 /**
  * Pluggable object storage:
@@ -38,7 +39,27 @@ export async function putObject(key: string, body: Buffer, contentType: string):
     if (!env.BLOB_READ_WRITE_TOKEN) throw new Error(STORAGE_HELP);
     try {
       const { put } = await import('@vercel/blob');
-      const res = await put(key, body, { access: 'public', contentType, token: env.BLOB_READ_WRITE_TOKEN, addRandomSuffix: false });
+      /*
+       * `access: 'public'` is the ONLY option this version of @vercel/blob has.
+       *
+       * That means every document, chat attachment and avatar on this provider
+       * is world-readable to anyone holding the URL — and the folder-permission
+       * checks in /api/files/[id] are bypassed entirely by anyone who obtains
+       * one. The URL is stored in FileObject.key, returned in API responses, and
+       * leaks through Referer.
+       *
+       * `addRandomSuffix: true` is the mitigation available here: it stops the
+       * URL being derivable from folder id, timestamp and filename, so it is at
+       * least genuinely unguessable rather than merely obscure. It is NOT a
+       * substitute for authorisation.
+       *
+       * For title deeds, buyer agreements and ID documents, use
+       * STORAGE_PROVIDER=s3 — that path already issues short-lived signed URLs
+       * through `signedDownloadUrl` and honours the permission checks properly.
+       * Admin → System health says which provider is in use and warns when it
+       * is this one.
+       */
+      const res = await put(key, body, { access: 'public', contentType, token: env.BLOB_READ_WRITE_TOKEN, addRandomSuffix: true });
       return { key: res.url, bucket: 'blob', size: body.length }; // store the public URL as the key
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
@@ -66,8 +87,16 @@ export async function getObjectStream(key: string): Promise<{ body: Buffer }> {
   return { body: Buffer.from(bytes) };
 }
 
+/**
+ * A URL that expires, where the provider supports one.
+ *
+ * S3 issues a genuine short-lived signature. Vercel Blob has no private mode in
+ * this version, so the "signed" URL is just the public one — unguessable, but
+ * permanent and unauthenticated. That difference is why `storageIsPrivate()`
+ * exists and why System health surfaces it.
+ */
 export async function signedDownloadUrl(key: string, expiresIn = 300): Promise<string | null> {
-  if (env.STORAGE_PROVIDER === 'blob' || isBlobUrl(key)) return key; // already a public (unguessable) URL
+  if (env.STORAGE_PROVIDER === 'blob' || isBlobUrl(key)) return key; // public + unguessable, NOT authorised
   if (env.STORAGE_PROVIDER === 'local') return null; // served via /api/files
   return getSignedUrl(client(), new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }), { expiresIn });
 }
@@ -82,7 +111,28 @@ export async function deleteObject(key: string): Promise<void> {
   await client().send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
 }
 
+/**
+ * Build a storage key for an uploaded document.
+ *
+ * BOTH segments are sanitised. The filename always was; `folderId` was not, and
+ * it comes straight from a form field. On the local provider `putObject` does
+ * `path.join(LOCAL_DIR, key)` followed by `mkdir -p` and `writeFile`, so a
+ * folderId of `../../../src/app` was an arbitrary file write outside the upload
+ * directory — remote code execution on a self-hosted deploy. The folder's
+ * existence is also checked by the caller BEFORE the bytes are written; it used
+ * to be validated only afterwards, by the foreign key on `document.create`.
+ */
 export function makeObjectKey(folderId: string, filename: string): string {
-  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return `documents/${folderId}/${Date.now()}-${crypto.randomUUID()}-${safe}`;
+  return `documents/${safeSegment(folderId)}/${Date.now()}-${crypto.randomUUID()}-${safeSegment(filename, 'file')}`;
+}
+
+/**
+ * Does the configured provider actually keep files private?
+ *
+ * True only for S3, where `signedDownloadUrl` issues a real expiring signature.
+ * On Vercel Blob every object is world-readable at a permanent URL, so the
+ * answer is no and the operator should know that before storing title deeds.
+ */
+export function storageIsPrivate(): boolean {
+  return env.STORAGE_PROVIDER === 's3';
 }

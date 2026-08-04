@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useUnsavedChanges } from '@/lib/forms/use-unsaved-changes';
 import { toast } from 'sonner';
 import { Plus, HardHat, ShieldCheck, PiggyBank, Landmark, Send, Wallet, X } from 'lucide-react';
 import { StatCard } from '@/components/layout/stat-card';
@@ -28,7 +29,16 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
 }) {
   const [showNew, setShowNew] = React.useState(false);
   const [submitting, setSubmitting] = React.useState<Bill | null>(null);
-  const [, start] = React.useTransition();
+  /*
+   * `isPending` is kept, not discarded.
+   *
+   * It used to be `const [, start] = useTransition()`, so the Pay button was
+   * never disabled and a double-click sent two settlements. The server now
+   * refuses the second one atomically, but a button that looks live while a
+   * payment is in flight invites the click in the first place — and the same
+   * pattern was in 13 components.
+   */
+  const [pending, start] = React.useTransition();
 
   // New-bill form state
   const [vendorId, setVendorId] = React.useState('');
@@ -39,6 +49,13 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
   const [ded, setDed] = React.useState('0');
   const [section, setSection] = React.useState('194C');
   const [narration, setNarration] = React.useState('');
+
+  /*
+   * An RA bill is a money document with seven fields and a computed preview the
+   * engineer checks before saving. Losing it to a closed tab means re-deriving
+   * the certified value from the measurement sheet again.
+   */
+  useUnsavedChanges(showNew && (gross.trim() !== '' || narration.trim() !== '' || vendorId !== '' || projectId !== ''));
 
   const preview = computeRaBill({
     grossValue: Number(gross) || 0, deductions: Number(ded) || 0,
@@ -131,10 +148,12 @@ export function RaBillsView({ bills, vendors, projects, approvers, summary, canM
             <div className="w-28 shrink-0 text-right font-medium tabular-nums">{inr(b.net)}</div>
             <div className="flex shrink-0 gap-1">
               {canManage && (b.status === 'DRAFT' || b.status === 'REJECTED') && (
-                <Button size="sm" variant="outline" onClick={() => setSubmitting(b)} className="gap-1"><Send className="h-3.5 w-3.5" /> Submit</Button>
+                <Button size="sm" variant="outline" disabled={pending} onClick={() => setSubmitting(b)} className="gap-1"><Send className="h-3.5 w-3.5" /> Submit</Button>
               )}
               {canPay && b.status === 'CERTIFIED' && (
-                <Button size="sm" onClick={() => settle(b)} className="gap-1"><Wallet className="h-3.5 w-3.5" /> Pay</Button>
+                <Button size="sm" disabled={pending} onClick={() => settle(b)} className="gap-1">
+                  <Wallet className="h-3.5 w-3.5" /> {pending ? 'Paying…' : 'Pay'}
+                </Button>
               )}
             </div>
           </div>
@@ -162,7 +181,7 @@ function SubmitModal({ bill, approvers, onClose }: { bill: Bill; approvers: Opt[
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-1 flex items-center justify-between"><div className="flex items-center gap-2 font-semibold"><HardHat className="h-4 w-4 text-primary" /> Submit {bill.number} for certification</div><button onClick={onClose}><X className="h-4 w-4 text-muted-foreground" /></button></div>
+        <div className="mb-1 flex items-center justify-between"><div className="flex items-center gap-2 font-semibold"><HardHat className="h-4 w-4 text-primary" /> Submit {bill.number} for certification</div><button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button></div>
         <p className="mb-3 text-sm text-muted-foreground">Choose the certifiers in order (Site Engineer → Independent Engineer → Finance). Each approves in turn.</p>
         <div className="max-h-64 space-y-1 overflow-y-auto">
           {approvers.map((a, i) => {

@@ -65,7 +65,7 @@ export function NriDesk({ leads }: { leads: Lead[] }) {
                 <TableCell><Badge variant="secondary">{titleCase(l.status)}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{l.nextFollowUp ? formatDateTime(l.nextFollowUp) : '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{l.owner ?? '—'}</TableCell>
-                <TableCell><Button size="sm" variant="ghost" onClick={() => setSched(l)}><CalendarPlus className="h-4 w-4" /></Button></TableCell>
+                <TableCell><Button size="sm" variant="ghost" onClick={() => setSched(l)} aria-label="Schedule a call with this lead"><CalendarPlus className="h-4 w-4" /></Button></TableCell>
               </TableRow>
             ))}
           </TableBody>

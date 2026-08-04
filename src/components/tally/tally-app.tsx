@@ -806,7 +806,7 @@ function ItemInvoice(props: {
                 <td className="p-1 text-right"><input inputMode="decimal" value={l.rate} onChange={(e) => setItem(i, { rate: e.target.value })} className={`${cls} w-20 text-right`} /></td>
                 <td className="p-1 text-right tabular-nums">{it ? it.gstRate : 0}</td>
                 <td className="p-1 text-right tabular-nums">{inr(amount)}</td>
-                <td className="p-1 text-center"><button onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)} className="text-rose-700">✕</button></td>
+                <td className="p-1 text-center"><button onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)} className="text-rose-700" aria-label="Remove this line">✕</button></td>
               </tr>
             );
           })}

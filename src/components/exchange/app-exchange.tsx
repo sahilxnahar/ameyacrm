@@ -144,7 +144,7 @@ export function AppExchange({ connectors, categories, installs: initial }: { con
                   : <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">Not built yet</span>}</div>
                 <div className="text-xs text-muted-foreground">{detail.category} · {AUTH_LABEL[detail.auth]}</div>
               </div>
-              <button onClick={() => setDetail(null)}><X className="h-4 w-4 text-muted-foreground" /></button>
+              <button onClick={() => setDetail(null)} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">{isWorking(detail.slug) ? detail.blurb : 'This app appears in the directory but is not built yet.'}</p>
             {!isWorking(detail.slug) && (

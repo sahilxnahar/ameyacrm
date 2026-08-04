@@ -94,7 +94,7 @@ export function LeaseView({ leases, tenants, maintenance, tenantOptions, units, 
                 <TableCell><Badge variant={m.status === 'RESOLVED' || m.status === 'CLOSED' ? 'success' : m.status === 'OPEN' ? 'secondary' : 'default'}>{titleCase(m.status)}</Badge></TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">⋯</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" aria-label="Change the status of this lease">⋯</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {MSTATUS.map((s) => <DropdownMenuItem key={s} onClick={() => setStatus(m.id, s)}><Check className="h-4 w-4" /> {titleCase(s)}</DropdownMenuItem>)}
                     </DropdownMenuContent>

@@ -17,6 +17,31 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.19',
+    date: '4 Aug 2026',
+    highlights: [
+      'The Cost-to-Complete report was reading the wrong budget. It claimed to use the approved budget and in fact used the newest unapproved draft \u2014 so the screen that answers \u201Cis this project going to make money?\u201D has been comparing spend against a figure nobody signed off. Worth re-checking any decision taken from it.',
+      'The big list screens no longer read the whole table to show you fifty rows. The Sales board, the Explorer, the Kanban board, the recent-tasks list and the notification bell each went from a full scan and a sort to a short index walk \u2014 measured on 60,000 leads, 80,000 tasks and 200,000 notifications.',
+      'The Launchpad asks the database for each figure once instead of twice. The alert tiles and the app badges shared eleven counts and each fetched its own copy, which was slower and could also show two different numbers for the same thing on the same screen.',
+      'Uploaded files cannot be handed to the browser as code. The upload allow-list was enforced only in the page, so an HTML or SVG file could be stored and then opened from our own address; storage and display are now decided separately on the server. Files on Vercel Blob remain readable by anyone holding the link \u2014 Admin \u2192 System health now says so plainly.',
+      'Every form label is now attached to its box. Not one of the 192 fields in the product was, so clicking a label did nothing and a screen reader announced an unnamed field \u2014 and 52 icon-only buttons, including Approve and Reject sitting next to each other on Payments, had no name at all.',
+      'A rejected form now shows what is wrong next to the box it is wrong in, rather than only as a list of field names in a message that fades. The site log and the RA bill also warn before a closed tab throws the work away.',
+      'The retention sweep, the DPDP erasure, sequence enrolment and the Cost-to-Complete report no longer make one database call per row. Enrolling 500 leads was up to a thousand calls in a row.',
+    ],
+  },
+  {
+    version: 'v16.18',
+    date: '4 Aug 2026',
+    highlights: [
+      'Double-clicking Pay on an RA bill can no longer pay a contractor twice. The settlement is now claimed atomically before a voucher number is spent, and the button disables while the payment is in flight. This was reproduced before the fix at \u20B918,80,000 against a \u20B99,40,000 bill.',
+      'Every date and time in the product is now Indian Standard Time. A reminder set for 3:30 PM fired at 9:00 PM, and anything entered after 6:30 PM was filed under the previous day \u2014 which on a statutory register is a compliance problem, not a display one.',
+      'Money set against a supplier bill can no longer exceed the bill. The outstanding amount is re-checked inside the transaction, and compared in paise rather than as a decimal.',
+      'Reference numbers can no longer collide. Work requests, data requests and signature requests used a row count, which two simultaneous users both read the same way; the seeding for lead and task references read an arbitrary 5,000-row slice and could restart below the true maximum, losing enquiries.',
+      'Merging duplicate leads is all-or-nothing. A half-finished merge used to leave history attached to a lead that was never archived, or archive leads whose history was never moved.',
+      'Tests and lint now run on every change, against a real database. The suite had 612 passing tests that nothing enforced, 25 database tests that had never run anywhere, and no lint configuration at all. The first real run immediately found that the ledger\u2019s double-post protection was missing from every database built from the Prisma schema \u2014 that is fixed too.',
+    ],
+  },
+  {
     version: 'v16.17',
     date: '4 Aug 2026',
     highlights: [

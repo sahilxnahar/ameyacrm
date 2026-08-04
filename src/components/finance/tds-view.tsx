@@ -95,7 +95,8 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
   const [searching, setSearching] = React.useState(false);
   const [sel, setSel] = React.useState<Set<string>>(new Set());
   const [challan, setChallan] = React.useState('');
-  const [, start] = React.useTransition();
+  // Kept, not discarded — a batch "mark deposited" must not fire twice.
+  const [pending, start] = React.useTransition();
 
   const shown = results ? results.entries : dashboard.recent;
   const totals = results ? results.totals : { accrued: dashboard.accrued, deposited: dashboard.deposited, pending: dashboard.pending };
@@ -260,7 +261,7 @@ export function TdsView({ dashboard, canManage }: { dashboard: Dashboard; canMan
             <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
               <span className="text-sm">{sel.size} selected</span>
               <Input value={challan} onChange={(e) => setChallan(e.target.value)} placeholder="Challan / BSR no." className="h-8 max-w-[200px]" />
-              <Button size="sm" onClick={markDeposited} disabled={sel.size === 0} className="gap-1"><Check className="h-4 w-4" /> Mark deposited</Button>
+              <Button size="sm" onClick={markDeposited} disabled={pending || sel.size === 0} className="gap-1"><Check className="h-4 w-4" /> {pending ? 'Marking…' : 'Mark deposited'}</Button>
             </div>
           )}
         </div>

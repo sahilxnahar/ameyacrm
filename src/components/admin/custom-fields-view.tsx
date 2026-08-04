@@ -61,7 +61,7 @@ export function CustomFieldsView({ fields }: { fields: Field[] }) {
             <div className="flex items-center gap-3">
               <Badge variant={f.isActive ? 'success' : 'secondary'}>{f.isActive ? 'Active' : 'Hidden'}</Badge>
               <Switch checked={f.isActive} disabled={pending} onCheckedChange={(v) => act(() => toggleCustomField(f.id, v), 'Updated')} />
-              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => act(() => deleteCustomField(f.id), 'Deleted')}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" disabled={pending} onClick={() => act(() => deleteCustomField(f.id), 'Deleted')} aria-label="Delete this custom field"><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
         ))}

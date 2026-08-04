@@ -1,6 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
+import { revalidateSetting } from '@/lib/cache/settings-cache';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import { COMPANY_DEFAULTS, type CompanyDetails } from '@/config/company';
@@ -50,6 +51,9 @@ export async function saveCompanyDetails(input: Record<string, string>): Promise
       create: { key: 'company.details', value: clean as unknown as object },
     });
     await writeAudit({ actorId: ctx.user.id, action: 'UPDATE', entityType: 'Setting', summary: 'Updated company statutory details' });
+    // Cached across requests — the company name is in the header of every page,
+    // so a stale copy would be visible everywhere at once.
+    revalidateSetting('company.details');
     revalidatePath('/admin/company');
     revalidatePath('/billing');
     return { ok: true, warnings };

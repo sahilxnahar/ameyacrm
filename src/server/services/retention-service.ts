@@ -41,16 +41,19 @@ export async function runRetentionSweep(now: Date): Promise<{ enabled: boolean; 
       select: { id: true },
       take: 2000,
     });
-    for (const l of stale) {
-      await prisma.lead.update({
-        where: { id: l.id },
+    // One statement, not one per lead. `take: 2000` above meant the nightly
+    // retention sweep could make two thousand sequential round-trips; every row
+    // gets the identical anonymised value, so there was never a reason to.
+    if (stale.length) {
+      const done = await prisma.lead.updateMany({
+        where: { id: { in: stale.map((l) => l.id) } },
         data: {
           name: 'Removed (retention)', email: null, phone: null, requirement: null,
           locality: null, latitude: null, longitude: null,
           consentAt: null, consentSource: null, deletedAt: now,
         },
-      }).catch(() => undefined);
-      leadsPurged++;
+      });
+      leadsPurged = done.count;
     }
     if (leadsPurged > 0) {
       await writeAudit({ action: 'DELETE', entityType: 'Lead', summary: `Retention sweep: removed ${leadsPurged} dead lead(s) older than ${months} months` }).catch(() => undefined);

@@ -120,7 +120,7 @@ export function PricingView({ canManage, projects, projectId, units, commissions
                 <Field label="Note"><Input name="note" /></Field>
               </FormGrid>
               <div className="mt-3"><Button type="submit" disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}Compute & record</Button></div>
-              <p className="mt-2 text-xs text-muted-foreground">Rate comes from the partner's own % if set, else the slab table; TDS is deducted at source.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Rate comes from the partner&rsquo;s own % if set, else the slab table; TDS is deducted at source.</p>
             </form>
           )}
 

@@ -51,7 +51,7 @@ export function SetupClient({ appName }: { appName: string }) {
               <div>Email: <b>{result.credentials.email}</b></div>
               <div>Password: <b>{result.credentials.password}</b></div>
             </div>
-            <p className="text-xs text-muted-foreground">You'll set a new password on first login.</p>
+            <p className="text-xs text-muted-foreground">You&rsquo;ll set a new password on first login.</p>
             <Button asChild className="w-full"><a href="/login">Go to login →</a></Button>
           </div>
         )}

@@ -131,6 +131,7 @@ export function FloorPlanView({
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" className="text-destructive" disabled={pending}
+                  aria-label="Delete this floor plan"
                   onClick={() => { if (confirm(`Delete "${plan.name}"? The units themselves are not affected.`)) start(async () => { await deleteFloorPlan(plan.id); router.refresh(); }); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -193,9 +194,9 @@ export function FloorPlanView({
                         {(['←', '→', '↑', '↓'] as const).map((a, k) => (
                           <button key={a} className="h-6 w-6 rounded border" onClick={() => nudge(i, k === 0 ? -1 : k === 1 ? 1 : 0, k === 2 ? -1 : k === 3 ? 1 : 0)}>{a}</button>
                         ))}
-                        <button className="h-6 w-6 rounded border" onClick={() => resize(i, 1, 1)}>+</button>
-                        <button className="h-6 w-6 rounded border" onClick={() => resize(i, -1, -1)}>−</button>
-                        <button className="h-6 w-6 rounded border text-destructive" onClick={() => setPins(pins.filter((_, j) => j !== i))}><X className="mx-auto h-3 w-3" /></button>
+                        <button className="h-6 w-6 rounded border" onClick={() => resize(i, 1, 1)} aria-label="Make this pin bigger">+</button>
+                        <button className="h-6 w-6 rounded border" onClick={() => resize(i, -1, -1)} aria-label="Make this pin smaller">−</button>
+                        <button className="h-6 w-6 rounded border text-destructive" onClick={() => setPins(pins.filter((_, j) => j !== i))} aria-label="Remove this pin"><X className="mx-auto h-3 w-3" /></button>
                       </span>
                     </div>
                   );

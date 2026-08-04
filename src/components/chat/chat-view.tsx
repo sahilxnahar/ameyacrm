@@ -166,7 +166,7 @@ export function ChatView({
         ) : (
           <>
             <div className="flex items-center gap-2 border-b p-3">
-              <button onClick={() => router.push('/chat')} className="lg:hidden"><X className="h-4 w-4" /></button>
+              <button onClick={() => router.push('/chat')} className="lg:hidden" aria-label="Close this conversation"><X className="h-4 w-4" /></button>
               <span className="font-medium">{activeTitle ?? 'Conversation'}</span>
               <button
                 onClick={() => start(async () => {
@@ -227,7 +227,7 @@ export function ChatView({
                     <span key={i} className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
                       {f.preview ? <img src={f.preview} alt="" className="h-5 w-5 rounded object-cover" /> : <FileText className="h-3.5 w-3.5" />}
                       <span className="max-w-[8rem] truncate">{f.name}</span>
-                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button>
+                      <button onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} aria-label="Remove this attachment"><X className="h-3 w-3" /></button>
                     </span>
                   ))}
                 </div>
@@ -260,7 +260,7 @@ export function ChatView({
       {picker && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-24" onClick={() => setPicker(false)}>
           <Card className="w-full max-w-md p-3" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">Message someone</p><button onClick={() => setPicker(false)}><X className="h-4 w-4" /></button></div>
+            <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">Message someone</p><button onClick={() => setPicker(false)} aria-label="Close the emoji picker"><X className="h-4 w-4" /></button></div>
             <div className="relative mb-2"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input autoFocus value={dirQuery} onChange={(e) => setDirQuery(e.target.value)} placeholder="Search by name or @username" className="pl-9" /></div>
             <div className="max-h-72 overflow-y-auto">
               {dir.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No one matches.</p> : dir.map((u) => (

@@ -25,7 +25,7 @@ export function PasskeyManager() {
   const [keys, setKeys] = useState<Passkey[] | null>(null);
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
   const supported = typeof window !== 'undefined' && browserSupportsWebAuthn();
 
   const load = () => { void myPasskeys().then(setKeys).catch(() => setKeys([])); };

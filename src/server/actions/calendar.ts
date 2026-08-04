@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
+import { datetimeLocalToUTC } from '@/lib/date/ist';
 
 /**
  * Meetings, site visits and anything else with a time on it.
@@ -35,9 +36,10 @@ const eventSchema = z.object({
 type When = { error: string } | { start: Date; end: Date | null };
 
 function parseWhen(startAt: string, endAt: string | null | undefined, allDay: boolean): When {
-  const start = new Date(startAt);
+  // Calendar entries are IST wall-clock — see datetimeLocalToUTC.
+  const start = datetimeLocalToUTC(startAt) ?? new Date(startAt);
   if (Number.isNaN(start.getTime())) return { error: 'That start date does not look right.' };
-  const end = endAt ? new Date(endAt) : null;
+  const end = endAt ? (datetimeLocalToUTC(endAt) ?? new Date(endAt)) : null;
   if (end && Number.isNaN(end.getTime())) return { error: 'That end date does not look right.' };
   // An event that ends before it starts sorts and renders wrongly everywhere it
   // appears, and nothing downstream re-checks it. Catch it once, here.

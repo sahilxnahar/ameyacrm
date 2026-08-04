@@ -36,16 +36,51 @@ export async function ensure(permission: PermissionKey): Promise<AuthContext> {
   return ctx;
 }
 
-/** Normalize an unknown error into a user-safe message. */
-export function toActionError(err: unknown): { error: string } {
+/**
+ * The failure half of every action result.
+ *
+ * `error` is the summary a toast shows; `fields` maps field name to message
+ * when the failure was validation, so a form can render each one next to the
+ * input it belongs to. Actions declare their result as
+ * `{ ok: true } | ActionFailure` so a caller can reach `fields` without a cast.
+ */
+export type ActionFailure = { error: string; fields?: Record<string, string> };
+
+/**
+ * Normalize an unknown error into a user-safe message.
+ *
+ * `fields` is present only for a validation failure, and maps field name to the
+ * message for that field, so a form can render it inline via `<Field error=…>`.
+ */
+export function toActionError(err: unknown): ActionFailure {
   if (err instanceof ForbiddenError) return { error: 'You do not have permission to do that.' };
   if (err instanceof AuthError) return { error: 'Your session expired. Please sign in again.' };
   if (err instanceof ZodError) {
+    /*
+     * Two shapes from one error, deliberately.
+     *
+     * `error` is the summary a toast shows, and is what every existing caller
+     * reads — so this stays backwards compatible.
+     *
+     * `fields` is the same information keyed by field name, so a form can put
+     * each message next to the input it belongs to. Without it a fifteen-field
+     * form rejects with one toast reading "Pan: invalid  •  Ifsc: invalid" and
+     * the person has to work out which of fifteen boxes those refer to, on a
+     * form that has by then scrolled. The toast is not wrong, it is just not
+     * where the problem is.
+     */
+    const fields: Record<string, string> = {};
+    for (const i of err.issues) {
+      const key = i.path.join('.');
+      // First message per field: Zod can raise several for one input, and the
+      // first is the one that failed earliest and is usually the actionable one.
+      if (key && !fields[key]) fields[key] = i.message;
+    }
     const msg = err.issues.map((i) => {
       const f = i.path.join('.'); const label = f ? f.charAt(0).toUpperCase() + f.slice(1) : 'Field';
       return `${label}: ${i.message}`;
     }).join('  •  ');
-    return { error: msg || 'Please check the form and try again.' };
+    return { error: msg || 'Please check the form and try again.', fields };
   }
   if (err instanceof Error) {
     // The commonest real cause of a mystery failure is code that is newer than

@@ -2,9 +2,9 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
-import { ensure, toActionError } from '@/server/actions/_helpers';
+import { ensure, toActionError, type ActionFailure } from '@/server/actions/_helpers';
 
-export type ProjectResult = { ok: true; id?: string } | { error: string };
+export type ProjectResult = { ok: true; id?: string } | ActionFailure;
 
 function slugCode(name: string): string {
   const letters = name.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4) || 'PROJ';

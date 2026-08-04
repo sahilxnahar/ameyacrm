@@ -108,3 +108,43 @@ export function dateInputToUTC(value: string, endOfDay = false): Date | null {
   const [y, mo, d] = [Number(m[1]), Number(m[2]) - 1, Number(m[3])];
   return endOfDay ? endOfDayUTC(y, mo, d) : startOfDayUTC(y, mo, d);
 }
+
+/**
+ * Parse a `<input type="datetime-local">` value as the IST wall-clock time the
+ * person actually meant.
+ *
+ * The input submits a bare local string — "2026-08-04T15:30" — with no offset.
+ * `new Date(s)` resolves that in the RUNTIME's zone, and the server runs UTC, so
+ * half past three in the afternoon was stored as 15:30Z and fired at nine at
+ * night. Everyone using this product is in India; there is no daylight saving to
+ * reason about, so appending the fixed +05:30 offset is exact.
+ *
+ * Returns null on anything unparseable, so a caller can reject rather than
+ * silently store an Invalid Date.
+ */
+export function datetimeLocalToUTC(value: string | null | undefined): Date | null {
+  const v = (value ?? '').trim();
+  if (!v) return null;
+  // Accept both "YYYY-MM-DDTHH:mm" and the seconds-bearing form some browsers send.
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/.exec(v);
+  if (!m) {
+    // Already carries an offset or a Z — trust it rather than double-shifting.
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const time = m[2]!;
+  const d = new Date(`${m[1]}T${time.length === 5 ? `${time}:00` : time}+05:30`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * The value to put back INTO a `datetime-local` input for a stored instant, so
+ * a saved 15:30 IST re-opens the form showing 15:30 rather than 10:00.
+ */
+export function toDatetimeLocalIST(d: Date | string | null | undefined): string {
+  if (!d) return '';
+  const date = typeof d === 'string' ? new Date(d) : d;
+  if (Number.isNaN(date.getTime())) return '';
+  const shifted = new Date(date.getTime() + IST_OFFSET_MINUTES * 60_000);
+  return shifted.toISOString().slice(0, 16);
+}

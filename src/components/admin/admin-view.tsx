@@ -148,7 +148,7 @@ export function AdminView({ users, departments, deptOptions, isSuperAdmin = fals
                 <TableCell><Badge variant={u.status === 'ACTIVE' ? 'success' : u.status === 'DISABLED' ? 'destructive' : 'warning'}>{titleCase(u.status)}</Badge></TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">⋯</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" aria-label="More actions for this user">⋯</Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => act(() => forcePasswordReset(u.id), 'Password reset forced')}><KeyRound className="h-4 w-4" /> Force password reset</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => issueTemp(u)}><KeyRound className="h-4 w-4" /> Generate temporary password</DropdownMenuItem>

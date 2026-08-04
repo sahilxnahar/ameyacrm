@@ -17,7 +17,7 @@ trail, RBAC, 2FA — as an installable PWA with an Android wrapper path.
 |------|--------|
 | Framework | **Next.js 15** (App Router, Server Actions, RSC) · React 19 · TypeScript (strict) |
 | UI | Tailwind CSS + shadcn‑style components (Radix) · Framer‑ready · Recharts · cmdk |
-| Database | **PostgreSQL** via **Prisma** (56 models) |
+| Database | **PostgreSQL** via **Prisma** (249 models) |
 | Auth | Custom secure sessions · TOTP 2FA · backup codes · device trust · lockout |
 | Storage | S3‑compatible (MinIO / AWS S3 / Cloudflare R2) — pluggable, `local` fallback |
 | Email | Pluggable: SMTP · SES · Resend · `console` |

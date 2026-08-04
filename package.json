@@ -2,7 +2,7 @@
   "name": "ameya-heights-crm",
   "version": "1.0.0",
   "private": true,
-  "description": "Ameya Heights — Internal CRM / Construction & Real-Estate ERP-lite",
+  "description": "Ameya Heights \u2014 Internal CRM / Construction & Real-Estate ERP-lite",
   "author": "Ameya Heights LLP",
   "license": "UNLICENSED",
   "engines": {
@@ -12,7 +12,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 148",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
@@ -24,7 +24,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
-    "vercel-build": "DATABASE_URL=${DATABASE_URL:-postgresql://placeholder:placeholder@localhost:5432/placeholder} prisma generate && next build"
+    "vercel-build": "DATABASE_URL=${DATABASE_URL:-postgresql://placeholder:placeholder@localhost:5432/placeholder} prisma generate && next build",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "test:live": "vitest run"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

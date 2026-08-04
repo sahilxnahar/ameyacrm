@@ -40,7 +40,7 @@ export function TaskComments({ taskId, comments }: { taskId: string; comments: {
       </div>
       <div className="flex gap-2">
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a comment… use @username to mention" className="min-h-[60px]" />
-        <Button onClick={submit} disabled={pending} size="icon" className="h-auto"><Send className="h-4 w-4" /></Button>
+        <Button onClick={submit} disabled={pending} size="icon" className="h-auto" aria-label="Post this comment"><Send className="h-4 w-4" /></Button>
       </div>
     </div>
   );

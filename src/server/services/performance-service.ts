@@ -101,6 +101,14 @@ export async function measurePerformance(): Promise<{
     ['Task', 'repeatEvery'], ['Voucher', 'utr'], ['Vendor', 'bankIfsc'],
     ['DocChunk', 'requiredPermission'], ['MailThreadMessage', 'vendorId'],
   ] as Array<[string, string]>) {
+    /*
+     * Genuinely parameterised, despite the name: the SQL is a fixed literal with
+     * $1/$2 placeholders and the values come from the hardcoded array above,
+     * never from a request. The tagged template cannot be used here because
+     * Prisma types it against the schema, and this query deliberately asks
+     * information_schema whether a column exists at all.
+     */
+    // eslint-disable-next-line no-restricted-properties
     const rows = await prisma.$queryRawUnsafe<Array<{ n: bigint }>>(
       `SELECT COUNT(*)::bigint AS n FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
       table, column,

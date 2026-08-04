@@ -36,42 +36,64 @@ async function seedFromExisting(prefix: Prefix, key: string): Promise<number> {
   const existing = await prisma.numberSequence.findUnique({ where: { key }, select: { value: true } }).catch(() => null);
   if (existing) return existing.value;
 
-  // Parse the numeric part of every existing reference and take the highest.
-  // Done in JS rather than ORDER BY, because ordering the text would rank
-  // LEAD-9999 above LEAD-10000.
-  let max = BASE[prefix];
-  for (const ref of await currentReferences(prefix)) {
-    const n = Number(String(ref).split('-')[1]?.replace(/\D/g, '') ?? '');
-    if (Number.isFinite(n) && n > max) max = n;
-  }
-  return max;
+  /*
+   * Take the true maximum, in SQL.
+   *
+   * This used to read `take: 5000` with NO orderBy and compute the max in
+   * JavaScript over whatever arbitrary slice came back. Above five thousand
+   * rows the seed could land BELOW the real maximum — and every one of these
+   * columns is @unique, so the next few issues died on the index. Per this
+   * file's own docstring: "the visitor saw a failure and their enquiry was
+   * never stored."
+   *
+   * Casting the numeric part and taking MAX() is exact at any table size and
+   * costs one query. `voucher-number.ts` has always done it this way; the two
+   * files simply disagreed. Ordering the text is still wrong — LEAD-9999 sorts
+   * above LEAD-10000 — which is why this casts to bigint rather than using
+   * ORDER BY on the string.
+   */
+  return (await maxReferenceNumber(prefix)) ?? BASE[prefix];
 }
 
-async function currentReferences(prefix: Prefix): Promise<string[]> {
-  const pick = (rows: Array<{ reference: string | null }>) =>
-    rows.map((r) => r.reference).filter((r): r is string => !!r);
-  const where = { reference: { startsWith: `${prefix}-` } };
-  const opts = { select: { reference: true }, where, take: 5000 };
+/** The highest numeric suffix in use for this prefix, straight from Postgres. */
+async function maxReferenceNumber(prefix: Prefix): Promise<number | null> {
+  const table = TABLE[prefix];
+  if (!table) return null;
+  const column = prefix === 'RFI' ? 'number' : 'reference';
   try {
-    switch (prefix) {
-      case 'TSK': return pick(await prisma.task.findMany(opts));
-      case 'LEAD': return pick(await prisma.lead.findMany(opts));
-      case 'MR': return pick(await prisma.materialRequest.findMany(opts));
-      case 'BKG': return pick(await prisma.booking.findMany(opts));
-      case 'LSE': return pick(await prisma.lease.findMany(opts));
-      case 'MNT': return pick(await prisma.maintenanceRequest.findMany(opts));
-      // RFI names its reference column `number`, not `reference`.
-      case 'RFI': return (await prisma.rFI.findMany({
-        select: { number: true }, where: { number: { startsWith: 'RFI-' } }, take: 5000,
-      })).map((r) => r.number);
-      default: return [];
-    }
+    /*
+     * The table and column are interpolated because a SQL identifier cannot be
+     * a bound parameter. Both come from the hardcoded TABLE map and a two-way
+     * literal below — never from a request — and the only value that varies,
+     * the LIKE pattern, IS parameterised as $1.
+     */
+    // eslint-disable-next-line no-restricted-properties
+    const rows = await prisma.$queryRawUnsafe<Array<{ max: bigint | number | null }>>(
+      `SELECT MAX(NULLIF(regexp_replace(SPLIT_PART("${column}", '-', 2), '\\D', '', 'g'), '')::bigint) AS max
+         FROM "${table}"
+        WHERE "${column}" LIKE $1`,
+      `${prefix}-%`,
+    );
+    const v = rows[0]?.max;
+    if (v == null) return null;
+    const n = typeof v === 'bigint' ? Number(v) : v;
+    return Number.isFinite(n) ? Math.max(n, BASE[prefix]) : null;
   } catch {
     // A table absent from this deployment must not stop a reference being
-    // issued — the counter simply starts at the base.
-    return [];
+    // issued — fall back to the base rather than failing the create.
+    return null;
   }
 }
+
+/**
+ * Prefix → table. Hardcoded, never built from input: these names are
+ * interpolated into the query above because a table identifier cannot be a
+ * bound parameter.
+ */
+const TABLE: Record<Prefix, string | null> = {
+  TSK: 'Task', LEAD: 'Lead', MR: 'MaterialRequest', BKG: 'Booking',
+  LSE: 'Lease', MNT: 'MaintenanceRequest', RFI: 'RFI',
+};
 
 export function docNumber(prefix: 'INV' | 'PO' | 'BILL', seq: number): string {
   return `${prefix}-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`;

@@ -54,7 +54,7 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
       <div className="my-auto w-full max-w-md rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Configure {name}</div>
-          <button onClick={onClose}><X className="h-4 w-4 text-muted-foreground" /></button>
+          <button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
         </div>
         <p className="mb-3 text-sm text-muted-foreground">{meta.blurb}</p>
 
@@ -80,7 +80,7 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
                 <div className="mb-1 text-sm font-medium">Callback URL (register this in your {name} app)</div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{(typeof window !== 'undefined' ? window.location.origin : '')}/api/connectors/oauth/{slug}/callback</code>
-                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/connectors/oauth/${slug}/callback`); toast.success('Copied'); }} className="gap-1"><Copy className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/connectors/oauth/${slug}/callback`); toast.success('Copied'); }} className="gap-1" aria-label="Copy the callback URL"><Copy className="h-3.5 w-3.5" /></Button>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Save your client id/secret first, then click Connect to authorise.</p>
               </div>
@@ -91,7 +91,7 @@ export function ConfigureConnector({ slug, name, onClose }: { slug: string; name
                 <div className="mb-1 text-sm font-medium">Webhook URL (paste into Razorpay → Settings → Webhooks)</div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{(typeof window !== 'undefined' ? window.location.origin : '')}/api/connectors/razorpay/webhook</code>
-                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/connectors/razorpay/webhook`); toast.success('Copied'); }} className="gap-1"><Copy className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/connectors/razorpay/webhook`); toast.success('Copied'); }} className="gap-1" aria-label="Copy the webhook URL"><Copy className="h-3.5 w-3.5" /></Button>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Subscribe it to the <code>payment.captured</code> event. Put a <code>milestoneId</code> or <code>bookingId</code> in the payment notes for automatic reconciliation.</p>
               </div>
@@ -165,7 +165,7 @@ function InboundConfig({ slug, name, blurb, onClose }: { slug: string; name: str
       <div className="my-auto w-full max-w-lg rounded-xl border bg-background p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center justify-between">
           <div className="font-semibold">Receive {name} leads</div>
-          <button onClick={onClose}><X className="h-4 w-4 text-muted-foreground" /></button>
+          <button onClick={onClose} aria-label="Close"><X className="h-4 w-4 text-muted-foreground" /></button>
         </div>
         <p className="mb-3 text-sm text-muted-foreground">{blurb}</p>
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
@@ -182,7 +182,7 @@ function InboundConfig({ slug, name, blurb, onClose }: { slug: string; name: str
               <div className="mb-1 text-xs font-medium">Webhook URL (paste into {name})</div>
               <div className="flex items-center gap-2">
                 <code className="flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">{fullUrl}</code>
-                <Button size="sm" variant="outline" onClick={() => copy(fullUrl)} className="gap-1"><Copy className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="outline" onClick={() => copy(fullUrl)} className="gap-1" aria-label="Copy this URL"><Copy className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
             <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">Copy this now — the secret is shown only once. Generating again replaces it.</p>

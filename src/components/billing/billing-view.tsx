@@ -226,8 +226,8 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
               <div className="w-16 shrink-0">
                 {canApprove && p.needsMyApproval && (
                   <div className="flex justify-end gap-1">
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(p.id, 'APPROVED')}><Check className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(p.id, 'REJECTED')}><X className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-success" onClick={() => decide(p.id, 'APPROVED')} aria-label="Approve this payment"><Check className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => decide(p.id, 'REJECTED')} aria-label="Reject this payment"><X className="h-4 w-4" /></Button>
                   </div>
                 )}
               </div>
@@ -323,7 +323,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <Input className="w-16" placeholder="Qty" type="number" value={it.quantity} onChange={(e) => setInvItems((p) => p.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
                 <Input className="w-24" placeholder="Rate" type="number" value={it.rate} onChange={(e) => setInvItems((p) => p.map((x, i) => i === idx ? { ...x, rate: e.target.value } : x))} />
                 <Input className="w-16" placeholder="GST%" type="number" value={it.gstRate} onChange={(e) => setInvItems((p) => p.map((x, i) => i === idx ? { ...x, gstRate: e.target.value } : x))} />
-                <Button type="button" variant="ghost" size="icon" onClick={() => setInvItems((p) => p.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setInvItems((p) => p.filter((_, i) => i !== idx))} aria-label="Remove this invoice line"><Trash2 className="h-4 w-4" /></Button>
               </div>))}
               <Button type="button" variant="outline" size="sm" onClick={() => setInvItems((p) => [...p, { description: '', quantity: '1', rate: '', gstRate: '18' }])}><Plus className="h-4 w-4" /> Add line</Button>
             </div>
@@ -350,7 +350,7 @@ export function BillingView({ invoices, pos, bills, vendors, projects, approvers
                 <Input className="w-16" placeholder="Unit" value={it.unit} onChange={(e) => setPoItems((p) => p.map((x, i) => i === idx ? { ...x, unit: e.target.value } : x))} />
                 <Input className="w-24" placeholder="Rate" type="number" value={it.rate} onChange={(e) => setPoItems((p) => p.map((x, i) => i === idx ? { ...x, rate: e.target.value } : x))} />
                 <Input className="w-14" placeholder="GST%" type="number" value={it.gstRate} onChange={(e) => setPoItems((p) => p.map((x, i) => i === idx ? { ...x, gstRate: e.target.value } : x))} />
-                <Button type="button" variant="ghost" size="icon" onClick={() => setPoItems((p) => p.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setPoItems((p) => p.filter((_, i) => i !== idx))} aria-label="Remove this purchase-order line"><Trash2 className="h-4 w-4" /></Button>
               </div>))}
               <Button type="button" variant="outline" size="sm" onClick={() => setPoItems((p) => [...p, { description: '', quantity: '1', unit: 'nos', rate: '', gstRate: '18' }])}><Plus className="h-4 w-4" /> Add line</Button>
             </div>

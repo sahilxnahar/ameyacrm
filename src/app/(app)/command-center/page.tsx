@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requireAuth } from '@/lib/auth/current-user';
-import { getCommandCenter, getLaunchpadBadges } from '@/server/services/command-center-service';
+import { getDashboard } from '@/server/services/command-center-service';
 import { BentoCommandCenter } from '@/components/dashboard/bento-command-center';
 import { Launchpad } from '@/components/dashboard/launchpad';
 
@@ -9,7 +9,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function CommandCenterPage() {
   const { user } = await requireAuth();
-  const [{ tiles, urgent }, badges] = await Promise.all([getCommandCenter(), getLaunchpadBadges()]);
+  // One sweep for both halves: the alert tiles and the app badges share their
+  // counts, so asking twice cost 11 duplicate queries and could show two
+  // different numbers for the same thing on the same screen.
+  const { tiles, urgent, badges } = await getDashboard();
   return (
     <div className="space-y-8">
       <section>

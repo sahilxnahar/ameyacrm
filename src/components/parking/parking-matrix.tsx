@@ -182,7 +182,7 @@ function SlotEditor({ slot, units, pending, onAssign, onStatus, onDelete, onClos
       <div className="sm:my-auto w-full max-w-md rounded-t-xl bg-white p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-primary">Slot {slot.code}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close">✕</button>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">{slot.level} · {slot.type} · currently <span className="font-semibold">{slot.status}</span>{slot.unitCode ? ` (unit ${slot.unitCode})` : ''}</p>
 

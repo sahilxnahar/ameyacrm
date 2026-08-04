@@ -3,6 +3,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { can } from '@/lib/rbac/can';
 import { checkRate, callerIp } from '@/lib/security/rate-limit';
+import { allowedContentTypes } from '@/lib/files/safety';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -55,6 +56,12 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (purpose === 'chat') {
           return {
             addRandomSuffix: true,
+            // The allow-list is enforced HERE, not in the browser. It used to be
+            // absent on this branch entirely, so "any type" meant any type
+            // including text/html and image/svg+xml — both of which a browser
+            // will execute. Everything a person actually attaches to a chat is
+            // still on the list.
+            allowedContentTypes: allowedContentTypes(),
             maximumSizeInBytes: 64 * 1024 * 1024, // 64 MB — room for a short clip, bounded against abuse
             tokenPayload: JSON.stringify({ userId: ctx.user.id, purpose: 'chat' }),
           };
@@ -63,6 +70,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!can(ctx.permissions, 'document.create') && !can(ctx.permissions, 'marketing.manage')) throw new Error('You do not have permission to upload files.');
         return {
           addRandomSuffix: true,
+          // Same allow-list as chat. Drawings, archives, Office files and PDFs
+          // all pass; the handful of types a browser executes do not.
+          allowedContentTypes: allowedContentTypes(),
           maximumSizeInBytes: 100 * 1024 * 1024, // 100 MB
           tokenPayload: JSON.stringify({ userId: ctx.user.id }),
         };

@@ -10,6 +10,7 @@ import { summarizeFile, isGeminiEnabled } from '@/lib/ai/gemini';
 import { uploadToDrive, isDriveConfigured } from '@/lib/google/drive';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
+import { isAcceptableUpload } from '@/lib/files/safety';
 
 export type DocResult = { ok: true; id: string; fileId?: string; message?: string } | { error: string };
 
@@ -50,6 +51,22 @@ export async function uploadDocument(formData: FormData): Promise<DocResult> {
     if (!(file instanceof File)) return { error: 'No file provided.' };
     if (!folderId) return { error: 'Select a folder.' };
     if (file.size > 50 * 1024 * 1024) return { error: 'File exceeds 50MB limit.' };
+
+    /*
+     * Check the folder exists BEFORE writing bytes, not after.
+     *
+     * The foreign key on `document.create` further down did catch a bad folder
+     * — but only once the file had already been written to storage under a key
+     * derived from that folder id. The bytes landed, the row did not, and the
+     * object was orphaned.
+     */
+    const folder = await prisma.folder.findUnique({ where: { id: folderId }, select: { id: true } });
+    if (!folder) return { error: 'That folder no longer exists.' };
+
+    // A file the browser will execute is refused here as well as at the token,
+    // because this path does not go through the client-upload flow at all.
+    const verdict = isAcceptableUpload(file.type, file.name);
+    if (!verdict.ok) return { error: verdict.reason };
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const checksum = createHash('sha256').update(buffer).digest('hex');

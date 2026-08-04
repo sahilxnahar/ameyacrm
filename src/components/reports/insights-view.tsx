@@ -23,7 +23,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
         <h3 className="mb-1 text-sm font-semibold">Cost anomalies</h3>
         <p className="mb-3 text-xs text-muted-foreground">Bills where the rate paid is well above the running rate for the same material — the ones worth a second look before they are approved.</p>
         {data.anomalies.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No anomalies. Every material's bills sit close to its running rate.</p>
+          <p className="text-sm text-muted-foreground">No anomalies. Every material&rsquo;s bills sit close to its running rate.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -47,7 +47,7 @@ export function InsightsView({ data }: { data: InsightsResult }) {
 
       <Card className="p-4">
         <h3 className="mb-1 text-sm font-semibold">Lead-score distribution</h3>
-        <p className="mb-3 text-xs text-muted-foreground">How the pipeline's scores are spread. A pile-up at the bottom (or everything maxed) means the scoring needs a look.</p>
+        <p className="mb-3 text-xs text-muted-foreground">How the pipeline&rsquo;s scores are spread. A pile-up at the bottom (or everything maxed) means the scoring needs a look.</p>
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data.scoreBands} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>

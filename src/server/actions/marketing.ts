@@ -5,6 +5,7 @@ import type { CampaignStatus } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { writeAudit } from '@/lib/audit/log';
 import { ensure, toActionError } from './_helpers';
+import { datetimeLocalToUTC } from '@/lib/date/ist';
 
 export type MktResult = { ok: true; id: string } | { error: string };
 
@@ -58,7 +59,8 @@ export async function createSocialPost(input: unknown): Promise<MktResult> {
     const post = await prisma.socialPost.create({
       data: {
         title: d.title, content: d.content || null, channel: d.channel,
-        status: d.scheduledAt ? 'SCHEDULED' : 'DRAFT', scheduledAt: d.scheduledAt ? new Date(d.scheduledAt) : null,
+        // Scheduled sends are wall-clock IST, not server time.
+        status: d.scheduledAt ? 'SCHEDULED' : 'DRAFT', scheduledAt: datetimeLocalToUTC(d.scheduledAt),
         createdById: ctx.user.id,
       },
     });

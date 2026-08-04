@@ -31,15 +31,39 @@ export function formatExactCurrency(value: number | string | null | undefined): 
   return formatCurrency(value);
 }
 
+/*
+ * Dates render in IST, not in whatever zone the runtime happens to be.
+ *
+ * date-fns `format` renders in runtime-local. In a Server Component that is the
+ * server's zone, which was UTC — so every timestamp in the product displayed
+ * 5h30m early, and anything between 18:30 and midnight IST showed the PREVIOUS
+ * DATE. On an audit trail or a statutory register that is not a display bug.
+ *
+ * `TZ=Asia/Kolkata` is now set on the container and on Vercel, which fixes it at
+ * the source. This is the belt to that pair of braces: it stays correct even if
+ * the code runs somewhere the environment was not configured — a developer
+ * machine, a one-off script, a future host.
+ */
+const IST = 'Asia/Kolkata';
+
+/** Shift an instant so that formatting it as if it were local yields IST. */
+function asIst(date: Date): Date {
+  const utcMs = date.getTime() + date.getTimezoneOffset() * 60_000;
+  return new Date(utcMs + 330 * 60_000); // UTC+05:30, no daylight saving
+}
+
 export function formatDate(d: Date | string | null | undefined, pattern = 'dd MMM yyyy'): string {
   if (!d) return '—';
   const date = typeof d === 'string' ? new Date(d) : d;
-  return isValid(date) ? format(date, pattern) : '—';
+  return isValid(date) ? format(asIst(date), pattern) : '—';
 }
 
 export function formatDateTime(d: Date | string | null | undefined): string {
   return formatDate(d, 'dd MMM yyyy, h:mm a');
 }
+
+/** The IANA zone every date in this product is expressed in. */
+export const DISPLAY_TIMEZONE = IST;
 
 export function timeAgo(d: Date | string | null | undefined): string {
   if (!d) return '—';

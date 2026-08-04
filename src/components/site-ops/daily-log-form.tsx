@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useUnsavedChanges } from '@/lib/forms/use-unsaved-changes';
 import { toast } from 'sonner';
 import { Minus, Plus, X, Loader2, Users, CloudSun, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -98,6 +99,18 @@ export function DailyLogForm({
       onSaved?.();
     });
   }
+
+  /*
+   * A site log is filled in on a phone, on site, and can be twenty minutes of
+   * work — labour counts, notes, photographs uploaded one at a time. Nothing
+   * warned before losing it: a back-swipe or a closed tab discarded the lot,
+   * and there is no draft to recover.
+   *
+   * Derived from the state that is already here rather than from an onChange
+   * flag, so it is true exactly when there is something to lose — and false
+   * again the moment the save handler resets those fields.
+   */
+  useUnsavedChanges(labor > 0 || notes.trim() !== '' || photos.length > 0);
 
   const stepBtn = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border bg-background active:scale-95 disabled:opacity-40';
 
