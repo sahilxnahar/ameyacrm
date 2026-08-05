@@ -1,6 +1,7 @@
 import 'server-only';
 import { endOfDay, startOfDay, addDays } from 'date-fns';
 import { prisma } from '@/lib/db/prisma';
+import type { Settled } from '@/lib/data/settle';
 import type { LeadStatus } from '@prisma/client';
 
 export type Urgency = 'overdue' | 'today' | 'soon';
@@ -13,8 +14,15 @@ export interface TodayItem {
   when?: string;
 }
 
-/** Everything on ONE person's plate today, ranked by urgency. */
-export async function getTodayList(userId: string): Promise<TodayItem[]> {
+/**
+ * Everything on ONE person's plate today, ranked by urgency.
+ *
+ * AMH-007 — returns the failures with the items. This screen is labelled
+ * "Today's priorities — everything due today, in one list. Start here." If part
+ * of it silently does not load, the person starts their day believing nothing
+ * is due. An empty list here has to mean empty, or say that it doesn't.
+ */
+export async function getTodayList(userId: string): Promise<Settled<TodayItem[]>> {
   const now = new Date();
   const dayStart = startOfDay(now);
   const dayEnd = endOfDay(now);
@@ -79,9 +87,12 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
   // Anything with an expiry that will hurt if it passes — a contract renewal
   // date, an insurance policy, a licence, a power of attorney. These registers
   // are only worth keeping if the date reaches somebody before it arrives.
-  try {
+  const failures: string[] = [];
+  {
     const { upcomingExpiries } = await import('@/server/services/compliance-service');
-    for (const e of await upcomingExpiries(45)) {
+    const expiries = await upcomingExpiries(45);
+    failures.push(...expiries.failures);
+    for (const e of expiries.data) {
       items.push({
         kind: 'renewal',
         urgency: e.days < 0 ? 'overdue' : e.days <= 1 ? 'today' : 'soon',
@@ -91,8 +102,8 @@ export async function getTodayList(userId: string): Promise<TodayItem[]> {
         when: e.on.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
       });
     }
-  } catch { /* the rest of the list still stands */ }
+  }
 
   const order: Record<Urgency, number> = { overdue: 0, today: 1, soon: 2 };
-  return items.sort((a, b) => order[a.urgency] - order[b.urgency]);
+  return { data: items.sort((a, b) => order[a.urgency] - order[b.urgency]), failures };
 }

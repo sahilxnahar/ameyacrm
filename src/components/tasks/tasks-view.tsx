@@ -1,5 +1,6 @@
 'use client';
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, List, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskBoard } from './task-board';
@@ -17,8 +18,12 @@ export function TasksView({
   departments: Option[];
   projects: Option[];
 }) {
+  const searchParams = useSearchParams();
   const [view, setView] = React.useState<'board' | 'list'>('board');
-  const [newOpen, setNewOpen] = React.useState(false);
+  // AMH-045: the dashboard has always linked to `/tasks?new=1`, and nothing
+  // here read it — so that button navigated to the board with the form shut,
+  // which is indistinguishable from the button doing nothing.
+  const [newOpen, setNewOpen] = React.useState(() => searchParams.get('new') === '1');
 
   return (
     <div>

@@ -18,8 +18,10 @@ const ITEMS: NewItem[] = [
   // it closed made this menu item look like it did nothing.
   { label: 'New lead', href: '/sales?new=1', icon: UserPlus, permission: 'lead.create' },
   { label: 'Log a site visit', href: '/site-visit', icon: ClipboardCheck, permission: 'lead.create' },
-  { label: 'New task', href: '/tasks', icon: CheckSquare, permission: 'task.create' },
-  { label: 'Record a payment', href: '/payments', icon: Wallet, permission: 'finance.ledger.manage' },
+  { label: 'New task', href: '/tasks?new=1', icon: CheckSquare, permission: 'task.create' },
+  // AMH-045: /payments is a read-only report — it cannot record anything.
+  // The cash book owns createVoucher; ?new=BANK_PAID opens the payment form.
+  { label: 'Record a payment', href: '/cash-book?new=BANK_PAID', icon: Wallet, permission: 'finance.ledger.manage' },
   { label: 'Upload a document', href: '/documents', icon: FolderPlus, permission: 'document.create' },
   { label: 'Voice note', href: '/voice-note', icon: Mic, permission: 'task.create' },
 ];

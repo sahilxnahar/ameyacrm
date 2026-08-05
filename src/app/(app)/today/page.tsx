@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BellRing, CheckSquare, Inbox, PhoneCall, Flame, Wallet, CheckCircle2, CalendarClock, Wrench, ShieldAlert } from 'lucide-react';
+import { BellRing, CheckSquare, Inbox, PhoneCall, Flame, Wallet, CheckCircle2, CalendarClock, Wrench, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { requireAuth } from '@/lib/auth/current-user';
 import { getTodayList, type TodayItem, type Urgency } from '@/server/services/today-service';
 import { PageHeader } from '@/components/layout/page-header';
+import { LoadFailureNotice } from '@/components/ui/load-failure-notice';
 import { Card } from '@/components/ui/card';
 import { prisma } from '@/lib/db/prisma';
 import { can } from '@/lib/rbac/can';
@@ -47,7 +48,8 @@ function Row({ item }: { item: TodayItem }) {
 export default async function TodayPage() {
   const ctx = await requireAuth();
   const user = ctx.user;
-  const items = await getTodayList(user.id);
+  const today = await getTodayList(user.id);
+  const items = today.data;
   const counts = { overdue: items.filter((i) => i.urgency === 'overdue').length, today: items.filter((i) => i.urgency === 'today').length };
 
 
@@ -67,7 +69,7 @@ export default async function TodayPage() {
     { perm: 'lead.create', label: 'New lead', href: '/sales', icon: UserPlus },
     { perm: 'lead.create', label: 'Log a site visit', href: '/site-visit', icon: ClipboardCheck },
     { perm: 'task.create', label: 'Add a task', href: '/tasks', icon: CheckSquare },
-    { perm: 'finance.ledger.manage', label: 'Record a payment', href: '/payments', icon: Wallet },
+    { perm: 'finance.ledger.manage', label: 'Record a payment', href: '/cash-book?new=BANK_PAID', icon: Wallet },
     { perm: 'document.create', label: 'Upload a document', href: '/documents', icon: FolderPlus },
     { perm: 'material.create', label: 'Request materials', href: '/material-requests', icon: Package },
   ]
@@ -86,12 +88,26 @@ export default async function TodayPage() {
       <QuickActions actions={quickActions} />
       <RecentRecords />
       <div className="max-w-3xl">
+      {/*
+        AMH-007 — before the green tick, say whether the answer is complete.
+        "Nothing pending" beside a tick is the strongest all-clear in the
+        product; it must never be what a failed query looks like.
+      */}
+      <LoadFailureNotice failures={today.failures} what="today's list" className="mb-3 mt-0" />
       {items.length === 0 ? (
+        today.failures.length > 0 ? (
+          <Card className="p-10 text-center">
+            <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-destructive" />
+            <p className="text-sm font-medium">Could not load your day</p>
+            <p className="text-xs text-muted-foreground">Nothing is shown because the data could not be read — not because there is nothing due.</p>
+          </Card>
+        ) : (
         <Card className="p-10 text-center">
           <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-600" />
           <p className="text-sm font-medium">Nothing pending</p>
           <p className="text-xs text-muted-foreground">No overdue work, follow-ups or approvals on your plate.</p>
         </Card>
+        )
       ) : (
         <div className="space-y-4">
           {GROUPS.map(({ key, label }) => {

@@ -7,7 +7,9 @@ import { BottomSheet } from '@/components/ui/bottom-sheet';
 
 interface Action { href: string; label: string; icon: typeof Plus; permission: string | null }
 const ACTIONS: Action[] = [
-  { href: '/ledgers', label: 'Record a payment', icon: IndianRupee, permission: 'billing.bill.manage' },
+  // AMH-045: was /ledgers, which disagreed with the ＋ menu's /payments and
+  // could not record a payment either. One destination now, and it works.
+  { href: '/cash-book?new=BANK_PAID', label: 'Record a payment', icon: IndianRupee, permission: 'finance.ledger.manage' },
   { href: '/sales?new=1', label: 'Add a lead', icon: UserPlus, permission: 'lead.create' },
   { href: '/site-visit', label: 'Log a site visit', icon: ClipboardCheck, permission: 'lead.create' },
   { href: '/site-photos', label: 'Capture a photo', icon: Camera, permission: 'document.create' },

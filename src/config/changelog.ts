@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.27',
+    date: '5 Aug 2026',
+    highlights: [
+      '“Record a payment” now records a payment. From the ＋ menu it was sending you to Payments made — a read-only report of money already paid, with no way to enter anything — and the mobile button sent the same label somewhere else again. Three ways in, none of which reached the form. It now opens the payment form on the cash book, which is where recording actually lives.',
+      '“New task” from the dashboard opens the task form. It passed an “open the form” instruction to a page that never read it, so it just navigated and sat there. Only “New lead” had ever been wired up properly.',
+      'A test now checks every “New …” button in the app actually lands somewhere that can create the thing — this class of bug is invisible in review because the link looks right.',
+      'Your day’s list can no longer show a green tick and “Nothing pending” when it simply failed to load. The renewals, insurance, licence and power-of-attorney reads used to fail silently and return nothing, which on a screen that says “Everything due today, start here” is a false all-clear on exactly the dates that hurt when they pass. It now says plainly that part of the list did not load.',
+      'This release adds no new columns. Run the earlier migrations if you have not: MIGRATION_v16.25_all.sql and MIGRATION_v16.26_all.sql, or press Repair in Admin → Settings.',
+    ],
+  },
+  {
     version: 'v16.26',
     date: '5 Aug 2026',
     highlights: [

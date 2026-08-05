@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/db/prisma';
+import { settle, type Settled } from '@/lib/data/settle';
 import { threeWayMatch, type MatchStatus } from '@/lib/procurement/three-way';
 import { riskScore, type RiskBand } from '@/lib/governance/risk';
 
@@ -132,17 +133,33 @@ export async function jointDevelopmentAgreements(): Promise<JdaRow[]> {
  * is what makes the registers worth keeping rather than a filing exercise.
  */
 export interface ExpiryRow { id: string; kind: 'Contract' | 'Insurance' | 'Licence' | 'Power of attorney'; title: string; who: string | null; on: Date; days: number; href: string }
-export async function upcomingExpiries(withinDays = 90): Promise<ExpiryRow[]> {
+
+/**
+ * AMH-007 — this returns the failures alongside the rows.
+ *
+ * All four reads used to be `.catch(() => [])`. So if the database hiccupped,
+ * this function returned an empty array and every screen downstream said
+ * "nothing expiring" — on contracts, insurance, licences and powers of
+ * attorney. A false all-clear on a renewals register is the exact failure the
+ * register exists to prevent, and it left no trace anywhere: no log, no toast,
+ * no audit line. The person read it, believed it, and closed the tab.
+ *
+ * The fallback stays, because one bad query must not take the page down. What
+ * changes is that the caller now knows the answer is incomplete and can say so.
+ */
+export async function upcomingExpiries(withinDays = 90): Promise<Settled<ExpiryRow[]>> {
   const now = new Date();
   const until = new Date(now.getTime() + withinDays * 86_400_000);
   const window = { gte: new Date(now.getTime() - 30 * 86_400_000), lte: until };
 
-  const [cs, ps, ls, poas] = await Promise.all([
-    prisma.contractRecord.findMany({ where: { renewalOn: window, status: { not: 'EXPIRED' } }, select: { id: true, title: true, counterparty: true, renewalOn: true } }).catch(() => []),
-    prisma.insurancePolicy.findMany({ where: { expiresOn: window }, select: { id: true, name: true, insurer: true, expiresOn: true } }).catch(() => []),
-    prisma.complianceDocExpiry.findMany({ where: { expiresOn: window, renewed: false }, select: { id: true, title: true, owner: true, expiresOn: true } }).catch(() => []),
-    prisma.powerOfAttorney.findMany({ where: { validUntil: window, revoked: false }, select: { id: true, grantor: true, attorney: true, validUntil: true } }).catch(() => []),
+  const [csR, psR, lsR, poasR] = await Promise.all([
+    settle('contract renewals', () => prisma.contractRecord.findMany({ where: { renewalOn: window, status: { not: 'EXPIRED' } }, select: { id: true, title: true, counterparty: true, renewalOn: true } }), []),
+    settle('insurance policies', () => prisma.insurancePolicy.findMany({ where: { expiresOn: window }, select: { id: true, name: true, insurer: true, expiresOn: true } }), []),
+    settle('licence renewals', () => prisma.complianceDocExpiry.findMany({ where: { expiresOn: window, renewed: false }, select: { id: true, title: true, owner: true, expiresOn: true } }), []),
+    settle('powers of attorney', () => prisma.powerOfAttorney.findMany({ where: { validUntil: window, revoked: false }, select: { id: true, grantor: true, attorney: true, validUntil: true } }), []),
   ]);
+  const cs = csR.data, ps = psR.data, ls = lsR.data, poas = poasR.data;
+  const failures = [...csR.failures, ...psR.failures, ...lsR.failures, ...poasR.failures];
 
   const days = (d: Date) => Math.round((d.getTime() - now.getTime()) / 86_400_000);
   const out: ExpiryRow[] = [
@@ -151,7 +168,7 @@ export async function upcomingExpiries(withinDays = 90): Promise<ExpiryRow[]> {
     ...ls.filter((l) => l.expiresOn).map((l) => ({ id: l.id, kind: 'Licence' as const, title: l.title, who: l.owner, on: l.expiresOn!, days: days(l.expiresOn!), href: '/governance?view=renewals' })),
     ...poas.filter((p) => p.validUntil).map((p) => ({ id: p.id, kind: 'Power of attorney' as const, title: `${p.grantor} → ${p.attorney}`, who: null, on: p.validUntil!, days: days(p.validUntil!), href: '/land?view=poa' })),
   ];
-  return out.sort((a, b) => a.on.getTime() - b.on.getTime());
+  return { data: out.sort((a, b) => a.on.getTime() - b.on.getTime()), failures };
 }
 
 /**

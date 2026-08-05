@@ -245,7 +245,12 @@ suite('registers, inventory and site ops', () => {
 
   it('surfaces the expiring ones, overdue first, with a link that goes somewhere', async () => {
     const { upcomingExpiries } = await import('@/server/services/compliance-service');
-    const rows = await upcomingExpiries(90);
+    const res = await upcomingExpiries(90);
+    // AMH-007: the answer now carries whether it is complete. On a healthy
+    // database nothing failed — and asserting that is the point: it is how a
+    // future silent failure in one of the four reads gets caught here.
+    expect(res.failures).toEqual([]);
+    const rows = res.data;
     expect(rows.length).toBe(4); // contract, insurance, licence, POA
     expect(rows[0]!.kind).toBe('Licence');   // the expired one sorts first
     expect(rows[0]!.days).toBeLessThan(0);

@@ -1,7 +1,7 @@
 'use client';
 import * as React from 'react';
 import { formatCurrency } from '@/lib/utils/format';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Loader2, Plus, ArrowDownLeft, ArrowUpRight, Package, Ban, Wallet, Printer } from 'lucide-react';
 import { useAction } from '@/lib/hooks/use-action';
@@ -39,8 +39,31 @@ export function CashBookView({
   canManage: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { run, pending } = useAction();
-  const [open, setOpen] = React.useState<VoucherKind | null>(null);
+  /*
+   * ── AMH-045 (finished) ───────────────────────────────────────────────────
+   *
+   * "Record a payment" in the ＋ menu used to navigate to /payments — a
+   * read-only report with no way to record anything on it — and the mobile FAB
+   * sent the same label to /ledgers. Three entry points, neither destination
+   * able to do the thing. The person clicked it, landed on a list of payments
+   * already made, and reasonably concluded the button was broken.
+   *
+   * They now arrive here, on the page that owns `createVoucher`, with the
+   * voucher dialog already open. `?new=` names the kind, so "Record a payment"
+   * opens the payment form rather than making them pick from six.
+   *
+   * Initialised from the URL rather than set in an effect: opening in an effect
+   * renders the closed page for a frame first, which is the flicker that made
+   * the original fix feel unfinished.
+   */
+  const [open, setOpen] = React.useState<VoucherKind | null>(() => {
+    const requested = searchParams.get('new');
+    if (!requested) return null;
+    const kind = requested.toUpperCase() as VoucherKind;
+    return canManage && (VOUCHER_KINDS as readonly string[]).includes(kind) ? kind : null;
+  });
   const [filter, setFilter] = React.useState<string>('all');
 
   const posted = vouchers.filter((v) => v.status === 'POSTED');
