@@ -59,21 +59,21 @@ export function ScanView() {
         <p className="text-sm text-muted-foreground">Point the camera at a unit QR, a material barcode or any code. Works on the phone camera and laptop webcams; you can also type a code by hand.</p>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <div id={REGION_ID} className={`mx-auto w-full max-w-xs overflow-hidden rounded-md ${scanning ? 'border border-[#1B2A4A]' : ''}`} />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {!scanning ? (
             <button onClick={startCamera} className="rounded-md bg-[#1B2A4A] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63]">Start camera</button>
           ) : (
-            <button onClick={() => void stop()} className="rounded-md border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50">Stop</button>
+            <button onClick={() => void stop()} className="rounded-md border border-border px-4 py-1.5 text-sm hover:bg-muted">Stop</button>
           )}
           <span className="text-xs text-muted-foreground">{scanning ? 'Scanning…' : 'Camera is off'}</span>
         </div>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); if (manual.trim()) resolve(manual.trim()); }} className="flex gap-2">
-        <input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="…or type / paste a code" className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm" />
-        <button className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">Look up</button>
+        <input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="…or type / paste a code" className="flex-1 rounded border border-border px-2 py-1.5 text-sm" />
+        <button className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted">Look up</button>
       </form>
 
       {result && (
@@ -92,13 +92,13 @@ export function ScanView() {
               <p className="text-xs text-muted-foreground">No unit or parking slot matches this code. It may be a material barcode or an external code.</p>
             )}
             {match && match.units.map((u) => (
-              <Link key={u.id} href="/inventory" className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50">
+              <Link key={u.id} href="/inventory" className="flex items-center justify-between rounded border border-border bg-card px-3 py-2 text-sm hover:bg-muted">
                 <span><b>Unit {u.code}</b>{u.typology ? ` · ${u.typology}` : ''}{u.tower ? ` · ${u.tower}` : ''}</span>
                 <span className="text-xs text-muted-foreground">{u.status} · open Inventory →</span>
               </Link>
             ))}
             {match && match.slots.map((s) => (
-              <Link key={s.id} href="/parking" className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50">
+              <Link key={s.id} href="/parking" className="flex items-center justify-between rounded border border-border bg-card px-3 py-2 text-sm hover:bg-muted">
                 <span><b>Parking {s.code}</b>{s.level ? ` · ${s.level}` : ''}</span>
                 <span className="text-xs text-muted-foreground">{s.status} · open Parking →</span>
               </Link>

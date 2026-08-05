@@ -12,6 +12,7 @@ import { getSecurityPolicy } from '@/lib/auth/policy';
 import { sendEmail } from '@/lib/email/email';
 import { notifyMany } from '@/lib/notifications/notify';
 import { writeAudit } from '@/lib/audit/log';
+import { checkRate, callerIp } from '@/lib/security/rate-limit';
 import { ensure, toActionError } from '@/server/actions/_helpers';
 import type { RoleName } from '@prisma/client';
 
@@ -82,6 +83,30 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
     const email = parsed.data.email.trim().toLowerCase();
 
     /*
+     * ── AMH-069: cheap checks first, and a limiter at all ────────────────────
+     *
+     * This was the only unauthenticated action in the app with no `checkRate`,
+     * and the breach check — an outbound HTTPS call to api.pwnedpasswords.com
+     * with a four-second timeout — ran BEFORE the "is self-signup even on?"
+     * gate. Signup is off by default (AMH-005), so an attacker could hold a
+     * TLS connection open for four seconds per request against a feature
+     * nobody had switched on: free amplification, socket exhaustion, and the
+     * deployment's egress IP throttled by HIBP — which then silently degrades
+     * the breach check for password RESET and CHANGE, because it fails open.
+     *
+     * Order now: rate limit → is it on → strength (local) → breach (network).
+     */
+    const ip = await callerIp();
+    const byIp = await checkRate(`signup:ip:${ip}`, 5, 900, true);
+    const byEmail = await checkRate(`signup:email:${email}`, 3, 900, true);
+    if (!byIp.allowed || !byEmail.allowed) {
+      return { error: 'Too many attempts. Please wait a few minutes and try again.' };
+    }
+
+    const cfg = await getSignupConfig();
+    if (!cfg.enabled) return { error: 'Self sign-up is currently switched off. Ask an administrator to invite you.' };
+
+    /*
      * AMH-057 — self-signup was the one password path with no floor and no
      * breach check. Every sibling ran both: createUser, changePassword,
      * completePasswordReset, setPasswordFromInvite. This one took eight
@@ -96,9 +121,6 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
       const breach = await breachVerdict(password);
       if (!breach.ok) return { error: breach.message ?? 'Please choose a different password.' };
     }
-
-    const cfg = await getSignupConfig();
-    if (!cfg.enabled) return { error: 'Self sign-up is currently switched off. Ask an administrator to invite you.' };
 
     const existing = await prisma.user.findFirst({ where: { email, deletedAt: null } });
     if (existing) {

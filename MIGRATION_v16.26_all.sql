@@ -1,0 +1,50 @@
+-- Ameya OS — MIGRATION_v16.26_all.sql
+--
+-- One nullable column. Nothing is rewritten, nothing is dropped, and running it
+-- twice is a no-op.
+--
+--   psql "$DATABASE_URL" -f MIGRATION_v16.26_all.sql
+--
+-- The in-app Repair button (Admin → Settings) does the same thing.
+--
+-- ⚠ Run MIGRATION_v16.25_all.sql first if you have not already — this release
+--   builds on the column and audit value it adds.
+--
+-- ── What this is for ───────────────────────────────────────────────────────
+--
+-- Enrolling a second factor without losing the one you have (AMH-070).
+--
+-- v16.25 made re-enrolment cost a password, which stopped a stolen session from
+-- silently swapping somebody's authenticator. It did not change the WRITE: step
+-- one still overwrote "twoFactorSecret" while "twoFactorEnabled" stayed true.
+--
+-- So the honest user with a new phone had this experience: press the button,
+-- type the password, get the QR code, get distracted, close the tab. Their old
+-- authenticator was already dead — the server had thrown its secret away — and
+-- the account was still marked as having two-factor on. Backup codes or an
+-- emailed sign-in code were the only way back in.
+--
+-- Starting an enrolment must not be able to end one. The new secret now waits
+-- in "twoFactorPendingSecret" and is promoted to "twoFactorSecret" only inside
+-- the transaction that a correct code confirms. Until then the old phone keeps
+-- working, and an abandoned setup costs nothing.
+--
+-- NULL is the correct state for every existing row — including users who
+-- already have 2FA on, and users mid-setup when this deploys (they simply start
+-- again). No backfill, and nobody is locked out by this migration.
+--
+-- The column holds an AES-256-GCM ciphertext, the same shape as
+-- "twoFactorSecret", so it is covered by the same key and the same rules:
+-- ENCRYPTION_KEY must never be rotated.
+
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "twoFactorPendingSecret" TEXT;
+
+-- Verification (expect one row, data_type = text, is_nullable = YES):
+--
+--   SELECT column_name, data_type, is_nullable
+--     FROM information_schema.columns
+--    WHERE table_name = 'User' AND column_name = 'twoFactorPendingSecret';
+--
+-- And nobody should be left holding one after a successful confirm (expect 0):
+--
+--   SELECT count(*) FROM "User" WHERE "twoFactorPendingSecret" IS NOT NULL;

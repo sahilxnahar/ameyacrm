@@ -17,6 +17,24 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: 'v16.26',
+    date: '5 Aug 2026',
+    highlights: [
+      'Every rupee figure on your invoices, cost sheets, demand letters, payment receipts and RERA forms was printing wrong. The amount was built as “Rs.” plus a figure that already carried the ₹ symbol, and the PDF fonts have no ₹ — so customers received documents reading “Rs.  1,50,000” with a stray double space, or “Rs. Rs.1,50,000” on the receipt and the GST invoice. Carpet area and invoice quantities were also being run through the money formatter, so a cost sheet showed “₹1,200 sq.ft”.',
+      'A negative balance no longer arrives in Excel as text. The formula-injection guard added last release was neutralising anything starting with a minus, which meant the cash book’s running balance exported as text: SUM returned zero and charts over the column came out empty. Phone numbers had the same problem, and an export-then-reimport was silently corrupting them.',
+      'Signing in with two-factor on a new machine asked for one code, not three. The country and device checks used to run after the authenticator code, so you entered a code, got sent to the device-approval email, and were then asked for a second code — the first had already been used up. The login history also recorded a success for sign-ins that were then refused.',
+      'Setting up a new authenticator no longer kills the one you have. Starting the setup used to overwrite the stored secret immediately, so if you closed the tab before finishing, your old phone stopped working and you were down to backup codes. The new one now waits until you confirm a code from it. There is also a proper “Set up a new authenticator” button, which did not exist before.',
+      'The password boxes for disabling two-factor and erasing personal data used the browser’s built-in popup, which some browsers block outright — and when blocked, the button silently did nothing. They are now real dialogs.',
+      'Four screens — the legal docket, parking, scan and the marketing library — were unreadable in dark mode. They were painted white with theme-coloured text on top, so the next-hearing date and the slot details were near-invisible.',
+      'Chat is usable on a phone again: the message box was sitting below the fold and behind the bottom bar. The assistant panel’s close button had the same problem.',
+      'The parking slot panel was being painted over by the bottom bar, hiding its Save and status buttons, and a long panel could not be scrolled back to its title.',
+      'The “New leads today” tile on your home screen linked to a page that does not exist. Every internal link in the app is now checked against the real page list.',
+      'Smaller fixes: descenders on headline figures no longer touch the caption below; four KPI tiles no longer collapse into one column on a tablet; keyboard focus is visible again on the profile form and the search boxes; the offline banner no longer covers notifications; the loading bar at the top of the window stopped double-drawing; a font that was downloaded on every page and used nowhere was removed.',
+      'Self sign-up is rate limited, and the checks now run cheapest-first — it was making an outbound call on every request before checking whether sign-up was even switched on.',
+      'This release adds one column. Run MIGRATION_v16.26_all.sql, or press Repair in Admin → Settings.',
+    ],
+  },
+  {
     version: 'v16.25',
     date: '4 Aug 2026',
     highlights: [

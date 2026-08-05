@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { PasswordDialog } from '@/components/ui/password-dialog';
 
 export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -18,34 +19,40 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   const [code, setCode] = React.useState('');
   const [backup, setBackup] = React.useState<string[] | null>(null);
 
+  /**
+   * AMH-071 — `window.prompt` is gone from this component.
+   *
+   * It is blocked in sandboxed frames and by the browser's "prevent additional
+   * dialogs" checkbox, and when it is blocked it returns null silently — so
+   * "Disable 2FA" simply did nothing, with no error, on a browser where the
+   * user had ticked that box once on some other site.
+   */
+  const [ask, setAsk] = React.useState<null | 'disable' | 're-enrol'>(null);
+
   const begin = (password?: string) => start(async () => {
     const res = await startTwoFactorSetup(password);
     if ('error' in res) {
       // AMH-052: replacing a second factor that already works costs a password.
-      if (res.error === 'PASSWORD_REQUIRED') {
-        const pw = prompt('You already have two-factor on. Confirm your password to set up a new authenticator:');
-        if (pw) begin(pw);
-        return;
-      }
+      if (res.error === 'PASSWORD_REQUIRED') { setAsk('re-enrol'); return; }
       toast.error(res.error);
       return;
     }
+    setAsk(null);
     setQr(res.qr); setSecret(res.secret);
   });
+
   const confirm = () => start(async () => {
     const res = await confirmTwoFactor(code);
     if ('error' in res) { toast.error(res.error); return; }
-    setBackup(res.backupCodes); setQr(null); toast.success('Two-factor enabled'); router.refresh();
+    setBackup(res.backupCodes); setQr(null); setCode(''); toast.success('Two-factor enabled'); router.refresh();
   });
-  const disable = () => {
-    const pw = prompt('Confirm your password to disable 2FA:');
-    if (!pw) return;
-    start(async () => {
-      const res = await disableTwoFactor(pw);
-      if ('error' in res) { toast.error(res.error); return; }
-      toast.success('Two-factor disabled'); router.refresh();
-    });
-  };
+
+  const disable = (pw: string) => start(async () => {
+    const res = await disableTwoFactor(pw);
+    if ('error' in res) { toast.error(res.error); return; }
+    setAsk(null);
+    toast.success('Two-factor disabled'); router.refresh();
+  });
 
   return (
     <Card>
@@ -57,8 +64,18 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
         <Badge variant={enabled ? 'success' : 'secondary'}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
       </CardHeader>
       <CardContent>
-        {enabled ? (
-          <Button variant="outline" onClick={disable} disabled={pending}><ShieldOff className="h-4 w-4" /> Disable 2FA</Button>
+        {enabled && !qr ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setAsk('disable')} disabled={pending}><ShieldOff className="h-4 w-4" /> Disable 2FA</Button>
+            {/*
+              AMH-070 — a new phone. This used to be unreachable, so the only
+              way to move your authenticator was Disable then Enable, which
+              leaves the account with no second factor in between. Starting an
+              enrolment here parks the new secret; the one on your old phone
+              keeps working until you confirm a code from the new one.
+            */}
+            <Button variant="ghost" onClick={() => setAsk('re-enrol')} disabled={pending}><ShieldCheck className="h-4 w-4" /> Set up a new authenticator</Button>
+          </div>
         ) : backup ? (
           <div className="space-y-3">
             <p className="text-sm font-medium text-success">2FA is on. Save these one-time backup codes:</p>
@@ -85,6 +102,19 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
           <Button onClick={() => begin()} disabled={pending}>{pending && <Loader2 className="h-4 w-4 animate-spin" />}<ShieldCheck className="h-4 w-4" /> Enable 2FA</Button>
         )}
       </CardContent>
+
+      <PasswordDialog
+        open={ask !== null}
+        title={ask === 'disable' ? 'Turn off two-factor authentication' : 'Set up a new authenticator'}
+        description={ask === 'disable'
+          ? 'This removes the second factor and your backup codes. Confirm your password to continue.'
+          : 'Your current authenticator keeps working until you scan the new code and confirm it.'}
+        confirmLabel={ask === 'disable' ? 'Turn it off' : 'Continue'}
+        destructive={ask === 'disable'}
+        pending={pending}
+        onCancel={() => setAsk(null)}
+        onConfirm={(pw) => (ask === 'disable' ? disable(pw) : begin(pw))}
+      />
     </Card>
   );
 }

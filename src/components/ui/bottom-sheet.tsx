@@ -33,7 +33,7 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-popover flex items-end justify-center sm:items-center overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in" onClick={onClose} aria-hidden />
       <div
         className={cn(

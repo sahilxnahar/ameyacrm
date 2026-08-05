@@ -1,5 +1,5 @@
 import 'server-only';
-import { formatCurrency } from '@/lib/utils/format';
+import { formatCurrencyForPdf } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
 import { EMBLEM_PNG_BASE64 } from '@/lib/pdf/brand-marks';
@@ -14,7 +14,14 @@ const GREEN = rgb(0.18, 0.49, 0.20);
 const RUBY = rgb(0.608, 0.067, 0.118);
 const AMBER = rgb(0.60, 0.44, 0.10);
 
-const money = (n: number) => `Rs. ${formatCurrency(Math.round(n * 100) / 100)}`;
+// AMH-066 — money in a PDF goes through formatCurrencyForPdf, which yields
+// `Rs 1,50,000.00`. It used to be `Rs. ${formatCurrency(n)}`, and formatCurrency
+// already emits ₹ — so this printed `Rs. ₹1,50,000`, and the ascii() filter two
+// lines down then turned the ₹ into a space. Every figure on every invoice,
+// cost sheet, demand letter and RERA form shipped as `Rs.  1,50,000` with a
+// stray double space; in the files whose ascii() maps ₹→Rs. it shipped as
+// `Rs. Rs.1,50,000`.
+const money = (n: number) => formatCurrencyForPdf(Math.round(n * 100) / 100);
 const ascii = (s: string) => (s || '').replace(/[^\x20-\x7E]/g, ' ');
 const day = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 

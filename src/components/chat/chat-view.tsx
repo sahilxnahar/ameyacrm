@@ -127,8 +127,16 @@ export function ChatView({
     ? directory.filter((u) => u.name.toLowerCase().includes(dirQuery.toLowerCase()) || (u.username ?? '').toLowerCase().includes(dirQuery.toLowerCase()))
     : directory;
 
+  /*
+   * AMH-072 — dvh, and room for the mobile dock.
+   *
+   * `100vh` is the LARGE viewport (URL bar hidden). On a phone with the bar
+   * showing, the composer sat ~120px below the fold and the last of it was
+   * under the fixed dock — so the message box was neither visible nor
+   * reachable, which on a chat screen is the whole feature.
+   */
   return (
-    <div className="grid h-[calc(100vh-13rem)] grid-cols-1 gap-4 lg:grid-cols-[20rem_1fr]">
+    <div className="grid h-[calc(100dvh-13rem-4rem)] grid-cols-1 gap-4 md:h-[calc(100dvh-13rem)] lg:grid-cols-[20rem_1fr]">
       {/* Left: username + conversations */}
       <Card className={cn('flex flex-col overflow-hidden p-0', activeId && 'hidden lg:flex')}>
         <div className="border-b p-3">
@@ -260,7 +268,7 @@ export function ChatView({
       {picker && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-24" onClick={() => setPicker(false)}>
           <Card className="w-full max-w-md p-3" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">Message someone</p><button onClick={() => setPicker(false)} aria-label="Close the emoji picker"><X className="h-4 w-4" /></button></div>
+            <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">Message someone</p><button onClick={() => setPicker(false)} aria-label="Close the people picker"><X className="h-4 w-4" /></button></div>
             <div className="relative mb-2"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input autoFocus value={dirQuery} onChange={(e) => setDirQuery(e.target.value)} placeholder="Search by name or @username" className="pl-9" /></div>
             <div className="max-h-72 overflow-y-auto">
               {dir.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No one matches.</p> : dir.map((u) => (

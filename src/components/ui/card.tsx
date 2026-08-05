@@ -16,7 +16,7 @@ export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDiv
   <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props} />
 );
 export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <h3 className={cn('font-display text-xl font-semibold leading-none tracking-tight', className)} {...props} />
+  <h3 className={cn('font-display text-xl font-semibold leading-tight tracking-tight', className)} {...props} />
 );
 export const CardDescription = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <p className={cn('text-sm text-muted-foreground', className)} {...props} />

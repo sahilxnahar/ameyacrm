@@ -31,7 +31,7 @@ export function ConnectionBanner() {
   return (
     <div
       role="status"
-      className={`fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[90] mx-auto w-fit rounded-full px-4 py-2 text-xs font-medium shadow-lg lg:bottom-4 ${
+      className={`fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-dock mx-auto w-fit rounded-full px-4 py-2 text-xs font-medium shadow-lg lg:bottom-4 ${
         offline ? 'bg-[#7A1F1F] text-white' : 'bg-[#0F6E56] text-white'
       }`}
     >

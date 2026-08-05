@@ -33,7 +33,7 @@ export function StatTile({
       <div className="mt-1 flex items-end justify-between gap-2">
         <div
           className={cn(
-            'font-display text-xl font-semibold leading-none',
+            'font-display text-xl font-semibold leading-tight',
             tone === 'bad' && 'text-destructive',
             tone === 'good' && 'text-success',
           )}
@@ -75,8 +75,14 @@ export function StatTileRow({ cols = 4, children, className }: { cols?: 1 | 2 | 
         cols === 1 && 'sm:grid-cols-1',
         cols === 2 && 'sm:grid-cols-2',
         cols === 3 && 'sm:grid-cols-3',
-        cols === 4 && 'md:grid-cols-3 xl:grid-cols-4',
-        cols === 5 && 'sm:grid-cols-5',
+        // AMH-076: `sm:grid` turns the grid on at 640px, but cols===4 supplied no
+        // template until `md`. Between 640 and 767 the element was `display:grid`
+        // with no columns — so four full-width tiles stacked in one column, right
+        // after they had been a tidy swipeable strip one pixel earlier.
+        cols === 4 && 'sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4',
+        // Five tiles across 592px of content is ~105px each — too narrow for a
+        // rupee figure. Two rows first, then five.
+        cols === 5 && 'sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5',
         className,
       )}
     >

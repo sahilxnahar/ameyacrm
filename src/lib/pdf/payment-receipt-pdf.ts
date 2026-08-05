@@ -1,5 +1,5 @@
 import 'server-only';
-import { formatCurrency } from '@/lib/utils/format';
+import { formatCurrencyForPdf } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { rupeesInWords } from '@/lib/money-words';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
@@ -95,7 +95,9 @@ export async function buildPaymentReceiptPdf(d: PaymentReceiptData): Promise<Uin
   page.drawRectangle({ x: M, y: y - 46, width: W - 2 * M, height: 62, color: SAND });
   page.drawRectangle({ x: M, y: y - 46, width: 4, height: 62, color: NAVY });
   text('AMOUNT', M + 16, y + 2, 8, bold, MUTE);
-  text(`Rs. ${formatCurrency(d.amount)}`, M + 16, y - 24, 24, bold, NAVY);
+  // AMH-066: was `Rs. ${formatCurrency(...)}` and this file's ascii() maps ₹→Rs.,
+  // so the headline amount on every receipt read `Rs. Rs.1,50,000`.
+  text(formatCurrencyForPdf(d.amount), M + 16, y - 24, 24, bold, NAVY);
   // Amount in words has to stay on one line inside the box, so shrink to fit
   // rather than wrapping on top of itself.
   const words = rupeesInWords(d.amount);

@@ -34,10 +34,39 @@
 
 const FORMULA_START = /^[=+\-@\t\r]/;
 
+/**
+ * A value that is unambiguously a number, or a phone number in the form people
+ * actually type it. `-50000`, `+91 98404 90000`, `-1,25,000.50`.
+ *
+ * ── Why this carve-out exists (AMH-065) ────────────────────────────────────
+ *
+ * The first version of this guard neutralised anything starting `= + - @`, full
+ * stop. That is right for text and wrong for numbers, and it broke two things:
+ *
+ *   A negative balance. The cash book's running balance goes negative the
+ *   moment the month opens with a payment, so the Balance column shipped as
+ *   `'-50000`. The leading apostrophe is Excel's marker for "treat this as
+ *   text" when you TYPE it into a cell — on CSV *import* it is just a
+ *   character. So the accountant's Balance column arrived left-aligned, SUM
+ *   returned 0, and every chart over it was empty.
+ *
+ *   A phone number. `+91 98404 90000` exported as `'+91 98404 90000`, and
+ *   bulk-import reads the phone column back verbatim (`toNumber` is not
+ *   applied to it), so a round trip silently corrupted the number and broke
+ *   the `tel:` link on that lead.
+ *
+ * A cell that matches this is not a formula in any spreadsheet: `-50000` is
+ * arithmetic on nothing, and no formula begins `+91 `. So the guard skips it.
+ * Everything else — `=HYPERLINK(…)`, `+CMD`, `-1+1`, `@SUM` — still gets the
+ * apostrophe.
+ */
+const SAFE_NUMERIC = /^[-+]?[\d,]*\d(?:\.\d+)?$/;
+const PHONE_LIKE = /^\+\d[\d\s()-]{4,}$/;
+
 /** Escape one value for a CSV cell: neutralise formulas, then quote. */
 export function escapeCsvCell(value: unknown): string {
   let s = String(value ?? '');
-  if (FORMULA_START.test(s)) s = `'${s}`;
+  if (FORMULA_START.test(s) && !SAFE_NUMERIC.test(s) && !PHONE_LIKE.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
 

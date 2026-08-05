@@ -1299,6 +1299,7 @@ model User {
   // Security
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String? // AES-256-GCM encrypted TOTP secret
+  twoFactorPendingSecret String? // AMH-070: an enrolment in progress; promoted only once a code confirms it
   twoFactorLastStep  BigInt? // AMH-053: last consumed TOTP time-step, so a code cannot be replayed
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime?

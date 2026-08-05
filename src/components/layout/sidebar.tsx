@@ -244,7 +244,7 @@ export function Sidebar({
               rail && 'lg:justify-center lg:gap-0 lg:px-0',
             )}
           >
-            <Icon className={cn('shrink-0', showBlurb ? 'h-[18px] w-[18px]' : 'h-[18px] w-[18px]', active ? 'text-brass' : 'text-[#6B6459]')} />
+            <Icon className={cn('shrink-0', showBlurb ? 'h-[18px] w-[18px]' : 'h-[18px] w-[18px]', active ? 'text-brass' : 'text-[#6B6459] dark:text-[#A8A093]')} />
             <span className={cn('flex min-w-0 flex-1 flex-col', rail && 'lg:hidden')}>
               <span className="truncate leading-tight">{item.label}</span>
               {showBlurb && (
@@ -326,7 +326,7 @@ export function Sidebar({
         >
           {!customising && pinned.length > 0 && (
             <div>
-              <p className={cn('mb-2 flex items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]', rail && 'lg:hidden')}>
+              <p className={cn('mb-2 flex items-center gap-1 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093] dark:text-[#A8A093]', rail && 'lg:hidden')}>
                 <Pin className="h-2.5 w-2.5" /> Pinned
               </p>
               <ul className="space-y-0.5">{pinned.map((i) => renderItem(i, [], true))}</ul>
@@ -425,7 +425,7 @@ export function Sidebar({
                     type="button"
                     onClick={() => toggleGroup(group.label)}
                     aria-expanded={showItems}
-                    className={cn('mb-2 flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
+                    className={cn('mb-2 flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093] hover:bg-secondary/60 dark:text-[#A8A093]', rail && 'lg:hidden')}
                     title={isCollapsedGroup ? 'Open this section' : 'Fold this section'}
                   >
                     <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform', showItems && 'rotate-90')} />
@@ -493,7 +493,7 @@ function SortableGroup({ id, label, children }: { id: string; label: string; chi
         <button type="button" {...attributes} {...listeners} className="flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to move this whole section" aria-label={`Drag section ${label}`}>
           <GripVertical className="h-4 w-4" />
         </button>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093]">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#6B6459] dark:text-[#A8A093] dark:text-[#A8A093]">{label}</p>
       </div>
       {children}
     </div>
@@ -510,7 +510,7 @@ function SortableRow({ item, hidden, isPinned, onTogglePin, onToggleHide }: { it
         <button type="button" {...attributes} {...listeners} className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing" title="Drag to reorder" aria-label={`Drag ${item.label}`}>
           <GripVertical className="h-4 w-4" />
         </button>
-        <Icon className="h-[18px] w-[18px] shrink-0 text-[#6B6459]" />
+        <Icon className="h-[18px] w-[18px] shrink-0 text-[#6B6459] dark:text-[#A8A093]" />
         <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{item.label}</span>
         <CtrlButton onClick={onTogglePin} title={isPinned ? 'Unpin from the top' : 'Pin to the top'}>{isPinned ? <PinOff className="h-3.5 w-3.5 text-brass" /> : <Pin className="h-3.5 w-3.5" />}</CtrlButton>
         <CtrlButton onClick={onToggleHide} title={hidden ? 'Show this again' : 'Hide from my menu'}>{hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</CtrlButton>

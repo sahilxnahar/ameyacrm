@@ -19,13 +19,39 @@ describe('exports cannot smuggle a formula into a spreadsheet (AMH-060)', () => 
     }
   });
 
-  it('leaves ordinary text — and negative numbers written as text — readable', () => {
+  it('leaves ordinary text readable', () => {
     expect(escapeCsvCell('Priya Sharma')).toBe('"Priya Sharma"');
     expect(escapeCsvCell(1500)).toBe('"1500"');
     expect(escapeCsvCell(null)).toBe('""');
-    // A leading '-' IS neutralised: a real negative amount is passed as a
-    // number, and the apostrophe is invisible in the cell either way.
-    expect(escapeCsvCell('-500')).toBe(`"'-500"`);
+  });
+
+  /**
+   * AMH-065 — the first version of this guard neutralised anything starting
+   * `= + - @`, which is right for text and wrong for numbers.
+   *
+   * The apostrophe is Excel's "treat as text" marker when you TYPE into a
+   * cell. On CSV *import* it is just a character. So `'-50000` arrived in the
+   * accountant's Balance column left-aligned, SUM over it returned 0, and
+   * every chart on that column came out empty. The cash book's running balance
+   * goes negative the moment a month opens with a payment, so this was not an
+   * edge case — it was most months.
+   *
+   * The phone case is worse than cosmetic: bulk-import reads the phone column
+   * back verbatim, so an export/re-import round trip permanently corrupted the
+   * number and broke the `tel:` link on that lead.
+   */
+  it('does not corrupt a negative amount or a phone number', () => {
+    expect(escapeCsvCell(-50000)).toBe('"-50000"');
+    expect(escapeCsvCell('-50000')).toBe('"-50000"');
+    expect(escapeCsvCell('-1,25,000.50')).toBe('"-1,25,000.50"');
+    expect(escapeCsvCell('+91 98404 90000')).toBe('"+91 98404 90000"');
+    expect(escapeCsvCell('+919840490000')).toBe('"+919840490000"');
+  });
+
+  it('but anything that is not plainly a number is still neutralised', () => {
+    for (const payload of ['-1+1', '-cmd', '+CMD|calc', '@SUM(A1)', '=1+1', '-', '+', '-1e3;x']) {
+      expect(escapeCsvCell(payload)).toBe(`"'${payload}"`);
+    }
   });
 
   it('quotes are doubled, so a cell cannot break out of its column', () => {

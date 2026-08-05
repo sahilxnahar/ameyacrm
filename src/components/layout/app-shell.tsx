@@ -11,7 +11,6 @@ import { KeyboardShortcuts } from './keyboard-shortcuts';
 import { DemoBanner } from './demo-banner';
 import type { TopNavPrefs } from '@/lib/nav/top-nav-prefs';
 import type { NavMode } from '@/lib/nav/nav-mode';
-import { NavProgress } from './nav-progress';
 import type { NavPrefs } from '@/lib/nav/prefs';
 import { NAVIGATION } from '@/config/navigation';
 import { toneForPath } from '@/config/module-style';
@@ -180,7 +179,6 @@ export function AppShell({
         Skip to content
       </a>
       <React.Suspense fallback={null}>
-        <NavProgress />
       </React.Suspense>
       <PullToRefresh />
       <Sidebar

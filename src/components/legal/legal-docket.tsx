@@ -10,7 +10,7 @@ import type { LitigationDocket, DocketMatter, DocRenewals, RenewalRow } from '@/
 const STATUS = ['OPEN', 'HEARING', 'RESERVED', 'DISPOSED', 'APPEAL', 'CLOSED'] as const;
 const STATUS_TONE: Record<string, string> = {
   OPEN: 'bg-blue-100 text-blue-800', HEARING: 'bg-amber-100 text-amber-800', RESERVED: 'bg-violet-100 text-violet-800',
-  DISPOSED: 'bg-emerald-100 text-emerald-800', APPEAL: 'bg-orange-100 text-orange-800', CLOSED: 'bg-slate-200 text-slate-700',
+  DISPOSED: 'bg-emerald-100 text-emerald-800', APPEAL: 'bg-orange-100 text-orange-800', CLOSED: 'bg-slate-200 text-slate-800',
 };
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 
@@ -22,7 +22,7 @@ export function LegalDocket({ docket, renewals }: { docket: LitigationDocket; re
         <h1 className="gold-shine font-display text-xl font-semibold leading-tight tracking-tight sm:text-3xl">Litigation & Renewals</h1>
         <p className="text-sm text-muted-foreground">Track every court matter with its full hearing history, and keep EC / Khata renewals from lapsing.</p>
       </div>
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-border">
         <TabBtn active={tab === 'docket'} onClick={() => setTab('docket')} label={`Litigation Docket (${docket.matters.length})`} />
         <TabBtn active={tab === 'renewals'} onClick={() => setTab('renewals')} label={`EC / Khata Renewals${renewals.expired + renewals.soon > 0 ? ` · ${renewals.expired + renewals.soon} to act` : ''}`} />
       </div>
@@ -32,7 +32,7 @@ export function LegalDocket({ docket, renewals }: { docket: LitigationDocket; re
 }
 
 function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return <button onClick={onClick} className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${active ? 'border-[#1B2A4A] text-primary' : 'border-transparent text-muted-foreground hover:text-slate-700'}`}>{label}</button>;
+  return <button onClick={onClick} className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${active ? 'border-[#1B2A4A] text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{label}</button>;
 }
 
 function Docket({ docket }: { docket: LitigationDocket }) {
@@ -55,14 +55,14 @@ function Docket({ docket }: { docket: LitigationDocket }) {
     });
   };
 
-  const cls = 'rounded border border-slate-300 px-2 py-1 text-sm';
+  const cls = 'rounded border border-border px-2 py-1 text-sm';
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <button onClick={() => setShowNew((v) => !v)} className="rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63]">{showNew ? 'Close' : 'New matter'}</button>
       </div>
       {showNew && (
-        <form onSubmit={submitMatter} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+        <form onSubmit={submitMatter} className="grid gap-2 rounded-lg border border-border bg-muted p-3 sm:grid-cols-2">
           <label className="text-xs">Title *<br /><input name="title" required className={`${cls} w-full`} /></label>
           <label className="text-xs">Project<br /><select name="projectId" className={`${cls} w-full`}><option value="">— none —</option>{docket.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label className="text-xs">Court<br /><input name="court" className={`${cls} w-full`} /></label>
@@ -76,7 +76,7 @@ function Docket({ docket }: { docket: LitigationDocket }) {
         </form>
       )}
       {docket.matters.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-muted-foreground">No matters yet. Use <span className="font-semibold">New matter</span> to open the first one.</div>
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No matters yet. Use <span className="font-semibold">New matter</span> to open the first one.</div>
       ) : docket.matters.map((m) => <MatterCard key={m.id} m={m} open={openId === m.id} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />)}
     </div>
   );
@@ -85,7 +85,7 @@ function Docket({ docket }: { docket: LitigationDocket }) {
 function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onToggle: () => void }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
-  const cls = 'rounded border border-slate-300 px-2 py-1 text-sm';
+  const cls = 'rounded border border-border px-2 py-1 text-sm';
 
   const addHearing = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const form = e.currentTarget;
@@ -101,7 +101,7 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
   });
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="rounded-lg border border-border bg-card">
       <button onClick={onToggle} className="flex w-full items-center justify-between gap-3 p-3 text-left">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -117,8 +117,8 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
         </div>
       </button>
       {open && (
-        <div className="border-t border-slate-100 p-3">
-          {m.summary && <p className="mb-3 rounded bg-slate-50 p-2 text-xs text-slate-700">{m.summary}</p>}
+        <div className="border-t border-border p-3">
+          {m.summary && <p className="mb-3 rounded bg-muted p-2 text-xs text-foreground">{m.summary}</p>}
           <h4 className="mb-2 text-xs font-semibold text-primary">Hearing docket ({m.hearings.length})</h4>
           {m.hearings.length === 0 ? <p className="mb-3 text-xs text-muted-foreground">No hearings recorded yet.</p> : (
             <ol className="mb-3 space-y-2 border-l-2 border-brass/40 pl-3">
@@ -128,7 +128,7 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-xs">
                       <span className="font-semibold">{fmtDate(h.date)}</span>{h.purpose && <span className="text-muted-foreground"> · {h.purpose}</span>}
-                      {h.outcome && <div className="text-slate-700">{h.outcome}</div>}
+                      {h.outcome && <div className="text-foreground">{h.outcome}</div>}
                       {h.nextDate && <div className="text-[11px] text-muted-foreground">Next date given: {fmtDate(h.nextDate)}</div>}
                       {h.notes && <div className="text-[11px] italic text-muted-foreground">{h.notes}</div>}
                     </div>
@@ -138,7 +138,7 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
               ))}
             </ol>
           )}
-          <form onSubmit={addHearing} className="grid gap-2 rounded border border-slate-200 bg-slate-50 p-2 sm:grid-cols-2">
+          <form onSubmit={addHearing} className="grid gap-2 rounded border border-border bg-muted p-2 sm:grid-cols-2">
             <label className="text-xs">Hearing date *<br /><input name="date" type="date" required className={`${cls} w-full`} /></label>
             <label className="text-xs">Purpose<br /><input name="purpose" placeholder="Arguments / Evidence…" className={`${cls} w-full`} /></label>
             <label className="text-xs sm:col-span-2">Outcome<br /><input name="outcome" placeholder="What happened" className={`${cls} w-full`} /></label>
@@ -153,7 +153,7 @@ function MatterCard({ m, open, onToggle }: { m: DocketMatter; open: boolean; onT
 }
 
 const RENEW_TONE: Record<string, string> = {
-  expired: 'bg-rose-100 text-rose-800', soon: 'bg-amber-100 text-amber-800', ok: 'bg-emerald-100 text-emerald-800', untracked: 'bg-slate-100 text-slate-600',
+  expired: 'bg-rose-100 text-rose-800', soon: 'bg-amber-100 text-amber-800', ok: 'bg-emerald-100 text-emerald-800', untracked: 'bg-slate-100 text-muted-foreground',
 };
 const RENEW_LABEL: Record<string, string> = { expired: 'Expired', soon: 'Expiring soon', ok: 'Valid', untracked: 'Not tracked' };
 
@@ -163,16 +163,16 @@ function Renewals({ renewals }: { renewals: DocRenewals }) {
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 font-medium text-rose-800">Expired <b>{renewals.expired}</b></span>
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">Expiring soon <b>{renewals.soon}</b></span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Tracked <b>{renewals.tracked}</b></span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-800">Tracked <b>{renewals.tracked}</b></span>
       </div>
       {renewals.rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           No EC or Khata documents found. Add them under Land & Approvals (as title documents of kind Encumbrance Certificate or Khata); they’ll appear here to track renewals.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 text-left text-xs text-muted-foreground"><th className="p-2">Document</th><th className="p-2">Parcel</th><th className="p-2">Kind</th><th className="p-2">Status</th><th className="p-2">Renew by</th><th className="p-2">Note</th></tr></thead>
+            <thead><tr className="bg-muted text-left text-xs text-muted-foreground"><th className="p-2">Document</th><th className="p-2">Parcel</th><th className="p-2">Kind</th><th className="p-2">Status</th><th className="p-2">Renew by</th><th className="p-2">Note</th></tr></thead>
             <tbody>{renewals.rows.map((r) => <RenewalRowView key={r.id} r={r} />)}</tbody>
           </table>
         </div>
@@ -193,13 +193,13 @@ function RenewalRowView({ r }: { r: RenewalRow }) {
     toast.success('Renewal updated'); router.refresh();
   });
   return (
-    <tr className="border-t border-slate-100 align-top">
+    <tr className="border-t border-border align-top">
       <td className="p-2 font-medium">{r.title}</td>
       <td className="p-2 text-xs text-muted-foreground">{r.parcelName}</td>
       <td className="p-2 text-xs">{r.kind.replace(/_/g, ' ')}</td>
       <td className="p-2"><span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${RENEW_TONE[r.state]}`}>{RENEW_LABEL[r.state]}{r.daysToExpiry != null && r.state !== 'ok' ? ` · ${r.daysToExpiry < 0 ? `${-r.daysToExpiry}d ago` : `${r.daysToExpiry}d`}` : ''}</span></td>
-      <td className="p-2"><input type="date" value={date} onChange={(e) => { setDate(e.target.value); }} onBlur={(e) => { if (e.target.value !== (r.expiresOn ? r.expiresOn.slice(0, 10) : '')) save(e.target.value, note); }} disabled={pending} className="rounded border border-slate-300 px-1.5 py-1 text-xs" /></td>
-      <td className="p-2"><input value={note} onChange={(e) => setNote(e.target.value)} onBlur={(e) => { if (e.target.value !== (r.renewalNote ?? '')) save(date, e.target.value); }} placeholder="e.g. apply at sub-registrar" disabled={pending} className="w-40 rounded border border-slate-300 px-1.5 py-1 text-xs" /></td>
+      <td className="p-2"><input type="date" value={date} onChange={(e) => { setDate(e.target.value); }} onBlur={(e) => { if (e.target.value !== (r.expiresOn ? r.expiresOn.slice(0, 10) : '')) save(e.target.value, note); }} disabled={pending} className="rounded border border-border px-1.5 py-1 text-xs" /></td>
+      <td className="p-2"><input value={note} onChange={(e) => setNote(e.target.value)} onBlur={(e) => { if (e.target.value !== (r.renewalNote ?? '')) save(date, e.target.value); }} placeholder="e.g. apply at sub-registrar" disabled={pending} className="w-40 rounded border border-border px-1.5 py-1 text-xs" /></td>
     </tr>
   );
 }

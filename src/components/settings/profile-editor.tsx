@@ -63,7 +63,7 @@ export function ProfileEditor({ init }: { init: ProfileInit }) {
     router.refresh();
   };
 
-  const field = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary focus:outline-none';
+  const field = 'focus-ring h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:border-primary';
 
   return (
     <Card className="max-w-2xl">

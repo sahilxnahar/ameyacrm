@@ -1,5 +1,5 @@
 import 'server-only';
-import { formatCurrency } from '@/lib/utils/format';
+import { formatCurrencyForPdf, formatAmountPlain } from '@/lib/utils/format';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { rupeesInWords } from '@/lib/money-words';
 import { drawLetterhead } from '@/lib/pdf/letterhead';
@@ -89,7 +89,7 @@ export async function buildTallyInvoicePdf(d: TallyInvoiceData): Promise<Uint8Ar
   const shown = d.items.slice(0, maxRows);
   shown.forEach((it, i) => drawRow([
     String(i + 1), it.name, it.hsn ?? '-',
-    `${it.qty}${it.unit ? ' ' + it.unit : ''}`, formatCurrency(it.rate), String(it.gstRate), formatCurrency(it.amount),
+    `${it.qty}${it.unit ? ' ' + it.unit : ''}`, formatAmountPlain(it.rate), String(it.gstRate), formatAmountPlain(it.amount),
   ]));
   if (d.items.length > shown.length) { y -= 15; text(`... and ${d.items.length - shown.length} more line(s)`, M + 26, y + 4, 8, font, MUTE); }
 
@@ -101,11 +101,13 @@ export async function buildTallyInvoicePdf(d: TallyInvoiceData): Promise<Uint8Ar
     right(val, W - M, y, 9, b ? bold : font, b ? NAVY : CHARCOAL);
     y -= 14;
   };
-  line('Taxable value', `Rs. ${formatCurrency(d.taxable)}`);
-  line('CGST', `Rs. ${formatCurrency(d.cgst)}`);
-  line('SGST', `Rs. ${formatCurrency(d.sgst)}`);
+  // AMH-066: this file's ascii() maps ₹→Rs., so `Rs. ${formatCurrency(n)}`
+  // printed `Rs. Rs.1,50,000` on the totals block of every GST invoice.
+  line('Taxable value', formatCurrencyForPdf(d.taxable));
+  line('CGST', formatCurrencyForPdf(d.cgst));
+  line('SGST', formatCurrencyForPdf(d.sgst));
   page.drawLine({ start: { x: tx, y: y + 6 }, end: { x: W - M, y: y + 6 }, thickness: 0.6, color: GOLD });
-  line('Invoice total', `Rs. ${formatCurrency(d.total)}`, true);
+  line('Invoice total', formatCurrencyForPdf(d.total), true);
 
   // Amount in words
   y -= 6;

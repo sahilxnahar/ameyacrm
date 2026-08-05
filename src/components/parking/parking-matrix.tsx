@@ -6,7 +6,7 @@ import { createParkingSlot, bulkCreateParkingSlots, assignParkingSlot, setParkin
 import { PARKING_TYPES, PARKING_STATUSES, type ParkingData, type ParkingSlotRow } from '@/lib/parking/types';
 
 const STATUS_STYLE: Record<string, string> = {
-  Available: 'border-slate-300 bg-white text-slate-700',
+  Available: 'border-border bg-card text-foreground',
   Assigned: 'border-emerald-400 bg-emerald-50 text-emerald-900',
   Blocked: 'border-rose-300 bg-rose-50 text-rose-800',
 };
@@ -61,7 +61,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground">Project:</span>
           {data.projects.map((p) => (
-            <button key={p.id} onClick={() => switchProject(p.id)} className={`rounded-full px-3 py-1 text-xs ${p.id === data.projectId ? 'bg-[#1B2A4A] text-white' : 'border border-slate-300 bg-white hover:bg-slate-50'}`}>{p.name}</button>
+            <button key={p.id} onClick={() => switchProject(p.id)} className={`rounded-full px-3 py-1 text-xs ${p.id === data.projectId ? 'bg-[#1B2A4A] text-white' : 'border border-border bg-card hover:bg-muted'}`}>{p.name}</button>
           ))}
         </div>
       )}
@@ -77,7 +77,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
       {showAdd && <AddSlots data={data} pending={pending} onDone={() => { refresh(data.projectId); router.refresh(); }} />}
 
       {data.totals.total === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           No parking slots yet for this project. Use <span className="font-semibold">Add slots</span> to create them one by one or generate a whole level at once (e.g. B1-001 … B1-120).
         </div>
       ) : (
@@ -100,7 +100,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
       )}
 
       <div className="flex flex-wrap gap-4 text-[11px] text-muted-foreground">
-        <Legend cls="border-slate-300 bg-white" label="Available" />
+        <Legend cls="border-border bg-card" label="Available" />
         <Legend cls="border-emerald-400 bg-emerald-50" label="Assigned to a unit" />
         <Legend cls="border-rose-300 bg-rose-50" label="Blocked" />
       </div>
@@ -114,7 +114,7 @@ export function ParkingMatrix({ data: initial }: { data: ParkingData }) {
 
 function Chip({ label, value, tone }: { label: string; value: number; tone?: 'slate' | 'emerald' | 'rose' | 'gold' }) {
   const tones: Record<string, string> = {
-    slate: 'bg-slate-100 text-slate-700', emerald: 'bg-emerald-100 text-emerald-800', rose: 'bg-rose-100 text-rose-800', gold: 'bg-brass/15 text-[#7a5f28]',
+    slate: 'bg-slate-100 text-slate-800', emerald: 'bg-emerald-100 text-emerald-800', rose: 'bg-rose-100 text-rose-800', gold: 'bg-brass/15 text-[#7a5f28]',
   };
   return <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${tone ? tones[tone] : 'bg-[#1B2A4A] text-white'}`}>{label}<span className="font-bold tabular-nums">{value}</span></span>;
 }
@@ -124,7 +124,7 @@ function Legend({ cls, label }: { cls: string; label: string }) {
 }
 
 function AddSlots({ data, pending, onDone }: { data: ParkingData; pending: boolean; onDone: () => void }) {
-  const cls = 'rounded border border-slate-300 px-2 py-1 text-sm';
+  const cls = 'rounded border border-border px-2 py-1 text-sm';
   const [mode, setMode] = React.useState<'one' | 'bulk'>('one');
   const projectId = data.projectId ?? '';
 
@@ -146,9 +146,9 @@ function AddSlots({ data, pending, onDone }: { data: ParkingData; pending: boole
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-lg border border-border bg-muted p-3">
       <div className="mb-2 flex gap-1">
-        {(['one', 'bulk'] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={`rounded px-2 py-0.5 text-xs ${m === mode ? 'bg-[#1B2A4A] text-white' : 'bg-white'}`}>{m === 'one' ? 'One slot' : 'Bulk (a whole level)'}</button>)}
+        {(['one', 'bulk'] as const).map((m) => <button key={m} onClick={() => setMode(m)} className={`rounded px-2 py-0.5 text-xs ${m === mode ? 'bg-[#1B2A4A] text-white' : 'bg-card'}`}>{m === 'one' ? 'One slot' : 'Bulk (a whole level)'}</button>)}
       </div>
       {mode === 'one' ? (
         <form onSubmit={submitOne} className="flex flex-wrap items-end gap-2">
@@ -178,17 +178,17 @@ function SlotEditor({ slot, units, pending, onAssign, onStatus, onDelete, onClos
   const [unitId, setUnitId] = React.useState(slot.unitId ?? '');
   React.useEffect(() => setUnitId(slot.unitId ?? ''), [slot]);
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
-      <div className="sm:my-auto w-full max-w-md rounded-t-xl bg-white p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-popover flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4 overflow-y-auto overscroll-contain" onClick={onClose}>
+      <div className="my-auto w-full max-w-md rounded-t-xl bg-card p-4 shadow-xl sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-primary">Slot {slot.code}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">✕</button>
         </div>
         <p className="mb-3 text-xs text-muted-foreground">{slot.level} · {slot.type} · currently <span className="font-semibold">{slot.status}</span>{slot.unitCode ? ` (unit ${slot.unitCode})` : ''}</p>
 
         <label className="mb-1 block text-xs font-semibold">Assign to unit</label>
         <div className="mb-3 flex gap-2">
-          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm">
+          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className="flex-1 rounded border border-border px-2 py-1.5 text-sm">
             <option value="">— none —</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.code}{u.typology ? ` · ${u.typology}` : ''}{u.tower ? ` · ${u.tower}` : ''}</option>)}
           </select>
@@ -198,13 +198,13 @@ function SlotEditor({ slot, units, pending, onAssign, onStatus, onDelete, onClos
         <label className="mb-1 block text-xs font-semibold">Status</label>
         <div className="mb-4 flex gap-2">
           {PARKING_STATUSES.map((st) => (
-            <button key={st} disabled={pending} onClick={() => onStatus(slot, st)} className={`rounded border px-3 py-1.5 text-sm ${slot.status === st ? 'border-[#1B2A4A] bg-[#1B2A4A] text-white' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>{st}</button>
+            <button key={st} disabled={pending} onClick={() => onStatus(slot, st)} className={`rounded border px-3 py-1.5 text-sm ${slot.status === st ? 'border-[#1B2A4A] bg-[#1B2A4A] text-white' : 'border-border bg-card hover:bg-muted'}`}>{st}</button>
           ))}
         </div>
 
         <div className="flex justify-between">
           <button disabled={pending} onClick={() => onDelete(slot)} className="text-sm text-rose-600 hover:underline">Delete slot</button>
-          <button onClick={onClose} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">Close</button>
+          <button onClick={onClose} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-muted">Close</button>
         </div>
       </div>
     </div>

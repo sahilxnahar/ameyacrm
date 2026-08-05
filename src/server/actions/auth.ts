@@ -49,7 +49,28 @@ export type ActionState = { error?: string; ok?: boolean; success?: string };
  */
 type LoginUser = { id: string; name: string; email: string; role: string; allowForeignAccess?: boolean };
 
-async function finishLogin(user: LoginUser, reason: string): Promise<ActionState> {
+/**
+ * The gates that decide whether a credential is accepted AT ALL — where from,
+ * and on what machine.
+ *
+ * AMH-067 — these run BEFORE the second factor, not after.
+ *
+ * They used to run after, inside `finishLogin`, which produced a genuinely
+ * silly sign-in for a 2FA user on a new laptop: enter the authenticator code,
+ * get bounced to /device-check, read the emailed code, and then be asked for a
+ * SECOND authenticator code — because `verifyTotpOnce` had already burned the
+ * first one, so they also had to wait for the next 30-second window. Three
+ * codes for one sign-in.
+ *
+ * Running them first also matches the SAML callback, which has always been
+ * ordered geo → device → 2FA → session. With the AMH-056 guard in
+ * `verifyDeviceAction` handing back to /two-factor, device-before-2FA is now
+ * the safe order everywhere.
+ *
+ * Returns an ActionState to refuse, redirects to /device-check, or returns
+ * null to let the caller carry on.
+ */
+async function runEntryGates(user: LoginUser): Promise<ActionState | null> {
   const policy = await getSecurityPolicy();
   const country = await requestCountry();
 
@@ -63,8 +84,7 @@ async function finishLogin(user: LoginUser, reason: string): Promise<ActionState
   }
 
   // A device nobody has approved does not get a session, password or not.
-  const known = await isKnownDevice(user.id);
-  if (policy.deviceApproval && !known) {
+  if (policy.deviceApproval && !(await isKnownDevice(user.id))) {
     const approval = await beginDeviceApproval(user);
     await writeAudit({
       actorId: user.id, action: 'LOGIN_FAILED',
@@ -75,7 +95,32 @@ async function finishLogin(user: LoginUser, reason: string): Promise<ActionState
     redirect(`/device-check?t=${approval.token}${approval.emailed ? '' : '&sendfailed=1'}`);
   }
 
+  return null;
+}
+
+/**
+ * Mint the session, and only then record that anyone signed in.
+ *
+ * AMH-067 — `markLoginSuccess` and `clearMfaTicket` used to run in
+ * `verifyTwoFactorAction` BEFORE the gates had spoken, so a login that was then
+ * refused on country or device still left a `success: true` row in
+ * `loginHistory` beside a `LOGIN_FAILED` audit line. Anyone reading the login
+ * history to answer "did somebody get in from Dubai?" was reading a yes for a
+ * session that never existed.
+ *
+ * Never returns — it always redirects.
+ */
+async function completeLogin(user: LoginUser, reason: string, opts?: { username?: string; historyReason?: string }): Promise<ActionState> {
+  const policy = await getSecurityPolicy();
+  const country = await requestCountry();
+  // Recomputed here rather than threaded from runEntryGates: between the two
+  // the user may have completed device approval, which trusts the machine. A
+  // person who has just typed a code we emailed them does not also need an
+  // email telling them somebody signed in.
+  const known = await isKnownDevice(user.id);
+
   await createSession(user.id);
+  if (opts?.username) await markLoginSuccess(user.id, opts.username, opts.historyReason ?? 'password');
   await prisma.user.update({ where: { id: user.id }, data: { lastCountry: country ?? undefined } }).catch(() => undefined);
   await writeAudit({ actorId: user.id, action: 'LOGIN', summary: `${reason} from ${countryName(country)}` });
 
@@ -90,6 +135,13 @@ async function finishLogin(user: LoginUser, reason: string): Promise<ActionState
   // up, that is surfaced as a prominent reminder on the home page — not a
   // forced detour that hides the whole CRM behind the security screen.
   redirect('/home');
+}
+
+/** Both gates then the session, for the paths that have no second factor. */
+async function finishLogin(user: LoginUser, reason: string): Promise<ActionState> {
+  const refused = await runEntryGates(user);
+  if (refused) return refused;
+  return completeLogin(user, reason);
 }
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -118,9 +170,13 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
       return { error: 'This account is not active yet. Confirm your email, then wait for an administrator to approve access if you are outside the company domain.' };
     case 'locked':
       return { error: 'Too many failed attempts for this account. Please try again later.' }; // F-22: do not leak the exact unlock time
-    case 'needs_2fa':
+    case 'needs_2fa': {
+      // AMH-067 — geo and device first, so the second factor is asked for once.
+      const refused = await runEntryGates(result.user);
+      if (refused) return refused;
       await issueMfaTicket(result.user.id);
       redirect('/two-factor');
+    }
     case 'ok':
       return finishLogin(result.user, 'Password login');
   }
@@ -180,18 +236,14 @@ export async function verifyTwoFactorAction(_prev: ActionState, formData: FormDa
   }
 
   await clearMfaTicket();
-  await markLoginSuccess(user.id, user.username, '2fa');
   if (parsed.data.trustDevice === 'on') await markTrustedDevice(user.id);
 
-  // AMH-055 — the same gates the password-only path runs. This used to call
-  // createSession directly, so a second factor bought the attacker a way PAST
-  // the country perimeter, device approval and the new-sign-in alert.
-  //
-  // markTrustedDevice runs first, deliberately: a person who ticked "trust this
-  // device" while holding both factors has done more to prove the device than
-  // an emailed six-digit code would, and asking for one anyway is a loop they
-  // cannot leave on a machine with no mailbox.
-  return finishLogin(user, 'Password + 2FA login');
+  // AMH-055 / AMH-067 — the country and device gates already ran in
+  // `loginAction` before the MFA ticket was issued, and a ticket is the only
+  // way to reach this function, so they cannot be skipped by coming here
+  // directly. What is left is the part that must happen exactly once a session
+  // really exists: create it, record the success, alert if the machine is new.
+  return completeLogin(user, 'Password + 2FA login', { username: user.username, historyReason: '2fa' });
 }
 
 /**

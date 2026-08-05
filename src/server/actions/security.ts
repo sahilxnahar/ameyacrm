@@ -6,7 +6,7 @@ import { breachVerdict } from '@/lib/auth/breach';
 import { getSecurityPolicy } from '@/lib/auth/policy';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '@/lib/auth/password';
 import {
-  generateTotpSecret, sealSecret, openSecret, totpUri, totpQrDataUrl, verifyTotpOnce, generateBackupCodes,
+  generateTotpSecret, sealSecret, openSecret, totpUri, totpQrDataUrl, verifyTotp, totpStepFor, generateBackupCodes,
 } from '@/lib/auth/totp';
 import { writeAudit } from '@/lib/audit/log';
 import { getActionContext, toActionError } from './_helpers';
@@ -27,9 +27,14 @@ export type SecurityResult = { ok: true } | { error: string };
  * because the secret was written at step 1, the victim's authenticator stopped
  * working the moment the attacker began, whether or not they finished.
  *
- * So: a user who has 2FA on must re-authenticate before the stored secret is
- * touched, and the write only happens after that check passes. First-time
- * enrolment is unchanged — there is no factor to steal yet.
+ * So: a user who has 2FA on must re-authenticate before anything is written,
+ * and — AMH-070 — the new secret is parked in `twoFactorPendingSecret` rather
+ * than overwriting the live one. The password check gated ENTRY, but the write
+ * was unchanged: supply the password, get the QR, close the tab, and your
+ * existing authenticator was already dead while `twoFactorEnabled` stayed
+ * true. Starting an enrolment must not be able to end one.
+ *
+ * First-time enrolment is unchanged in effect — there is no factor to lose.
  */
 export async function startTwoFactorSetup(password?: string): Promise<{ qr: string; secret: string } | { error: string }> {
   try {
@@ -37,9 +42,9 @@ export async function startTwoFactorSetup(password?: string): Promise<{ qr: stri
     const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
     if (!user) return { error: 'Your session expired. Please sign in again.' };
 
-    // Only a CONFIRMED factor is worth protecting. A dangling secret from a
-    // setup somebody abandoned protects nothing, and asking for a password to
-    // retry it would just wedge them.
+    // Only a CONFIRMED factor is worth protecting. A dangling pending secret
+    // from a setup somebody abandoned protects nothing, and asking for a
+    // password to retry it would just wedge them.
     if (user.twoFactorEnabled) {
       if (!password) return { error: 'PASSWORD_REQUIRED' };
       if (!(await verifyPassword(password, user.passwordHash))) {
@@ -54,9 +59,7 @@ export async function startTwoFactorSetup(password?: string): Promise<{ qr: stri
     const secret = generateTotpSecret();
     await prisma.user.update({
       where: { id: ctx.user.id },
-      // A new secret starts a new replay ledger; keeping the old step would
-      // reject every code from the new authenticator until the clock caught up.
-      data: { twoFactorSecret: sealSecret(secret), twoFactorLastStep: null },
+      data: { twoFactorPendingSecret: sealSecret(secret) },
     });
     const uri = totpUri(secret, ctx.user.email);
     return { qr: await totpQrDataUrl(uri), secret };
@@ -65,19 +68,37 @@ export async function startTwoFactorSetup(password?: string): Promise<{ qr: stri
   }
 }
 
-/** Step 2 — confirm a TOTP code, enable 2FA, and issue one-time backup codes. */
+/**
+ * Step 2 — confirm a code against the PENDING secret, then promote it.
+ *
+ * AMH-070 — promotion is the only thing that touches `twoFactorSecret`, and it
+ * happens in the same transaction that flips `twoFactorEnabled` and reissues
+ * the backup codes. Until this runs, the old authenticator keeps working.
+ *
+ * The confirming code's time-step is written straight into `twoFactorLastStep`
+ * so the enrolment code cannot double as a login code seconds later (AMH-053).
+ */
 export async function confirmTwoFactor(code: string): Promise<{ ok: true; backupCodes: string[] } | { error: string }> {
   try {
     const ctx = await getActionContext();
     const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
-    if (!user?.twoFactorSecret) return { error: 'Start setup first.' };
-    // Burned, not merely checked: the enrolment code must not double as a
-    // login code a few seconds later (AMH-053).
-    if (!(await verifyTotpOnce(user.id, code, openSecret(user.twoFactorSecret)))) return { error: 'Incorrect code. Try again.' };
+    if (!user?.twoFactorPendingSecret) return { error: 'Start setup first.' };
+
+    const pending = openSecret(user.twoFactorPendingSecret);
+    if (!verifyTotp(code, pending)) return { error: 'Incorrect code. Try again.' };
+    const step = totpStepFor(code, pending);
 
     const { codes, hashes } = await generateBackupCodes(10);
     await prisma.$transaction([
-      prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorEnabled: true,
+          twoFactorSecret: user.twoFactorPendingSecret,
+          twoFactorPendingSecret: null,
+          twoFactorLastStep: step === null ? null : BigInt(step),
+        },
+      }),
       prisma.backupCode.deleteMany({ where: { userId: user.id } }),
       prisma.backupCode.createMany({ data: hashes.map((codeHash) => ({ userId: user.id, codeHash })) }),
     ]);
@@ -95,7 +116,7 @@ export async function disableTwoFactor(password: string): Promise<SecurityResult
     const user = await prisma.user.findUnique({ where: { id: ctx.user.id } });
     if (!user || !(await verifyPassword(password, user.passwordHash))) return { error: 'Incorrect password.' };
     await prisma.$transaction([
-      prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorLastStep: null } }),
+      prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorPendingSecret: null, twoFactorLastStep: null } }),
       prisma.backupCode.deleteMany({ where: { userId: user.id } }),
     ]);
     await writeAudit({ actorId: user.id, action: 'TWO_FACTOR_DISABLED', entityType: 'User', entityId: user.id });

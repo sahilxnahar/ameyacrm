@@ -63,7 +63,9 @@ const config: Config = {
       fontFamily: {
         display: ['var(--font-display)', 'Cormorant Garamond', 'serif'],
         sans: ['var(--font-body)', 'Inter', 'system-ui', 'sans-serif'],
-        accent: ['var(--font-accent)', 'Unbounded', 'sans-serif'],
+        // AMH-078: the `accent` family (Unbounded) was loaded on every route and
+        // referenced by nothing. Removed rather than left as a trap — two extra
+        // webfont weights on the critical path of 172 routes for no glyph drawn.
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

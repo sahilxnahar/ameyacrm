@@ -74,6 +74,24 @@ export function formatCurrencyForPdf(value: number | string | null | undefined):
 }
 
 /**
+ * A plain quantity — no currency symbol, decimals only when there are any.
+ *
+ * AMH-066. Carpet area and invoice quantities were being run through
+ * `formatCurrency`, so a cost sheet printed "₹1,200 sq.ft" and an invoice line
+ * showed a rupee symbol against a count of doors. A number is not money, and
+ * the one shared money helper should not be the only shared number helper.
+ */
+export function formatQuantity(value: number | string | null | undefined): string {
+  if (value == null) return '—';
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(n)) return '—';
+  const hundredths = Math.round(n * 100);
+  return hundredths % 100 === 0
+    ? new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(hundredths / 100)
+    : plainPaise.format(hundredths / 100);
+}
+
+/**
  * Always two decimals. For columns that must line up digit-for-digit — a
  * ledger, a reconciliation, an exported statement.
  */

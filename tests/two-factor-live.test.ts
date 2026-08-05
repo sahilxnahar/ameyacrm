@@ -151,37 +151,72 @@ suite('two-factor authentication, end to end', () => {
     expect(p2.stage).not.toBe('2fa');
   });
 
-  it('the second factor is rate limited, not free to brute-force', () => {
+});
+
+/**
+ * These need no database, so they must NOT sit inside the LIVE_DB-gated suite —
+ * gated, they never ran in ordinary CI, which is exactly when a regression lock
+ * has to fire.
+ */
+describe('the second factor is wired the way it claims', () => {
+  it('is rate limited before any code is compared', () => {
     const src = readFileSync('src/server/actions/auth.ts', 'utf8');
     const body = src.slice(src.indexOf('export async function verifyTwoFactorAction'));
-    expect(body).toMatch(/checkRate\(`2fa:verify:\$\{userId\}`/);
-    expect(body).toMatch(/checkRate\(`2fa:verify:ip:\$\{ip\}`/);
-    // The gate must come BEFORE any code is compared, or it gates nothing.
-    expect(body.indexOf('checkRate')).toBeLessThan(body.indexOf('verifyTotp'));
+    // Strip comments first: the previous version of this test was measuring the
+    // position of the word `verifyTotp` inside a comment, not in code.
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).toMatch(/checkRate\(`2fa:verify:\$\{userId\}`/);
+    expect(code).toMatch(/checkRate\(`2fa:verify:ip:\$\{ip\}`/);
+    expect(code.indexOf('checkRate')).toBeLessThan(code.indexOf('verifyTotpOnce'));
   });
 
-  it('re-enrolling a second factor requires the password, like disabling does', async () => {
-    // AMH-052. Disabling 2FA asks for the password; starting setup did not, and
-    // it overwrote the stored secret unconditionally. A hijacked session could
-    // therefore replace the victim's authenticator — and collect a fresh set of
-    // backup codes — without ever knowing the password, while the legitimate
-    // user's app silently stopped working from the moment step 1 ran.
+  /**
+   * AMH-052 + AMH-070. The earlier version of this test only checked that the
+   * words `verifyPassword` and `twoFactorEnabled` appeared somewhere in the
+   * function — it passed with the condition inverted, and it did not notice
+   * that starting an enrolment still destroyed the working secret.
+   */
+  it('re-enrolling costs a password AND does not destroy the working factor', () => {
     const src = readFileSync('src/server/actions/security.ts', 'utf8');
-    const start = src.slice(src.indexOf('export async function startTwoFactorSetup'), src.indexOf('export async function confirmTwoFactor'));
-    expect(start).toMatch(/verifyPassword/);
-    expect(start).toMatch(/twoFactorEnabled/); // an already-enrolled user is the case that matters
+    const start = src.indexOf('export async function startTwoFactorSetup');
+    const body = src.slice(start, src.indexOf('export async function confirmTwoFactor'));
+
+    // The gate, in the right direction, before the write.
+    expect(body).toMatch(/if \(user\.twoFactorEnabled\) \{/);
+    expect(body).toMatch(/if \(!password\) return \{ error: 'PASSWORD_REQUIRED' \}/);
+    expect(body).toMatch(/if \(!\(await verifyPassword\(password, user\.passwordHash\)\)\)/);
+    expect(body.indexOf('verifyPassword')).toBeLessThan(body.indexOf('prisma.user.update'));
+
+    // AMH-070: step 1 writes ONLY the pending column. The live secret and the
+    // enabled flag are untouched until a code confirms.
+    expect(body).toMatch(/data: \{ twoFactorPendingSecret: sealSecret\(secret\) \}/);
+    expect(body).not.toMatch(/twoFactorSecret:/);
+    expect(body).not.toMatch(/twoFactorEnabled: (true|false)/);
   });
 
-  it('a TOTP code cannot be replayed inside its own window', async () => {
-    // AMH-053. otplib accepts a code for its step plus one either side (~90s).
-    // Without recording the step that was consumed, a code seen once — over a
-    // shoulder, in a screen share, through a phishing proxy — stays valid for
-    // the rest of that window for anyone who also has the password.
-    const { verifyTotpOnce } = await import('@/lib/auth/totp');
-    const code = authenticator.generate(plainSecret);
-    await prisma.user.update({ where: { id: userId }, data: { twoFactorLastStep: null } });
+  it('confirming is the only thing that promotes the pending secret', () => {
+    const src = readFileSync('src/server/actions/security.ts', 'utf8');
+    const body = src.slice(src.indexOf('export async function confirmTwoFactor'), src.indexOf('export async function disableTwoFactor'));
+    expect(body).toMatch(/twoFactorSecret: user\.twoFactorPendingSecret/);
+    expect(body).toMatch(/twoFactorPendingSecret: null/);
+    expect(body).toMatch(/twoFactorEnabled: true/);
+    // …and the confirming code's step is burned, so it cannot double as a login code.
+    expect(body).toMatch(/twoFactorLastStep: step === null \? null : BigInt\(step\)/);
+  });
 
-    expect(await verifyTotpOnce(userId, code, plainSecret)).toBe(true);
-    expect(await verifyTotpOnce(userId, code, plainSecret)).toBe(false); // same code, seconds later
+  it('disabling clears the pending secret too, not just the live one', () => {
+    const src = readFileSync('src/server/actions/security.ts', 'utf8');
+    const body = src.slice(src.indexOf('export async function disableTwoFactor'));
+    expect(body).toMatch(/twoFactorSecret: null/);
+    expect(body).toMatch(/twoFactorPendingSecret: null/);
+    expect(body).toMatch(/twoFactorLastStep: null/);
+  });
+
+  it('no blocking window.prompt is left in the two-factor UI', () => {
+    // AMH-071: prompt() returns null silently when the browser suppresses
+    // dialogs, so "Disable 2FA" did nothing at all with no error.
+    const ui = readFileSync('src/components/settings/two-factor-setup.tsx', 'utf8');
+    expect(ui).not.toMatch(/\bprompt\(/);
+    expect(ui).toMatch(/PasswordDialog/);
   });
 });

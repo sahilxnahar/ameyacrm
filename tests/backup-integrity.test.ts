@@ -111,7 +111,12 @@ describe('backup retention actually bounds what is kept', () => {
     const { readFileSync } = await import('node:fs');
     const src = readFileSync('src/server/services/retention-service.ts', 'utf8');
     expect(src).toMatch(/export async function rotateBackups\(now: Date, keepDays = \d+, keepMax = \d+\)/);
-    const body = src.slice(src.indexOf('export async function rotateBackups'), src.indexOf('function readIndex') >= 0 ? src.length : src.length);
+    // Slice to the END of rotateBackups, not to the end of the file — the
+    // previous version's ternary returned src.length on both branches, so every
+    // assertion below was really being made against the whole module.
+    const from = src.indexOf('export async function rotateBackups');
+    const nextFn = src.indexOf('\nexport ', from + 1);
+    const body = src.slice(from, nextFn > -1 ? nextFn : src.length);
     expect(body).toMatch(/const tooOld =/);
     expect(body).toMatch(/const tooMany = i >= keepMax/);
     // Sorted before the index is used, or "newest" is whatever order it landed in.
@@ -124,7 +129,12 @@ describe('backup retention actually bounds what is kept', () => {
     const record = src.slice(src.indexOf('export async function recordBackup'));
     // There is no `list` on the storage interface: an entry dropped from the
     // index is an object nothing can name again, so it can never be deleted.
-    expect(record).not.toMatch(/\.slice\(0, keepMax\)/);
+    // Assert on the SIGNATURE as well — `keepMax` is gone from the parameter
+    // list, which is the thing that cannot be reintroduced by accident. (The
+    // old `.not.toMatch(/\.slice\(0, keepMax\)/)` was vacuous: `keepMax` was
+    // no longer in scope, so nothing could have matched it.)
+    expect(record).toMatch(/export async function recordBackup\(date: Date, key: string\): Promise<void>/);
+    expect(record).not.toMatch(/\.slice\(0,/);
     expect(record).toMatch(/writeIndex\(\[\{ date: date\.toISOString\(\), key \}, \.\.\.index\]\)/);
   });
 });

@@ -36,7 +36,7 @@ export function UpdatesView({ releases }: { releases: Release[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={`Search ${totalFeatures} features & updates…`}
-          className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary focus:outline-none"
+          className="focus-ring h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary"
           autoFocus
         />
         {q && (

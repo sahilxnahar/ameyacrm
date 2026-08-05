@@ -59,5 +59,9 @@ export async function verifyDeviceAction(_prev: DeviceState, formData: FormData)
 
   if (user.mustChangePassword) redirect('/settings/security?force=1');
   if (mustEnroll2FA(user, await getSecurityPolicy())) redirect('/settings/security?enroll=1');
+  // AMH-068 — a GUEST belongs on the sealed preview, the same as every other
+  // sign-in path decides. This one sent them into the workspace shell, which
+  // is the one place `getActionContext` then refuses everything they touch.
+  if (user.role === 'GUEST') redirect('/demo');
   redirect('/dashboard');
 }

@@ -117,7 +117,7 @@ export function FeatureExplorer({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search ${total} features…`}
-            className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary focus:outline-none"
+            className="focus-ring h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary"
           />
           {query && (
             <button onClick={() => setQuery('')} aria-label="Clear"

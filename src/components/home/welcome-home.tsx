@@ -143,7 +143,7 @@ export function WelcomeHome({ firstName, agenda, next7 = [], kpi, needs2FA = fal
       {/* Live KPI tiles — your morning cockpit. */}
       {kpi && (
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
-          <StatTile label="New leads today" value={String(kpi.leadsToday)} icon={UserPlus} href="/leads" />
+          <StatTile label="New leads today" value={String(kpi.leadsToday)} icon={UserPlus} href="/sales" />
           <StatTile label="Tasks due today" value={String(kpi.tasksToday)} icon={CheckSquare} href="/tasks" />
           <StatTile label="Approvals pending" value={String(kpi.approvals)} icon={Inbox} href="/approvals" />
           <StatTile label="Follow-ups (7d)" value={String(kpi.followUps)} icon={BellRing} href="/reminders" />

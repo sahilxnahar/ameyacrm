@@ -75,14 +75,14 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
         <DropZone onFiles={(files) => void doUpload(files)} disabled={!!busy} overlayLabel="Drop files to add to the library" className="rounded-xl border border-brass/40 bg-brass/5 p-4">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={() => filesRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-[#1B2A4A] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#243a63] disabled:opacity-50"><Upload className="h-4 w-4" /> Upload files</button>
-            <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-white disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
+            <button onClick={() => folderRef.current?.click()} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-muted disabled:opacity-50"><FolderUp className="h-4 w-4" /> Upload a folder</button>
             <span className="text-xs text-muted-foreground">Folders are sorted into categories automatically by AI.</span>
             {busy && <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-brass"><Loader2 className="h-4 w-4 animate-spin" /> {busy}</span>}
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="text-xs">Google Drive / web link<br /><input value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/…" className="w-72 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
-            <label className="text-xs">Title<br /><input value={driveTitle} onChange={(e) => setDriveTitle(e.target.value)} placeholder="What is it?" className="w-52 rounded border border-slate-300 px-2 py-1 text-sm" /></label>
-            <button onClick={addDrive} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-white disabled:opacity-50"><Link2 className="h-4 w-4" /> Add link</button>
+            <label className="text-xs">Google Drive / web link<br /><input value={driveUrl} onChange={(e) => setDriveUrl(e.target.value)} placeholder="https://drive.google.com/…" className="w-72 rounded border border-border px-2 py-1 text-sm" /></label>
+            <label className="text-xs">Title<br /><input value={driveTitle} onChange={(e) => setDriveTitle(e.target.value)} placeholder="What is it?" className="w-52 rounded border border-border px-2 py-1 text-sm" /></label>
+            <button onClick={addDrive} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-[#1B2A4A]/40 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-muted disabled:opacity-50"><Link2 className="h-4 w-4" /> Add link</button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">Tip: you can also drag files straight onto this panel.</p>
           <input ref={filesRef} type="file" multiple hidden onChange={(e) => doUpload(e.target.files)} />
@@ -101,7 +101,7 @@ export function MarketingLibrary({ featured, items, canManage }: { featured: Col
 
       {/* Uploaded, grouped by AI category */}
       {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-muted-foreground">No uploaded files yet.{canManage ? ' Use “Upload files” or “Upload a folder” above.' : ''}</p>
+        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No uploaded files yet.{canManage ? ' Use “Upload files” or “Upload a folder” above.' : ''}</p>
       ) : (
         [...orderedCats, ...extraCats].map((cat) => (
           <section key={cat}>
@@ -120,16 +120,16 @@ function FeaturedCard({ c }: { c: Collateral }) {
   const Icon = KIND_ICON[c.kind] ?? FileText;
   const showImg = c.kind === 'image' || c.kind === 'brand';
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {showImg ? (
-        <a href={c.file} target="_blank" rel="noopener noreferrer" className="block bg-slate-50">
+        <a href={c.file} target="_blank" rel="noopener noreferrer" className="block bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={c.file} alt={c.title} className="h-32 w-full object-contain p-2" />
         </a>
       ) : (
-        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-brass" /></div>
+        <div className="flex h-32 items-center justify-center bg-muted"><Icon className="h-10 w-10 text-brass" /></div>
       )}
-      <div className="border-t border-slate-100 p-3">
+      <div className="border-t border-border p-3">
         <p className="truncate text-sm font-semibold text-primary">{c.title}</p>
         <p className="mb-2 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
         <div className="flex gap-3 text-xs">
@@ -144,16 +144,16 @@ function FeaturedCard({ c }: { c: Collateral }) {
 function ItemCard({ it, canManage, onRemove }: { it: LibraryItem; canManage: boolean; onRemove: (id: string) => void }) {
   const Icon = KIND_ICON[it.kind] ?? FileText;
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {it.kind === 'image' ? (
-        <a href={it.url} target="_blank" rel="noopener noreferrer" className="block bg-slate-50">
+        <a href={it.url} target="_blank" rel="noopener noreferrer" className="block bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={it.url} alt={it.title} className="h-32 w-full object-cover" />
         </a>
       ) : (
-        <div className="flex h-32 items-center justify-center bg-slate-50"><Icon className="h-10 w-10 text-brass" /></div>
+        <div className="flex h-32 items-center justify-center bg-muted"><Icon className="h-10 w-10 text-brass" /></div>
       )}
-      <div className="border-t border-slate-100 p-3">
+      <div className="border-t border-border p-3">
         <p className="truncate text-sm font-semibold text-primary" title={it.title}>{it.title}</p>
         <p className="mb-2 text-[11px] text-muted-foreground">{it.source === 'DRIVE' ? 'Google Drive / link' : it.fileType || 'file'}{it.folderPath ? ` · ${it.folderPath}` : ''}</p>
         <div className="flex items-center gap-3 text-xs">

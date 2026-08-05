@@ -60,7 +60,7 @@ export function GuideView({ allowed, isSuperAdmin }: { allowed: string[]; isSupe
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the guide…" autoFocus
-          className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary focus:outline-none" />
+          className="focus-ring h-10 w-full rounded-lg border border-input bg-background pl-9 pr-9 text-sm focus:border-primary" />
         {q && <button onClick={() => setQ('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-secondary" aria-label="Clear"><X className="h-4 w-4" /></button>}
       </div>
 

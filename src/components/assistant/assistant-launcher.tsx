@@ -35,7 +35,7 @@ export function AssistantLauncher() {
         <>
           <div className="fixed inset-0 z-dock bg-black/40 sm:bg-transparent" onClick={() => setOpen(false)} aria-hidden />
           <div
-            className="fixed inset-x-0 bottom-0 z-popover flex h-[85vh] flex-col rounded-t-2xl border-t bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-6 sm:h-[70vh] sm:w-[400px] sm:rounded-2xl sm:border"
+            className="fixed inset-x-0 bottom-0 z-popover flex h-[85dvh] flex-col rounded-t-2xl border-t bg-card p-3 shadow-2xl sm:inset-x-auto sm:right-6 sm:h-[70dvh] sm:w-[400px] sm:rounded-2xl sm:border"
             style={{ bottom: 'env(safe-area-inset-bottom)' }}
             role="dialog"
             aria-label="AI assistant"
