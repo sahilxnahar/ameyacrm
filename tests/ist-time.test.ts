@@ -81,10 +81,13 @@ describe('the timezone is pinned where it runs', () => {
     expect(read('Dockerfile')).toMatch(/TZ=Asia\/Kolkata/);
   });
 
-  it('Vercel sets TZ for both runtime and build', () => {
+  it('Vercel does not set TZ (reserved by the platform)', () => {
+    // Vercel rejects TZ as a reserved environment variable, so it cannot be
+    // set in vercel.json. The Dockerfile sets it for self-hosted deploys, and
+    // the formatting code is TZ-independent (see the next test), so this is
+    // belt-and-braces rather than a load-bearing configuration.
     const v = JSON.parse(read('vercel.json'));
-    expect(v.env?.TZ).toBe('Asia/Kolkata');
-    expect(v.build?.env?.TZ).toBe('Asia/Kolkata');
+    expect(v.env?.TZ ?? v.build?.env?.TZ).toBeUndefined();
   });
 
   it('formatting does not rely on that anyway', () => {

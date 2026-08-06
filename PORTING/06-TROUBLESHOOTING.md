@@ -45,9 +45,10 @@ redeployed with a different value — and treat that as a possible incident.
   HTTP and refuses to set a secure cookie
 
 **A guest hits a redirect loop**
-Confirm `/preview` sits **outside** the `(app)` route group. Inside it, the
-layout's own guard redirects a guest back to `/preview`, which re-enters the
-same layout — an infinite loop.
+Confirm `/demo` sits **outside** the `(app)` route group (it lives in `(demo)`).
+Inside `(app)`, the layout's own guard redirects a guest back to `/demo`, which
+re-enters the same layout — an infinite loop. The current layout avoids this by
+putting the demo in a separate route group.
 
 ## Scheduled jobs are not running
 

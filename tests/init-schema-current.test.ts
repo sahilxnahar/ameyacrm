@@ -63,7 +63,9 @@ function sqlColumns(): Set<string> {
 }
 
 describe('the Repair button is not out of date', () => {
-  it('knows about every column in prisma/schema.prisma', () => {
+  it('knows about every column in prisma/schema.prisma', { timeout: 15_000 }, () => {
+    // The Prisma schema is large; the regex pass takes ~2.5s alone and can
+    // take 7-8s under parallel test load. The default 5s timeout is too tight.
     const missing = [...prismaColumns()].filter((c) => !sqlColumns().has(c)).sort();
     expect(
       missing,

@@ -98,7 +98,7 @@ export async function seedSandbox(sandboxId: string, tx: SeedClient = prisma as 
           typology,
           areaSqft,
           price: areaSqft * 7200,
-          status: floor === 12 && pos === '04' ? 'BOOKED' : floor % 3 === 0 ? 'HELD' : 'AVAILABLE',
+          status: floor === 12 && pos === '03' ? 'BOOKED' : floor % 3 === 0 ? 'HELD' : 'AVAILABLE',
         });
       }
     }

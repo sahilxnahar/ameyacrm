@@ -2,9 +2,10 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Users2, Building2, ListTodo, BookOpen } from 'lucide-react';
+import { ArrowRight, Users2, Building2, ListTodo, BookOpen, StickyNote } from 'lucide-react';
 import type { SandboxData } from '@/server/services/sandbox-service';
-import { Kpi, PageHead, ResetButton, crore, inr } from './demo-shared';
+import { sandboxAddNote } from '@/server/actions/sandbox';
+import { Kpi, PageHead, ResetButton, crore, inr, useRunner, Empty } from './demo-shared';
 
 /** The demo's home screen: the same shape as the real dashboard, sandbox data. */
 export function DemoOverview({ data, name }: { data: SandboxData; name: string }) {
@@ -72,6 +73,66 @@ export function DemoOverview({ data, name }: { data: SandboxData; name: string }
           </ul>
         </>
       )}
+
+      <DemoNotes notes={data.notes} />
     </div>
+  );
+}
+
+/** Notes section: the guest can jot down observations during the demo. */
+function DemoNotes({ notes }: { notes: SandboxData['notes'] }) {
+  const [pending, run] = useRunner();
+  const [body, setBody] = React.useState('');
+  const [open, setOpen] = React.useState(false);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!body.trim()) return;
+    run(() => sandboxAddNote(body), 'Note added');
+    setBody('');
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <div className="mb-2 mt-6 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h2>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground"
+        >
+          <StickyNote className="h-3.5 w-3.5" /> Add a note
+        </button>
+      </div>
+
+      {open && (
+        <form onSubmit={submit} className="mb-3 flex gap-2 rounded-lg border bg-secondary/30 p-3">
+          <input
+            autoFocus
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Write a quick note…"
+            className="min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm"
+          />
+          <button type="submit" disabled={pending || !body.trim()} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50">
+            Save
+          </button>
+        </form>
+      )}
+
+      {notes.length === 0 ? (
+        <Empty>No notes yet — jot down anything worth remembering.</Empty>
+      ) : (
+        <ul className="divide-y rounded-lg border">
+          {notes.map((note) => (
+            <li key={note.id} className="p-3">
+              <p className="text-sm">{note.body}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{new Date(note.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

@@ -1,6 +1,6 @@
-# Ameya Heights CRM — Guest / Preview Access (v15.87)
+# Ameya Heights CRM — Guest / Demo Access
 
-A shareable, read-only login you can hand to **anyone** — a prospect, partner, investor or new hire — to show off the whole platform, without exposing a single piece of real company data.
+A shareable login you can hand to **anyone** — a prospect, partner, investor or new hire — to let them explore the platform hands-on, without exposing a single piece of real company data.
 
 ## How to create one
 
@@ -11,19 +11,34 @@ A shareable, read-only login you can hand to **anyone** — a prospect, partner,
 
 You can make as many guest logins as you like, and disable one at any time from the same screen. (Tip: use a throwaway email and a simple shared password, since this account can't do anything sensitive.)
 
-## What a guest sees
+## What a guest sees and can do
 
-A single polished **Product Preview** screen: sample KPIs (revenue, leads, units, collections), a sample sales pipeline, sample construction progress and a live compliance snapshot — plus a complete map of every module in the platform (90+ features, grouped by area). Every number is illustrative sample data, hard-coded into the preview page.
+A guest lands on a **Demo Overview** screen with sample KPIs (leads, flats, pipeline value, bank receipts) and links to four interactive demo screens. Every number is fictional sample data, seeded into the guest's own private sandbox.
+
+The guest can **create, edit and delete freely** inside the sandbox — it is not read-only. The five screens are:
+
+| Screen | Route | What the guest can do |
+|---|---|---|
+| Overview | `/demo` | See KPIs, recent activity, and notes. Add a note. |
+| Sales | `/demo/sales` | Add a lead, change its stage through the pipeline, delete a lead. |
+| Inventory | `/demo/inventory` | View sample flats by tower, filter by tower, set a unit to Available / Held / Booked. |
+| Tasks | `/demo/tasks` | Add a task with a due date, tick it done or reopen it, see overdue items highlighted. |
+| Ameya Tally | `/demo/tally` | Post a double-entry journal entry and watch the trial balance prove debits equal credits. |
+
+Each screen has a **Reset demo** button that puts the sandbox back to its seeded state. The sandbox also resets itself automatically after 24 hours.
+
+Real staff members can also visit `/demo` to show the product to a prospect without handing over a guest login.
 
 ## What a guest can never do or see — three independent locks
 
-1. **No real data is ever loaded.** The preview page reads nothing from the database; it renders fixed sample figures. A guest request returns before the app ever queries real projects, leads, money, documents or email.
-2. **Sealed navigation (default-deny).** A guest can only reach the preview screen. Any other URL — dashboards, finance, documents, admin, email, anything — automatically redirects back to the preview. New screens added in future are blocked by default, not exposed by accident.
-3. **Strictly read-only.** Every action that could change data is refused for a guest at the server, regardless of the request. The Guest role also carries zero data permissions, so even if a screen were somehow reached, it would render nothing.
+1. **No real data is ever loaded.** Demo pages read only `Sandbox*` tables (sandbox leads, units, tasks, ledger entries, notes). A real page component is never invoked for a guest, so there is no query that could return company data and no `where` clause to forget.
+2. **Sealed navigation (default-deny).** The app layout unconditionally redirects any guest to `/demo`. Any other URL — dashboards, finance, documents, admin, email, anything — bounces back to the demo. New screens added to the real CRM in future are blocked by default, not exposed by accident. `/demo` lives in a separate route group so the redirect cannot loop.
+3. **Zero permissions on real data.** The Guest role carries zero permission keys, so even if a real screen were somehow reached, it would render nothing. Every real server action goes through `getActionContext()`, which throws `ForbiddenError` for a guest unconditionally. The sandbox actions in `sandbox.ts` deliberately bypass that helper and write only to sandbox tables, scoped by the session-derived sandbox ID — a guest cannot address another guest's playground.
 
 IMAP / email, exports, downloads, settings and integrations are all unavailable to a guest by construction — there's nothing to configure and no credentials involved.
 
 ## Good to know
 
 - Nothing about your real workspace changes for your real users.
-- Want guests to explore actual working screens (with realistic *fake* records they can click through), not just the showcase page? That's a larger build — a seeded sample dataset per module — and can be added screen by screen on top of this foundation. Ask and I'll extend it to whichever modules you most want to demo.
+- The sandbox is per-user: each guest gets their own private playground. What one guest does does not affect another guest's demo.
+- Want guests to explore more screens (with realistic *fake* records they can click through)? The sandbox foundation supports adding more demo screens on top of it — ask and I'll extend it to whichever modules you most want to demo.
